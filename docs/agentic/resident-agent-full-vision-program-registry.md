@@ -52391,3 +52391,128 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   Wave 3 start, production readiness, or product release. `neo`, provider,
   credential, external-system, pull-request, production-route,
   preview-branch, and unrelated actions remain unauthorized.
+
+## RV-1-E-1289 — Task136 33-path candidate rejected; real-mounted completion RED authorized
+
+- Recorded at: 2026-07-30T21:29:36Z
+- Completely fresh independent architecture reviewer
+  `/root/task17_e1288_architecture_review`, UUID
+  `019fb4d8-0e21-7532-acbc-caac0ce301ff`, and different completely fresh
+  independent executability reviewer
+  `/root/task17_e1288_executability_review`, UUID
+  `019fb4d8-3ed8-7010-b3a0-3d6dc200191b`, both return **REJECTED** for exact
+  immutable Task136 candidate
+  `97d45f1d0b9b9c598101f70099b5745d8c586004`, tree
+  `e7f06702cac33046e6600aa03b2ee0387c6bf9da`, with exact parents
+  `a2bf9bd3684bc512cbb105f87de27d06628a5468` and
+  `a5cb6cbc23e463e83077f43d7a68bf3ba5173d76`.
+  Changed candidate bytes invalidate both reviews.
+- Both reviews bind the exact 44-path binary packet, **3,733,130 bytes**,
+  SHA-256
+  `a0ad98647827b1c6e0af159c0474aa2c8221e603be6e7d9bbec7ae5a1c3ec127`,
+  exact 33-owned-plus-11-inherited scope, ten-commit fifteen-source union,
+  ancestry, ten prerequisites, Task138 and no-activation freezes,
+  dependencies, diff hygiene, strict Git integrity, and clean candidate
+  state.
+- **P1 — the real mounted loop cannot complete.** W's exact outer
+  currentness predicate in
+  `packages/local-runtime/src/mounted-wake-lifecycle-store.ts` accepts only
+  bound `agent.resident-domain.*` events and resident plan, observation, and
+  tool-step records after the prior token snapshot. The legitimate
+  package-owned legacy execution also appends its catalog-attested local
+  `assertion.proposed` evidence, which is therefore rejected by R's next
+  outer revalidation even though G's private before/after-effect token was
+  correctly refreshed.
+- The same predicate omits
+  `agent.resident-loop.result.recorded.v2`. R's required completion path in
+  `packages/agent/src/bounded-agent-loop.ts` appends that exact bound result
+  and immediately revalidates before reread. The expected self-append is
+  consequently classified `recordable-stale`, and the loop throws
+  unavailable instead of returning its exact durable terminal result.
+- This violates the approved design requirement that exact expected
+  self-appends remain current and the acceptance requirement that exported
+  `createResidentBoundedAgentLoopFactory` run end-to-end against the real
+  mounted fixture without runtime activation. The existing test titled
+  `runs createResidentBoundedAgentLoopFactory against the real mounted fixture`
+  issues the real loop and checks method shapes and stop ownership, but never
+  invokes `advance` or `resume`. Bounded-loop unit tests use a local W double
+  that returns current and cannot prove the mounted adapter integration.
+- Architecture independently passes Task136 card **383/383**, exact 37-file
+  cross-card **1,042/1,042**, typecheck, factory readiness, mission
+  **20/20**, and markers **29 / 20 / 29 / 15** before stopping on the P1.
+  Executability independently reproduces the permanent Task9 causal RED
+  **255 = 228 passed + 27 failures**, released controls **443/443**, the
+  separate Task12 binding RED **79 = 76 passed + three failures**, exact
+  current focused **9/9**, producer **144/144**, and all static packet gates
+  before independently confirming the same P1. Passing broad gates do not
+  cure the absent real-mounted completion oracle.
+- Advance exact Task136 `reviewing -> rejected -> implementing`. Preserve
+  E-1288 and exact rejected candidate history. Authorize only the smallest
+  forward test-only correction in exactly:
+  `packages/local-runtime/test/wake-supervisor-runtime.test.ts`, starting
+  from blob `d4eb04515063ac50ea88989a0b1335ecc0ea0f61`, and
+  `packages/local-runtime/test/resident-loop-factory-ports.test.ts`, starting
+  from blob `67e27f3bb1116152c0ebe2062eebde9b92e2c776`.
+- In the existing wake title
+  `keeps currentness only across the exact approved resident causal advance`,
+  add two abstract local positive suffix controls using its existing real
+  bound fixture, token, and mounted-authority seam: one exact
+  catalog-attested ordinal-10 `assertion.proposed` adapter-evidence chain and
+  one exact same-bound `agent.resident-loop.result.recorded.v2` terminal
+  suffix. Each must remain `kind: current`, issue a fresh token, and preserve
+  the existing rejection of unrelated, swapped, foreign, and terminal
+  advances. Preserve title and cardinality.
+- Extend only the existing factory-ports real-mounted title. Preserve its
+  title and total test cardinality. Using the already approved abstract local
+  corpus, make the prepared factory issue one real product, supply one exact
+  automatic `legacy.staging.execute` candidate and exact local task-completed
+  H evidence, invoke `issued.loop.advance`, and require the exact durable
+  `agent.resident-loop.result.recorded.v2` result and reread. Require provider,
+  network, default-runtime activation, external-system, and
+  alternate-composition counters to remain zero; require only the exact
+  expected local legacy preview/execution evidence; and preserve the existing
+  exact stop-owner/idempotency and failure-propagation assertions.
+- The direct and end-to-end oracles must remain RED first on the actual
+  catalog-attested adapter-evidence suffix and, after any incomplete partial
+  correction, on the exact terminal-result suffix. They must not duplicate W's
+  implementation allowlist, broadly bless an event type, use a caller
+  heuristic, add a route/default runtime, invoke a provider, access a
+  credential, or add unrelated corpus cases.
+- Required corrected RED under `TMPDIR=/dev/shm`, one worker, and the
+  120-second timeout is focused
+  **9 = eight passed + one causal failure**, Task16 producer controls
+  **144/144**, factory boundary **10 = nine passed + one causal failure**,
+  wake boundary **140 = 139 passed + one causal failure**, Task136 card
+  **383 = 381 passed + two causal failures**, exact 37-file cross-card
+  **1,042 = 1,040 passed + two causal failures**, and Task138 **355/355**.
+  Typecheck, readiness, mission and V4 **20/20**, markers
+  **29 / 20 / 29 / 15**, exact repository first-stop, two-test scope,
+  33-path hash, all source and other-test freezes, ancestry, dependencies,
+  diff hygiene, Git integrity, and clean committed state must pass.
+- Freeze every product source, every other test, design, plan, claim,
+  contract, mission, assurance, dependency, route, provider, activation,
+  credential, preview branch, and unrelated byte. In particular freeze
+  mounted W source
+  `packages/local-runtime/src/mounted-wake-lifecycle-store.ts` at blob
+  `2d86fdcd570efbdee499d1ec807d2db1066f48bc`, bounded R source at
+  `215b324629534236321cc56fa9988d38096fb0c8`, factory-ports source at
+  `ea45eddd73ed7c3f208abb6da7ce287d03bd6da2`, and every G, dispatcher,
+  adapter, wake, composition, mounted-storage, and portable-storage source.
+- Commit only the two corrected tests with subject
+  `test(local-runtime): require real mounted loop completion`. Obtain a
+  completely fresh independent read-only review of exact immutable RED
+  bytes, append approval, integrate approval-first/candidate-second on the
+  program branch, rerun the integration packet, append integration, and
+  forward-merge into Task136. Changed bytes invalidate review.
+- No product edit is authorized until that RED is independently approved,
+  recorded, integrated, forward-merged, and a separate GREEN authority
+  exists. The expected smallest later product ceiling is only
+  `packages/local-runtime/src/mounted-wake-lifecycle-store.ts`, but this event
+  grants no source authority.
+- Task16 remains `integrated`; Task136 remains `implementing`; strict product
+  frontier remains **28 of 29**. This is fresh-review rejection and two-test
+  causal-oracle authority, not Task136 approval, integration, strict record
+  29, publication, Wave 3 start, repository closure, production readiness,
+  or release. `neo`, provider, credential, external-system, pull-request,
+  production-route, preview-branch, and unrelated actions remain
+  unauthorized.
