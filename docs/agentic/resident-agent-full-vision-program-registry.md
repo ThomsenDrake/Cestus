@@ -52979,3 +52979,48 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   release. `neo`, provider, credential, external-system, pull-request,
   production-route, preview-branch, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-1297 — Exact mounted-terminal two-test RED integrated
+
+- Recorded at: 2026-07-30T23:54:38Z
+- History-preserving program integration merge
+  `75e9c996432388675dd480732876e29455f6582b`, tree
+  `d4337d27856e0d8be2152410f37877f3f7b3e711`, has exact approval-first
+  parent `37e4b9415fdb6b4bd15d872357528050f8f39ad7` and exact approved
+  candidate-second parent
+  `cc5ce2e1446757e5615a83086263c3a3f26bb0e3`. Relative to approval, only
+  the two approved tests advance; relative to the candidate, only the
+  append-only registry advances. Parent order, unmerged-index, diff-hygiene,
+  and strict Git integrity checks pass.
+- Exact integrated blobs are factory test
+  `2fab1ab9f1a01b449bfd2b07d7b01bafdf840ada`, wake test
+  `7edeec96b9d525c452f3d972354f61d6ac1b03df`, and frozen mounted-W
+  source `2d86fdcd570efbdee499d1ec807d2db1066f48bc`.
+- Fresh integration-tree execution under `TMPDIR=/dev/shm`, one worker, and
+  the 120-second focused timeout reproduces focused
+  **9 = eight passed + one causal failure**, producer
+  **144 = 143 passed + one causal failure**, factory boundary
+  **10 = nine passed + one causal failure**, wake boundary
+  **140 = 139 passed + one causal failure**, Task136 card
+  **383 = 381 passed + two causal failures**, exact 37-file cross-card
+  **1,042 = 1,040 passed + two causal failures**, and Task138 **355/355**.
+  No new failure exists.
+- Typecheck and factory readiness pass. Mission and V4 each pass **20/20**;
+  markers remain **29 / 20 / 29 / 15**. Repository mode exits one and stops
+  first only at exact
+  `blob mismatch: Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`.
+  Exact `33 = 15/17/1` scope and canonical hash
+  `4cca816c5004bf922d47a44bc8e9216a7f4d1e00a030f20b34d59fb0cd1e442e`,
+  required Task136, Task138-H, and V4 lineages, local non-symlink
+  dependencies, all freezes, and clean integration state pass.
+- Advance the exact corrected RED `approved -> integrated`. Authorize only
+  this record's forward history-preserving merge into Task136. Product bytes
+  remain frozen until that merge completes and a separate bounded GREEN
+  authority reconciles the progressive product findings.
+- Task16 remains `integrated`; Task136 remains `implementing`; strict product
+  frontier remains **28 of 29**. This is RED integration, not product
+  authority, source candidacy, Task136 candidacy, strict record 29,
+  publication, Wave 3 start, repository closure, production readiness, or
+  release. `neo`, provider, credential, external-system, pull-request,
+  production-route, preview-branch, and unrelated actions remain
+  unauthorized.
