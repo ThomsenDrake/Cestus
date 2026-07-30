@@ -51926,3 +51926,63 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   or release. `neo`, provider, credential, external-system, pull-request,
   production-route, preview-branch, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-1283 — Task16 exact terminal-action RED approved
+
+- Recorded at: 2026-07-30T19:52:03Z
+- Completely fresh independent read-only Level 2 reviewer
+  `/root/e1282_terminal_red_fresh_review` returns **APPROVED** with no P0-P3
+  defect, missing test, specification drift, or executability gap for exact
+  immutable candidate `8f86ba0246670aeed58228520368c223ff2a2c43`,
+  tree `7a5e0c89e2cce8fa6a418cb188b6a91526cc4be7`, sole parent exact E-1282
+  authority merge `539e3539266c3cfd9b1ffb6befbee5e68d049f1d`.
+  Changed bytes invalidate this approval.
+- Exact scope is only
+  `packages/agent/test/bounded-agent-loop.test.ts`, changing approved prior
+  blob `e925492df08de60947650f98a97d903a0648cfab` to approved blob
+  `9d5f473e7dc499ed8e2cb047299a7153905be9f6` with **+19 / -1** and exact
+  subject `test(agent): require exact terminal replay action`.
+- The reviewer confirms the one added abstract local control remains inside
+  the existing completed-replay title and mutation table. It changes only
+  terminal `activeExecutionMs` action consumption from one to two and derives
+  terminal consumed and remaining from the preceding final observation by
+  exactly plus and minus two. The strict fixture validator accepts the
+  resulting schema, binding, and arithmetic; the existing trace/effect
+  assertions require local rejection after exact T120/W revalidation and
+  before H, C/G preparation, append, or downstream effect.
+- Independent reviewer execution under `TMPDIR=/dev/shm`, one worker, and
+  the 120-second timeout reproduces bounded
+  **3 = two passed + one failed** and focused
+  **9 = eight passed + one failed**. Main-session execution reproduces those
+  exact signatures, producer **144/144**, Task136 card
+  **383 = 382 passed + one failed**, exact 37-file cross-card
+  **1,042 = 1,041 passed + one failed**, policy corpus
+  **8 allowed / 20 rejected**, and Task138 **355/355**. The sole failure is
+  the exact terminal-action substitution reaching H.
+- Standalone typecheck and factory readiness pass. Mission and V4 each pass
+  **20/20**; mission fingerprint remains
+  `sha256:799af83764d6c098f3b1a97d6d30fc3b9b13f32f7c57204d92383fab371179ac`;
+  and markers remain **29 / 20 / 29 / 15**. Clean committed repository mode
+  stops first only at exact
+  `blob mismatch: Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`
+  and emits no repository-prefix, closure, record-29, repository, or
+  product-release success marker.
+- Exact one-test scope, E-1282/E-1281 and Task136 ancestry, rejected source
+  blob `c0aa5a20d4cee67326a0e49a38472a5b70fef6bf`, factory source
+  `ea45eddd73ed7c3f208abb6da7ce287d03bd6da2`, wake source
+  `a7e34e53fff3b4194c77f3b2dfb626dbe5dff2eb`, every other freeze,
+  TypeScript **5.9.3**, Vitest **4.1.9**, local non-symlink dependencies,
+  exact 33-path `15/17/1` ceiling and canonical hash
+  `4cca816c5004bf922d47a44bc8e9216a7f4d1e00a030f20b34d59fb0cd1e442e`,
+  diff hygiene, strict Git integrity, and clean state pass.
+- Advance the exact test-only RED `reviewing -> approved`. Authorize only its
+  history-preserving approval-first/candidate-second merge into the program
+  branch, fresh integration-tree execution, append-only integration
+  recording, and forward Task136 merge. Product source remains frozen until
+  that sequence and a separate one-source repair authority both exist.
+- Task16 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is RED approval, not integration, source repair, Task16
+  acceptance, Task136 candidacy, record 29, publication, Wave 3 start,
+  repository closure, production readiness, or release. `neo`, provider,
+  credential, external-system, pull-request, production-route,
+  preview-branch, and unrelated actions remain unauthorized.
