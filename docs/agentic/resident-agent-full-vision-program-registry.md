@@ -51480,3 +51480,108 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   repository closure, production readiness, or release. `neo`, provider,
   credential, external-system, pull-request, production-route,
   preview-branch, and unrelated actions remain unauthorized.
+
+## RV-1-E-1277 — Task16 three-source GREEN rejected; exact replay RED authorized
+
+- Recorded at: 2026-07-30T17:48:45Z
+- Completely fresh independent read-only source reviewer
+  `/root/task16c_e1273_source_review` returns **REJECTED** for exact immutable
+  three-source candidate `7ac09a1afccf7988ba3bf8e20bd256e73d779def`,
+  tree `b416914ac4e2499e1a5776ac08a513d83742a9d8`, sole parent exact E-1276
+  authority merge `e84cd3bcb8c6a1477bed99e6beeeac9278bdfcfb`.
+  A separate fresh bounded-loop audit independently reproduces the same
+  defects and identifies one additional candidate-bound frozen-own-data
+  normalization defect.
+- Exact rejected source blobs are bounded
+  `e6c1d2728ff23620552760409343521468b14956`, factory
+  `ea45eddd73ed7c3f208abb6da7ce287d03bd6da2`, and wake
+  `a7e34e53fff3b4194c77f3b2dfb626dbe5dff2eb`. Factory and wake have no
+  candidate-bound defect and remain frozen during this correction.
+- **P1 — substituted durable replay accepted.**
+  `completeFromReplay` and `validateResidentEventChain` validate counts,
+  coarse type order, identity, monotone IDs/sequences, generic budget
+  progression, three result scalars, and H, but not the exact event version,
+  stream, context, observation/tool/final/result payloads and readbacks,
+  causal edges, or action consumption. An abstract local five-event replay
+  with version `999`, divergent streams, noncontiguous sequences, unrelated
+  observation/tool causation and schema bytes, and zero action consumption
+  still returns terminal success after H.
+- **P1 — consumed loop reads before rejection.** After
+  `suspendAndRelease` or a failed reclaim consumes currentness, a repeated
+  `advance` reaches `T120.readReplay` before `reverify` discovers the absent
+  token. The consumed loop therefore performs a downstream ledger read before
+  failing.
+- **Specification drift — restart regenerates authority-bound bytes.** The
+  nonempty replay path calls C and G binding preparation before routing to
+  durable replay. The committed design requires the exact T120 plan reread to
+  remain authoritative on restart and states that Task136 never regenerates
+  those bindings.
+- **P1 — an own frozen data key is lost into the normalized prototype.**
+  `normalizeFrozenData` assigns caller-owned string keys into an ordinary
+  object. An otherwise exact frozen ordinary metadata record with an own
+  enumerable data property named `__proto__` therefore changes the normalized
+  result's prototype and loses that own key. The candidate accepts issuance
+  with an inherited caller-selected abstract value, breaking exact recursive
+  own-data normalization and making the supplied record canonically
+  indistinguishable from the key-absent surface.
+- Passing focused **9/9**, producer **144/144**, card **383/383**,
+  cross-card **1,042/1,042**, Task138 **355/355**, typecheck, readiness,
+  mission and V4 **20/20**, markers, scope, ancestry, and repository
+  first-stop do not cure these missing unit-test oracles.
+- Authorize only the smallest forward test-only RED in
+  `packages/agent/test/bounded-agent-loop.test.ts`, starting from exact blob
+  `ae54b1488c6770333567f2e9261cc3614d692eef`. Preserve all three existing
+  titles and total cardinality, the abstract local corpus, the authenticated-H
+  terminal hash, every existing branch and mutation, and every import-policy
+  test.
+- Extend the existing completed-replay title with independent abstract local
+  controls that require exact replay-envelope version/stream/context,
+  contiguous event order, exact observation/tool/final/result payload,
+  readback and causal bindings, and exact ten-counter action progression.
+  Each substituted replay must reject before H, append, C, G preparation,
+  provider, dispatcher, or other effect. The valid completed replay must use
+  the exact T120 bound plan and reach H without calling C or regenerating G
+  bindings.
+- Extend the existing suspension/resume title to present the same loop again
+  after its currentness has been consumed by suspension and after a failed
+  reclaim control. Both retries must reject before `T120.readReplay`, W,
+  ledger, gateway, H, provider, dispatcher, append, or other effect; the
+  prior settled trace and effect counters remain unchanged.
+- Extend the existing hostile-boundary title with one direct abstract local
+  own-data control: define an enumerable frozen `__proto__` data property on
+  an otherwise exact frozen ordinary metadata record and require synchronous
+  issuance rejection with zero proxy/accessor reads, boundary calls, writes,
+  or effects. Do not route this control through helper equality or introduce
+  another test title.
+- Freeze every product source, both factory tests, every other test, design,
+  plan, claim, contract, mission, assurance, dependency, route, provider,
+  activation, credential, preview branch, and unrelated byte. The correction
+  remains inside Task136's exact 33-path `15 sources / 17 tests / one claim`
+  ceiling and canonical hash
+  `4cca816c5004bf922d47a44bc8e9216a7f4d1e00a030f20b34d59fb0cd1e442e`.
+- Required RED under `TMPDIR=/dev/shm`, one worker, and the 120-second timeout
+  is bounded **3 = zero passed + three failed**, focused
+  **9 = 6 passed + three failed**, producer **144/144**, Task136 card
+  **383 = 380 passed + three failed**, cross-card
+  **1,042 = 1,039 passed + three failed**, and Task138 **355/355**, plus
+  typecheck, readiness, mission and V4 **20/20**, markers
+  **29 / 20 / 29 / 15**, exact repository first-stop, one-test scope, all
+  freezes, ancestry, dependencies, 33-path hash, diff hygiene, and strict Git
+  integrity.
+- Commit only the corrected bounded behavior test with subject
+  `test(agent): require exact bounded replay rehydration`. Obtain a completely
+  fresh independent read-only review of exact immutable RED bytes, append
+  approval, integrate approval-first/candidate-second on the program branch,
+  rerun the integration packet, append integration, and forward-merge into
+  Task136. Changed bytes invalidate review.
+- Do not edit product source until that RED is independently approved,
+  recorded, integrated, and a separate bounded-loop repair authority exists.
+  The rejected source candidate remains preserved in history and is never
+  amended, reset, rebased, squashed, discarded, or reconstructed.
+- Task16 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is source-candidate rejection and test-only RED
+  authority, not source repair, Task16 acceptance, Task136 candidacy,
+  record 29, publication, Wave 3 start, repository closure, production
+  readiness, or release. `neo`, provider, credential, external-system,
+  pull-request, production-route, preview-branch, and unrelated actions
+  remain unauthorized.
