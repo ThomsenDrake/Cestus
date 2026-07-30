@@ -52768,3 +52768,90 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   repository closure, production readiness, or release. `neo`, provider,
   credential, external-system, pull-request, production-route,
   preview-branch, and unrelated actions remain unauthorized.
+
+## RV-1-E-1294 — Exact mounted-currentness one-source GREEN authorized
+
+- Recorded at: 2026-07-30T23:06:30Z
+- Task136 forward integration head
+  `21fc6c6977884b9097dc08ed19c8574a49c7794b` preserves exact approved RED
+  `6def8cf2b2b1bdbd35a5cca9acd5ffbe22a6788a` and E-1293 program
+  integration `f4318ce2599d59ecfd08d358a8672cc409f28cc2` as its two
+  parents. Relative to the Task136 first parent, only the append-only
+  E-1292/E-1293 registry records advance; both approved test blobs remain
+  exact and the worktree is clean.
+- Authorize one and only one product source:
+  `packages/local-runtime/src/mounted-wake-lifecycle-store.ts`, starting from
+  exact blob `2d86fdcd570efbdee499d1ec807d2db1066f48bc`.
+  Freeze every test, every other product source, design, plan, claim,
+  contract, mission, assurance, dependency, route, provider, activation,
+  credential, preview branch, and unrelated byte.
+- Preserve `composition.bind()` as the sole one-shot consuming portable-H
+  witness/currentness validator and do not duplicate its artifact, canonical
+  payload, manifest-byte, cursor-phase, or witness validation in mounted W.
+  At the initial resident binding, retain exact live durable-ledger-count
+  equality from the privately authenticated composition readback and stable
+  workspace/policy/lock/mount identity. Require the provider high-water event
+  to exist exactly at its recorded ordinal, be the sole matching
+  orchestration claim for the authenticated task/attempt/run-type/retry
+  tuple, and agree exactly with the bound H authority for ledger high-water,
+  policy, lock, mount generation, workspace identity, ledger store, and
+  artifact store. Treat that event as the claim-bound prefix anchor rather
+  than incorrectly requiring it to equal the later current source high-water
+  after the already consumed legitimate H completion.
+- Examine only non-wake source events after that authenticated anchor. Accept
+  either no source advance or the exact structural completed-H envelope:
+  checkpointed, specialist-run started, one final-output step,
+  handoff prepared, handoff recorded, specialist-run completed,
+  orchestration completed, and task status completed. Require exact
+  task/run/attempt/run-type identities, exact prepared/recorded authority
+  binding, exact event order and chain, and no extra source event. This is
+  only a narrow proof that the authenticated live count hides no unrelated
+  source append; it does not revalidate the portable artifact or consuming
+  witness. Any append after composition bind still changes the exact live
+  count and rejects before downstream issuance or effects.
+- Extend the existing append-only outer-currentness predicate only for:
+  (1) `agent.resident-loop.result.recorded.v2` on the exact resident stream,
+  carrying the exact workspace/resident/task/attempt/run identity, exact
+  context causation and correlation, and an authority payload deeply equal
+  to the authenticated H authority binding; and
+  (2) one `assertion.proposed` proven only by its complete same-bound
+  catalog-attested chain. That chain must contain exactly one matching
+  `agent.resident-domain.outcome-observed.v1` and completion with the exact
+  resident locator, automatic authorization, catalog ordinal **10**,
+  revision `legacy-staging-execution.adapter.v1`,
+  `new-ledger-events`, contiguous assertion identifiers, correct pre/post
+  ledger fingerprints, exact receipt-envelope hash, exact
+  request/claim/completed references, and the assertion as the receipt's
+  sole domain event. Preserve exact prefix equality and reject unrelated,
+  foreign, swapped, malformed, unreceipted, wrong-catalog, wrong-revision,
+  wrong-fingerprint, wrong-envelope, terminal-task, competing-release,
+  changed-generation, changed-run, changed-causation, changed-owner,
+  target-suffix, and foreign-suffix advances.
+- Add no broad event-type allowlist, portable-H duplicate validation,
+  heuristic caller or timing logic, call-stack inspection, global mutable
+  authority, rendezvous, memoization, route, provider, credential, activation
+  behavior, or unrelated product behavior. Mounted storage, composition,
+  wake runtime, factory ports, bounded loop, gateway, dispatcher, adapters,
+  and portable H remain frozen.
+- Required clean GREEN under `TMPDIR=/dev/shm`, one worker, and the
+  120-second timeout is focused **9/9**, producer **144/144**, factory
+  boundary **10/10**, wake boundary **140/140**, Task136 card **383/383**,
+  exact 37-file cross-card **1,042/1,042**, and Task138 **355/355**, plus
+  passing standalone typecheck, factory readiness, mission and V4 **20/20**,
+  markers **29 / 20 / 29 / 15**, exact repository first-stop, one-source
+  scope, every freeze, ancestry, dependencies, 33-path hash, diff hygiene,
+  strict Git integrity, and clean committed state.
+- Commit only that one source with subject
+  `fix(local-runtime): preserve exact mounted resident advances`. Obtain a
+  completely fresh independent read-only source review of exact immutable
+  bytes, record approval append-only, integrate approval-first/
+  candidate-second on the program branch, rerun the integration packet,
+  append integration, and forward-merge into Task136 before Task17 candidate
+  readmission. Changed bytes invalidate review.
+- Task16 remains `integrated`; Task136 remains `implementing`; strict product
+  frontier remains **28 of 29**. This is exact one-source GREEN authority,
+  not source approval or integration, Task136 candidacy, strict record 29,
+  publication, Wave 3 start, repository closure, production readiness, or
+  release. `neo`, provider, credential, external-system, pull-request,
+  production-route, preview-branch, and unrelated actions remain
+  unauthorized.
