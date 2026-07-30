@@ -51309,3 +51309,68 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   readiness, or release. `neo`, provider, credential, external-system,
   pull-request, production-route, preview-branch, and unrelated actions
   remain unauthorized.
+
+## RV-1-E-1274 — Task16 GREEN held for Task135D public-companion oracle correction
+
+- Recorded at: 2026-07-30T16:31:41Z
+- The resumed E-1273 three-source GREEN diagnostic is not a candidate and
+  remains unstaged and uncommitted at exact blobs:
+  `packages/agent/src/bounded-agent-loop.ts`
+  `e6c1d2728ff23620552760409343521468b14956`,
+  `packages/local-runtime/src/resident-loop-factory-ports.ts`
+  `ea45eddd73ed7c3f208abb6da7ce287d03bd6da2`, and
+  `packages/local-runtime/src/wake-supervisor-runtime.ts`
+  `a7e34e53fff3b4194c77f3b2dfb626dbe5dff2eb`.
+  Changed diagnostic bytes invalidate this authority.
+- Focused Task16 is exact **9/9**, producer controls are exact **144/144**,
+  standalone typecheck passes, and the exact Task136 card is **383/383**.
+  The 37-file cross-card is **1,041 passed + one failed**. Its sole failure is
+  `factory ports runtime-handle boundary > does not become a second consumer
+  of Task135D's protected runtime-handle seam`.
+- Two independent read-only diagnoses prove a committed oracle conflict, not
+  a product defect. The approved Task16 factory import oracle requires exactly
+  one direct, unaliased, type-only `LocalRuntimeHandle` import whose resolved
+  module specifier is `./runtime-factory.js`. The older Task135D factory-ports
+  assertion rejects the raw substring `runtime-factory.js` without
+  distinguishing a public type-only companion import from protected
+  capture/inspection authority.
+- RV-1-E-564 already defines `LocalRuntimeHandle` as a public companion type:
+  a handle-only type import carries no mounted-workspace authority. The
+  protected Task135D triggers remain the capture and inspection names. An
+  escaped module literal would conceal the real module edge and is rejected
+  as an oracle bypass.
+- Authorize only the smallest forward test-oracle correction in
+  `packages/local-runtime/test/runtime-handle-mounted-authority-imports.test.ts`,
+  starting from exact blob
+  `0d3bdc674ac08278453dcba67023da4a177cceb0`: in the existing
+  factory-ports boundary assertion remove only the raw
+  `runtime-factory\.js|` alternative. Preserve the title, cardinality, the
+  protected capture/inspection symbol rejection, mounted-operation rejection,
+  the complete parser and lexical-scope corpus, and every other byte.
+- This test is already owned by `Task136-FC-Ports` and already belongs to
+  Task136's exact 33-path `15 sources / 17 tests / one claim` ceiling. The
+  correction adds no path and does not change the canonical ordered-path
+  SHA-256
+  `4cca816c5004bf922d47a44bc8e9216a7f4d1e00a030f20b34d59fb0cd1e442e`.
+- Keep the three E-1273 product diagnostics exact, unstaged, and uncommitted.
+  Freeze every other test, every source, design, plan, claim, contract,
+  mission, assurance, dependency, route, provider, activation, credential,
+  preview branch, and unrelated byte. Commit only the one corrected test.
+- Reproduce the focused Task135D test, focused Task16 **9/9**, producer
+  **144/144**, Task136 card **383/383**, cross-card **1,042/1,042**, Task138
+  **355/355**, typecheck, readiness, mission and V4 **20/20**, markers
+  **29 / 20 / 29 / 15**, exact repository first-stop, scope, blob freezes,
+  ancestry, dependencies, 33-path hash, diff hygiene, and strict Git
+  integrity with `TMPDIR=/dev/shm`, one worker, and the 120-second timeout.
+- Obtain a completely fresh independent read-only review of the exact
+  one-test candidate while the three diagnostic product blobs remain frozen.
+  Changed test or diagnostic bytes invalidate review. After approval, append
+  approval, integrate approval-first/candidate-second on the program branch,
+  rerun the integration packet, append integration, and forward-merge that
+  authority into Task136 before resuming E-1273.
+- Task16 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is one-test oracle-correction authority, not product
+  candidacy, Task16 approval, record 29, publication, Wave 3 start,
+  repository closure, production readiness, or release. `neo`, provider,
+  credential, external-system, pull-request, production-route,
+  preview-branch, and unrelated actions remain unauthorized.
