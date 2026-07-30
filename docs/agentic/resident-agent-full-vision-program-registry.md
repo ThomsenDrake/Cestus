@@ -52925,3 +52925,57 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   release. `neo`, provider, credential, external-system, pull-request,
   production-route, preview-branch, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-1296 — Exact mounted-terminal two-test RED approved
+
+- Recorded at: 2026-07-30T23:44:57Z
+- Completely fresh independent read-only reviewer
+  `/root/task17_e1295_red_fresh_review` returns **APPROVED** with no P0-P3
+  defect, missing test, scope drift, or oracle bypass for exact immutable RED
+  commit `cc5ce2e1446757e5615a83086263c3a3f26bb0e3`, tree
+  `b793433c570b59d6d460e2916fd1886a1c43d399`, sole parent
+  `4b92627e8d6ca305d733b724c338ab7877e434e6`, factory-test blob
+  `2fab1ab9f1a01b449bfd2b07d7b01bafdf840ada`, wake-test blob
+  `7edeec96b9d525c452f3d972354f61d6ac1b03df`, and frozen mounted-W
+  blob `2d86fdcd570efbdee499d1ec807d2db1066f48bc`. Changed bytes invalidate
+  this approval.
+- The four corrected ceilings exactly equal the committed ontology,
+  candidate-provider, and bounded-loop hard maxima. The direct terminal
+  control now uses the lawful observation-to-failed-result sequence, removes
+  the resumable-only anchor, preserves exact binding and causation, and
+  advances only `activeExecutionMs`. Titles, cardinalities, abstract local
+  corpus, import controls, all other tests, and all product bytes remain
+  frozen.
+- Independent execution under `TMPDIR=/dev/shm`, one worker, and the
+  120-second focused timeout reproduces focused
+  **9 = eight passed + one causal failure**, producer
+  **144 = 143 passed + one causal failure**, factory boundary
+  **10 = nine passed + one causal failure**, wake boundary
+  **140 = 139 passed + one causal failure**, Task136 card
+  **383 = 381 passed + two causal failures**, exact 37-file cross-card
+  **1,042 = 1,040 passed + two causal failures**, and Task138 **355/355**.
+  Only the exact initial completed-H binding and catalog-attested
+  currentness failures remain on frozen W.
+- Typecheck and factory readiness pass. Mission and V4 each pass **20/20**;
+  markers remain **29 / 20 / 29 / 15**. Repository mode stops first only at
+  exact
+  `blob mismatch: Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`.
+  Exact scope, ancestry, every freeze, diff hygiene, strict Git integrity,
+  and `33 = 15/17/1` canonical path hash
+  `4cca816c5004bf922d47a44bc8e9216a7f4d1e00a030f20b34d59fb0cd1e442e`
+  pass.
+- Advance the exact RED `reviewing -> approved`. Authorize only its
+  history-preserving approval-first/candidate-second program merge, fresh
+  integration-tree execution, append-only integration record, and forward
+  Task136 merge. Every product source remains frozen by this approval.
+- The separate uncommitted mounted-W diagnostic blob
+  `2aa4020ec747f5906b447c30df0f18e1efea9610` is not part of the reviewed
+  candidate. Its progressive candidate-provider finding requires a later
+  bounded authority after RED integration and does not alter this approval.
+- Task16 remains `integrated`; Task136 remains `implementing`; strict product
+  frontier remains **28 of 29**. This is RED approval, not RED integration,
+  product authority, source candidacy, Task136 candidacy, strict record 29,
+  publication, Wave 3 start, repository closure, production readiness, or
+  release. `neo`, provider, credential, external-system, pull-request,
+  production-route, preview-branch, and unrelated actions remain
+  unauthorized.
