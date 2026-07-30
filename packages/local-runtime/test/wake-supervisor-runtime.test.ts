@@ -811,6 +811,82 @@ describe("wake supervisor runtime", () => {
     await expect(
       mounted.capabilities.mountedAuthority.reverifyAfterAwait(oldToken)
     ).rejects.toThrow(/consumed|issued|currentness/i);
+
+    const adapter = await issuedResidentFixture("current-approved-adapter");
+    const adapterOldToken = adapter.capabilities.currentnessToken;
+    const adapterSuffix =
+      await appendResidentCatalogAttestedAdapterEvidence(adapter);
+    expect(adapterSuffix.map((event) => event.type)).toEqual([
+      "agent.resident-plan.recorded.v2",
+      "agent.resident-domain.requested.v1",
+      "agent.resident-domain.execution-claimed.v1",
+      "assertion.proposed",
+      "agent.resident-domain.outcome-observed.v1",
+      "agent.resident-domain.completed.v1"
+    ]);
+    expect(adapterSuffix[4]?.payload).toMatchObject({
+      authorization: { authorizationKind: "automatic-policy" },
+      catalogOrdinal: 10,
+      implementationRevision: "legacy-staging-execution.adapter.v1",
+      domainEventIds: [adapterSuffix[3]?.id]
+    });
+    const adapterBeforeReverify = await adapter.handle.ledger.readAll();
+    const adapterResult =
+      await adapter.capabilities.mountedAuthority.reverifyAfterAwait(
+        adapterOldToken
+      );
+    expect(adapterResult.kind).toBe("current");
+    if (adapterResult.kind !== "current") {
+      throw new Error("catalog-attested adapter evidence must remain current");
+    }
+    expect(adapterResult.token).not.toBe(adapterOldToken);
+    expect(await adapter.handle.ledger.readAll()).toEqual(
+      adapterBeforeReverify
+    );
+    await expect(
+      adapter.capabilities.mountedAuthority.reverifyAfterAwait(
+        adapterOldToken
+      )
+    ).rejects.toThrow(/consumed|issued|currentness/i);
+
+    const terminal = await issuedResidentFixture("current-approved-terminal");
+    const terminalOldToken = terminal.capabilities.currentnessToken;
+    const terminalMaterial = await residentSuspensionMaterial(terminal);
+    const terminalEvent = await terminal.capabilities.planObservation
+      .appendResult(
+        residentResultPayload(
+          terminalMaterial,
+          terminalMaterial.observation.id
+        )
+      );
+    expect(terminalEvent).toMatchObject({
+      type: "agent.resident-loop.result.recorded.v2",
+      payload: {
+        workspaceId: terminal.binding.provider.workspaceId,
+        residentAgentId: "agent_default",
+        taskId: terminal.taskId,
+        attemptId: terminal.attemptId,
+        runId: terminal.runId
+      }
+    });
+    const terminalBeforeReverify = await terminal.handle.ledger.readAll();
+    const terminalResult =
+      await terminal.capabilities.mountedAuthority.reverifyAfterAwait(
+        terminalOldToken
+      );
+    expect(terminalResult.kind).toBe("current");
+    if (terminalResult.kind !== "current") {
+      throw new Error("same-bound terminal result must remain current");
+    }
+    expect(terminalResult.token).not.toBe(terminalOldToken);
+    expect(await terminal.handle.ledger.readAll()).toEqual(
+      terminalBeforeReverify
+    );
+    await expect(
+      terminal.capabilities.mountedAuthority.reverifyAfterAwait(
+        terminalOldToken
+      )
+    ).rejects.toThrow(/consumed|issued|currentness/i);
   });
 
   it.each([
@@ -1500,6 +1576,233 @@ async function issuedResidentFixture(suffix: string) {
     mounted.handle
   );
   return Object.freeze({ ...mounted, capabilities });
+}
+
+async function appendResidentCatalogAttestedAdapterEvidence(
+  mounted: Awaited<ReturnType<typeof issuedResidentFixture>>
+) {
+  const suffix = mounted.taskId.slice("task_wake_resident_".length);
+  const correlationId = `corr_${mounted.taskId}`;
+  const authority = mounted.binding.handoff.authorityBinding;
+  const common = {
+    residentAgentId: "agent_default" as const,
+    workspaceId: mounted.binding.provider.workspaceId,
+    taskId: mounted.taskId,
+    attemptId: mounted.attemptId,
+    runId: mounted.runId,
+    runMode: "evidence-triage" as const,
+    workflowDescriptor: {
+      workflowDescriptorId: "workflow_evidence_triage",
+      workflowDescriptorVersion: "v1",
+      workflowDescriptorHash: residentHash("1")
+    },
+    policy: {
+      policyId: "agent_policy_default",
+      policyVersion: mounted.binding.provider.policyVersion,
+      policyHash: authority.policyHash
+    },
+    authority,
+    sourceEventIds: [mounted.claim.id],
+    contextPackRefs: [{
+      contextPackId: `context_pack_wake_resident_adapter_${suffix}`,
+      contentHash: residentHash("2")
+    }],
+    correlationId
+  };
+  const planId = `plan_wake_resident_adapter_${suffix}`;
+  const toolRequestId = `toolreq_${"c".repeat(64)}`;
+  const executionCapabilityHash = residentHash("4");
+  const allowlistEntryHash = residentHash("3");
+  const plan = await mounted.capabilities.planObservation.appendPlan({
+    ...common,
+    schemaVersion: "resident-plan-record.v2",
+    budget: residentBudget({ contextBytes: 1 }, { contextBytes: 1 }),
+    causationId: mounted.claim.id,
+    planId,
+    planRevision: 0,
+    priorPlanReadback: null,
+    replanObservationReadback: null,
+    steps: [{
+      ordinal: 1,
+      purpose: "Stage one abstract local legacy assertion candidate.",
+      toolId: "legacy.staging.execute",
+      toolVersion: "0.1.0",
+      allowlistEntryHash,
+      expectedSafeOutputClass: "proposal",
+      prerequisiteStepOrdinals: [],
+      toolRequestId,
+      executionCapabilityHash
+    }]
+  });
+  const logicalLocator = Object.freeze({
+    workspaceId: common.workspaceId,
+    residentAgentId: common.residentAgentId,
+    taskId: common.taskId,
+    attemptId: common.attemptId,
+    runId: common.runId,
+    planId,
+    planRevision: 0,
+    stepOrdinal: 1,
+    toolRequestId,
+    toolId: "legacy.staging.execute",
+    toolVersion: "0.1.0",
+    executionCapabilityHash
+  });
+  const streamId = residentDomainStreamId(logicalLocator);
+  const evidence = (await mounted.handle.ledger.readAll()).find(
+    (event): event is KnowledgeEventOf<"evidence.ingested"> =>
+      event.type === "evidence.ingested" &&
+      event.payload.evidenceId === `ev_wake_resident_${suffix}`
+  );
+  if (evidence === undefined) {
+    throw new Error("adapter currentness control requires local evidence");
+  }
+  const eventContext = (causationId: string) => ({
+    actor: {
+      id: "agent_wake_resident",
+      kind: "agent" as const,
+      label: "Wake resident authority"
+    },
+    occurredAt: "2026-07-16T00:00:00.000Z",
+    causationId,
+    correlationId,
+    coreVersion: "0.1.0",
+    packVersions: { core: "0.1.0", agent: "0.1.0" }
+  });
+  const request = await mounted.handle.ledger.append({
+    type: "agent.resident-domain.requested.v1",
+    version: 1,
+    streamId,
+    context: eventContext(plan.id),
+    payload: {
+      schemaVersion: "resident-domain-requested.v1",
+      logicalLocator,
+      executionCapabilityHash,
+      causationId: plan.id,
+      correlationId,
+      authorizationKind: "automatic-policy",
+      planRecordEventId: plan.id,
+      previewHash: residentHash("5"),
+      allowlistEntryHash,
+      sideEffectClass: "ledger-proposal",
+      expectedSafeOutputClass: "proposal",
+      requiredApprovalClass: "none",
+      sourceEventIds: [...common.sourceEventIds],
+      contextPackRefs: [...common.contextPackRefs],
+      inputArtifactHashes: [evidence.payload.contentHash],
+      policy: common.policy,
+      authority,
+      budget: plan.payload.budget
+    }
+  }) as KnowledgeEventOf<"agent.resident-domain.requested.v1">;
+  const authorization = Object.freeze({
+    authorizationKind: "automatic-policy" as const
+  });
+  const claim = await mounted.handle.ledger.append({
+    type: "agent.resident-domain.execution-claimed.v1",
+    version: 1,
+    streamId,
+    context: eventContext(request.id),
+    payload: {
+      schemaVersion: "resident-domain-execution-claimed.v1",
+      logicalLocator,
+      executionCapabilityHash,
+      causationId: request.id,
+      correlationId,
+      requestEventId: request.id,
+      authorization,
+      claimedAt: "2026-07-16T00:00:00.000Z"
+    }
+  }) as KnowledgeEventOf<"agent.resident-domain.execution-claimed.v1">;
+  const beforeInvocation = await mounted.handle.ledger.readAll();
+  const proposal = await mounted.handle.ledger.append({
+    type: "assertion.proposed",
+    version: 1,
+    streamId: `assertion_as_wake_resident_adapter_${suffix}`,
+    context: {
+      ...eventContext(evidence.id),
+      packVersions: { core: "0.1.0", ingestion: "0.1.0" }
+    },
+    payload: {
+      assertionId: `as_wake_resident_adapter_${suffix}`,
+      evidenceId: evidence.payload.evidenceId,
+      subjectRef: `ent_wake_resident_adapter_${suffix}`,
+      predicate: "legacy.abstract.local",
+      object: "Abstract local adapter evidence",
+      confidence: 0.9,
+      reviewState: "proposed"
+    }
+  }) as KnowledgeEventOf<"assertion.proposed">;
+  const afterInvocation = await mounted.handle.ledger.readAll();
+  const outcomeEnvelope = {
+    logicalLocator,
+    executionCapabilityHash,
+    requestEventId: request.id,
+    executionClaimEventId: claim.id,
+    authorization,
+    catalogOrdinal: 10,
+    implementationRevision: "legacy-staging-execution.adapter.v1",
+    evidenceMode: "new-ledger-events" as const,
+    residentInvocationInputHash: residentCanonicalHash({
+      authorizationKind: "automatic-policy",
+      logicalLocator,
+      requestEventId: request.id,
+      executionClaimEventId: claim.id,
+      authorization,
+      previewHash: request.payload.previewHash
+    }),
+    outcomeDisposition: "completed" as const,
+    preInvocationLedgerFingerprint:
+      residentCanonicalHash(beforeInvocation),
+    postInvocationLedgerFingerprint:
+      residentCanonicalHash(afterInvocation),
+    domainEventIds: [proposal.id],
+    artifactHashes: [],
+    readModelChanges: ["legacy-staging"],
+    resultSummary:
+      "Legacy ontology staging appended evidence-tied assertion proposals."
+  };
+  const envelopeHash = residentCanonicalHash(outcomeEnvelope);
+  const receipt = await mounted.handle.ledger.append({
+    type: "agent.resident-domain.outcome-observed.v1",
+    version: 1,
+    streamId,
+    context: eventContext(claim.id),
+    payload: {
+      schemaVersion: "resident-domain-outcome-observed.v1",
+      causationId: claim.id,
+      correlationId,
+      ...outcomeEnvelope,
+      envelopeHash
+    }
+  }) as KnowledgeEventOf<"agent.resident-domain.outcome-observed.v1">;
+  const completed = await mounted.handle.ledger.append({
+    type: "agent.resident-domain.completed.v1",
+    version: 1,
+    streamId,
+    context: eventContext(receipt.id),
+    payload: {
+      schemaVersion: "resident-domain-completed.v1",
+      logicalLocator,
+      executionCapabilityHash,
+      causationId: receipt.id,
+      correlationId,
+      requestEventId: request.id,
+      executionClaimEventId: claim.id,
+      outcomeReceiptEventId: receipt.id,
+      authorization,
+      resultHash: envelopeHash,
+      resultArtifactHashes: []
+    }
+  }) as KnowledgeEventOf<"agent.resident-domain.completed.v1">;
+  return Object.freeze([
+    plan,
+    request,
+    claim,
+    proposal,
+    receipt,
+    completed
+  ]);
 }
 
 function residentSuspensionLocator(
@@ -3065,6 +3368,12 @@ function residentDomainStreamId(
 
 function residentHash(character: string): `sha256:${string}` {
   return `sha256:${character.repeat(64)}`;
+}
+
+function residentCanonicalHash(value: unknown): `sha256:${string}` {
+  return `sha256:${createHash("sha256")
+    .update(residentCanonicalJson(value))
+    .digest("hex")}`;
 }
 
 async function callResidentGateway(
