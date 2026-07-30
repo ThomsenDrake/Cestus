@@ -52516,3 +52516,78 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   or release. `neo`, provider, credential, external-system, pull-request,
   production-route, preview-branch, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-1290 — E1289 mounted-completion RED accounting and causal-order correction
+
+- Recorded at: 2026-07-30T22:12:44Z
+- Exact Task136 authority head
+  `b7339464c2f0bd0d4774d0330581abe4553f27ce` holds only the two authorized
+  E-1289 test diagnostics unstaged and uncommitted:
+  `packages/local-runtime/test/wake-supervisor-runtime.test.ts` at blob
+  `8b2dd6df569228e8a0ea5b4d244f63aa4be5e8a6` and
+  `packages/local-runtime/test/resident-loop-factory-ports.test.ts` at blob
+  `ff4e886081955a8c169e0b17e4e6cbe87b2afe85`. They descend from the exact
+  E-1289 starting blobs, preserve both existing titles and total
+  cardinalities, change no product byte, and remain the smallest two-test
+  mounted-completion RED.
+- Main-session execution and independent read-only diagnostic auditor
+  `/root/task17_e1288_executability_review` confirm an internal E-1289 gate
+  contradiction. The historical Task16 producer command contains the whole
+  wake behavior file, so the newly causal wake title necessarily changes that
+  exact command from **144/144** to
+  **144 = 143 passed + one causal failure**. Requiring the same title to fail
+  in the wake boundary while requiring the containing producer command to
+  pass is unsatisfiable. This event corrects only that producer accounting;
+  it does not remove, rename, skip, isolate, or weaken the causal title.
+- Main-session execution and independent read-only diagnostic auditor
+  `/root/task17_e1288_architecture_review` also confirm the exact earlier
+  end-to-end failure exposed by the approved completed-H fixture. The
+  legitimate local checkpoint-through-task-completed H suffix necessarily
+  advances mounted source high-water before `composition.bind()`, while the
+  issued provider/readback authority remains bound to the earlier exact
+  orchestration-claim high-water. The first resident factory binding
+  therefore rejects in frozen mounted W with
+  `resident factory authority binding is stale or foreign`, before
+  `loop.advance`, accessor, provider, dispatcher, or effectful work.
+- This is a causal product defect in frozen
+  `packages/local-runtime/src/mounted-wake-lifecycle-store.ts` blob
+  `2d86fdcd570efbdee499d1ec807d2db1066f48bc`, not permission to weaken the
+  completed-H fixture or reconstruct a currentness allowlist in test code.
+  After a later incomplete correction admits only that exact authenticated
+  completed-H suffix at the initial binding boundary, the same end-to-end
+  oracle must advance to the already authorized catalog-attested adapter
+  evidence and exact terminal-result controls. The direct wake oracle remains
+  ordered first on the adapter-evidence suffix and then on the terminal
+  result suffix.
+- Supersede only E-1289's producer **144/144** accounting and its statement
+  that the end-to-end oracle initially reaches the adapter-evidence suffix.
+  Preserve every other E-1289 scope, fixture, no-provider, no-activation,
+  stop-owner, fail-closed, freeze, lifecycle, and later one-source ceiling
+  requirement.
+- Exact reproduced RED is focused
+  **9 = eight passed + one causal failure**, producer
+  **144 = 143 passed + one causal failure**, factory boundary
+  **10 = nine passed + one causal failure**, wake boundary
+  **140 = 139 passed + one causal failure**, Task136 card
+  **383 = 381 passed + two causal failures**, exact 37-file cross-card
+  **1,042 = 1,040 passed + two causal failures**, and Task138 **355/355**.
+  Standalone typecheck and diff hygiene pass. The two failures are exactly the
+  completed-H initial-binding currentness rejection and the direct
+  catalog-attested adapter-evidence currentness rejection.
+- Authorize no further test-byte change. First forward-merge this registry
+  authority into Task136 while preserving the two exact held test blobs, then
+  commit only those two tests with subject
+  `test(local-runtime): require real mounted loop completion`. Obtain a
+  completely fresh independent read-only review of the resulting immutable
+  RED commit; the diagnostic auditors named above and either test author are
+  ineligible for that approval. Changed bytes invalidate review.
+- No product edit is authorized until the exact RED is independently
+  approved, recorded, integrated approval-first/candidate-second on the
+  program branch, forward-merged into Task136, and a separate GREEN authority
+  exists. Task16 remains `integrated`; Task136 remains `implementing`; strict
+  product frontier remains **28 of 29**. This is a forward diagnostic
+  correction and exact two-test commit authority, not Task136 candidacy,
+  strict record 29, publication, Wave 3 start, repository closure, production
+  readiness, or release. `neo`, provider, credential, external-system,
+  pull-request, production-route, preview-branch, and unrelated actions
+  remain unauthorized.
