@@ -52719,3 +52719,52 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   start, repository closure, production readiness, or release. `neo`,
   provider, credential, external-system, pull-request, production-route,
   preview-branch, and unrelated actions remain unauthorized.
+
+## RV-1-E-1293 — Exact Task136 mounted-completion RED integrated
+
+- Recorded at: 2026-07-30T22:55:13Z
+- History-preserving program integration merge
+  `a9a6cdf402ad22aecc85851d2cd982ecd56de6ca`, tree
+  `e95dd57a4aacf8025247de916969b5ce20033d8b`, has exact first parent
+  E-1292 approval `fc0addf5230ae5deb5e3b6022da4732e5774ffca`
+  and exact second parent approved RED
+  `6def8cf2b2b1bdbd35a5cca9acd5ffbe22a6788a`. Relative to its approval
+  first parent, it advances only
+  `packages/local-runtime/test/resident-loop-factory-ports.test.ts` to blob
+  `eb03fa93b306f14134feea1045d9b0134ec3d2e5` and
+  `packages/local-runtime/test/wake-supervisor-runtime.test.ts` to blob
+  `8b2dd6df569228e8a0ea5b4d244f63aa4be5e8a6`. Parent order, unmerged-index,
+  and two-parent diff-hygiene checks pass.
+- Fresh integration-tree execution under `TMPDIR=/dev/shm`, one worker, and
+  the 120-second timeout reproduces focused
+  **9 = eight passed + one causal failure**, producer
+  **144 = 143 passed + one causal failure**, Task136 card
+  **383 = 381 passed + two causal failures**, exact 37-file cross-card
+  **1,042 = 1,040 passed + two causal failures**, and Task138 **355/355**.
+  The exact factory **10 = nine passed + one failure** and wake
+  **140 = 139 passed + one failure** boundaries remain those independently
+  approved in E-1292.
+- Standalone typecheck and factory readiness pass. Mission and V4 each pass
+  **20/20** with unchanged mission fingerprint
+  `sha256:799af83764d6c098f3b1a97d6d30fc3b9b13f32f7c57204d92383fab371179ac`;
+  markers remain **29 / 20 / 29 / 15**. Repository mode exits one and stops
+  first only at exact
+  `blob mismatch: Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`,
+  with no repository-prefix, release-closure, record-29, repository, or
+  product-release success marker.
+- Exact two-test integration scope, all product and other-test freezes,
+  E-1292/E-1291/rejected-RED/rejected-Task136-candidate ancestry,
+  TypeScript **5.9.3**, Vitest **4.1.9**, local non-symlink dependencies,
+  exact 33-path `15/17/1` ceiling and canonical hash
+  `4cca816c5004bf922d47a44bc8e9216a7f4d1e00a030f20b34d59fb0cd1e442e`,
+  diff hygiene, strict Git integrity, and clean integration state pass.
+- Advance the exact mounted-completion RED `approved -> integrated`.
+  Authorize only this record's forward history-preserving merge into
+  Task136. Product source remains frozen until that merge completes and a
+  separate one-source GREEN authority is appended.
+- Task16 remains `integrated`; Task136 remains `implementing`; strict product
+  frontier remains **28 of 29**. This is RED integration, not product
+  authority, Task136 candidacy, strict record 29, publication, Wave 3 start,
+  repository closure, production readiness, or release. `neo`, provider,
+  credential, external-system, pull-request, production-route,
+  preview-branch, and unrelated actions remain unauthorized.
