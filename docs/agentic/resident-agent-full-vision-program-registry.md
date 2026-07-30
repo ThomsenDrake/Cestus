@@ -51855,3 +51855,74 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   Wave 3 start, repository closure, production readiness, or release. `neo`,
   provider, credential, external-system, pull-request, production-route,
   preview-branch, and unrelated actions remain unauthorized.
+
+## RV-1-E-1282 — Task16 bounded replay GREEN rejected; exact terminal-action RED authorized
+
+- Recorded at: 2026-07-30T19:35:46Z
+- Completely fresh independent read-only source reviewer
+  `/root/e1281_source_fresh_review` returns **REJECTED** for exact immutable
+  one-source candidate `8d0c3aba98dc6d01cf12f40d4b2b7a0684cfba2b`,
+  tree `9299f83e28ab76d63ea58c12242c50ff161125a8`, sole parent exact E-1281
+  authority merge `51b7caa30852750208b13dddd13a4a9d4a1c525c`.
+  Exact scope is only `packages/agent/src/bounded-agent-loop.ts`, changing
+  rejected blob `e6c1d2728ff23620552760409343521468b14956` to rejected blob
+  `c0aa5a20d4cee67326a0e49a38472a5b70fef6bf` with **+127 / -9** and
+  subject `fix(agent): validate exact bounded replay`.
+- **P1 — an internally consistent substituted terminal action reaches H.**
+  Starting from the exact approved completed-replay fixture, changing only
+  the terminal result's `activeExecutionMs` action consumption from one to
+  two and changing its consumed and remaining values by the same amount
+  preserves schema validity and arithmetic progression. The rejected
+  candidate accepts that substituted terminal result, reads H, revalidates W,
+  and returns success. `validateCompletedReplayPayloads` stops at the final
+  observation; the terminal path checks nonzero arithmetic, three result
+  scalars, and exact H readback, but never reconstructs and exact-compares the
+  terminal result payload. This violates E-1277/E-1281 exact result-payload
+  and all-ten-action replay validation and its required before-H rejection.
+- Passing bounded **3/3**, focused **9/9**, producer **144/144**, Task136 card
+  **383/383**, exact 37-file cross-card **1,042/1,042**, Task138 **355/355**,
+  typecheck, readiness, mission and V4 **20/20**, markers
+  **29 / 20 / 29 / 15**, scope, freezes, ancestry, dependencies, Git
+  integrity, and exact clean repository first-stop do not cure the missing
+  unit-test oracle.
+- Authorize only the smallest forward test-only RED in
+  `packages/agent/test/bounded-agent-loop.test.ts`, starting from exact blob
+  `e925492df08de60947650f98a97d903a0648cfab`. In the existing completed
+  replay title and existing exact-replay mutation table, add one abstract
+  local control that changes only terminal `activeExecutionMs` action
+  consumption from one to two and adjusts terminal consumed and remaining
+  by exactly two from the preceding final observation. Require rejection
+  before H, append, C, G preparation, provider, dispatcher, or any other
+  effect. Add no title, helper surface, unrelated action, timing condition,
+  or corpus value.
+- Freeze rejected source blob
+  `c0aa5a20d4cee67326a0e49a38472a5b70fef6bf`, factory source
+  `ea45eddd73ed7c3f208abb6da7ce287d03bd6da2`, wake source
+  `a7e34e53fff3b4194c77f3b2dfb626dbe5dff2eb`, every other test and source,
+  design, plan, claim, contract, mission, assurance, dependency, route,
+  provider, activation, credential, preview branch, and unrelated byte.
+  The correction adds no path and remains inside the exact 33-path
+  `15 sources / 17 tests / one claim` ceiling and canonical hash
+  `4cca816c5004bf922d47a44bc8e9216a7f4d1e00a030f20b34d59fb0cd1e442e`.
+- Expected corrected RED under `TMPDIR=/dev/shm`, one worker, and the
+  120-second timeout is bounded **3 = two passed + one failed**, focused
+  **9 = eight passed + one failed**, producer **144/144**, Task136 card
+  **383 = 382 passed + one failed**, exact 37-file cross-card
+  **1,042 = 1,041 passed + one failed**, and Task138 **355/355**, plus
+  typecheck, readiness, mission and V4 **20/20**, markers
+  **29 / 20 / 29 / 15**, exact repository first-stop, one-test scope, every
+  freeze, ancestry, dependencies, 33-path hash, diff hygiene, strict Git
+  integrity, and clean committed state.
+- Commit only the bounded behavior test with subject
+  `test(agent): require exact terminal replay action`. Obtain a completely
+  fresh independent read-only review of exact immutable RED bytes, append
+  approval, integrate approval-first/candidate-second on the program branch,
+  rerun every integration gate, append integration, and forward-merge into
+  Task136 before any source edit. Changed test bytes invalidate review.
+- Task16 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is candidate rejection and test-only correction
+  authority, not source repair, Task16 acceptance, Task136 candidacy, record
+  29, publication, Wave 3 start, repository closure, production readiness,
+  or release. `neo`, provider, credential, external-system, pull-request,
+  production-route, preview-branch, and unrelated actions remain
+  unauthorized.
