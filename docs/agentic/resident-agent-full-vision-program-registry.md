@@ -50765,3 +50765,100 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   Task136 remain `implementing`; strict product frontier remains
   **28 of 29**. No Task136 candidate, record 29, publication, Wave 3 start,
   repository closure, production readiness, or release exists.
+
+## RV-1-E-1266 — Task16 prepared-composition Option A amendment authorized
+
+- Recorded at: 2026-07-30T14:53:53Z
+- Exact E-1265 decision-checkpoint authority is forward-merged into Task136
+  as `5cb911a3aa37604dc6bf7ef6199a2f0a74563438`, tree
+  `10a66f113781a365b2696d1513d5b308c69ac100`, with exact first parent
+  E-1264 authority merge
+  `22ccd5c3e8d9be33a52a26c0edb0ac00f2095335` and exact second parent
+  E-1265 program authority
+  `e4ec2be7e03c10fe2b030d0b713c9e8ae031c1d8`.
+- The human product-and-safety decision explicitly approves the E-1265
+  coordinator-recommended Option A and authorizes this session to record and
+  execute it without another user approval when the committed amendment
+  matches this exact boundary.
+- For the Task16 prepared-composition path, remove the separate early
+  `preflightPortableMountedAgentHandoffBinding` requirement and call. The
+  legitimate composition's existing one-shot consuming `bind()` handoff
+  witness revalidation is the sole portable witness/currentness validation
+  for this path. Do not weaken, bypass, duplicate, or replace that consuming
+  validation.
+- Establish the exact abstract task-created, task-queued, and
+  orchestration-claimed prefix before constructing or starting the sole
+  Task14 composition and before issuing the mounted operation, provider
+  authority, or portable handoff authority. Then start the one legitimate
+  composition, issue the current authorities, bind exactly once, and use its
+  exact `wakeRuntime`, `authorityReadback`, and `LocalRuntimeHandle`
+  identities.
+- This decision supersedes only the E-1244 prepared-bootstrap statements that
+  require a separate early portable preflight, including the now-obsolete
+  E-1264 call-order correction derived from that requirement. Preserve every
+  other E-1244 lexical-capability, exact identity-authentication, one-owner,
+  one-bind, stop-idempotency, fail-closed, zero-downstream-effect, and frozen
+  six-field prepared-input requirement.
+- Retain the exact **33 = 15 sources + 17 tests + one claim** ceiling and
+  canonical path SHA-256
+  `4cca816c5004bf922d47a44bc8e9216a7f4d1e00a030f20b34d59fb0cd1e442e`.
+  Do not modify
+  `packages/local-runtime/src/portable-mounted-agent-artifact-stores.ts`,
+  mounted storage,
+  `packages/local-runtime/src/resident-loop-factory-composition.ts`,
+  contracts, release graph, routes, providers, credentials, activation
+  behavior, or unrelated product paths.
+- Authorize one forward amendment candidate changing only the active Task136
+  design, implementation plan, and claim. It must state the exact prefix-
+  before-composition order, the absence of a separate prepared-path
+  preflight, the sole consuming `composition.bind()` validation, all
+  preserved E-1244 requirements, and the unchanged Task17-through-Task21
+  sequence. Changed amendment bytes invalidate review.
+- Preserve these five diagnostic working blobs unstaged and uncommitted while
+  recording, reviewing, and integrating the amendment:
+  `packages/agent/test/bounded-agent-loop.test.ts`
+  `ae54b1488c6770333567f2e9261cc3614d692eef`,
+  `packages/local-runtime/test/resident-loop-factory-ports.test.ts`
+  `5c5c291e05a40721e362ee370b07d6b9db2a179a`,
+  `packages/local-runtime/src/wake-supervisor-runtime.ts`
+  `a7e34e53fff3b4194c77f3b2dfb626dbe5dff2eb`,
+  `packages/local-runtime/src/resident-loop-factory-ports.ts`
+  `01236381d656ee5166f5a4d391498431fe66892f`, and
+  `packages/agent/src/bounded-agent-loop.ts`
+  `658e2538c0ffec8b90db463e1d3f55b56ef8250d`.
+  None is candidate, approval, or integration evidence.
+- Commit the three-document amendment, obtain completely fresh independent
+  read-only architecture and executability review of exact immutable bytes,
+  append approval, integrate approval-first/candidate-second on the program
+  branch, rerun the source-mandated integration gates, append integration,
+  and forward-merge that authority into Task136 before any test correction.
+- Only after that lifecycle completes may a separate authority permit the
+  smallest corrected test-only RED in
+  `packages/local-runtime/test/resident-loop-factory-ports.test.ts` and
+  `packages/agent/test/bounded-agent-loop.test.ts`: remove only the obsolete
+  early-preflight fixture action, place the exact shared canonical task/
+  attempt/run/run-type claim prefix before composition and authority
+  issuance, and retain the authenticated-H terminal-hash correction. Preserve
+  every title, cardinality, abstract corpus, and both import-policy tests.
+- Required committed RED remains focused
+  **9 = 3 passed + six failed**, producer **144/144**, Task136 card
+  **383 = 377 passed + six failed**, exact 37-file cross-card
+  **1,042 = 1,036 passed + six failed**, and Task138 **355/355**, with
+  typecheck, factory readiness, mission and V4 **20/20**, markers
+  **29 / 20 / 29 / 15**, exact repository first-stop, scope, ancestry,
+  freezes, dependencies, canonical path hash, diff hygiene, strict Git
+  integrity, and clean committed-tree checks.
+- Only after fresh independent RED approval, append-only recording,
+  approval-first/candidate-second integration, and forward Task136 merge may
+  the existing E-1261 three-source GREEN authority resume for exactly
+  `packages/agent/src/bounded-agent-loop.ts`,
+  `packages/local-runtime/src/resident-loop-factory-ports.ts`, and
+  `packages/local-runtime/src/wake-supervisor-runtime.ts`.
+- Task16 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is exact product-and-safety decision and documentation-
+  amendment authority, not an amendment candidate or approval, test RED,
+  source GREEN, Task16 acceptance, Task136 candidacy, record 29,
+  publication, Wave 3 start, repository closure, production readiness, or
+  release. Product execution, `neo`, provider, credential, external-system,
+  pull-request, production-route, preview-branch, and unrelated actions
+  remain unauthorized.
