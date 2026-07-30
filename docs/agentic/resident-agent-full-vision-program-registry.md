@@ -52591,3 +52591,77 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   readiness, or release. `neo`, provider, credential, external-system,
   pull-request, production-route, preview-branch, and unrelated actions
   remain unauthorized.
+
+## RV-1-E-1291 — Task136 mounted-completion RED rejected; exact fixture typing repair authorized
+
+- Recorded at: 2026-07-30T22:25:30Z
+- Completely fresh independent read-only reviewer
+  `/root/task17_e1290_red_fresh_review` returns **REJECTED** for exact
+  immutable Task136 test-only RED commit
+  `b5780be0602e16ed7fc33566fb9eb55b58b7e40a`, tree
+  `193728e62f9d269b6733a21092e3e4f2c0226f4a`, sole parent
+  `f207fe178f2b3dbd356a6c117431f821c5dc8451`, and exact test blobs
+  `ff4e886081955a8c169e0b17e4e6cbe87b2afe85` and
+  `8b2dd6df569228e8a0ea5b4d244f63aa4be5e8a6`. Preserve that rejected
+  commit and all ancestry without rewrite.
+- The exact focused **9 = eight passed + one failure**, producer
+  **144 = 143 passed + one failure**, factory boundary
+  **10 = nine passed + one failure**, and wake boundary
+  **140 = 139 passed + one failure** reproduce. Existing titles,
+  cardinalities, exact completed-H ordering, one composition and bind,
+  authenticated identities, initial mounted stale-binding causal locus,
+  adapter-before-terminal wake ordering, stop controls, two-test scope,
+  product freezes, ancestry, dependencies, diff hygiene, Git connectivity,
+  and clean state pass.
+- **P1 — standalone typecheck exits two with five fixture-only errors.**
+  `packages/local-runtime/test/resident-loop-factory-ports.test.ts` reads
+  `stepId` from an unnarrowed `KnowledgeEvent` payload, constructs the V2
+  prepared and recorded handoff payloads without their exact schema-derived
+  type while `as const` leaves required arrays readonly, and returns an
+  abstract local legacy assertion candidate without its required
+  `observationId`. Passing runtime RED signatures do not cure a failing
+  typecheck gate.
+- Advance the exact E-1290 RED unit
+  `implementing -> candidate -> reviewing -> rejected -> implementing`.
+  Authorize only the smallest forward test-only typing correction in
+  `packages/local-runtime/test/resident-loop-factory-ports.test.ts`,
+  starting from rejected blob
+  `ff4e886081955a8c169e0b17e4e6cbe87b2afe85`.
+- Import the existing `KnowledgeEventOf` type; define one local
+  `finalOutputStepId` and reuse it in the final-output event and manifest;
+  type the compact authority-bound V2 prepared payload through
+  `KnowledgeEventOf<"agent.specialist-handoff.prepared">["payload"]` with
+  exact optional task/prompt fields and mutable array copies; and add the one
+  required abstract local `observationId` to the existing legacy candidate.
+  Use no suppressing cast, new fixture case, new title, cardinality change,
+  corpus expansion, behavior change, or unrelated cleanup.
+- Freeze
+  `packages/local-runtime/test/wake-supervisor-runtime.test.ts` at exact blob
+  `8b2dd6df569228e8a0ea5b4d244f63aa4be5e8a6`, every other test, and every
+  product source. In particular mounted W remains
+  `2d86fdcd570efbdee499d1ec807d2db1066f48bc`; no product GREEN authority
+  exists.
+- Required corrected committed-tree RED remains focused
+  **9 = eight passed + one causal failure**, producer
+  **144 = 143 passed + one causal failure**, factory boundary
+  **10 = nine passed + one causal failure**, wake boundary
+  **140 = 139 passed + one causal failure**, Task136 card
+  **383 = 381 passed + two causal failures**, exact 37-file cross-card
+  **1,042 = 1,040 passed + two causal failures**, and Task138 **355/355**,
+  now with passing standalone typecheck, factory readiness, mission and V4
+  **20/20**, markers **29 / 20 / 29 / 15**, exact repository first-stop,
+  scope, freezes, ancestry, dependencies, 33-path hash, diff hygiene, strict
+  Git integrity, and clean committed state.
+- Commit only the corrected factory behavior test with subject
+  `test(local-runtime): type exact mounted completion fixture`. Obtain a new
+  completely fresh independent read-only review of exact immutable bytes,
+  append approval, integrate approval-first/candidate-second on the program
+  branch, rerun the integration packet, and forward-merge into Task136.
+  Changed bytes invalidate review.
+- Task16 remains `integrated`; Task136 remains `implementing`; strict product
+  frontier remains **28 of 29**. This is rejection and one-test typing-repair
+  authority, not RED approval, product authority, Task136 candidacy, strict
+  record 29, publication, Wave 3 start, repository closure, production
+  readiness, or release. `neo`, provider, credential, external-system,
+  pull-request, production-route, preview-branch, and unrelated actions
+  remain unauthorized.
