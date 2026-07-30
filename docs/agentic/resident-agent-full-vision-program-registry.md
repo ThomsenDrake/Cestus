@@ -51986,3 +51986,54 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   repository closure, production readiness, or release. `neo`, provider,
   credential, external-system, pull-request, production-route,
   preview-branch, and unrelated actions remain unauthorized.
+
+## RV-1-E-1284 — Task16 exact terminal-action RED integrated
+
+- Recorded at: 2026-07-30T20:01:02Z
+- Exact independently approved one-test candidate
+  `8f86ba0246670aeed58228520368c223ff2a2c43`, tree
+  `7a5e0c89e2cce8fa6a418cb188b6a91526cc4be7`, is integrated by exact
+  history-preserving program merge
+  `ea56e707e7652c3a7a61a37c5115cfd0912dceb7`, tree
+  `f878962cf676a2f1e9f26cf8c70b5f6743500699`. Its first parent is exact
+  E-1283 approval `d43663fa9e79f4fa27f75a081ee8b0961bf96a3d`;
+  its second parent is the exact approved candidate.
+- Relative to its candidate second parent, the integration adds only the
+  append-only E-1282 rejection and E-1283 approval registry records. The
+  approved bounded behavior test remains exact blob
+  `9d5f473e7dc499ed8e2cb047299a7153905be9f6`; rejected source remains exact
+  blob `c0aa5a20d4cee67326a0e49a38472a5b70fef6bf`. Relative to its approval
+  first parent, the merge preserves the complete Task136 lineage while
+  advancing the one corrected test. Two-parent diff hygiene and
+  unmerged-index checks pass.
+- Fresh main-session integration-tree execution under `TMPDIR=/dev/shm`, one
+  worker, and the 120-second timeout reproduces bounded
+  **3 = two passed + one failed**, focused
+  **9 = eight passed + one failed**, producer **144/144**, Task136 card
+  **383 = 382 passed + one failed**, exact 37-file cross-card
+  **1,042 = 1,041 passed + one failed**, policy corpus
+  **8 allowed / 20 rejected**, and Task138 **355/355**. The sole failure is
+  the approved non-unit terminal-action control reaching H.
+- Standalone typecheck and factory readiness pass. Mission and V4 each pass
+  **20/20**; mission fingerprint remains
+  `sha256:799af83764d6c098f3b1a97d6d30fc3b9b13f32f7c57204d92383fab371179ac`;
+  and markers remain **29 / 20 / 29 / 15**. Clean repository mode stops
+  first only at exact
+  `blob mismatch: Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`
+  and emits no repository-prefix, closure, record-29, repository, or
+  product-release success marker.
+- Exact E-1283/E-1282 ancestry, one-test scope, all source and other-test
+  freezes, TypeScript **5.9.3**, Vitest **4.1.9**, local non-symlink
+  dependencies, exact 33-path `15/17/1` ceiling and canonical hash
+  `4cca816c5004bf922d47a44bc8e9216a7f4d1e00a030f20b34d59fb0cd1e442e`,
+  strict Git integrity, and clean program state pass.
+- Advance the exact terminal-action RED `approved -> integrated`. Authorize
+  only its forward history-preserving merge into Task136. Product source
+  remains frozen until that forward merge completes and a separate
+  append-only exact terminal-result repair authority exists.
+- Task16 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is RED integration, not source repair, Task16
+  acceptance, Task136 candidacy, record 29, publication, Wave 3 start,
+  repository closure, production readiness, or release. `neo`, provider,
+  credential, external-system, pull-request, production-route,
+  preview-branch, and unrelated actions remain unauthorized.
