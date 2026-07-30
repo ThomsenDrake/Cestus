@@ -52665,3 +52665,57 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   readiness, or release. `neo`, provider, credential, external-system,
   pull-request, production-route, preview-branch, and unrelated actions
   remain unauthorized.
+
+## RV-1-E-1292 — Exact Task136 mounted-completion RED approved
+
+- Recorded at: 2026-07-30T22:45:39Z
+- Completely fresh independent read-only reviewer
+  `/root/task17_e1291_red_fresh_review` returns **APPROVED** with no P0-P3
+  defect, missing test, specification drift, executability gap, or
+  tautological bypass for exact immutable corrected RED commit
+  `6def8cf2b2b1bdbd35a5cca9acd5ffbe22a6788a`, tree
+  `eb80df5e4a3b3ef6a6f48b6c11c59f7078b3de4d`, sole parent
+  `606da2214e6a75edf3b8314b0376fbe800b529bd`, factory-test blob
+  `eb03fa93b306f14134feea1045d9b0134ec3d2e5`, and frozen wake-test blob
+  `8b2dd6df569228e8a0ea5b4d244f63aa4be5e8a6`. Changed bytes invalidate
+  this review.
+- The correction uses exact schema-derived `KnowledgeEventOf` typing without
+  a suppressing cast, preserves optional fields and mutable arrays, reuses
+  the exact final-output step ID, and adds only the required abstract local
+  observation ID. Existing titles and cardinalities remain unchanged.
+- Main-session and reviewer execution under `TMPDIR=/dev/shm`, one worker,
+  and the 120-second timeout independently reproduce focused
+  **9 = eight passed + one causal failure**, producer
+  **144 = 143 passed + one causal failure**, factory boundary
+  **10 = nine passed + one causal failure**, wake boundary
+  **140 = 139 passed + one causal failure**, Task136 card
+  **383 = 381 passed + two causal failures**, exact 37-file cross-card
+  **1,042 = 1,040 passed + two causal failures**, and Task138 **355/355**.
+  The only failures are the exact completed-H initial resident binding
+  rejection before downstream execution and the direct catalog-attested
+  adapter currentness rejection before the terminal control.
+- Standalone typecheck and factory readiness pass. Mission and V4 each pass
+  **20/20** with unchanged mission fingerprint
+  `sha256:799af83764d6c098f3b1a97d6d30fc3b9b13f32f7c57204d92383fab371179ac`;
+  markers remain **29 / 20 / 29 / 15**. Repository mode exits one and stops
+  first only at exact
+  `blob mismatch: Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`.
+- Exact cumulative two-test scope, one-file correction scope, every source
+  and other-test freeze, one composition/start/bind owner, exact completed-H
+  ordering, inert provider and activation boundaries, stop idempotency and
+  failure controls, TypeScript **5.9.3**, Vitest **4.1.9**, local non-symlink
+  dependencies, exact 33-path `15/17/1` ceiling and canonical hash
+  `4cca816c5004bf922d47a44bc8e9216a7f4d1e00a030f20b34d59fb0cd1e442e`,
+  ancestry, diff hygiene, strict Git integrity, and clean committed state
+  pass.
+- Advance the exact corrected RED `reviewing -> approved`. Authorize only its
+  history-preserving approval-first/candidate-second merge into the program
+  branch, fresh integration-tree execution, append-only integration
+  recording, and forward Task136 merge. Every product source remains frozen;
+  no GREEN authority exists.
+- Task16 remains `integrated`; Task136 remains `implementing`; strict product
+  frontier remains **28 of 29**. This is RED approval, not RED integration,
+  product authority, Task136 candidacy, strict record 29, publication, Wave 3
+  start, repository closure, production readiness, or release. `neo`,
+  provider, credential, external-system, pull-request, production-route,
+  preview-branch, and unrelated actions remain unauthorized.
