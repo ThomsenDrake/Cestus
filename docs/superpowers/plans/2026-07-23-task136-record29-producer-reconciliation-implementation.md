@@ -4896,3 +4896,118 @@ The sorted union remains the exact fifteen Task136 sources. Every RED,
 compatibility correction, review, approval, program merge, and forward Task136
 merge remains ancestral. No candidate, record 29, or Task18 action exists
 before all Task16C-4 gates pass.
+
+## RV-1-E-1266 Task16 Consuming-Bind Prepared-Bootstrap Amendment
+
+This true-EOF section supersedes only the separate early portable-preflight
+requirement in Task 16C-2 and the E-1264 call-order correction derived from
+it. Every other E-1244 Task16C requirement, the passing binder-ABI
+compatibility transition, the E-1261 three-source GREEN authority,
+Tasks17-through-21, and the exact 33-path ceiling remain current.
+
+### Task 16C-2A: Integrate the consuming-bind-only amendment
+
+Change only this design, this plan, and the Task136 claim. Start from the
+forward-merged E-1266 human decision. Commit the exact three-document
+amendment, obtain completely fresh independent read-only architecture and
+executability review of immutable bytes, append approval on the program
+branch, merge approval-first/candidate-second, rerun the integration packet,
+append integration, and forward-merge that authority into Task136.
+
+Throughout this lifecycle preserve these five working diagnostics unstaged,
+uncommitted, and byte-exact:
+
+```text
+packages/agent/test/bounded-agent-loop.test.ts
+  ae54b1488c6770333567f2e9261cc3614d692eef
+packages/local-runtime/test/resident-loop-factory-ports.test.ts
+  5c5c291e05a40721e362ee370b07d6b9db2a179a
+packages/local-runtime/src/wake-supervisor-runtime.ts
+  a7e34e53fff3b4194c77f3b2dfb626dbe5dff2eb
+packages/local-runtime/src/resident-loop-factory-ports.ts
+  01236381d656ee5166f5a4d391498431fe66892f
+packages/agent/src/bounded-agent-loop.ts
+  658e2538c0ffec8b90db463e1d3f55b56ef8250d
+```
+
+No test or product byte is authorized by the amendment lifecycle. Changed
+amendment bytes invalidate review.
+
+### Task 16C-2B: Correct and integrate the two-behavior-test RED
+
+Only after Task 16C-2A integration, append separate test-only authority and
+modify only:
+
+- `packages/local-runtime/test/resident-loop-factory-ports.test.ts`;
+- `packages/agent/test/bounded-agent-loop.test.ts`.
+
+In `mountedFactoryFixture`, retain the one abstract local canonical
+task/attempt/run/run-type tuple. Append its exact task-created, task-queued,
+and orchestration-claimed prefix immediately after resident identity
+readiness and before composition construction/start or any mounted operation,
+provider-authority, or portable-handoff issuance. Then construct/start the
+one legitimate composition, issue those current authorities, and call
+`composition.bind()` once. Remove only the separate
+`preflightPortableMountedAgentHandoffBinding` import and fixture call.
+
+Do not weaken, bypass, duplicate, or replace `composition.bind()`'s existing
+one-shot consuming handoff-witness revalidation; it is the sole portable
+witness/currentness validation for this prepared path. Retain the exact
+`wakeRuntime`, returned `authorityReadback`, and `runtimeHandle` identities
+from that one owner for the frozen six-field prepared input. Retain the
+bounded test's exact authenticated-H terminal-hash correction. Add no title,
+assertion, helper, branch, unrelated alias, or literal product coupling.
+
+Freeze both import-policy tests, every other test, all product sources,
+portable stores, mounted storage, composition, design, plan, claim, contract,
+mission, assurance, dependency, route, provider, activation, credential,
+preview branch, and unrelated byte. Run under `TMPDIR=/dev/shm`, one worker,
+and the 120-second import-policy timeout:
+
+```text
+focused 9 = 3 passed + 6 failed
+producer 144/144
+Task136 card 383 = 377 passed + 6 failed
+37-file cross-boundary 1,042 = 1,036 passed + 6 failed
+Task138 boundary 355/355
+```
+
+Also run typecheck, factory readiness, mission and V4 **20/20**, markers
+**29 / 20 / 29 / 15**, exact repository first-stop, scope and blob freezes,
+ancestry, dependencies, canonical 33-path hash, diff hygiene, strict Git
+integrity, and clean committed-tree checks.
+
+Commit only the two behavior tests. Obtain completely fresh independent
+read-only review of exact immutable bytes, append approval, integrate
+approval-first/candidate-second into the program branch, rerun the integration
+packet, append integration, and forward-merge that authority into Task136.
+Changed bytes invalidate review.
+
+### Task 16C-4A: Resume the prepared-factory GREEN
+
+Only after Task 16C-2B approval and integration, resume E-1261 for exactly:
+
+- `packages/agent/src/bounded-agent-loop.ts`;
+- `packages/local-runtime/src/resident-loop-factory-ports.ts`;
+- `packages/local-runtime/src/wake-supervisor-runtime.ts`.
+
+Implement the existing E-1244 private lexical-capability, exact
+runtime/readback/handle authentication, reservation, one-shot consumption,
+six-field normalization, C/H/R ordering, and exact owner-stop requirements.
+The prepared factory path neither imports nor calls the separate portable
+preflight. Composition bind remains the sole consuming witness validation
+before the prepared input reaches the factory.
+
+Keep `portable-mounted-agent-artifact-stores.ts`, mounted storage,
+`resident-loop-factory-composition.ts`, every test, and every unrelated
+product path frozen. Required GREEN remains focused **9/9**, producer
+**144/144**, card **383/383**, cross-boundary **1,042/1,042**, and Task138
+**355/355**, plus every Task 16C-2B supporting gate and fresh independent
+source review/integration.
+
+The exact **33 = 15 sources + 17 tests + one claim** ceiling and canonical
+SHA-256
+`4cca816c5004bf922d47a44bc8e9216a7f4d1e00a030f20b34d59fb0cd1e442e`
+remain unchanged. Task17 begins only after Task16 GREEN approval and
+integration. No candidate, record 29, Task18 action, publication, or Wave 3
+dispatch exists earlier.
