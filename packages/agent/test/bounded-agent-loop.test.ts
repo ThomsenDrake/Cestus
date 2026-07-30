@@ -1758,7 +1758,7 @@ function createIssuedCapabilityHarness(
         throw new Error("W reclaim anchor mismatch");
       }
       await Promise.resolve();
-      if (mutation === "failed-reclaim") return null;
+      if (mutation === "failed-reclaim") return undefined;
       effects.ledgerAppend += 1;
       return issueToken();
     }
@@ -1811,9 +1811,7 @@ function createIssuedCapabilityHarness(
     if (branch === "resume") {
       await mountedAuthority.recoverSuspensionPrefix(resumeLocator);
       let token = await mountedAuthority.reclaimAndReverify(resumeLocator);
-      if (token === undefined || token === null) {
-        throw new Error("resume positive control did not reclaim");
-      }
+      if (token === undefined) throw new Error("resume positive control did not reclaim");
       const readback = await planObservation.readReplay(identity);
       token = await nextToken(token);
       if (!sameCanonical(readback, replay())) {
@@ -2943,7 +2941,7 @@ function mutateCompletedReplayEvents(
       }
       break;
     case "event-context":
-      context(2).occurredAt = "2026-07-28T12:00:01.000Z";
+      context(2).correlationId = "corr_bounded_context_other";
       break;
     case "payload-binding":
       payload(1).correlationId = "corr_bounded_other";
@@ -2972,22 +2970,19 @@ function mutateCompletedReplayEvents(
       break;
     }
     case "required-action-budget-zero": {
-      const zeroConsumed = Object.fromEntries(
-        tenBudgetFields.map((field) => [field, 0])
-      );
-      const fullRemaining = Object.fromEntries(
-        tenBudgetFields.map((field) => [field, hardMaximums[field]])
-      );
-      const ceilings = { ...hardMaximums };
-      for (const replayEvent of copied) {
-        const replayPayload = replayEvent.payload as Record<string, unknown>;
-        replayPayload.budget = {
-          ceilings: { ...ceilings },
-          consumed: { ...zeroConsumed },
-          remaining: { ...fullRemaining },
-          actionConsumption: { ...zeroConsumed }
-        };
-      }
+      const previousBudget = payload(3).budget as Record<
+        "consumed" | "remaining",
+        Record<BudgetField, number>
+      >;
+      const terminalBudget = payload(4).budget as Record<
+        "actionConsumption" | "consumed" | "remaining",
+        Record<BudgetField, number>
+      >;
+      terminalBudget.actionConsumption.activeExecutionMs = 0;
+      terminalBudget.consumed.activeExecutionMs =
+        previousBudget.consumed.activeExecutionMs;
+      terminalBudget.remaining.activeExecutionMs =
+        previousBudget.remaining.activeExecutionMs;
       break;
     }
     default:
