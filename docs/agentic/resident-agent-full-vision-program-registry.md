@@ -51374,3 +51374,56 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   repository closure, production readiness, or release. `neo`, provider,
   credential, external-system, pull-request, production-route,
   preview-branch, and unrelated actions remain unauthorized.
+
+## RV-1-E-1275 — Task16 Task135D public-companion oracle correction approved
+
+- Recorded at: 2026-07-30T17:05:04Z
+- Completely fresh independent read-only reviewer
+  `/root/e1274_oracle_fresh_review` returns **APPROVED** with no P0-P3 defect,
+  missing test, specification drift, or executability gap for exact immutable
+  one-test candidate `e652ec2cae47fea30771f6d223f7af0f65852366`,
+  tree `9fe08932dd2bc072ae54d7897a4bb75c25e7e3b5`, sole parent exact E-1274
+  authority merge `8778eac6b0c6c7399bd96fca07d404dc1b5f2360`.
+  Changed candidate or diagnostic bytes invalidate this approval.
+- Exact scope is only
+  `packages/local-runtime/test/runtime-handle-mounted-authority-imports.test.ts`,
+  changing blob `0d3bdc674ac08278453dcba67023da4a177cceb0` to
+  `68aa54a4ed1af4cc531023b063e767286757f0ec` by removing only the
+  `runtime-factory\.js|` raw-regex alternative from the existing
+  factory-ports boundary assertion.
+- The reviewer confirms the Task16 oracle still requires the one direct,
+  unaliased, type-only `LocalRuntimeHandle` import; runtime-factory value
+  imports remain rejected by the exact value graph; capture and inspection
+  symbols remain protected across aliases, re-exports, decoded escaped
+  module literals, and the complete parser/lexical-scope corpus; and mounted
+  operation authority rejection is unchanged. No escaped module concealment
+  or product-source substitution exists.
+- Independent execution under `TMPDIR=/dev/shm`, one worker, and the
+  120-second timeout passes targeted Task135D **4/4**, Task16 focused
+  **9/9**, producer **144/144**, Task136 card **383/383**, cross-card
+  **1,042/1,042**, policy corpus **8 allowed / 20 rejected**, and Task138
+  **355/355**.
+- Typecheck and factory readiness pass. Mission and V4 each pass **20/20**,
+  mission fingerprint remains
+  `sha256:799af83764d6c098f3b1a97d6d30fc3b9b13f32f7c57204d92383fab371179ac`,
+  and markers remain **29 / 20 / 29 / 15**. Clean detached repository mode
+  stops first only at exact
+  `blob mismatch: Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`.
+- Exact one-test scope, E-1274 ancestry, dependencies, canonical 33-path hash
+  `4cca816c5004bf922d47a44bc8e9216a7f4d1e00a030f20b34d59fb0cd1e442e`,
+  diff hygiene, and strict Git integrity pass. The three unstaged E-1273
+  diagnostics remain exact at bounded
+  `e6c1d2728ff23620552760409343521468b14956`, factory
+  `ea45eddd73ed7c3f208abb6da7ce287d03bd6da2`, and wake
+  `a7e34e53fff3b4194c77f3b2dfb626dbe5dff2eb`.
+- Advance the exact oracle correction `reviewing -> approved`. Authorize its
+  history-preserving approval-first/candidate-second merge into the program
+  branch, fresh integration-tree execution, append-only integration
+  recording, and forward Task136 merge while preserving the three diagnostic
+  source blobs. Do not resume product edits before that sequence completes.
+- Task16 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is test-oracle approval, not integration, source GREEN,
+  Task16 acceptance, Task136 candidacy, record 29, publication, Wave 3 start,
+  repository closure, production readiness, or release. `neo`, provider,
+  credential, external-system, pull-request, production-route,
+  preview-branch, and unrelated actions remain unauthorized.
