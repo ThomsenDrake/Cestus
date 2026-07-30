@@ -123,6 +123,7 @@ type HarnessMutation =
   | "final-observation-causation"
   | "terminal-final-readback"
   | "required-action-budget-zero"
+  | "terminal-action-budget-two"
   | "missing-suspension"
   | "failed-reclaim"
   | "cross-run-anchor"
@@ -197,7 +198,8 @@ describe("bounded resident agent loop", () => {
       "observation-causation",
       "final-observation-causation",
       "terminal-final-readback",
-      "required-action-budget-zero"
+      "required-action-budget-zero",
+      "terminal-action-budget-two"
     ];
     const completionMutations: readonly HarnessMutation[] = [
       "missing-replay-result",
@@ -2983,6 +2985,22 @@ function mutateCompletedReplayEvents(
         previousBudget.consumed.activeExecutionMs;
       terminalBudget.remaining.activeExecutionMs =
         previousBudget.remaining.activeExecutionMs;
+      break;
+    }
+    case "terminal-action-budget-two": {
+      const previousBudget = payload(3).budget as Record<
+        "consumed" | "remaining",
+        Record<BudgetField, number>
+      >;
+      const terminalBudget = payload(4).budget as Record<
+        "actionConsumption" | "consumed" | "remaining",
+        Record<BudgetField, number>
+      >;
+      terminalBudget.actionConsumption.activeExecutionMs = 2;
+      terminalBudget.consumed.activeExecutionMs =
+        previousBudget.consumed.activeExecutionMs + 2;
+      terminalBudget.remaining.activeExecutionMs =
+        previousBudget.remaining.activeExecutionMs - 2;
       break;
     }
     default:
