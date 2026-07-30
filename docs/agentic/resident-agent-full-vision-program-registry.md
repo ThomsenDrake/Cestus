@@ -51585,3 +51585,83 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   readiness, or release. `neo`, provider, credential, external-system,
   pull-request, production-route, preview-branch, and unrelated actions
   remain unauthorized.
+
+## RV-1-E-1278 — Task16 exact replay RED rejected; isolated oracle correction authorized
+
+- Recorded at: 2026-07-30T18:38:24Z
+- Completely fresh independent read-only reviewer
+  `/root/e1277_red_fresh_review` returns **REJECTED** for exact immutable
+  one-test candidate `9a3b91aee29ded1fc59eb167730959eff10ca933`,
+  tree `bfa7b85f7bd1f626374d1af5ab8d724f079d6e97`, sole parent exact E-1277
+  authority merge `bc7bca6bba59325962ac70d14201e6c75b1595da`.
+  Independent audits `/root/e1277_oracle_independent_audit` and
+  `/root/task16c_e1274_oracle_fix` reproduce the two blocking defects; the
+  former identifies one additional non-isolating budget control.
+- Exact rejected scope is only
+  `packages/agent/test/bounded-agent-loop.test.ts`, changing blob
+  `ae54b1488c6770333567f2e9261cc3614d692eef` to
+  `3af5c7c4c83cb795ef0b462c2bb0287ccfb1fcdf`. The rejected commit and bytes
+  remain immutable history.
+- **P1 — lawful event time is classified as substituted context.** The
+  `event-context` control changes only one event's `context.occurredAt`.
+  T120 obtains that field independently from `options.now()` for every
+  append, the strict event schema accepts an ISO datetime, and the V2
+  sequence contract imposes no cross-event timestamp equality. R has no
+  independent expected timestamp. Requiring rejection would add a prohibited
+  timing equality and reject lawful durable replay.
+- **P1 — failed reclaim uses a value outside W's exact port.** The fixture
+  returns `null` and widens its positive-control guard, while the committed W
+  contract returns exactly an opaque currentness token or `undefined`.
+  E-1277 authorizes a no-token failed reclaim, not a wider producer ABI.
+- **P2 — the zero-action control has an independent plan mismatch.** The
+  control replaces every budget field on all five replay events, including
+  the authoritative plan. An implementation can reject that caller-plan
+  mismatch without validating the required observation, tool, or result
+  action consumption, so the control does not isolate E-1277's exact
+  ten-counter progression defect.
+- Passing bounded **zero passed + three failed**, focused
+  **6 passed + three failed**, producer **144/144**, Task136 card
+  **380 passed + three failed**, cross-card
+  **1,039 passed + three failed**, Task138 **355/355**, typecheck,
+  readiness, mission and V4 **20/20**, markers **29 / 20 / 29 / 15**,
+  scope, ancestry, dependencies, Git integrity, and exact repository
+  first-stop do not cure these candidate-bound oracle defects.
+- Authorize only the smallest forward correction in
+  `packages/agent/test/bounded-agent-loop.test.ts`, starting from exact
+  rejected blob `3af5c7c4c83cb795ef0b462c2bb0287ccfb1fcdf`:
+  replace the time mutation with one context-only correlation mismatch while
+  leaving its payload unchanged; return `undefined` for the failed reclaim
+  and restore the positive-control `token === undefined` guard; and leave the
+  plan plus first four completed events exact while changing only the
+  terminal result's required `activeExecutionMs` action consumption to zero
+  with consumed and remaining values equal to the immediately preceding
+  final observation. This isolates the required terminal action while
+  preserving internally consistent budget arithmetic.
+- Preserve every other E-1277 byte, all three titles and total cardinality,
+  the abstract local corpus, authenticated-H terminal hash, positive trace,
+  consumed-currentness controls, direct own-`__proto__` control, every other
+  test, and every product source. No timing equality, unrelated replay case,
+  source, design, plan, claim, contract, mission, assurance, dependency,
+  route, provider, activation, credential, preview branch, or unrelated byte
+  is authorized.
+- Required corrected RED remains bounded
+  **3 = zero passed + three failed**, focused
+  **9 = 6 passed + three failed**, producer **144/144**, Task136 card
+  **383 = 380 passed + three failed**, cross-card
+  **1,042 = 1,039 passed + three failed**, and Task138 **355/355**, plus
+  typecheck, readiness, mission and V4 **20/20**, markers
+  **29 / 20 / 29 / 15**, exact repository first-stop, one-test scope,
+  freezes, ancestry, dependencies, exact 33-path hash, diff hygiene, strict
+  Git integrity, and clean committed state.
+- Commit only the corrected test with subject
+  `test(agent): isolate exact bounded replay controls`. Obtain a completely
+  fresh independent read-only review of its exact immutable bytes, append
+  approval, integrate approval-first/candidate-second on the program branch,
+  rerun every integration gate, append integration, and forward-merge into
+  Task136 before any product edit. Changed bytes invalidate review.
+- Task16 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is test-oracle correction authority, not source repair,
+  Task16 acceptance, Task136 candidacy, record 29, publication, Wave 3
+  start, repository closure, production readiness, or release. `neo`,
+  provider, credential, external-system, pull-request, production-route,
+  preview-branch, and unrelated actions remain unauthorized.
