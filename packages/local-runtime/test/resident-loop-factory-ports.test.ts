@@ -1374,10 +1374,10 @@ function residentFactoryInitialCandidate(
     providerInvocations: 3,
     providerRequestBytes: 1_048_576,
     providerResponseBytes: 1_048_576,
-    contextBytes: 32_768,
-    derivativeArtifactBytes: 65_536,
-    activeExecutionMs: 120_000,
-    approvalSuspensionMs: 120_000
+    contextBytes: 1_048_576,
+    derivativeArtifactBytes: 16_777_216,
+    activeExecutionMs: 900_000,
+    approvalSuspensionMs: 86_400_000
   };
   const actionConsumption = Object.fromEntries(
     budgetFields.map((field) => [field, field === "contextBytes" ? 1 : 0])
