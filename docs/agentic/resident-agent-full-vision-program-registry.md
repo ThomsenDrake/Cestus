@@ -54346,3 +54346,90 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   production readiness, or product release. `neo`, provider, credential,
   external-system, pull-request, production-route, preview-branch, and
   unrelated actions remain unauthorized.
+
+## RV-1-E-1316 — Exact Task136 record-29 product integrated
+
+- Recorded at: 2026-07-31T05:07:13Z
+- Exact history-preserving product integration merge is
+  `4feb71d1042d8a0a537731ec9c2f7b3902dac0b6`, tree
+  `8e9f8b3be58218ed4d022c433ebb5674aeef70fd`, with exact approval-first
+  parent `b1aa9f80f64c1684cbeb4b535d55af3fb989f452` and exact reviewed
+  candidate-second parent
+  `21ac850894ff3e040069b4307c95e20148db96fc`. The merge is tree-identical to
+  its approval parent because all approved product bytes were already
+  present through their source integrations; it adds the complete reviewed
+  Task136 authority, RED, repair, review, and candidate lineage without
+  reconstructing history. Relative to its candidate second parent, only the
+  append-only E-1313 through E-1315 registry records advance.
+- Every one of the contract-ordered **33** Task136-owned blobs is identical
+  between reviewed candidate and product integration. Ordered owned-path
+  SHA-256 remains
+  `4cca816c5004bf922d47a44bc8e9216a7f4d1e00a030f20b34d59fb0cd1e442e`.
+  The authority-to-candidate packet remains the exact 44 paths, SHA-256
+  `362485fbd2ae160db0e6d2f5d8e304afaa589dde587488f8d5b19da125f9f55e`,
+  **3,917,125** binary bytes, SHA-256
+  `db26319a38b36f701580a1905c38475d8b8912b8d687cba4fb2d7ad3e5625278`.
+  Exact fifteen-source union hash remains
+  `aed1f0be55fe43594fc273c598e93c89eb961e0de3fcb6d464620d86bb16f80b`.
+- Fresh integrated-tree execution under `TMPDIR=/dev/shm`, one worker, no
+  file parallelism, and the 120-second timeout passes focused **9/9**,
+  producer **144/144**, factory boundary **10/10**, wake boundary
+  **140/140**, provider **25/25**, Task138 **355/355**, Task136 card
+  **383/383**, and exact 37-file cross-card **1,042/1,042**, including policy
+  corpus **8 allowed / 20 rejected**. All original Task17 producer blocks
+  pass T120 **12/12**, execution producer **101/101**, resident gateway
+  **50/50**, handoff group **300/300**, and handoff projection **318/318**.
+- Typecheck and factory readiness pass. Mission and V4 each pass **20/20**;
+  mission fingerprint remains
+  `sha256:799af83764d6c098f3b1a97d6d30fc3b9b13f32f7c57204d92383fab371179ac`;
+  immutable envelope remains
+  `sha256:82e666a86d2b3ccd0ceafd634975d0a7459d3fe7600d27cc8345dd0f531fbc1e`;
+  and markers remain **29 / 20 / 29 / 15**. Clean repository mode exits one
+  and stops first only at exact
+  `blob mismatch: Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`.
+  It emits no repository-prefix, closure, record-29, repository, or
+  product-release success marker.
+- Fresh serialized integration suite is exact
+  **3,372 = 3,322 passed + 45 failed + 5 pending**, with
+  **506 = 488 passed + 18 failed** suites and 242 result files. The
+  occurrence-preserving candidate/integration comparator returns
+  `TASK136_FULL_DIFFERENTIAL_OK mode=exact phase=product-integration`:
+  every file/test identity and status and every count equals the reviewed
+  candidate. Integration artifact SHA-256 values are Vitest JSON
+  `35ead53ae33c60bb8f0737a174b2ef2e1b3ed433b9f12f255903e9da151dec58`,
+  npm-test log
+  `945623044e2d0dfe080aa9a6e702541709298ddb1601f63ec71d956c52efc329`,
+  and verify log
+  `8d7c8603f9cf45c6b73a3f4cf367e7f6fe27afe6793de6a93442e0fad2b1d4f5`.
+  Both test and verify exit statuses exactly equal the reviewed candidate.
+- Default integrated verification passes typecheck and then reports
+  **3,372 = 3,313 passed + 54 failed + 5 skipped**, with 13 failed, 226
+  passed, and three skipped files. Exact comparison to the serialized result
+  retains all 45 semantic failures and classifies exactly nine additional
+  timeout-only occurrences: one scheduler-completion import-policy title,
+  five prerequisite-checker Git-fixture titles, one factory-ports
+  import-policy title, and two wake import-policy titles. All nine pass
+  together as **28/28** under the required serialized 120-second execution;
+  recheck-log SHA-256 is
+  `8bc0b3d6c924e441799ef4235b92f27bb744c5c8676f80a9e124e69cc64118f0`.
+  The prior candidate observation's additional runtime-handle import-policy
+  timeout did not recur. This is classified environmental variance, not
+  product drift or an unassigned failure.
+- Exact parent order, candidate/integration blob equality, all ten
+  prerequisite ancestries, all 57 descendant repair/integration commits,
+  Task138 source/test/claim blobs, every forbidden/no-activation freeze,
+  local non-symlink dependencies, diff hygiene, strict Git integrity, and
+  clean integrated state pass.
+- Advance exact Task136 `approved -> integrated`. The only next Task18 action
+  is a direct, committed, non-release strict-record candidate in this
+  registry, using exact schema-required values reconstructed from the clean
+  integration event and exact two fresh reviewer task UUIDs. Neither reviewer
+  was exposed a UUID-form alias during review; do not invent, infer, map, or
+  substitute one. Until both exact system-issued IDs are available, no JSON
+  object, strict record 29, or released transition is authorized.
+- Task16 and Task136 are `integrated`; strict product frontier remains
+  **28 of 29**. This is product integration, not strict record 29,
+  repository closure, publication, Wave 3 start, production readiness, or
+  product release. `neo`, provider, credential, external-system,
+  pull-request, production-route, preview-branch, and unrelated actions
+  remain unauthorized.
