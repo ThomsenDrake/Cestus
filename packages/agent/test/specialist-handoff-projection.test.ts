@@ -1,3 +1,4 @@
+import { types } from "node:util";
 import { describe, expect, it } from "vitest";
 import type { KnowledgeEvent, KnowledgeEventOf } from "../../ontology/src/contracts.js";
 import {
@@ -1184,8 +1185,80 @@ describe("specialist handoff projection", () => {
       policyHash: hash222,
       activeLocksHash: hash333
     } as const;
-    const events = validRecordedEvents(fixture);
-    const store = materializedStore(fixture);
+    const manifest = buildAuthorityBoundSpecialistHandoffManifest({
+      handoffId: fixture.manifest.handoffId,
+      handoffRevision: fixture.manifest.handoffRevision,
+      runId: fixture.manifest.runId,
+      ...(fixture.manifest.taskId === undefined ? {} : { taskId: fixture.manifest.taskId }),
+      runType: fixture.manifest.runType,
+      residentAgentId: fixture.manifest.residentAgentId,
+      generatedAt: "2026-07-10T15:00:00.000Z",
+      status: fixture.manifest.status,
+      safeSummary: fixture.manifest.safeSummary,
+      stateKind: fixture.manifest.stateKind,
+      finalOutputStepId: fixture.manifest.finalOutputStepId,
+      finalOutputEventId: fixture.manifest.finalOutputEventId,
+      handoffMaterialArtifactHash: fixture.manifest.handoffMaterialArtifactHash,
+      contextPackRefs: fixture.manifest.contextPackRefs,
+      ...(fixture.manifest.promptArtifactHash === undefined
+        ? {}
+        : { promptArtifactHash: fixture.manifest.promptArtifactHash }),
+      outputArtifacts: fixture.manifest.outputArtifacts,
+      toolRequestIds: fixture.manifest.toolRequestIds,
+      approvalRequirements: fixture.manifest.approvalRequirements,
+      nextSafeActions: fixture.manifest.nextSafeActions,
+      sourceEventIds: fixture.manifest.sourceEventIds,
+      relatedEventIds: fixture.manifest.relatedEventIds,
+      authorityBinding
+    });
+    const manifestHash = hashSpecialistHandoffManifest(manifest);
+    const preparedPayload = {
+      ...compactBinding(manifest, manifestHash),
+      manifestSchemaVersion: "agent-specialist-handoff-manifest.v2" as const,
+      authorityBinding
+    };
+    const prepared = agentEvent(
+      "agent.specialist-handoff.prepared",
+      "evt_internal_full_readback_prepared",
+      preparedPayload,
+      { causationId: fixture.finalOutputEventId }
+    );
+    const recorded = agentEvent(
+      "agent.specialist-handoff.recorded",
+      "evt_internal_full_readback_recorded",
+      {
+        ...preparedPayload,
+        preparedEventId: prepared.id,
+        verifiedAt: "2026-07-10T15:01:00.000Z"
+      },
+      { causationId: prepared.id }
+    );
+    const terminal = agentEvent(
+      "agent.specialist-run.completed",
+      "evt_internal_full_readback_completed",
+      {
+        runId: fixture.runId,
+        completedAt: "2026-07-10T15:02:00.000Z",
+        outputArtifactHashes: manifest.outputArtifacts.map((artifact) => artifact.artifactHash),
+        relatedEventIds: [manifest.finalOutputEventId],
+        summary: "Authority-bound specialist run reached terminal local state."
+      },
+      eventOptions(recorded.id)
+    );
+    const orchestration = orchestrationCompletedEvent(fixture, manifest, prepared, recorded, terminal);
+    const status = taskStatusEvent(fixture, "completed", { causationId: orchestration.id });
+    const events = [
+      startedEvent(fixture),
+      finalOutputStepEvent(fixture),
+      prepared,
+      recorded,
+      terminal,
+      orchestration,
+      status
+    ];
+    const store = new ManifestMap()
+      .put(manifestHash, canonicalSpecialistHandoffJson(manifest))
+      .put(fixture.materialHash, canonicalSpecialistHandoffMaterialBytes(fixture.material));
     const reads = {
       originalLedger: 0,
       substitutedLedger: 0,
@@ -1236,11 +1309,13 @@ describe("specialist handoff projection", () => {
       return store.get(contentHash);
     };
 
-    await port.readFull({
+    const fullReadback = await port.readFull({
       taskId: fixture.taskId ?? "task_internal_full_readback_001",
       runId: fixture.runId,
       authorityBinding
     });
+    expect(fullReadback).toBeDefined();
+    assertDeeplyFrozenPlainOwnData(fullReadback);
 
     expect({
       originalLedger: reads.originalLedger,
@@ -1255,6 +1330,48 @@ describe("specialist handoff projection", () => {
     });
   });
 });
+
+function assertDeeplyFrozenPlainOwnData(value: unknown): void {
+  if (
+    value === null ||
+    value === undefined ||
+    typeof value === "string" ||
+    typeof value === "number" ||
+    typeof value === "boolean"
+  ) {
+    return;
+  }
+  expect(typeof value).toBe("object");
+  if (typeof value !== "object") return;
+  expect(types.isProxy(value)).toBe(false);
+  expect(Object.isFrozen(value)).toBe(true);
+  expect(Object.getOwnPropertySymbols(value)).toEqual([]);
+  const descriptors = Object.getOwnPropertyDescriptors(value);
+  if (Array.isArray(value)) {
+    expect(Object.getPrototypeOf(value)).toBe(Array.prototype);
+    expect(Object.hasOwn(descriptors, "length")).toBe(true);
+    for (const [key, descriptor] of Object.entries(descriptors)) {
+      expect(descriptor.enumerable, key).toBe(key !== "length");
+      expect("value" in descriptor, key).toBe(true);
+      expect(descriptor.get, key).toBeUndefined();
+      expect(descriptor.set, key).toBeUndefined();
+      if ("value" in descriptor) {
+        assertDeeplyFrozenPlainOwnData(descriptor.value);
+      }
+    }
+    return;
+  }
+  expect(Object.getPrototypeOf(value)).toBe(Object.prototype);
+  for (const [key, descriptor] of Object.entries(descriptors)) {
+    expect(descriptor.enumerable, key).toBe(true);
+    expect("value" in descriptor, key).toBe(true);
+    expect(descriptor.get, key).toBeUndefined();
+    expect(descriptor.set, key).toBeUndefined();
+    if ("value" in descriptor) {
+      assertDeeplyFrozenPlainOwnData(descriptor.value);
+    }
+  }
+}
 
 class ManifestMap implements SpecialistHandoffManifestReader {
   private readonly manifests = new Map<`sha256:${string}`, Buffer>();
