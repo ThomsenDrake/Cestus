@@ -1,0 +1,1018 @@
+{
+  "schemaVersion": "resident-agent-full-vision-mission-state.v1",
+  "mission": {
+    "missionId": "resident-agent-full-vision",
+    "controlPlaneStatus": "candidate",
+    "riskLevel": "level3",
+    "historicalPredecessorMissionId": "software-factory-calibration",
+    "registryLifecycleAuthority": "docs/agentic/resident-agent-full-vision-program-registry.md",
+    "eligibilityMeaning": "Dependency- and milestone-ready for a separate append-only lifecycle authorization; eligibility is not a claimed event.",
+    "acceptedIntegrationSha": null,
+    "recoveryBaseline": {
+      "registryEventId": "RV-1-E-1328",
+      "programSha": "0e5b0e7d4b8bfae3f577c23dc8083623b5a25880",
+      "releasedTask136Sha": "21ac850894ff3e040069b4307c95e20148db96fc",
+      "publishedNeoSha": "baab662fb6ecd79de9a34f1c3801aa76d3428848",
+      "strictFrontier": {
+        "accepted": 29,
+        "total": 29
+      }
+    }
+  },
+  "authorityReferences": [
+    {
+      "authorityRefId": "full-vision-design",
+      "path": "docs/superpowers/specs/2026-07-12-resident-agent-full-vision-program-design.md",
+      "sha256": "9040fa396fba48bfdc7ac2d8c9c90715f41c2c58959948d163975e97080e9d24",
+      "locator": "Resident Agent Full-Vision Program Design"
+    },
+    {
+      "authorityRefId": "full-vision-plan",
+      "path": "docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md",
+      "sha256": "913ff2723e3e7a1217f7d75086bc240c321955ab5dadf07882f5ce2439b6b3bf",
+      "locator": "Waves 2-5 and Task153"
+    },
+    {
+      "authorityRefId": "cf1-freeze",
+      "path": "docs/agentic/resident-agent-full-vision-contract-freeze.md",
+      "sha256": "63bc52aa306f3da6bc58b9e91047c4a945111b25f5cc55eb1642241a3ba5e807",
+      "locator": "CF-1 ownership and merge/readiness matrices"
+    },
+    {
+      "authorityRefId": "cf1-terminal-amendments",
+      "path": "docs/superpowers/plans/2026-07-14-resident-agent-factory-authority-recovery-implementation.md",
+      "sha256": "54b255332e85147e38c663000eff7ef2c877a17d0a1da5cca97d42d084b855ac",
+      "locator": "CF-1R1 through terminal CF-1R28.2"
+    },
+    {
+      "authorityRefId": "acceptance-matrix",
+      "path": "docs/agentic/resident-agent-full-vision-acceptance-matrix.md",
+      "sha256": "9b35396e36f9cee89c871089bc8bc44e173cc175d91f6714aaa5609cb3dd66d7",
+      "locator": "A-01 through A-10"
+    },
+    {
+      "authorityRefId": "acceptance-design",
+      "path": "docs/superpowers/specs/2026-07-12-resident-agent-acceptance-design.md",
+      "sha256": "45fc7947aa3026ad9d74dfd848d891022cb4096098ab62df9b9b1b6763303bbb",
+      "locator": "Resident Agent Acceptance Design"
+    },
+    {
+      "authorityRefId": "acceptance-plan",
+      "path": "docs/superpowers/plans/2026-07-12-resident-agent-acceptance-implementation.md",
+      "sha256": "89b9422a2d87cf0bae1752525dd33e7dfea6cadb34fbf361d74b5d61bcc24a6c",
+      "locator": "A-FIXTURE and A116-WORKORDER-A01 through A10"
+    },
+    {
+      "authorityRefId": "task140-prerequisite-checker",
+      "path": "scripts/check-resident-task-prerequisites.mjs",
+      "sha256": "953200e4aafca9f39cf6d1be3f856e8fced34f72d171c63a8d4b9761213e04a6",
+      "locator": "task140p profile"
+    },
+    {
+      "authorityRefId": "e1328-failure-inventory",
+      "path": "docs/agentic/resident-agent-full-vision-program-registry.md",
+      "gitCommitSha": "0e5b0e7d4b8bfae3f577c23dc8083623b5a25880",
+      "gitBlobSha": "97389be913e06a236349bdefeb267962af1ce11e",
+      "sha256": "f34c7bf3cc2a4fcba795e314ee807fe6d34b4712bfb10742be915b8c90125d23",
+      "locator": "RV-1-E-1328"
+    },
+    {
+      "authorityRefId": "successor-control-authorization",
+      "path": "docs/agentic/resident-agent-full-vision-program-registry.md",
+      "gitCommitSha": "639ff359f67d7cd156bc1b6be5ac56a842dbb030",
+      "gitBlobSha": "9eba27b1cd16516eea070ea269043e2fa7642c9c",
+      "sha256": "473d9c416ce6bae48b959926f747b681e387fe57b4ff8e4c2aeac2a24f422a60",
+      "locator": "RV-1-E-1329"
+    }
+  ],
+  "controlPlaneIntegrationEvidence": null,
+  "stateModel": {
+    "featureIntegrationStates": [
+      "pending",
+      "integrated",
+      "released"
+    ],
+    "eligibleWhen": "integrationState is pending, every prerequisite is registry-authenticated as integrated or released, and every unlocking milestone has registry-authenticated gate evidence",
+    "registryEventStatuses": [
+      "claimed",
+      "implementing",
+      "candidate",
+      "reviewing",
+      "approved",
+      "integrated",
+      "released"
+    ],
+    "registryProjectionRule": "Feature and milestone state are rebuildable projections from unique exact machine markers in append-only registry-only commits descended from RV-1-E-1329; mutable IDs or SHAs alone never advance eligibility."
+  },
+  "reviewedIntegrationEvidence": {},
+  "milestoneGateEvidence": {},
+  "invariants": [
+    "append-only-ledger",
+    "provenance-required",
+    "projection-rebuildability",
+    "mounted-workspace-authority",
+    "human-prr-send-gate",
+    "legal-gate",
+    "fail-closed-authority",
+    "secret-safety",
+    "no-fallback-writes",
+    "provider-byte-transfer-requires-exact-committed-gate"
+  ],
+  "failureInventory": {
+    "sourceEventId": "RV-1-E-1328",
+    "baseline": {
+      "total": 3372,
+      "passed": 3311,
+      "failed": 56,
+      "skipped": 5
+    },
+    "semanticOwners": [
+      {
+        "featureId": "Task140R0",
+        "failures": 37
+      },
+      {
+        "featureId": "Task140R1",
+        "failures": 1
+      },
+      {
+        "featureId": "Task142",
+        "failures": 7
+      }
+    ],
+    "runnerCalibration": {
+      "timeoutOnlyOccurrences": 11,
+      "productRepairOwner": null,
+      "serializedAffectedSuites": {
+        "passed": 39,
+        "total": 39
+      }
+    }
+  },
+  "milestones": [
+    {
+      "milestoneId": "FV-M1-TASK140-READINESS",
+      "riskLevel": "level3",
+      "featureIds": [
+        "Task140P",
+        "Task140R0",
+        "Task140H",
+        "Task140R1"
+      ],
+      "unlocksFeatureIds": [
+        "Task131"
+      ],
+      "validation": {
+        "freshConcurrentScrutinyValidator": 1,
+        "blackBoxValidator": 1,
+        "sourceOnlyReviewsCanSubstitute": false,
+        "fullGate": "required-at-milestone-close",
+        "liveGate": "closed-unless-separately-authorized",
+        "releaseGate": "closed"
+      }
+    },
+    {
+      "milestoneId": "FV-M2-WAVE2-READINESS",
+      "riskLevel": "level3",
+      "featureIds": [
+        "Task131",
+        "Task141"
+      ],
+      "unlocksFeatureIds": [
+        "Task142",
+        "Task143",
+        "Task144",
+        "Task145",
+        "Task146",
+        "Task147",
+        "Task148",
+        "Task149",
+        "Task150",
+        "Task151",
+        "Task152"
+      ],
+      "validation": {
+        "freshConcurrentScrutinyValidator": 1,
+        "blackBoxValidator": 1,
+        "sourceOnlyReviewsCanSubstitute": false,
+        "fullGate": "required-at-milestone-close",
+        "liveGate": "closed-unless-separately-authorized",
+        "releaseGate": "closed"
+      }
+    },
+    {
+      "milestoneId": "FV-M3-WAVE3",
+      "riskLevel": "level3",
+      "featureIds": [
+        "Task142",
+        "Task143",
+        "Task144",
+        "Task145",
+        "Task146",
+        "Task147",
+        "Task148",
+        "Task149",
+        "Task150",
+        "Task151",
+        "Task152"
+      ],
+      "unlocksFeatureIds": [
+        "A-FIXTURE"
+      ],
+      "validation": {
+        "freshConcurrentScrutinyValidator": 1,
+        "blackBoxValidator": 1,
+        "sourceOnlyReviewsCanSubstitute": false,
+        "fullGate": "required-at-milestone-close",
+        "liveGate": "only-for-features-with-separate-committed-provider-authority",
+        "releaseGate": "closed"
+      }
+    },
+    {
+      "milestoneId": "FV-M4-WAVE4",
+      "riskLevel": "level3",
+      "featureIds": [
+        "A-FIXTURE",
+        "A-01",
+        "A-02",
+        "A-03",
+        "A-04",
+        "A-05",
+        "A-06",
+        "A-07",
+        "A-08",
+        "A-09",
+        "A-10"
+      ],
+      "unlocksFeatureIds": [
+        "Task153"
+      ],
+      "validation": {
+        "freshConcurrentScrutinyValidator": 1,
+        "blackBoxValidator": 1,
+        "sourceOnlyReviewsCanSubstitute": false,
+        "fullGate": "required-at-milestone-close",
+        "liveGate": "scenario-specific-and-separately-authorized",
+        "releaseGate": "closed",
+        "requiredGateFacts": [
+          "ten-authenticated-acceptance-verdicts",
+          "accepted-repairs-integrated",
+          "downstream-worktrees-rebased",
+          "subscription-feasibility-recorded",
+          "safe-live-and-deployment-evidence"
+        ]
+      }
+    },
+    {
+      "milestoneId": "FV-M5-RELEASE",
+      "riskLevel": "level3",
+      "featureIds": [
+        "Task153"
+      ],
+      "unlocksFeatureIds": [],
+      "validation": {
+        "freshConcurrentScrutinyValidator": 1,
+        "blackBoxValidator": 1,
+        "sourceOnlyReviewsCanSubstitute": false,
+        "fullGate": "required",
+        "liveGate": "requires-exact-Task153-authority",
+        "releaseGate": "required",
+        "requiredGateFacts": [
+          "Task153-reviewed-and-integrated",
+          "all-Wave-0-through-4-integration-SHAs",
+          "human-release-decision"
+        ]
+      }
+    }
+  ],
+  "features": [
+    {
+      "featureId": "Task140P",
+      "milestoneId": "FV-M1-TASK140-READINESS",
+      "prerequisiteIds": [],
+      "riskLevel": "level2",
+      "scopeAuthority": {
+        "authorityRefId": "cf1-terminal-amendments",
+        "locator": "CF-1R28.2"
+      },
+      "ownership": {
+        "pathCeiling": 11,
+        "allowedPaths": [
+          "packages/agent/src/task-orchestrator-approval-admission.ts",
+          "packages/agent/src/task-orchestrator-approval.ts",
+          "packages/agent/src/task-orchestrator-handoff-port.ts",
+          "packages/agent/src/task-orchestrator.ts",
+          "packages/agent/test/task-orchestrator-approval-admission.test.ts",
+          "packages/agent/test/task-orchestrator-approval.test.ts",
+          "packages/agent/test/task-orchestrator-handoff-port.test.ts",
+          "packages/agent/test/task-orchestrator-dispatch.test.ts",
+          "packages/agent/test/task-orchestrator-recovery.test.ts",
+          "packages/local-runtime/test/task-orchestrator-handoff-port-imports.test.ts",
+          "docs/agentic/claims/task-140-p-private-prompt-admission.md"
+        ]
+      },
+      "prerequisiteProfile": {
+        "checkerAuthorityRefId": "task140-prerequisite-checker",
+        "profile": "task140p"
+      },
+      "targetedCommands": [
+        "npm test -- packages/agent/test/task-orchestrator-approval-admission.test.ts packages/agent/test/task-orchestrator-handoff-port.test.ts packages/agent/test/task-orchestrator-dispatch.test.ts packages/agent/test/task-orchestrator-approval.test.ts packages/agent/test/task-orchestrator-recovery.test.ts packages/local-runtime/test/task-orchestrator-handoff-port-imports.test.ts && npm run typecheck && ! rg -n 'task-orchestrator-approval-admission|task-orchestrator-handoff-port' packages/agent/src/index.ts && git diff --check && npm run factory:check"
+      ],
+      "externalEffectGate": "none",
+      "integrationState": "pending",
+      "acceptedIntegrationSha": null
+    },
+    {
+      "featureId": "Task140R0",
+      "milestoneId": "FV-M1-TASK140-READINESS",
+      "prerequisiteIds": [
+        "Task140P"
+      ],
+      "riskLevel": "level2",
+      "scopeAuthority": {
+        "authorityRefId": "cf1-terminal-amendments",
+        "locator": "CF-1R28.3"
+      },
+      "ownership": {
+        "pathCeiling": 5,
+        "allowedPaths": [
+          "packages/local-runtime/src/agent-runtime-factory.ts",
+          "packages/local-runtime/test/agent-runtime-composition.test.ts",
+          "packages/local-runtime/test/agent-task-orchestrator-routes.test.ts",
+          "packages/local-runtime/test/task-orchestrator-approval-admission-imports.test.ts",
+          "docs/agentic/claims/task-140-r0-factory-prompt-binding.md"
+        ]
+      },
+      "externalEffectGate": "none",
+      "integrationState": "pending",
+      "acceptedIntegrationSha": null
+    },
+    {
+      "featureId": "Task140H",
+      "milestoneId": "FV-M1-TASK140-READINESS",
+      "prerequisiteIds": [
+        "Task140R0"
+      ],
+      "riskLevel": "level2",
+      "scopeAuthority": {
+        "authorityRefId": "cf1-terminal-amendments",
+        "locator": "CF-1R6 through CF-1R26 Task140H"
+      },
+      "ownership": {
+        "pathCeiling": 32,
+        "allowedPaths": [
+          "packages/agent/src/task-orchestrator-handoff-port.ts",
+          "packages/agent/src/task-orchestrator.ts",
+          "packages/agent/src/runtime.ts",
+          "packages/agent/src/runtime-types.ts",
+          "packages/agent/src/specialist-runner-kernel.ts",
+          "packages/agent/src/production-specialist-invocation-proof.ts",
+          "packages/agent/src/production-model-invocation-admission.ts",
+          "packages/agent/test/task-orchestrator-handoff-port.test.ts",
+          "packages/agent/test/task-orchestrator-dispatch.test.ts",
+          "packages/agent/test/task-orchestrator-recovery.test.ts",
+          "packages/agent/test/task-orchestrator-evidence-triage.test.ts",
+          "packages/agent/test/task-orchestrator-evidence-triage-live.test.ts",
+          "packages/agent/test/specialist-runner-kernel.test.ts",
+          "packages/agent/test/production-specialist-invocation-proof.test.ts",
+          "packages/agent/test/runtime.test.ts",
+          "packages/agent/test/production-model-invocation-admission.test.ts",
+          "packages/agent/test/evidence-triage-workflow.test.ts",
+          "packages/agent/test/prr-negotiation-workflow.test.ts",
+          "packages/agent/test/investigation-planner-workflow.test.ts",
+          "packages/agent/test/evidence-triage-nous-live.test.ts",
+          "packages/agent/test/prr-negotiation-nous-live.test.ts",
+          "packages/agent/test/fixtures/resident-live-acceptance-adapters.ts",
+          "packages/agent/test/resident-live-acceptance-adapters.test.ts",
+          "packages/agent/test/task-orchestrator-mounted-authority.test.ts",
+          "packages/local-runtime/src/agent-runtime-factory.ts",
+          "packages/local-runtime/test/agent-runtime-composition.test.ts",
+          "packages/local-runtime/test/agent-task-orchestrator-routes.test.ts",
+          "packages/local-runtime/src/resident-specialist-acceptance.ts",
+          "packages/local-runtime/test/resident-specialist-acceptance.test.ts",
+          "packages/local-runtime/src/agent-nous-smoke.ts",
+          "packages/local-runtime/test/agent-nous-smoke.test.ts",
+          "docs/agentic/claims/task-140-h-private-resident-invocation.md"
+        ]
+      },
+      "externalEffectGate": "separate-committed-provider-authority",
+      "integrationState": "pending",
+      "acceptedIntegrationSha": null
+    },
+    {
+      "featureId": "Task140R1",
+      "milestoneId": "FV-M1-TASK140-READINESS",
+      "prerequisiteIds": [
+        "Task140H"
+      ],
+      "riskLevel": "level2",
+      "scopeAuthority": {
+        "authorityRefId": "cf1-terminal-amendments",
+        "locator": "Task140R1 serialized public-H injection removal"
+      },
+      "ownership": {
+        "pathCeiling": 13,
+        "allowedPaths": [
+          "packages/local-runtime/src/agent-runtime-factory.ts",
+          "packages/local-runtime/test/agent-runtime-composition.test.ts",
+          "packages/local-runtime/test/agent-task-orchestrator-routes.test.ts",
+          "packages/agent/src/runtime-types.ts",
+          "packages/agent/src/runtime.ts",
+          "packages/agent/src/task-orchestrator.ts",
+          "packages/agent/test/task-orchestrator-dispatch.test.ts",
+          "packages/agent/test/runtime.test.ts",
+          "packages/agent/test/task-orchestrator-approval.test.ts",
+          "packages/agent/test/task-orchestrator-claims.test.ts",
+          "packages/agent/test/task-orchestrator-evidence-triage.test.ts",
+          "packages/agent/test/task-orchestrator-evidence-triage-live.test.ts",
+          "packages/agent/test/task-orchestrator-recovery.test.ts"
+        ]
+      },
+      "externalEffectGate": "none",
+      "integrationState": "pending",
+      "acceptedIntegrationSha": null
+    },
+    {
+      "featureId": "Task131",
+      "milestoneId": "FV-M2-WAVE2-READINESS",
+      "prerequisiteIds": [
+        "Task140R1"
+      ],
+      "riskLevel": "level2",
+      "scopeAuthority": {
+        "authorityRefId": "cf1-freeze",
+        "locator": "W1-131 deferred adapter"
+      },
+      "ownership": {
+        "pathCeiling": 3,
+        "allowedPaths": [
+          "packages/ui/src/agent/resident-runtime-types.ts",
+          "packages/ui/src/agent/resident-runtime-adapter.ts",
+          "packages/ui/test/resident-runtime-adapter.test.ts"
+        ]
+      },
+      "externalEffectGate": "none",
+      "integrationState": "pending",
+      "acceptedIntegrationSha": null
+    },
+    {
+      "featureId": "Task141",
+      "milestoneId": "FV-M2-WAVE2-READINESS",
+      "prerequisiteIds": [
+        "Task131"
+      ],
+      "riskLevel": "level2",
+      "scopeAuthority": {
+        "authorityRefId": "cf1-freeze",
+        "locator": "W2-141"
+      },
+      "ownership": {
+        "pathCeiling": 4,
+        "allowedPaths": [
+          "packages/local-runtime/src/agent-supervision-routes.ts",
+          "packages/ui/src/agent/ResidentSupervisionPanel.tsx",
+          "packages/ui/test/resident-supervision-panel.test.tsx",
+          "packages/local-runtime/test/agent-supervision-routes.test.ts"
+        ]
+      },
+      "externalEffectGate": "supported-local-command-policy-only",
+      "integrationState": "pending",
+      "acceptedIntegrationSha": null
+    },
+    {
+      "featureId": "Task142",
+      "milestoneId": "FV-M3-WAVE3",
+      "prerequisiteIds": [
+        "Task141"
+      ],
+      "riskLevel": "level2",
+      "scopeAuthority": {
+        "authorityRefId": "cf1-freeze",
+        "locator": "W3-142"
+      },
+      "ownership": {
+        "pathCeiling": 2,
+        "allowedPaths": [
+          "packages/agent/src/evidence-triage-workflow.ts",
+          "packages/agent/test/evidence-triage-bounded-loop.test.ts"
+        ]
+      },
+      "externalEffectGate": "separate-committed-provider-authority",
+      "integrationState": "pending",
+      "acceptedIntegrationSha": null
+    },
+    {
+      "featureId": "Task143",
+      "milestoneId": "FV-M3-WAVE3",
+      "prerequisiteIds": [
+        "Task141"
+      ],
+      "riskLevel": "level2",
+      "scopeAuthority": {
+        "authorityRefId": "cf1-freeze",
+        "locator": "W3-143"
+      },
+      "ownership": {
+        "pathCeiling": 2,
+        "allowedPaths": [
+          "packages/agent/src/ontology-bootstrap-workflow.ts",
+          "packages/agent/test/legacy-to-ontology-bootstrap.test.ts"
+        ]
+      },
+      "externalEffectGate": "none",
+      "integrationState": "pending",
+      "acceptedIntegrationSha": null
+    },
+    {
+      "featureId": "Task144",
+      "milestoneId": "FV-M3-WAVE3",
+      "prerequisiteIds": [
+        "Task141"
+      ],
+      "riskLevel": "level2",
+      "scopeAuthority": {
+        "authorityRefId": "cf1-freeze",
+        "locator": "W3-144"
+      },
+      "ownership": {
+        "pathCeiling": 2,
+        "allowedPaths": [
+          "packages/agent/src/investigation-planner-workflow.ts",
+          "packages/agent/test/investigation-planner-bounded-loop.test.ts"
+        ]
+      },
+      "externalEffectGate": "none",
+      "integrationState": "pending",
+      "acceptedIntegrationSha": null
+    },
+    {
+      "featureId": "Task145",
+      "milestoneId": "FV-M3-WAVE3",
+      "prerequisiteIds": [
+        "Task141"
+      ],
+      "riskLevel": "level2",
+      "scopeAuthority": {
+        "authorityRefId": "cf1-freeze",
+        "locator": "W3-145"
+      },
+      "ownership": {
+        "pathCeiling": 2,
+        "allowedPaths": [
+          "packages/agent/src/prr-negotiation-workflow.ts",
+          "packages/agent/test/prr-negotiation-draft-only.test.ts"
+        ]
+      },
+      "externalEffectGate": "human-send-gate-preserved",
+      "integrationState": "pending",
+      "acceptedIntegrationSha": null
+    },
+    {
+      "featureId": "Task146",
+      "milestoneId": "FV-M3-WAVE3",
+      "prerequisiteIds": [
+        "Task141"
+      ],
+      "riskLevel": "level2",
+      "scopeAuthority": {
+        "authorityRefId": "cf1-freeze",
+        "locator": "W3-146"
+      },
+      "ownership": {
+        "pathCeiling": 2,
+        "allowedPaths": [
+          "packages/agent/src/timeline-builder-workflow.ts",
+          "packages/agent/test/timeline-builder-workflow.test.ts"
+        ]
+      },
+      "externalEffectGate": "none",
+      "integrationState": "pending",
+      "acceptedIntegrationSha": null
+    },
+    {
+      "featureId": "Task147",
+      "milestoneId": "FV-M3-WAVE3",
+      "prerequisiteIds": [
+        "Task141"
+      ],
+      "riskLevel": "level2",
+      "scopeAuthority": {
+        "authorityRefId": "cf1-freeze",
+        "locator": "W3-147"
+      },
+      "ownership": {
+        "pathCeiling": 2,
+        "allowedPaths": [
+          "packages/agent/src/contradiction-finder-workflow.ts",
+          "packages/agent/test/contradiction-finder-workflow.test.ts"
+        ]
+      },
+      "externalEffectGate": "none",
+      "integrationState": "pending",
+      "acceptedIntegrationSha": null
+    },
+    {
+      "featureId": "Task148",
+      "milestoneId": "FV-M3-WAVE3",
+      "prerequisiteIds": [
+        "Task141"
+      ],
+      "riskLevel": "level2",
+      "scopeAuthority": {
+        "authorityRefId": "cf1-freeze",
+        "locator": "W3-148"
+      },
+      "ownership": {
+        "pathCeiling": 2,
+        "allowedPaths": [
+          "packages/agent/src/report-builder-workflow.ts",
+          "packages/agent/test/report-builder-draft-only.test.ts"
+        ]
+      },
+      "externalEffectGate": "no-publication-or-export",
+      "integrationState": "pending",
+      "acceptedIntegrationSha": null
+    },
+    {
+      "featureId": "Task149",
+      "milestoneId": "FV-M3-WAVE3",
+      "prerequisiteIds": [
+        "Task141"
+      ],
+      "riskLevel": "level2",
+      "scopeAuthority": {
+        "authorityRefId": "cf1-freeze",
+        "locator": "W3-149"
+      },
+      "ownership": {
+        "pathCeiling": 2,
+        "allowedPaths": [
+          "packages/agent/src/prr-proactive-trigger.ts",
+          "packages/agent/test/prr-proactive-trigger.test.ts"
+        ]
+      },
+      "externalEffectGate": "demand-only",
+      "integrationState": "pending",
+      "acceptedIntegrationSha": null
+    },
+    {
+      "featureId": "Task150",
+      "milestoneId": "FV-M3-WAVE3",
+      "prerequisiteIds": [
+        "Task141"
+      ],
+      "riskLevel": "level2",
+      "scopeAuthority": {
+        "authorityRefId": "cf1-freeze",
+        "locator": "W3-150"
+      },
+      "ownership": {
+        "pathCeiling": 2,
+        "allowedPaths": [
+          "packages/agent/src/ingestion-proactive-trigger.ts",
+          "packages/agent/test/ingestion-proactive-trigger.test.ts"
+        ]
+      },
+      "externalEffectGate": "demand-only",
+      "integrationState": "pending",
+      "acceptedIntegrationSha": null
+    },
+    {
+      "featureId": "Task151",
+      "milestoneId": "FV-M3-WAVE3",
+      "prerequisiteIds": [
+        "Task141"
+      ],
+      "riskLevel": "level2",
+      "scopeAuthority": {
+        "authorityRefId": "cf1-freeze",
+        "locator": "W3-151"
+      },
+      "ownership": {
+        "pathCeiling": 2,
+        "allowedPaths": [
+          "packages/agent/src/investigation-proactive-trigger.ts",
+          "packages/agent/test/investigation-proactive-trigger.test.ts"
+        ]
+      },
+      "externalEffectGate": "demand-only",
+      "integrationState": "pending",
+      "acceptedIntegrationSha": null
+    },
+    {
+      "featureId": "Task152",
+      "milestoneId": "FV-M3-WAVE3",
+      "prerequisiteIds": [
+        "Task141"
+      ],
+      "riskLevel": "level2",
+      "scopeAuthority": {
+        "authorityRefId": "cf1-freeze",
+        "locator": "W3-152"
+      },
+      "ownership": {
+        "pathCeiling": 2,
+        "allowedPaths": [
+          "packages/agent/src/memory-curation.ts",
+          "packages/agent/test/memory-curation.test.ts"
+        ]
+      },
+      "externalEffectGate": "none",
+      "integrationState": "pending",
+      "acceptedIntegrationSha": null
+    },
+    {
+      "featureId": "A-FIXTURE",
+      "milestoneId": "FV-M4-WAVE4",
+      "prerequisiteIds": [
+        "Task142",
+        "Task143",
+        "Task144",
+        "Task145",
+        "Task146",
+        "Task147",
+        "Task148",
+        "Task149",
+        "Task150",
+        "Task151",
+        "Task152"
+      ],
+      "riskLevel": "level3",
+      "scopeAuthority": {
+        "authorityRefId": "acceptance-plan",
+        "locator": "A116-WORKORDER-FIXTURE"
+      },
+      "ownership": {
+        "pathCeiling": 3,
+        "allowedPaths": [
+          "packages/local-runtime/test/fixtures/resident-acceptance-fixture.ts",
+          "packages/agent/test/fixtures/resident-acceptance-evidence.ts",
+          "docs/agentic/claims/task-154-resident-acceptance-fixture.md"
+        ]
+      },
+      "externalEffectGate": "none",
+      "integrationState": "pending",
+      "acceptedIntegrationSha": null
+    },
+    {
+      "featureId": "A-01",
+      "milestoneId": "FV-M4-WAVE4",
+      "prerequisiteIds": [
+        "A-FIXTURE"
+      ],
+      "riskLevel": "level3",
+      "scopeAuthority": {
+        "authorityRefId": "acceptance-plan",
+        "locator": "A116-WORKORDER-A01"
+      },
+      "ownership": {
+        "pathCeiling": 3,
+        "allowedPaths": [
+          "packages/local-runtime/test/fixtures/resident-acceptance-fixture.ts",
+          "packages/local-runtime/test/resident-acceptance-mounted-restart.test.ts",
+          "docs/agentic/claims/task-155-resident-acceptance-mounted-restart.md"
+        ]
+      },
+      "externalEffectGate": "none",
+      "integrationState": "pending",
+      "acceptedIntegrationSha": null
+    },
+    {
+      "featureId": "A-02",
+      "milestoneId": "FV-M4-WAVE4",
+      "prerequisiteIds": [
+        "A-01"
+      ],
+      "riskLevel": "level3",
+      "scopeAuthority": {
+        "authorityRefId": "acceptance-plan",
+        "locator": "A116-WORKORDER-A02"
+      },
+      "ownership": {
+        "pathCeiling": 3,
+        "allowedPaths": [
+          "packages/local-runtime/test/resident-acceptance-disconnect-reconnect.test.ts",
+          "packages/local-runtime/test/fixtures/resident-acceptance-fixture.ts",
+          "docs/agentic/claims/task-156-resident-acceptance-disconnect-reconnect.md"
+        ]
+      },
+      "externalEffectGate": "actual-mount-reconnect-requires-separate-authority",
+      "integrationState": "pending",
+      "acceptedIntegrationSha": null
+    },
+    {
+      "featureId": "A-03",
+      "milestoneId": "FV-M4-WAVE4",
+      "prerequisiteIds": [
+        "A-02"
+      ],
+      "riskLevel": "level3",
+      "scopeAuthority": {
+        "authorityRefId": "acceptance-plan",
+        "locator": "A116-WORKORDER-A03"
+      },
+      "ownership": {
+        "pathCeiling": 4,
+        "allowedPaths": [
+          "packages/agent/test/fixtures/resident-acceptance-evidence.ts",
+          "packages/local-runtime/test/fixtures/resident-acceptance-fixture.ts",
+          "packages/agent/test/resident-acceptance-nous-and-legacy.test.ts",
+          "docs/agentic/claims/task-157-resident-acceptance-nous.md"
+        ]
+      },
+      "externalEffectGate": "exact-coordinator-provider-authority-required",
+      "integrationState": "pending",
+      "acceptedIntegrationSha": null
+    },
+    {
+      "featureId": "A-04",
+      "milestoneId": "FV-M4-WAVE4",
+      "prerequisiteIds": [
+        "A-03"
+      ],
+      "riskLevel": "level3",
+      "scopeAuthority": {
+        "authorityRefId": "acceptance-plan",
+        "locator": "A116-WORKORDER-A04"
+      },
+      "ownership": {
+        "pathCeiling": 4,
+        "allowedPaths": [
+          "packages/agent/test/fixtures/resident-acceptance-evidence.ts",
+          "packages/local-runtime/test/fixtures/resident-acceptance-fixture.ts",
+          "packages/agent/test/resident-acceptance-nous-and-legacy.test.ts",
+          "docs/agentic/claims/task-158-resident-acceptance-legacy-proposal.md"
+        ]
+      },
+      "externalEffectGate": "exact-coordinator-provider-authority-required-if-selected",
+      "integrationState": "pending",
+      "acceptedIntegrationSha": null
+    },
+    {
+      "featureId": "A-05",
+      "milestoneId": "FV-M4-WAVE4",
+      "prerequisiteIds": [
+        "A-04"
+      ],
+      "riskLevel": "level3",
+      "scopeAuthority": {
+        "authorityRefId": "acceptance-plan",
+        "locator": "A116-WORKORDER-A05"
+      },
+      "ownership": {
+        "pathCeiling": 2,
+        "allowedPaths": [
+          "packages/agent/test/resident-acceptance-trigger-and-planning.test.ts",
+          "docs/agentic/claims/task-159-resident-acceptance-trigger-draft.md"
+        ]
+      },
+      "externalEffectGate": "none",
+      "integrationState": "pending",
+      "acceptedIntegrationSha": null
+    },
+    {
+      "featureId": "A-06",
+      "milestoneId": "FV-M4-WAVE4",
+      "prerequisiteIds": [
+        "A-05"
+      ],
+      "riskLevel": "level3",
+      "scopeAuthority": {
+        "authorityRefId": "acceptance-plan",
+        "locator": "A116-WORKORDER-A06"
+      },
+      "ownership": {
+        "pathCeiling": 2,
+        "allowedPaths": [
+          "packages/agent/test/resident-acceptance-trigger-and-planning.test.ts",
+          "docs/agentic/claims/task-160-resident-acceptance-planning-contradiction.md"
+        ]
+      },
+      "externalEffectGate": "exact-coordinator-provider-authority-required-if-selected",
+      "integrationState": "pending",
+      "acceptedIntegrationSha": null
+    },
+    {
+      "featureId": "A-07",
+      "milestoneId": "FV-M4-WAVE4",
+      "prerequisiteIds": [
+        "A-06"
+      ],
+      "riskLevel": "level3",
+      "scopeAuthority": {
+        "authorityRefId": "acceptance-plan",
+        "locator": "A116-WORKORDER-A07"
+      },
+      "ownership": {
+        "pathCeiling": 2,
+        "allowedPaths": [
+          "packages/agent/test/resident-acceptance-provider-feasibility.test.ts",
+          "docs/agentic/claims/task-161-resident-acceptance-provider-parity.md"
+        ]
+      },
+      "externalEffectGate": "approved-local-compatibility-authority-required",
+      "integrationState": "pending",
+      "acceptedIntegrationSha": null
+    },
+    {
+      "featureId": "A-08",
+      "milestoneId": "FV-M4-WAVE4",
+      "prerequisiteIds": [
+        "A-07"
+      ],
+      "riskLevel": "level3",
+      "scopeAuthority": {
+        "authorityRefId": "acceptance-plan",
+        "locator": "A116-WORKORDER-A08"
+      },
+      "ownership": {
+        "pathCeiling": 2,
+        "allowedPaths": [
+          "packages/agent/test/resident-acceptance-provider-feasibility.test.ts",
+          "docs/agentic/claims/task-162-resident-acceptance-subscription-feasibility.md"
+        ]
+      },
+      "externalEffectGate": "official-flow-authority-only",
+      "integrationState": "pending",
+      "acceptedIntegrationSha": null
+    },
+    {
+      "featureId": "A-09",
+      "milestoneId": "FV-M4-WAVE4",
+      "prerequisiteIds": [
+        "A-08"
+      ],
+      "riskLevel": "level3",
+      "scopeAuthority": {
+        "authorityRefId": "acceptance-plan",
+        "locator": "A116-WORKORDER-A09"
+      },
+      "ownership": {
+        "pathCeiling": 2,
+        "allowedPaths": [
+          "packages/ui/test/resident-acceptance-cockpit-tailnet.test.tsx",
+          "docs/agentic/claims/task-163-resident-acceptance-cockpit-tailnet.md"
+        ]
+      },
+      "externalEffectGate": "served-checkout-inspection-requires-separate-authority",
+      "integrationState": "pending",
+      "acceptedIntegrationSha": null
+    },
+    {
+      "featureId": "A-10",
+      "milestoneId": "FV-M4-WAVE4",
+      "prerequisiteIds": [
+        "A-09"
+      ],
+      "riskLevel": "level3",
+      "scopeAuthority": {
+        "authorityRefId": "acceptance-plan",
+        "locator": "A116-WORKORDER-A10"
+      },
+      "ownership": {
+        "pathCeiling": 4,
+        "allowedPaths": [
+          "packages/agent/test/resident-acceptance-adversarial.test.ts",
+          "packages/local-runtime/test/fixtures/resident-acceptance-fixture.ts",
+          "packages/agent/test/fixtures/resident-acceptance-evidence.ts",
+          "docs/agentic/claims/task-164-resident-acceptance-adversarial.md"
+        ]
+      },
+      "externalEffectGate": "none",
+      "integrationState": "pending",
+      "acceptedIntegrationSha": null
+    },
+    {
+      "featureId": "Task153",
+      "milestoneId": "FV-M5-RELEASE",
+      "prerequisiteIds": [
+        "A-01",
+        "A-02",
+        "A-03",
+        "A-04",
+        "A-05",
+        "A-06",
+        "A-07",
+        "A-08",
+        "A-09",
+        "A-10"
+      ],
+      "riskLevel": "level3",
+      "scopeAuthority": {
+        "authorityRefId": "full-vision-plan",
+        "locator": "Task 153 Coordinator Release Gate"
+      },
+      "ownership": {
+        "pathCeiling": 3,
+        "allowedPaths": [
+          "docs/agentic/resident-agent-full-vision-program-registry.md",
+          "docs/agentic/resident-agent-full-vision-acceptance-matrix.md",
+          "docs/agentic/claims/task-153-resident-full-vision-release-gate.md"
+        ]
+      },
+      "externalEffectGate": "exact-Task153-provider-and-release-authority-required",
+      "integrationState": "pending",
+      "acceptedIntegrationSha": null
+    }
+  ]
+}

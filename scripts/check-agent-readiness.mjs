@@ -1,5 +1,6 @@
+import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, lstatSync, readFileSync } from "node:fs";
 
 const requiredFiles = [
   "AGENTS.md",
@@ -7,6 +8,11 @@ const requiredFiles = [
   ".opencode/AGENTS.md",
   ".agents/skills/cestus-software-factory/SKILL.md",
   "docs/agentic/software-factory.md",
+  "docs/agentic/contracts/software-factory-active-mission.v1.json",
+  "docs/agentic/contracts/resident-agent-full-vision-mission-state.v1.json",
+  "docs/agentic/claims/resident-agent-full-vision-successor-mission-control.md",
+  "scripts/check-software-factory-active-mission.mjs",
+  "scripts/check-software-factory-active-mission.test.mjs",
   "docs/agentic/task-template.md",
   "docs/agentic/review-template.md",
   "docs/superpowers/specs/2026-06-30-ontology-layer-design.md",
@@ -69,10 +75,15 @@ const requiredFiles = [
   "docs/superpowers/specs/2026-07-10-resident-task-orchestrator-design.md",
   "docs/superpowers/plans/2026-07-10-resident-task-orchestrator-implementation.md"
 ];
-const missionStateCheck = [
+const activeMissionCheck = [
   process.execPath,
-  "scripts/check-software-factory-mission-state.mjs"
+  "scripts/check-software-factory-active-mission.mjs"
 ];
+const activeMissionSelectorPath =
+  "docs/agentic/contracts/software-factory-active-mission.v1.json";
+const activeMissionCheckerPath = "scripts/check-software-factory-active-mission.mjs";
+const expectedActiveMissionSelectorSha256 =
+  "3a65d4f16c668d1d740a12c219b5905f15f70b8329074f7f79e2bc1b677ce9e8";
 const forbiddenSkillLocations = [
   ".factory/skills/cestus-software-factory/SKILL.md",
   ".codex/skills/cestus-software-factory/SKILL.md"
@@ -139,10 +150,33 @@ for (const file of forbiddenSkillLocations) {
 }
 
 try {
-  execFileSync(missionStateCheck[0], missionStateCheck.slice(1), { stdio: "pipe" });
+  requireRegularFile(activeMissionSelectorPath, "active mission selector");
+  const selectorBytes = readFileSync(activeMissionSelectorPath);
+  if (sha256(selectorBytes) !== expectedActiveMissionSelectorSha256) {
+    failures.push("active mission selector digest changed");
+  } else {
+    const selector = JSON.parse(selectorBytes.toString("utf8"));
+    const checker = selector?.activeMission?.checker;
+    if (checker?.path !== activeMissionCheckerPath) {
+      failures.push("active mission checker path changed");
+    } else {
+      requireRegularFile(activeMissionCheckerPath, "active mission checker");
+      if (sha256(readFileSync(activeMissionCheckerPath)) !== checker.sha256) {
+        failures.push("active mission checker digest changed");
+      }
+    }
+  }
+} catch (error) {
+  failures.push(error instanceof Error ? error.message : String(error));
+}
+
+try {
+  if (failures.length === 0) {
+    execFileSync(activeMissionCheck[0], activeMissionCheck.slice(1), { stdio: "pipe" });
+  }
 } catch (error) {
   const stderr = error && typeof error === "object" && "stderr" in error ? error.stderr : "";
-  failures.push(`software factory mission state failed${stderr ? `: ${String(stderr).trim()}` : ""}`);
+  failures.push(`software factory active mission failed${stderr ? `: ${String(stderr).trim()}` : ""}`);
 }
 
 for (const file of trackedTextFiles()) {
@@ -198,4 +232,15 @@ function readTrackedUtf8File(file) {
   } catch {
     return undefined;
   }
+}
+
+function requireRegularFile(path, label) {
+  const stat = lstatSync(path);
+  if (!stat.isFile() || stat.isSymbolicLink()) {
+    throw new Error(`${label} must be a regular non-symlink file`);
+  }
+}
+
+function sha256(value) {
+  return createHash("sha256").update(value).digest("hex");
 }

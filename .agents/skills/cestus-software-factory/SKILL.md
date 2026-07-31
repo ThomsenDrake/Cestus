@@ -19,8 +19,9 @@ Before editing source, tests, scripts, docs, or factory instructions, read:
 2. `docs/agentic/software-factory.md`
 3. `docs/superpowers/specs/2026-06-30-ontology-layer-design.md`
 4. `docs/superpowers/plans/2026-06-30-ontology-layer-implementation.md`
-5. The active feature spec and plan for the current slice.
-6. Any existing `docs/agentic/claims/*.md` files for the task area.
+5. `docs/agentic/contracts/software-factory-active-mission.v1.json` and the active mission source it selects.
+6. The active feature spec and plan for the current slice.
+7. Any existing `docs/agentic/claims/*.md` files for the task area.
 
 For design-only or planning-only work, still read `AGENTS.md`, this skill, `docs/agentic/software-factory.md`, and the relevant existing specs/plans.
 
@@ -94,13 +95,13 @@ Detailed evidence and remaining gaps from the first resident-agent MVP integrati
 
 - Brainstorming or new product behavior: explore context, ask clarifying questions, propose approaches, present a design, and wait for approval before writing files.
 - Implementation planning: write a plan with measurable tasks, owned files, exact targeted commands, acceptance criteria, rollback/escalation conditions, and review gates.
-- Implementation: select the calibrated level from `docs/agentic/contracts/software-factory-mission-state.v1.json`, then use its proportionate validation, review, worktree, model, and commit rules.
+- Implementation: use `docs/agentic/contracts/software-factory-active-mission.v1.json` to authenticate the integrated calibration and select the active mission. Apply the calibration's level mechanics with the active mission's exact dependency, ownership, eligibility, milestone, and gate facts.
 - Review: lead with defects, missing tests, spec drift, invariant violations, and verification gaps. Summaries come after findings.
 - Child thread dispatch: include only the current slice, this skill path, active branch, required docs, owned files, exact commands, and stop conditions.
 
 ## Calibrated Task Execution Contract
 
-The mission-state source is the only authority for active feature facts, ownership, status, prerequisites, milestones, and release evidence. It defines the three levels:
+Factory readiness hash-authenticates the active-mission selector and its selected checker; the checker pins the immutable mission envelope and requires append-only registry markers for integration and milestone projections. That chain preserves the historical calibration and names the only authority for current feature facts, ownership, prerequisites, milestones, and release evidence. The calibration predecessor defines the three levels:
 
 - Level 1: concise scope, relevant inspection, focused validation, and atomic commits. A fresh automated review is required only when production code changes.
 - Level 2: one owner, compact durable state, test or exact reproduction before behavior edits, minimal implementation, focused cross-boundary gates, atomic commits, one fresh review, and milestone integration. Use dual review only for the source-defined high-impact boundaries. Keep behavior changes test-first.

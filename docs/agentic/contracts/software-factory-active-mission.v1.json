@@ -1,0 +1,35 @@
+{
+  "schemaVersion": "software-factory-active-mission-selector.v1",
+  "selectorId": "cestus-software-factory-active-mission",
+  "historicalPredecessor": {
+    "missionId": "software-factory-calibration",
+    "status": "integrated",
+    "acceptedIntegrationSha": "9bb902a5e201a4ab6a0e71339d1ff28a3dfaf95c",
+    "source": {
+      "path": "docs/agentic/contracts/software-factory-mission-state.v1.json",
+      "sha256": "4f86f78fbedfc27993513888bb349610e6e5a7bfcf2c6a82775e6d97ea2d05c3"
+    },
+    "checker": {
+      "path": "scripts/check-software-factory-mission-state.mjs",
+      "sha256": "c5a83e917f2f9040fb522d3a078fb35dd0de752b84c1dc77c83ca6a2304f2792"
+    },
+    "test": {
+      "path": "scripts/check-software-factory-mission-state.test.mjs",
+      "sha256": "889329082267bc4d6efe76e1398eaf2139224804e99d17057d46699b9aab4e91"
+    },
+    "expectedFingerprint": "sha256:799af83764d6c098f3b1a97d6d30fc3b9b13f32f7c57204d92383fab371179ac",
+    "expectedImmutableEnvelopeFingerprint": "sha256:82e666a86d2b3ccd0ceafd634975d0a7459d3fe7600d27cc8345dd0f531fbc1e"
+  },
+  "activeMission": {
+    "missionId": "resident-agent-full-vision",
+    "schemaVersion": "resident-agent-full-vision-mission-state.v1",
+    "source": {
+      "path": "docs/agentic/contracts/resident-agent-full-vision-mission-state.v1.json"
+    },
+    "checker": {
+      "path": "scripts/check-software-factory-active-mission.mjs",
+      "sha256": "ba70a5a53978d8e369b445dde87b9d10ffee3356b8d3b237a57abf4d5323a023"
+    },
+    "immutableEnvelopeFingerprint": "sha256:4c909946e9c86f2c07100e0245aa662d9493f376391052b3b54c7f93a2901b36"
+  }
+}
