@@ -15674,6 +15674,45 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   external-system, pull-request, production-route, preview-branch, and
   unrelated actions remain unauthorized.
 
+## RV-1-E-1327 — Record-29 assurance calibration integrated
+
+- Recorded at: 2026-07-31T08:22:23Z
+- Exact approved candidate
+  `f33329919ce256d71e28b1bb6c1e34bb1421da78` is integrated by
+  history-preserving no-ff merge
+  `4d5dffe9927596cc96d7629c40e6c8f1fbf42ac4`, tree
+  `6eab0f9c69d3c9f42e9677a89253ec66f0c706a6`. Its exact parents are
+  approval-first `15df6e78b9c7de0fa4b821954355318666f5f50c` and candidate-second
+  `f33329919ce256d71e28b1bb6c1e34bb1421da78`. E-1324 authority, causal RED,
+  both fresh E-1326 approvals, strict record-29 release, and the complete V4
+  lineage remain ancestral without rewrite.
+- Integrated candidate blobs are unchanged: claim
+  `a6e835be7867f5632d5a8ac873fa420832fe4e5b`; assurance test
+  `ca8494080118c2ef1527456fad6a1dff5c8a97cb`. They exactly equal the reviewed
+  candidate tree.
+- Fresh integrated gates pass assurance **20/20**, contract markers
+  **29 / 20 / 29 / 15**, mission **20/20** with deterministic mission JSON,
+  typecheck, and factory readiness. Clean real repository mode executes all
+  29 commands, including Task137B-W **140/140** and Task136 **383/383**, and
+  emits exact `TASK136_REPOSITORY_PREFIX_OK records=29 commands=29` and
+  `TASK136_REPOSITORY_RELEASE_CLOSURE_OK records=29 commands=29`.
+- Exact two-path calibration scope and semantics remain unchanged. V4
+  contract, checker, mission, packages, all product and package-test bytes,
+  raw release pins and commands, historical pre-record-29
+  `.slice(0, 28)`, historical W1 `.slice(0, 26)`, Task138, and Task136's
+  exact ten prerequisites and 33 paths remain frozen. Candidate-blob
+  equality, ancestry, dependency, `git diff --check`, strict Git integrity,
+  and clean state pass.
+- Status advances record-29 assurance `approved -> integrated`. Task136
+  remains `released`; strict product frontier remains **29 of 29**. This
+  assurance-only integration is not a second product release.
+- Task20 history-preserving publication to `neo` is the next bounded task and
+  remains gated on this event's clean committed milestone plus exact
+  pre-publish local/tracking/remote `neo` equality. No Wave 3 start,
+  production readiness, Wave 5 release, provider, credential,
+  external-system, pull-request, production-route, preview-branch, or
+  unrelated action is claimed or authorized by this event.
+
 ## Task136 dispatch release v4: Task127
 
 ```json
