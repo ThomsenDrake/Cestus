@@ -16,7 +16,7 @@ Before editing, read:
 
 ## Work Rules
 
-- Select Level 1, 2, or 3 from `docs/agentic/contracts/software-factory-mission-state.v1.json`; it is the sole current authority for mission mechanics, ownership, status, and gates.
+- Select the active authority through `docs/agentic/contracts/software-factory-active-mission.v1.json`. Factory readiness hash-authenticates the selector and selected checker, which preserves the integrated calibration predecessor and names the sole active mission source; use the calibration's Level 1, 2, or 3 mechanics together with registry-authenticated ownership, eligibility, milestone, and gate facts from that active source.
 - Use a task-scoped branch or worktree.
 - Change only files listed by the current task unless a verifier requires a small supporting edit.
 - Use a failing test or exact reproduction before behavior edits; Level 1 documentation and behavior-neutral work use focused validation.
