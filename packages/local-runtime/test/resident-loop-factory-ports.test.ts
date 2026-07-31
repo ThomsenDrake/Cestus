@@ -300,7 +300,7 @@ describe("resident loop factory ports", () => {
         event.payload.object === fixture.legacyCandidateId
       )).toHaveLength(1);
       expect(fixture.runtimeCalls).toEqual({
-        preview: 1,
+        preview: 2,
         approval: 0,
         effect: 1
       });
