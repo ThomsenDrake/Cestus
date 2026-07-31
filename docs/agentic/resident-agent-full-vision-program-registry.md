@@ -15211,6 +15211,116 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   claimed`; Task140P implementation remains closed until this amendment is
   approved and integrated and its separate bounded lifecycle authority exists.
 
+## RV-1-E-1330 — Exact successor mission-control candidate admitted to fresh dual review
+
+- Recorded at: 2026-07-31T13:58:19Z
+- The exact documentation/control-plane candidate is
+  `47c3e1a9f957a251ff2a4af2abc3e634b03fb36a`, tree
+  `9e6e29630377e5f87007b202613739b48fc88d0f`, with sole parent E1329
+  authority `639ff359f67d7cd156bc1b6be5ac56a842dbb030`. It changes exactly E1329's
+  nine authorized paths with `3483` insertions and `12` deletions. No package
+  product source, product test, registry, frozen calibration mission, parked
+  preview, or unrelated worktree byte is part of the candidate.
+- The successor mission raw bytes are
+  `0d49b2ef5abb5081196b1e1348d84ef9308fa073499a894815b1eb7c05740810`;
+  its canonical fingerprint is
+  `sha256:6dc38e4338f9e120fe958c9015efaed77df6e8e809f6bb1a4c19ea1bd5070086`
+  and immutable-envelope fingerprint is
+  `sha256:4c909946e9c86f2c07100e0245aa662d9493f376391052b3b54c7f93a2901b36`.
+  The authenticated selector, active checker, readiness checker, and black-box
+  test raw SHA-256 values are respectively
+  `3a65d4f16c668d1d740a12c219b5905f15f70b8329074f7f79e2bc1b677ce9e8`,
+  `ba70a5a53978d8e369b445dde87b9d10ffee3356b8d3b237a57abf4d5323a023`,
+  `1358f79d5d88b7d852549ae33f5f06af4f4ec528c3145e73cdcce1580d0fac97`,
+  and `6f514b9f146c2d5f466c7f18f153fec6d9e8ecb01a865ce8c0c6876ac1e2ece4`.
+- Exact candidate-byte validation passes the active checker-level black-box
+  suite `8/8`, historical calibration mission `20/20`, frozen Task136 V4
+  assurance `20/20`, TypeScript typecheck, factory readiness, skill
+  validation, JSON parsing, whitespace, exact scope, immutable calibration
+  hashes, E1329 ancestry, and clean candidate worktree checks. The selector
+  reports `prospectiveEligibleFeatureIds=["Task140P"]` and
+  `eligibleFeatureIds=[]` while control-plane status remains `candidate`.
+- Admit only these exact bytes to completely fresh independent read-only
+  architecture and executability review. Reviews must verify the authenticated
+  selector/checker trust chain, append-only projection topology, real
+  checker-level eligibility cases, explicit remaining dependency graph,
+  Task140P terminal CF-1R28.2 eleven-path ceiling, E1328 failure ownership,
+  Wave 2 and Wave 3 barriers, acceptance fixture phase, human gates, and sole
+  Task153 release gate. Changed bytes invalidate both reviews.
+- Advance successor mission control only `candidate -> reviewing`. Task140P
+  remains ineligible for lifecycle authorization until exact approval is
+  recorded and integrated history-preservingly; no product implementation,
+  Wave 3 start, provider invocation, publication, repository closure, or
+  release is authorized by this event. Strict historical frontier remains
+  `29/29`.
+
+## RV-1-E-1331 — Successor mission candidate rejected; exact lifecycle-topology repair authorized
+
+- Recorded at: 2026-07-31T14:22:33Z
+- Completely fresh independent read-only executability reviewer
+  `/root/successor_executability_review` returns **APPROVED** with no material
+  defect for exact candidate
+  `47c3e1a9f957a251ff2a4af2abc3e634b03fb36a`, tree
+  `9e6e29630377e5f87007b202613739b48fc88d0f`, and sole parent E1329
+  `639ff359f67d7cd156bc1b6be5ac56a842dbb030`. Completely fresh independent
+  read-only architecture reviewer `/root/successor_architecture_review`
+  returns **NEEDS-CHANGES** for those same bytes on one material fail-closed
+  lifecycle-topology defect. Preserve both verdicts; the architecture defect
+  rejects the candidate and the executability verdict is not approval to
+  integrate it. Changed candidate bytes invalidate both reviews.
+- The defect is reproduced independently in disposable local Git histories
+  against the canonical checker without a registry fixture. First, a
+  two-parent integration whose second parent is the exact reviewed candidate
+  and whose first parent is merely a descendant of the approval event is
+  accepted even when that intervening commit changes the integrated tree;
+  the projection then reports Task140P eligible. Second, a one-parent
+  Task140P candidate changing only a path outside all eleven owned paths is
+  accepted and advances projected eligibility to Task140R0. These are local
+  checker counterexamples only; no repository worktree or ref was changed.
+- Root cause is bounded to
+  `scripts/check-software-factory-active-mission.mjs`: lifecycle validation
+  requires approval ancestry and the candidate as second parent, but does not
+  require the exact approval commit as first parent, authenticate the
+  deterministic integration tree, or compare a candidate's changed paths to
+  its feature `allowedPaths` and `pathCeiling`.
+- Authorize one forward TDD correction in exactly these five existing
+  control-plane paths:
+  `scripts/check-software-factory-active-mission.test.mjs`,
+  `scripts/check-software-factory-active-mission.mjs`,
+  `docs/agentic/contracts/software-factory-active-mission.v1.json`,
+  `scripts/check-agent-readiness.mjs`, and
+  `docs/agentic/claims/resident-agent-full-vision-successor-mission-control.md`.
+  First add one real checker-level black-box test that completes both local
+  histories and expects rejection; before checker edits the active suite must
+  be **9 = eight passed + one causal failure** because both invalid histories
+  are still accepted. Then require every projected candidate to be a
+  one-parent commit, require its direct changed paths to be a subset of the
+  feature's exact allowed paths and no greater than its ceiling, require the
+  integration merge's first parent to equal the exact approval registry
+  commit and second parent to equal the reviewed candidate, and require the
+  integration tree to equal Git's deterministic merge tree for those exact
+  parents. The control-plane candidate additionally keeps E1329's exact nine
+  non-registry path ceiling across its forward lineage.
+- Updating the active selector's checker digest, readiness's selector digest,
+  and the claim's exact repair evidence is part of this same correction.
+  Freeze the machine-readable mission, immutable envelope, historical
+  calibration mission/checker/test, all other documentation and scripts, all
+  package product source and product tests, `package.json`, parked preview,
+  `neo`, and unrelated worktrees. No product behavior or external effect is
+  authorized.
+- Record this event first, forward-merge its exact authority into the
+  successor candidate branch history-preservingly, reproduce RED, implement
+  the single root-cause correction, pass active black-box, historical 20/20,
+  V4 20/20, typecheck, readiness, skill, scope, ancestry, hash-chain, and
+  clean-state gates, and commit a new immutable candidate without rewriting
+  rejected history. Obtain completely fresh architecture and executability
+  reviews of the changed bytes before any approval or integration.
+- Advance successor mission control
+  `reviewing -> rejected -> implementing`. Task140P remains closed; strict
+  historical frontier remains `29/29`. This event is not approval,
+  integration, Task140P lifecycle authority, Wave 3 start, publication,
+  repository closure, production readiness, or release.
+
 ## RV-1-E-1318 — Task136 strict-record candidate rejected; finite currentness repair authorized
 
 - Recorded at: 2026-07-31T06:02:45Z
