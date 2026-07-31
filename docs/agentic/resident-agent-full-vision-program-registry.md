@@ -53721,3 +53721,88 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   release. `neo`, provider, credential, external-system, pull-request,
   production-route, preview-branch, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-1308 — Four-source GREEN halted; one-line preview-accounting correction authorized
+
+- Recorded at: 2026-07-31T02:00:43Z
+- E-1307 is committed and pushed at exact program head
+  `e12f862ace661dfc4ad591990c79b194f62cba4b`, then forward-merged and
+  pushed into Task136 at exact two-parent head
+  `2c7ea2489a5e12d356c764d6411d9fdf8d85e354`. Halt E-1307 before any
+  source commit or source review. Preserve its exact four unstaged,
+  uncommitted, non-candidate source blobs: T120
+  `60e99de6b7fb147274f4f0989f288735ee88e81e`, C136-P
+  `4ede1f22a599e66e1316ceadac2ebd133938f7b8`, W
+  `a79ccac55f4b4b6693bc18c5c88eda54d080a97b`, and H
+  `8d4a1993732bbe7cf3057ef092d734c3932f3030`.
+- Precommit execution passes H **37/37**, Task138 **355/355**, and provider
+  **25/25**, then stops at Task16 focused
+  **9 = eight passed + one failure**. The exact real-mounted completion title
+  succeeds through its single assertion, receipt/completion, terminal result,
+  and durable reread, then observes runtime calls
+  `{ preview: 2, approval: 0, effect: 1 }` against the frozen
+  `{ preview: 1, approval: 0, effect: 1 }` oracle. No later dynamic packet was
+  run after this first mismatch.
+- Independent read-only diagnostics
+  `/root/task17_e1300_integration_dynamic` and
+  `/root/task17_e1302_h_fixture_diagnostic` agree this is a latent one-line
+  unit-test-oracle defect, not product duplication. Preview one is the
+  package-owned request-time current preview rebuilt before G appends/rereads
+  the durable request and hashes its exact bytes. Preview two is the frozen
+  legacy adapter's independent consume-time report, candidate-set, and
+  selected-candidate eligibility revalidation immediately before its sole
+  `stageApproved` effect.
+- The durable execution has exactly one request, one permanent claim, one
+  assertion proposal/effect, one outcome receipt, one completed suffix, one
+  tool step, one final observation, and one terminal result. It has no retry,
+  recovery replay, second composition, second bind, second witness
+  consumption, second request, second claim, or second effect. The
+  dispatcher/adapter blob containing both preview reads predates the stale
+  expectation and remains frozen; E-1298 W merely admits the exact completed
+  catalog-10 causal unit so the latent final assertion becomes reachable.
+- Removing, memoizing, or reusing either preview would weaken the released
+  request-time binding or immediate pre-effect domain currentness validation.
+  Preserve both reads, W currentness, dispatcher attestation, the Task14/16
+  one-shot handoff witness, and exact `preparationCalls` **1 / 1 / 1 / 1**.
+- Authorize only the smallest forward one-literal correction in
+  `packages/local-runtime/test/resident-loop-factory-ports.test.ts`, starting
+  exact blob `67d48b12ae453d361aa24212fd003114ca923e0d`: in the existing real-mounted
+  completion title, change only `runtimeCalls.preview` expectation from one
+  to two. Preserve `approval: 0`, `effect: 1`, the exact one-assertion check,
+  every title, cardinality, fixture, abstract corpus, preparation count,
+  stop-idempotency assertion, import-policy test, and every other byte.
+- Freeze every product source and every other test in the committed
+  test-only candidate. The four E-1307 source diagnostics may remain
+  preserved in the Task136 working tree but must not enter the test commit.
+- Required corrected committed-tree RED under `TMPDIR=/dev/shm`, one worker,
+  no file parallelism, and the 120-second timeout remains H focused
+  **37 = 36 passed + one causal failure**, Task138 boundary
+  **355 = 354 passed + one causal failure**, provider
+  **25 = zero passed + 25 causal failures**, Task16 focused
+  **9 = eight passed + one causal failure**, producer
+  **144 = 143 passed + one causal failure**, factory boundary
+  **10 = nine passed + one causal failure**, wake boundary
+  **140 = 139 passed + one causal failure**, Task136 card
+  **383 = 355 passed + 28 causal failures**, and exact 37-file cross-card
+  **1,042 = 1,014 passed + 28 causal failures**. The one-line accounting
+  correction is latent behind the frozen source REDs and must add no failure.
+- Also require passing typecheck, factory readiness, mission and V4
+  **20/20**, markers **29 / 20 / 29 / 15**, exact repository first-stop,
+  exact one-test scope, every source and other-test freeze, ancestry, local
+  dependencies, canonical 33-path hash, diff hygiene, strict Git integrity,
+  and clean isolated candidate state.
+- Commit only the corrected factory test with subject
+  `test(local-runtime): correct mounted preview accounting`. Obtain a new,
+  completely fresh independent read-only review of exact immutable bytes,
+  append approval, integrate approval-first/candidate-second on the program
+  branch, rerun the integration packet, append integration, and
+  forward-merge into Task136. Changed bytes invalidate review.
+- Only after this one-line RED is approved, recorded, integrated, and
+  forward-merged may the exact E-1307 four-source GREEN resume. Task16 remains
+  `integrated`; Task136 remains `implementing`; strict product frontier
+  remains **28 of 29**. This is test-oracle correction authority, not product
+  authority, source candidacy, Task136 candidacy, strict record 29,
+  publication, Wave 3 start, repository closure, production readiness, or
+  release. `neo`, provider, credential, external-system, pull-request,
+  production-route, preview-branch, and unrelated actions remain
+  unauthorized.
