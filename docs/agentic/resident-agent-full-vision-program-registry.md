@@ -53649,3 +53649,75 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   release. `neo`, provider, credential, external-system, pull-request,
   production-route, preview-branch, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-1307 — Four-source mounted-completion GREEN authorized
+
+- Recorded at: 2026-07-31T01:48:50Z
+- E-1306 is committed and pushed at exact program head
+  `5baeefdc8653d164f835d27b582ae83c04fca8e5`, then forward-merged and
+  pushed into Task136 at exact two-parent head
+  `10b0697f6fc704d09dd2462d844c7bb9a1b6b1c0`. Exact integrated H-test
+  blob is `124cb586c05a697668890690facf66c9e862f852`.
+- Extend only E-1298's three-source GREEN to the smallest H-owned returned-data
+  repair. Authorize exactly four existing Task136 sources, all already inside
+  the exact 33-path ceiling:
+  `packages/agent/src/plan-observation-contracts.ts`, starting committed blob
+  `32754d92052c8f5d4cd98092a932bbb596a48e2f`;
+  `packages/agent/src/resident-plan-candidate-provider.ts`, starting blob
+  `5bc39430d122bd6fbeedef788ffec6dc35638f0f`;
+  `packages/local-runtime/src/mounted-wake-lifecycle-store.ts`, starting blob
+  `2d86fdcd570efbdee499d1ec807d2db1066f48bc`; and
+  `packages/agent/src/specialist-handoff-projection.ts`, starting blob
+  `3d9d0ee4d38183fd9b1275b51738e7d48fb5e1d0`.
+- Preserve the already-reviewed forward diagnostics for T120, C136-P, and W
+  exactly at working blobs
+  `60e99de6b7fb147274f4f0989f288735ee88e81e`,
+  `4ede1f22a599e66e1316ceadac2ebd133938f7b8`, and
+  `a79ccac55f4b4b6693bc18c5c88eda54d080a97b`. They remain unstaged,
+  uncommitted, and non-candidates until the H repair and complete GREEN packet
+  pass.
+- In H, change only the successful default internal
+  `createInternalSpecialistHandoffProjectionPort().readFull()` return
+  boundary. Return a defensive, recursively deeply frozen, newly allocated
+  plain own-data copy of the authenticated completed projection. Construct
+  only ordinary arrays and `Object.prototype` records from own data
+  descriptors; preserve exact keys, array order, primitives, and optional
+  fields; reject unexpected prototypes, symbols, accessors, functions, or
+  other non-plain values without returning a partial graph; recurse only
+  through descriptor values; and freeze every new array and record before it
+  escapes. Do not modify the public Task138 projection builder, manifest
+  parser, global `freezeProjection`, browser surface, DTO, import boundary, or
+  diagnostic semantics.
+- Preserve every other E-1298 W, C136-P, and T120 requirement exactly:
+  opaque dispatcher invocation attestation and exact receipt envelope;
+  bounded catalog-10 causal-unit accounting and exact terminal adjacency;
+  field-local mount-generation and catalog validation without unsafe-text
+  exemptions; and deeply frozen T120 V2 outputs without weakening R.
+- Freeze every test, bounded-loop R, mounted storage, composition, portable
+  H, gateway, dispatcher, adapter, contracts, design, plan, claim, mission,
+  assurance, routes, providers, credentials, activation behavior, preview
+  branch, and every other product path. No fifth source is authorized.
+- Required clean GREEN under `TMPDIR=/dev/shm`, one worker, no file
+  parallelism, and the 120-second timeout is H focused **37/37**, Task138
+  boundary **355/355**, provider **25/25**, Task16 focused **9/9**, producer
+  **144/144**, factory boundary **10/10**, wake boundary **140/140**, Task136
+  card **383/383**, and exact 37-file cross-card **1,042/1,042**.
+- Also require passing typecheck, factory readiness, mission and V4
+  **20/20**, markers **29 / 20 / 29 / 15**, exact repository first-stop,
+  exact four-source scope, every test and other-source freeze, ancestry, local
+  dependencies, canonical 33-path hash, diff hygiene, strict Git integrity,
+  and clean committed state.
+- Commit only the four authorized sources with subject
+  `fix(agent): preserve exact mounted completion boundaries`. Obtain a new,
+  completely fresh independent read-only source review of exact immutable
+  bytes, append approval, integrate approval-first/candidate-second on the
+  program branch, rerun the integration packet, append integration, and
+  forward-merge into Task136 before Task17 candidate admission. Changed bytes
+  invalidate review.
+- Task16 remains `integrated`; Task136 remains `implementing`; strict product
+  frontier remains **28 of 29**. This is four-source GREEN authority, not
+  source approval or integration, Task136 candidacy, strict record 29,
+  publication, Wave 3 start, repository closure, production readiness, or
+  release. `neo`, provider, credential, external-system, pull-request,
+  production-route, preview-branch, and unrelated actions remain
+  unauthorized.
