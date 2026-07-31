@@ -15539,6 +15539,49 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   production-route, preview-branch, and unrelated actions remain
   unauthorized.
 
+## RV-1-E-1324 — Record-29 assurance calibration authorized
+
+- Recorded at: 2026-07-31T07:40:37Z
+- Exact strict-record release authority is
+  `79e7177829afef0ee5e786b5b27ed05a8dd53c69`, whose sole parent is rebound
+  record candidate `73d4732a6562d2efeaa62702ea7d977aa2d0fa3f`.
+  Task136 remains `released`; the strict product frontier remains
+  **29 of 29**.
+- The preserved V4 lineage at exact clean
+  `91ad47489ce5506f91821dcf57b8fc0a2a1352a0` must forward-merge this
+  authority without rewriting history. Record-29 assurance calibration may
+  change only
+  `docs/agentic/claims/task-136-v4-task137b-authority-transfer.md` and, only
+  after the committed causal RED,
+  `scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs`.
+  The registry may change only through lifecycle events.
+- Proceed test-first. First reproduce the unchanged assurance result exactly
+  **20 = 17 passed + three failed**, with only the three live current-prefix
+  titles reporting `29 !== 28`, then commit only that exact causal evidence
+  to the claim. The minimal GREEN may advance only the three live
+  current-prefix lengths and slices from **28** to **29**, plus their coupled
+  incomplete-found/complete-closure expectation, exact
+  `records=29 commands=29` marker, and 29-command call count.
+- Preserve byte-for-byte the historical W1 `.slice(0, 26)`, its 26
+  assertions, synthetic record-27 activation, all 20 top-level titles, raw
+  release pins and command strings, V4 contract and checker, mission
+  authority, every package and product byte, Task138, and Task136's exact
+  33-path ceiling. No product, contract, checker, mission, release-record, or
+  second-release change is authorized.
+- The exact two-path candidate must pass assurance **20/20**, contract
+  markers **29 / 20 / 29 / 15**, clean repository prefix and release closure
+  **29 records / 29 commands**, typecheck, factory readiness, exact scope,
+  ancestry, dependency, freeze, strict Git integrity, and clean-state gates.
+  Then obtain one completely fresh read-only architecture reviewer and a
+  different completely fresh read-only executability reviewer on the same
+  immutable candidate. Changed bytes invalidate both reviews.
+- Status advances record-29 assurance `claimed -> implementing`. This is an
+  assurance-only calibration, not a second product release, `neo`
+  publication, Wave 3 start, production readiness, or Wave 5 product
+  release. Provider, credential, external-system, pull-request,
+  production-route, preview-branch, and unrelated actions remain
+  unauthorized.
+
 ## Task136 dispatch release v4: Task127
 
 ```json
