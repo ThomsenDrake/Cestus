@@ -54172,3 +54172,92 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   `neo`, provider, credential, external-system, pull-request,
   production-route, preview-branch, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-1314 — Task136 review provenance corrected; exact candidate re-admitted
+
+- Recorded at: 2026-07-31T04:11:39Z
+- Completely fresh independent read-only architecture reviewer
+  `/root/task17_e1313_architecture_review` returns **APPROVED** with no
+  P0-P3 finding for exact immutable Task136 candidate
+  `21ac850894ff3e040069b4307c95e20148db96fc`, tree
+  `e9a7251fae72fc8b169b38d4eb42853d2bbfce26`, and exact parents
+  `320c801c16e487a4b0487fef7550c5fb702a2588` and
+  `87b8931ec4eacaf3b3621a9a08e847da61b37628`. Different completely fresh
+  independent read-only executability reviewer
+  `/root/task17_e1313_executability_review` returns **REJECTED** for that
+  same immutable packet on one P1 provenance-gate defect. Preserve both
+  verdicts and all review evidence unchanged; neither verdict approves or
+  integrates the candidate.
+- The defect is exact: original Task17 Step 4 compares the three historical
+  Task12 binding-RED test blobs at
+  `21935b2197a35c25b194ae57ec5365dd88351049` to current candidate blobs,
+  and E-1313 consequently states falsely that every Task12 binding-RED test
+  remains byte-identical. All three current blobs lawfully evolved after the
+  immutable causal RED:
+  - `packages/agent/test/domain-execution-dispatcher.test.ts` advances from
+    historical blob `13058371223c7f99b089f41c4aabcae734eaa19d` to current
+    blob `d88d435cda590b1922685f9a68f085e14d957e75`;
+  - `packages/agent/test/legacy-staging-adapter.test.ts` advances from
+    historical blob `8e143a1dd692ea292124b44ee4b84bd1a934e44f` to current
+    blob `741bf9c02184c0367c4b4aa08a1b06202bac362e`; and
+  - `packages/agent/test/resident-loop-tool-gateway.test.ts` advances from
+    historical blob `8a1bc1239dc216e261ac2a7164bdd6158fa8bc63` to current
+    blob `667f0e9fc448282f04d955d7c4757535edf98b33`.
+- The forward lineage is preserved and reviewable. Exact approved and
+  integrated missing-binding correction
+  `2a4a69a97712070ac5b9c31521223df1d6ac4a52` is recorded by
+  E-1031 through E-1034; exact approved and integrated chronology correction
+  `f00f9fcad6c8e10f0dc6208f3d7ff60df906cf6e` is recorded by
+  E-1037 through E-1040. Rejected diagnostic last-touch commits
+  `04e76dece8f720be2be37082c009a2ddbb347395` and
+  `317fad088aae8b8948312851a8840ba1bff3d7c6` remain immutable ancestry;
+  exact cumulative gateway-material candidate
+  `ce5107ace435cf0a27f1914d073b2f24f062f1ed` retained and freshly reviewed
+  all earlier causal oracles and all seven exact Task16 test blobs before
+  E-1223 approval and E-1224 integration. No rejected candidate is
+  retroactively approved.
+- Fresh executability review independently reproduces the immutable
+  historical Task12 RED as **79 = 76 passed + three causal failures**, the
+  permanent Task9 RED as **255 = 228 passed + 27 causal failures**, and the
+  current candidate GREEN packet as focused **9/9**, producer **144/144**,
+  factory **10/10**, wake **140/140**, H **37/37**, provider **25/25**,
+  Task138 **355/355**, card **383/383**, and cross-card **1,042/1,042**.
+  Typecheck, readiness, mission and V4 **20/20**, markers
+  **29 / 20 / 29 / 15**, exact repository first-stop, the E-1007
+  differential, timeout classification, scope, ancestry, freezes, strict Git
+  integrity, and clean detached state also pass. These passing gates do not
+  cure E-1313's false provenance sentence.
+- This true-EOF record supersedes only:
+  1. Task17 Step 4's loop requiring each historical Task12 RED blob to equal
+     the current candidate blob; and
+  2. E-1313's sentence asserting current byte identity for those three tests.
+  The operative proof instead requires the exact three historical paths and
+  blobs at `21935b21`, independent reproduction of their historical causal
+  RED, the exact three current candidate blobs above, and preserved
+  approved/integrated forward lineage between them. Preserve every other
+  Task17, E-1288, and E-1313 scope, source-union, ancestry, prerequisite,
+  freeze, differential, review, and no-release requirement unchanged. This
+  correction changes no design, plan, claim, contract, candidate, product,
+  test, assurance, route, provider, credential, activation, or external
+  behavior byte.
+- Advance exact Task136
+  `reviewing -> rejected -> candidate -> reviewing` without substituting or
+  changing candidate bytes. The E-1313 review pair is not reused for
+  approval. Assign completely fresh independent read-only architecture
+  reviewer `/root/task17_e1314_architecture_review` and different completely
+  fresh independent read-only executability reviewer
+  `/root/task17_e1314_executability_review`. Both must bind this true-EOF
+  authority and the exact immutable candidate packet; the executability
+  reviewer must additionally reproduce both historical causal REDs, verify
+  all three historical/current blob pairs and their forward lifecycle, and
+  rerun the complete deterministic and differential packet. Both must return
+  **APPROVED** with no P0-P3 finding. Changed candidate bytes invalidate both
+  reviews.
+- Task16 remains `integrated`; Task136 remains `reviewing`; strict product
+  frontier remains **28 of 29**. This is append-only review-authority repair
+  and same-byte re-admission, not candidate approval or integration, strict
+  record 29, repository closure, publication, Wave 3 start, production
+  readiness, or product release. No product, test, plan, claim, contract,
+  assurance, or other repository edit is authorized during review. `neo`,
+  provider, credential, external-system, pull-request, production-route,
+  preview-branch, and unrelated actions remain unauthorized.
