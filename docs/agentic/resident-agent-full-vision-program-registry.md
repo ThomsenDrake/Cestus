@@ -15396,6 +15396,50 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   external-system, pull-request, production-route, preview-branch, and
   unrelated actions remain unauthorized.
 
+## RV-1-E-1321 — Exact Task136 assurance repair integrated
+
+- Recorded at: 2026-07-31T07:22:12Z
+- Lifecycle transition: the Level-3 assurance repair moves
+  `approved -> integrated`. Exact history-preserving merge
+  `5804d1a9f989c765848ad9fd59d6891ee9272381`, tree
+  `f319aab924e22d5e64d2cd6beaddc5c317d8f265`, has approval-first parent
+  `8ceac45d71a3b508afde28b1b7ab5ba7a6ead401` and exact approved
+  candidate-second parent `7b858513a2d2b489b7fe42dac5c1a4c3a753d21d`.
+  E-1318 currentness candidate, E-1319 authority, exact causal RED, GREEN,
+  and both E-1320 fresh approvals remain ancestral without rewrite.
+- Integrated blobs remain exact:
+  `scripts/resident-agent/assurance/task136-bounded-assurance.mjs` =
+  `2251dedcc0c4e10ae636f60be34d6b30e3bc9b4a`; and
+  `scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs` =
+  `def2bacec8546622f99c6a3265d456b6528a176e`. No candidate or reviewed byte
+  changed during integration.
+- Fresh integrated V4 reproduction is exactly
+  **20 = 17 passed + three failed**, with only the three preserved
+  `29 !== 28` titles. Contract markers remain **29 / 20 / 29 / 15**; mission
+  is **20/20**; typecheck and factory readiness pass.
+- Clean integrated real repository mode executes every frozen release card.
+  Task137B-W passes **7 files / 140 tests**, Task136 passes
+  **17 files / 383 tests**, and the checker emits exact
+  `TASK136_REPOSITORY_PREFIX_OK records=29 commands=29` and
+  `TASK136_REPOSITORY_RELEASE_CLOSURE_OK records=29 commands=29`.
+- Scope remains exactly two assurance files relative to the approval parent.
+  Package and documentation trees, every contract and release-graph byte, all
+  raw commands and raw records, every product and package-test byte, Task138,
+  and Task136's exact 33-path ceiling remain frozen. V4 contract blob remains
+  `5defc88bc6cd4bfe854b0b6107ed221a675953ff`; exact merge ancestry,
+  `git diff --check`, strict Git integrity, and clean state pass.
+- The unchanged E-1317 `Task136 dispatch release v4: Task136` JSON object is
+  now eligible only for a separate rebound strict-record-candidate event on
+  the next clean commit. That candidate must reproduce all Task18 Step 7
+  gates before a released transition. This event itself does not release
+  Task136 or advance the frontier.
+- Task16 and Task136 product remain `integrated`; strict product frontier
+  remains **28 of 29**. No record-29 lifecycle transition, publication,
+  Wave 3 start, production readiness, or product release is claimed.
+  `neo`, provider, credential, external-system, pull-request,
+  production-route, preview-branch, and unrelated actions remain
+  unauthorized.
+
 ## Task136 dispatch release v4: Task127
 
 ```json
