@@ -53201,3 +53201,58 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   release. `neo`, provider, credential, external-system, pull-request,
   production-route, preview-branch, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-1300 — Exact mounted-identity two-test RED approved
+
+- Recorded at: 2026-07-31T00:44:31Z
+- Completely fresh independent read-only reviewer
+  `/root/task17_e1299_red_fresh_review` returns **APPROVED** with no P0-P3
+  defect, missing test, scope drift, or oracle bypass for exact immutable
+  RED commit `04c5a033ee71cb77b2a79f70b71fa752476f8411`, tree
+  `899c46f1dc059d4f7005b064c3623edef6bb5ff5`, sole parent
+  `04e2f0c14b0f64a85d1d8b7f84264992292c16c3`, provider-test blob
+  `a1c6a7c8484c2f143cbc247bcc517af62c735b80`, and factory-test blob
+  `67d48b12ae453d361aa24212fd003114ca923e0d`. Changed bytes invalidate
+  this approval.
+- The provider fixture keeps independent
+  `mountInstanceId: "mount_c136_p"` and changes only its shared authority
+  generation to exact `admission:1`. The factory fixture derives its one
+  abstract proposal ID by the exact released five-field
+  `as_legacy_<sha256>` algorithm. Titles, cardinalities, imports,
+  import-policy controls, abstract corpus, every other test, and every
+  product source remain frozen.
+- Independent execution under `TMPDIR=/dev/shm`, one worker, no file
+  parallelism, and the 120-second timeout reproduces provider
+  **25 = zero passed + 25 causal failures**, focused
+  **9 = eight passed + one causal failure**, producer
+  **144 = 143 passed + one causal failure**, factory boundary
+  **10 = nine passed + one causal failure**, wake boundary
+  **140 = 139 passed + one causal failure**, Task136 card
+  **383 = 356 passed + 27 causal failures**, exact 37-file cross-card
+  **1,042 = 1,015 passed + 27 causal failures**, and Task138 **355/355**.
+  Failures are exactly the 25 frozen C136-P baseline rejections, one
+  initial-H currentness rejection, and one catalog-currentness rejection.
+- Typecheck and factory readiness pass. Mission and V4 each pass **20/20**;
+  markers remain **29 / 20 / 29 / 15**. Repository mode exits one and stops
+  first only at exact
+  `blob mismatch: Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`.
+  Exact two-test scope, every freeze, ancestry, local non-symlink
+  dependencies, TypeScript **5.9.3**, Vitest **4.1.9**, diff hygiene, strict
+  Git integrity, and clean detached state pass. Exact
+  `33 = 15 sources / 17 tests / 1 claim` path hash remains
+  `4cca816c5004bf922d47a44bc8e9216a7f4d1e00a030f20b34d59fb0cd1e442e`.
+- Advance the exact E-1299 RED `reviewing -> approved`. Authorize only its
+  history-preserving approval-first/candidate-second program merge, fresh
+  integration-tree execution, append-only integration record, and forward
+  Task136 merge. Every product source remains frozen by this approval.
+- The separate held E-1298 source diagnostics remain unstaged,
+  uncommitted, and not reviewed. Their progressive full-handoff frozen-output
+  finding requires a later bounded test-first authority after this RED is
+  integrated; it does not alter this exact approval.
+- Task16 remains `integrated`; Task136 remains `implementing`; strict product
+  frontier remains **28 of 29**. This is RED approval, not RED integration,
+  product authority, Task136 candidacy, strict record 29, publication,
+  Wave 3 start, repository closure, production readiness, or release.
+  `neo`, provider, credential, external-system, pull-request,
+  production-route, preview-branch, and unrelated actions remain
+  unauthorized.
