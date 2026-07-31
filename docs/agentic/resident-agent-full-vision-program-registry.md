@@ -15338,6 +15338,64 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   production-route, preview-branch, and unrelated actions remain
   unauthorized.
 
+## RV-1-E-1320 — Exact Task136 repository-runner repair independently approved
+
+- Recorded at: 2026-07-31T07:13:17Z
+- Lifecycle transition: the Level-3 assurance repair moves
+  `candidate -> approved`. Task16 and Task136 product remain `integrated`;
+  strict product frontier remains **28 of 29**.
+- Exact immutable candidate:
+  `7b858513a2d2b489b7fe42dac5c1a4c3a753d21d`, tree
+  `06c6cc49f0e9003f6fc6e14315d3ff166107a939`, sole parent E-1319 authority
+  merge `4b7138278c9c038e068015c1683701c43d10148c`. E-1318 currentness candidate
+  `9ceaa214d8283d85f9f9bf367f0a13b9d39bb05b` and E-1319 authority
+  `864591bfe1fb722bfc8687a65b297cd3e26903d8` are ancestral. Candidate blobs
+  are exactly:
+  `scripts/resident-agent/assurance/task136-bounded-assurance.mjs` =
+  `2251dedcc0c4e10ae636f60be34d6b30e3bc9b4a`; and
+  `scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs` =
+  `def2bacec8546622f99c6a3265d456b6528a176e`.
+- Completely fresh independent architecture/scrutiny reviewer
+  `/root/task18_runner_architecture_review`, direct thread ID
+  `019fb6fb-68ea-7231-ae7e-b04d703d5603`, returns **APPROVED** with no
+  P0–P3 defect. Completely fresh independent black-box executability reviewer
+  `/root/task18_runner_blackbox_review`, direct thread ID
+  `019fb6fb-9a24-78e2-a336-f5bd1a5baa7a`, returns **APPROVED** with no
+  P0–P3 defect. Both bind the exact candidate SHA/tree/scope; changed bytes
+  invalidate both approvals.
+- Architecture review confirms one singular E-1318 exact card/path
+  currentness successor; preserved raw record pins and exact ancestry/blob
+  checks; sibling isolation; zero pre-command effects; and one E-1319 helper
+  selecting only exact IDs `Task137B-W` and `Task136`. The helper appends only
+  `--maxWorkers=1 --testTimeout=120000`, does not mutate input, is consumed
+  only by the real repository adapter immediately before `execFileSync`, and
+  leaves fake/raw argument evidence unchanged. No path heuristic, generic
+  timeout rule, contract drift, product API, or product behavior exists.
+- Independently reproduced gates: focused V4 is exactly
+  **20 = 17 passed + three failed**, with only the three preserved
+  `29 !== 28` titles; contract markers are **29 / 20 / 29 / 15**; mission is
+  **20/20**; Task137B-W is **7 files / 140 tests**; Task136 is
+  **17 files / 383 tests**; typecheck and factory readiness pass. Clean real
+  repository mode executes all 29 frozen cards and emits exact
+  `TASK136_REPOSITORY_PREFIX_OK records=29 commands=29` and
+  `TASK136_REPOSITORY_RELEASE_CLOSURE_OK records=29 commands=29`.
+- Scope is exactly the two E-1319 assurance files. Package and documentation
+  trees, every contract and release-graph byte, all 29 raw command strings,
+  all raw records, every product and package-test byte, Task138, and
+  Task136's exact 33-path ceiling remain frozen. V4 contract blob remains
+  `5defc88bc6cd4bfe854b0b6107ed221a675953ff`; `git diff --check`, strict Git
+  integrity, ancestry, and clean-state gates pass.
+- Approval authorizes only a program-branch history-preserving merge with
+  this approval commit first and exact candidate
+  `7b858513a2d2b489b7fe42dac5c1a4c3a753d21d` second. After integrated gates,
+  append the repair integration event and then a separate rebound
+  strict-record-candidate event for the unchanged E-1317 JSON object.
+- This is assurance-repair approval only. It is not record 29, release,
+  repository closure as a lifecycle claim, publication, Wave 3 start,
+  production readiness, or product release. `neo`, provider, credential,
+  external-system, pull-request, production-route, preview-branch, and
+  unrelated actions remain unauthorized.
+
 ## Task136 dispatch release v4: Task127
 
 ```json
