@@ -15631,6 +15631,49 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   release. No provider, credential, external-system, pull-request,
   production-route, preview-branch, or unrelated action is authorized.
 
+## RV-1-E-1326 — Record-29 assurance calibration independently approved
+
+- Recorded at: 2026-07-31T08:13:31Z
+- Exact immutable candidate
+  `f33329919ce256d71e28b1bb6c1e34bb1421da78`, tree
+  `23c32f50eb5bb32c5ef993d8f46deadf478911c9`, sole parent claim-only RED
+  `47b3c1f7d4c584be77419069d68bec5de7c921a2`, is **APPROVED** with no
+  P0–P3 defect by both wholly fresh independent read-only reviewers.
+- Architecture reviewer `/root/task19_architecture_review`, direct thread ID
+  `019fb72d-b9e2-76f0-a4b8-0b833aa4786c`, verifies exact two-path scope,
+  three live current-prefix transitions, coupled successful closure,
+  unchanged pre-record-29 `.slice(0, 28)` and historical W1
+  `.slice(0, 26)`, frozen product/contract/checker/mission/release bytes,
+  preserved ancestry and integrity, and correct assurance-only/no-second-
+  release classification.
+- Different executability reviewer `/root/task19_executability_review`,
+  direct thread ID `019fb72d-e8b5-7ac0-9a34-1a8d1405a129`, independently
+  reproduces isolated causal RED exactly
+  **20 = 17 passed + three failed**, solely the three required `29 !== 28`
+  titles, and candidate GREEN **20/20**. Its isolated RED log SHA-256 is
+  `82e3031ab32f5d1f4d8e1130e6823a66e7759528ef47872778115eb71b3b4fed`.
+- Independent committed-byte gates pass: contract markers
+  **29 / 20 / 29 / 15**; all 29 real repository commands and exact prefix and
+  release closure **29/29**; Task137B-W **140/140**; Task136 **383/383**;
+  typecheck; factory readiness; mission **20/20** and deterministic mission
+  JSON; exact scope, ancestry, dependency, freeze, `git diff --check`, strict
+  Git integrity, and clean state. The non-fatal missing TypeScript source-map
+  warning changes no result.
+- Candidate blobs remain exact: claim
+  `a6e835be7867f5632d5a8ac873fa420832fe4e5b`; assurance test
+  `ca8494080118c2ef1527456fad6a1dff5c8a97cb`. Changed bytes invalidate both
+  approvals.
+- Status advances record-29 assurance `reviewing -> approved`. Only a
+  history-preserving no-ff merge with this approval commit first and exact
+  candidate `f33329919ce256d71e28b1bb6c1e34bb1421da78` second is authorized.
+  Integrated gates and candidate-blob equality must pass before the separate
+  integrated event.
+- Task136 remains `released`; strict product frontier remains **29 of 29**.
+  This is not another product release, `neo` publication, Wave 3 start,
+  production readiness, or Wave 5 release. Provider, credential,
+  external-system, pull-request, production-route, preview-branch, and
+  unrelated actions remain unauthorized.
+
 ## Task136 dispatch release v4: Task127
 
 ```json
