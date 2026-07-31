@@ -484,6 +484,15 @@ const task136BaselinePins = Object.freeze([
     blobSha: pin.blobSha
   }))
 ]);
+const task136FcPortsStillOwnedSuccessor = Object.freeze({
+  cardId: "Task136-FC-Ports",
+  path: "packages/local-runtime/test/runtime-handle-mounted-authority-imports.test.ts",
+  rawIntegrationSha: "365279fdd4e772c389188d05376ba87afe9782df",
+  rawBlobSha: "0d3bdc674ac08278453dcba67023da4a177cceb0",
+  candidateSha: "e652ec2cae47fea30771f6d223f7af0f65852366",
+  integrationSha: "f3cd6caaf5c4ad97501d173eaee4e4f4887ad3e5",
+  currentBlobSha: "68aa54a4ed1af4cc531023b063e767286757f0ec"
+});
 const releaseRecordSchemaVersion = "task136-dispatch-release.v4";
 const releaseRecordKeys = Object.freeze([
   "schemaVersion",
@@ -1901,6 +1910,65 @@ function assertBlob(adapter, commitish, path, expectedBlobSha, cardId) {
   }
 }
 
+function isTask136FcPortsStillOwnedSuccessor(cardId, path) {
+  return cardId === task136FcPortsStillOwnedSuccessor.cardId &&
+    path === task136FcPortsStillOwnedSuccessor.path;
+}
+
+function assertTask136FcPortsStillOwnedSuccessorBlob(adapter, commitish, label) {
+  const pin = task136FcPortsStillOwnedSuccessor;
+  if (adapter.objectType(commitish, pin.path) !== "blob") {
+    throw new Error(
+      `still-owned ${label} path is not a Git blob: ${pin.cardId}:${pin.path}`
+    );
+  }
+  if (adapter.blobSha(commitish, pin.path) !== pin.currentBlobSha) {
+    throw new Error(`still-owned ${label} blob mismatch: ${pin.cardId}:${pin.path}`);
+  }
+}
+
+function verifyTask136FcPortsStillOwnedSuccessor(recordsById, adapter) {
+  const pin = task136FcPortsStillOwnedSuccessor;
+  const sourceRecord = recordsById.get(pin.cardId);
+  if (!sourceRecord) return;
+
+  const sourcePath = sourceRecord.ownedPathBlobs.find(
+    (entry) => entry.path === pin.path
+  );
+  if (
+    sourceRecord.integrationSha !== pin.rawIntegrationSha ||
+    sourcePath?.blobSha !== pin.rawBlobSha
+  ) {
+    throw new Error(`still-owned raw pin mismatch: ${pin.cardId}:${pin.path}`);
+  }
+  if (!adapter.commitExists(pin.candidateSha)) {
+    throw new Error(`still-owned successor candidate missing: ${pin.cardId}:${pin.path}`);
+  }
+  if (!adapter.commitExists(pin.integrationSha)) {
+    throw new Error(`still-owned successor integration missing: ${pin.cardId}:${pin.path}`);
+  }
+  if (!adapter.isAncestor(pin.rawIntegrationSha, pin.candidateSha)) {
+    throw new Error(
+      `still-owned source integration is not an ancestor of successor candidate: ${pin.cardId}:${pin.path}`
+    );
+  }
+  if (!adapter.isAncestor(pin.candidateSha, pin.integrationSha)) {
+    throw new Error(
+      `still-owned successor candidate is not an ancestor of integration: ${pin.cardId}:${pin.path}`
+    );
+  }
+  const currentHead = adapter.currentHead();
+  if (!adapter.isAncestor(pin.integrationSha, currentHead)) {
+    throw new Error(
+      `still-owned successor integration is not an ancestor of HEAD: ${pin.cardId}:${pin.path}`
+    );
+  }
+
+  assertTask136FcPortsStillOwnedSuccessorBlob(adapter, currentHead, "current HEAD");
+  assertTask136FcPortsStillOwnedSuccessorBlob(adapter, pin.candidateSha, "successor candidate");
+  assertTask136FcPortsStillOwnedSuccessorBlob(adapter, pin.integrationSha, "successor integration");
+}
+
 function currentHeadMigrationTarget(cardId, path) {
   if (cardId === "Task137A" && task137aToTask137bPaths.includes(path)) return "Task137B-W";
   if (cardId === "Task129-MFA" && task129MfaToTask137bPaths.includes(path)) return "Task137B-W";
@@ -1962,6 +2030,7 @@ function verifyGitReleaseEvidence(contract, records, adapter) {
     }
   }
   verifyTask136BaselinePins(recordsById, adapter);
+  verifyTask136FcPortsStillOwnedSuccessor(recordsById, adapter);
 
   const cardsById = new Map(contract.releaseGraph.cards.map((card) => [card.id, card]));
   for (const record of records) {
@@ -1979,7 +2048,10 @@ function verifyGitReleaseEvidence(contract, records, adapter) {
       assertBlob(adapter, record.candidateSha, staticPath.path, pathRecord.blobSha, card.id);
       assertBlob(adapter, record.integrationSha, staticPath.path, pathRecord.blobSha, card.id);
       const migrationTarget = currentHeadMigrationTarget(record.cardId, staticPath.path);
-      if (staticPath.disposition === "owned" || (migrationTarget && !recordsById.has(migrationTarget))) {
+      if (
+        !isTask136FcPortsStillOwnedSuccessor(record.cardId, staticPath.path) &&
+        (staticPath.disposition === "owned" || (migrationTarget && !recordsById.has(migrationTarget)))
+      ) {
         assertBlob(adapter, adapter.currentHead(), staticPath.path, pathRecord.blobSha, card.id);
       }
     }
