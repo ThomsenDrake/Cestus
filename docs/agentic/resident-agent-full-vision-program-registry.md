@@ -15257,6 +15257,87 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   production-route, preview-branch, and unrelated actions remain
   unauthorized.
 
+## RV-1-E-1319 — Task136 currentness candidate halted; finite repository runner repair authorized
+
+- Recorded at: 2026-07-31T06:36:03Z
+- Preserve exact clean E-1318 currentness-repair candidate
+  `9ceaa214d8283d85f9f9bf367f0a13b9d39bb05b`, tree
+  `0ae30bbf24019272d18ce2d567465f2500340998`, sole parent E-1318 authority
+  `2774b14253e9668895cfb9ad71af7f3f24d6c47e`. Its two-file assurance
+  change restores the exact pre-calibration unit signature
+  **20 = 17 passed + three failed**, with only the three preserved
+  `29 !== 28` titles. Contract markers **29 / 20 / 29 / 15**, typecheck,
+  factory readiness, mission **20/20**, exact two-file scope, product/package
+  freezes, strict Git integrity, and clean state pass.
+- The candidate is not release-admissible because clean real repository mode
+  reaches the frozen release commands and then stops at `Task137B-W`:
+  **140 = 138 passed + two failed**. Only the unchanged local
+  `wake-supervisor-runtime-imports.test.ts` AST/symbol-resolution titles
+  `seals factory issuance to one nonescaping lexical registrar and one safe
+  facade wrapper` and `allows only the dispatcher default and named gateway
+  constructor import chain` inherit Vitest's 5,000-millisecond default and
+  time out. Repository mode emits neither prefix nor closure and reports
+  `release command failed: Task137B-W`.
+- The exact same seven-file Task137B-W command, run with
+  `TMPDIR=/dev/shm`, `--maxWorkers=1`, and `--testTimeout=120000`, passes
+  **7 files / 140 tests**. Two completely fresh independent read-only
+  diagnoses classify this as a P1 deterministic assurance-runner
+  false-negative. It is not product, AST-oracle, contract, graph, raw-command,
+  record, or ownership drift and requires no new product or safety decision.
+  The user already mandates this exact local execution envelope for the
+  focused import-policy path.
+- Reject `9ceaa214d8283d85f9f9bf367f0a13b9d39bb05b` for release while preserving
+  it immutably as the causal currentness candidate. Under Task18 Step 7's
+  forward-repair branch and standing routine coordinator delegation,
+  authorize one further Level-3 assurance-only repair in exactly:
+  `scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs` and
+  `scripts/resident-agent/assurance/task136-bounded-assurance.mjs`.
+  Freeze the design, plan, claims, mission, every contract and release-graph
+  byte, all 29 raw command strings, all raw records, every package source and
+  test, every product byte, Task138, and Task136's exact 33-path
+  **15 sources / 17 tests / one claim** ceiling. The registry may change only
+  through lifecycle events.
+- Proceed test-first without a permanent Level-3 RED commit. Preserve exactly
+  20 top-level assurance titles. Extend the existing
+  `verifies release records against Git evidence and argument-array commands`
+  title to require one pure assurance-script execution-argument helper.
+  Raw parsed command arguments remain byte-for-byte unchanged. The helper
+  appends the frozen tail
+  `--maxWorkers=1 --testTimeout=120000` only for exact card IDs
+  `Task137B-W` and `Task136`, the only two frozen cards that execute the
+  import-policy file; all other 27 cards and unknown/sibling IDs receive no
+  tail, and the input array is never mutated. The real repository adapter
+  alone consumes the derived execution arguments immediately before
+  `execFileSync`; fake-adapter argument-array evidence remains raw.
+- In the existing unsafe-command title, prove that either execution-control
+  flag appearing in a raw contract command remains rejected before commands.
+  Add no path heuristic, substring inference, generic timeout policy,
+  contract mutation, timing assertion, fallback, provider behavior, product
+  API, or unrelated case. Required causal RED is
+  **20 = 16 passed + four failed**: the one execution-argument title plus
+  only the three preserved `29 !== 28` titles.
+- Required GREEN restores **20 = 17 passed + three failed**, with only those
+  three pre-Task19 titles. The direct Task137B-W gate must pass **140/140**;
+  the Task136 card must pass **383/383**; and clean repository mode must emit
+  exact `TASK136_REPOSITORY_PREFIX_OK records=29 commands=29` and
+  `TASK136_REPOSITORY_RELEASE_CLOSURE_OK records=29 commands=29`.
+  Reproduce contract markers, typecheck, factory readiness, mission
+  **20/20**, scope, ancestry, raw-command separation, raw pins, all freezes,
+  strict Git integrity, and clean state.
+- Commit the exact two-file GREEN as a new immutable candidate. Obtain a
+  completely fresh architecture/scrutiny reviewer and a different completely
+  fresh black-box executability reviewer on that same candidate. Changed
+  bytes invalidate both. Only after approval may the program branch record
+  approval, integrate approval-first/candidate-second, reproduce every gate,
+  record integration, and append a rebound strict-record-candidate event
+  binding the unchanged E-1317 JSON object to the new clean HEAD.
+- Task16 and Task136 remain `integrated`; strict product frontier remains
+  **28 of 29**. This event is not record 29, release, repository closure,
+  publication, Wave 3 start, production readiness, or product release.
+  `neo`, provider, credential, external-system, pull-request,
+  production-route, preview-branch, and unrelated actions remain
+  unauthorized.
+
 ## Task136 dispatch release v4: Task127
 
 ```json
