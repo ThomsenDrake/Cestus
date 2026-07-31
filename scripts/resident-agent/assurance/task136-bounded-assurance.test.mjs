@@ -1316,6 +1316,11 @@ test("verifies release records against Git evidence and argument-array commands"
   const records = releaseRecordsFor(contract);
   const adapter = fakeRepositoryAdapter(records);
   const result = verifyReleaseClosure(contract, releaseRecordMarkdown(records), adapter);
+  assert.equal(
+    typeof assurance.repositoryExecutionArgsForCard,
+    "function",
+    "repositoryExecutionArgsForCard export"
+  );
 
   assert.equal(result.records, 29);
   assert.equal(result.commands, 29);
@@ -1324,6 +1329,50 @@ test("verifies release records against Git evidence and argument-array commands"
     cardId: "Task126",
     args: ["packages/agent/test/byok-provider.test.ts"]
   });
+
+  const controlTail = ["--maxWorkers=1", "--testTimeout=120000"];
+  const controlledCardIds = new Set(["Task137B-W", "Task136"]);
+  for (const card of contract.releaseGraph.cards) {
+    const rawArgs = Object.freeze(
+      card.command.slice("npm test -- ".length).split(" ")
+    );
+    const expectedArgs = controlledCardIds.has(card.id)
+      ? [...rawArgs, ...controlTail]
+      : [...rawArgs];
+    assert.deepEqual(
+      assurance.repositoryExecutionArgsForCard(card.id, rawArgs),
+      expectedArgs,
+      card.id
+    );
+    assert.deepEqual(
+      rawArgs,
+      card.command.slice("npm test -- ".length).split(" "),
+      `${card.id} raw input`
+    );
+  }
+
+  for (const cardId of [
+    "unknown",
+    "Task137B-W-sibling",
+    "Task136-sibling"
+  ]) {
+    const rawArgs = Object.freeze(["abstract/local.test.ts"]);
+    assert.deepEqual(
+      assurance.repositoryExecutionArgsForCard(cardId, rawArgs),
+      ["abstract/local.test.ts"],
+      cardId
+    );
+    assert.deepEqual(rawArgs, ["abstract/local.test.ts"], `${cardId} raw input`);
+  }
+
+  for (const card of contract.releaseGraph.cards) {
+    const call = adapter.commandCalls.find((entry) => entry.cardId === card.id);
+    assert.deepEqual(
+      call?.args,
+      card.command.slice("npm test -- ".length).split(" "),
+      `${card.id} fake-adapter raw args`
+    );
+  }
 });
 
 test("rejects frozen repository-evidence and execution mutations", () => {
@@ -1471,16 +1520,34 @@ test("rejects non-blob owned-path Git objects before release commands", () => {
 });
 
 test("rejects unsafe frozen command grammar before executing commands", () => {
-  const contract = clone(loadV4Contract());
-  contract.releaseGraph.cards[0].command = "npm test -- packages/agent/test/byok-provider.test.ts; echo unsafe";
-  const records = releaseRecordsFor(contract);
-  const adapter = fakeRepositoryAdapter(records);
+  const cases = [
+    {
+      id: "shell grammar",
+      command: "npm test -- packages/agent/test/byok-provider.test.ts; echo unsafe"
+    },
+    {
+      id: "raw max-workers control",
+      command: "npm test -- --maxWorkers=1 packages/agent/test/byok-provider.test.ts"
+    },
+    {
+      id: "raw timeout control",
+      command: "npm test -- --testTimeout=120000 packages/agent/test/byok-provider.test.ts"
+    }
+  ];
 
-  assert.throws(
-    () => verifyReleaseClosure(contract, releaseRecordMarkdown(records), adapter),
-    /invalid exact targeted Vitest command/
-  );
-  assert.equal(adapter.commandCalls.length, 0);
+  for (const testCase of cases) {
+    const contract = clone(loadV4Contract());
+    contract.releaseGraph.cards[0].command = testCase.command;
+    const records = releaseRecordsFor(contract);
+    const adapter = fakeRepositoryAdapter(records);
+
+    assert.throws(
+      () => verifyReleaseClosure(contract, releaseRecordMarkdown(records), adapter),
+      /invalid exact targeted Vitest command/,
+      testCase.id
+    );
+    assert.equal(adapter.commandCalls.length, 0, testCase.id);
+  }
 });
 
 test("rejects finite Task136 graph, compatibility, baseline, raw-pin, and record-29 migration mutations", () => {
