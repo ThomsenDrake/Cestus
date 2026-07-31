@@ -15582,6 +15582,55 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   production-route, preview-branch, and unrelated actions remain
   unauthorized.
 
+## RV-1-E-1325 — Record-29 assurance calibration admitted to fresh dual review
+
+- Recorded at: 2026-07-31T07:58:05Z
+- Preserved V4 candidate
+  `91ad47489ce5506f91821dcf57b8fc0a2a1352a0` forward-merges exact E-1324
+  authority `bb40818d2e9885c00b15785eb16e6bd34b73be68` as
+  `45826f443af9ee159556231b572d2e0bea2b76cb`, with the preserved V4 lineage
+  first and current program authority second. Claim-only causal RED
+  `47b3c1f7d4c584be77419069d68bec5de7c921a2` is its sole successor.
+- Exact immutable GREEN candidate is
+  `f33329919ce256d71e28b1bb6c1e34bb1421da78`, tree
+  `23c32f50eb5bb32c5ef993d8f46deadf478911c9`, sole parent the causal RED.
+  Candidate blobs are
+  `docs/agentic/claims/task-136-v4-task137b-authority-transfer.md` =
+  `a6e835be7867f5632d5a8ac873fa420832fe4e5b`; and
+  `scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs` =
+  `ca8494080118c2ef1527456fad6a1dff5c8a97cb`.
+- RED is exactly **20 = 17 passed + three failed**. Only the three live
+  current-prefix titles fail, each solely `29 !== 28`. GREEN is exactly
+  **20/20**. It advances only those three live lengths/slices and their
+  coupled successful closure, exact `records=29 commands=29` markers, and
+  29-command count. Historical pre-record-29 `.slice(0, 28)` and W1
+  `.slice(0, 26)` semantics remain unchanged.
+- Clean committed-byte gates pass: contract markers
+  **29 / 20 / 29 / 15**; real repository prefix and release closure
+  **29 records / 29 commands**; Task137B-W **140/140**; Task136 **383/383**;
+  mission **20/20**; typecheck; factory readiness; exact two-path scope;
+  real Vitest `4.1.9` and TypeScript `5.9.3`; ancestry, dependency, freeze,
+  `git diff --check`, strict Git integrity, and clean state.
+- Scope relative to authority merge is exactly the claim and assurance test.
+  V4 contract, checker, mission, registry, packages, every product and package
+  test, raw release pins and commands, Task138, and Task136's exact 33 paths
+  remain frozen.
+- Completely fresh read-only architecture assignment
+  `/root/task19_architecture_review` owns current-versus-historical semantics,
+  exact scope, ancestry, freeze boundaries, and assurance-only/no-second-
+  release classification. Different completely fresh read-only executability
+  assignment `/root/task19_executability_review` owns independent RED/GREEN,
+  contract, repository, Task137B-W, Task136, typecheck, readiness, mission,
+  scope, dependency, integrity, and clean-state reproduction. Both bind exact
+  candidate `f33329919ce256d71e28b1bb6c1e34bb1421da78`; changed bytes invalidate
+  both.
+- Status advances record-29 assurance
+  `implementing -> candidate -> reviewing`. Task136 remains `released`; the
+  strict product frontier remains **29 of 29**. This is not another product
+  release, `neo` publication, Wave 3 start, production readiness, or Wave 5
+  release. No provider, credential, external-system, pull-request,
+  production-route, preview-branch, or unrelated action is authorized.
+
 ## Task136 dispatch release v4: Task127
 
 ```json
