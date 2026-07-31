@@ -1346,14 +1346,23 @@ function assertDeeplyFrozenPlainOwnData(value: unknown): void {
   expect(types.isProxy(value)).toBe(false);
   expect(Object.isFrozen(value)).toBe(true);
   expect(Object.getOwnPropertySymbols(value)).toEqual([]);
+  const descriptors = Object.getOwnPropertyDescriptors(value);
   if (Array.isArray(value)) {
-    for (const item of value) assertDeeplyFrozenPlainOwnData(item);
+    expect(Object.getPrototypeOf(value)).toBe(Array.prototype);
+    expect(Object.hasOwn(descriptors, "length")).toBe(true);
+    for (const [key, descriptor] of Object.entries(descriptors)) {
+      expect(descriptor.enumerable, key).toBe(key !== "length");
+      expect("value" in descriptor, key).toBe(true);
+      expect(descriptor.get, key).toBeUndefined();
+      expect(descriptor.set, key).toBeUndefined();
+      if ("value" in descriptor) {
+        assertDeeplyFrozenPlainOwnData(descriptor.value);
+      }
+    }
     return;
   }
   expect(Object.getPrototypeOf(value)).toBe(Object.prototype);
-  for (const [key, descriptor] of Object.entries(
-    Object.getOwnPropertyDescriptors(value)
-  )) {
+  for (const [key, descriptor] of Object.entries(descriptors)) {
     expect(descriptor.enumerable, key).toBe(true);
     expect("value" in descriptor, key).toBe(true);
     expect(descriptor.get, key).toBeUndefined();
