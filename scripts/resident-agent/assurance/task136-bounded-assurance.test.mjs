@@ -374,6 +374,15 @@ const task136BaselineFixtureBlobs = [
     blobSha
   }))
 ];
+const task136FcPortsStillOwnedSuccessor = Object.freeze({
+  cardId: "Task136-FC-Ports",
+  path: "packages/local-runtime/test/runtime-handle-mounted-authority-imports.test.ts",
+  rawIntegrationSha: "365279fdd4e772c389188d05376ba87afe9782df",
+  rawBlobSha: "0d3bdc674ac08278453dcba67023da4a177cceb0",
+  candidateSha: "e652ec2cae47fea30771f6d223f7af0f65852366",
+  integrationSha: "f3cd6caaf5c4ad97501d173eaee4e4f4887ad3e5",
+  currentBlobSha: "68aa54a4ed1af4cc531023b063e767286757f0ec"
+});
 const task136TransferPathsBySource = [
   [
     "T120-R",
@@ -927,6 +936,8 @@ function releaseRecordsFor(contract) {
   const records = [];
   const historicalRecords = new Map([
     ...registryPrefixRecords(),
+    recordFromRegistry("Task139-P2"),
+    recordFromRegistry(task136FcPortsStillOwnedSuccessor.cardId),
     recordFromRegistry("Task122")
   ].map((record) => [record.cardId, record]));
   for (const [index, card] of contract.releaseGraph.cards.entries()) {
@@ -1062,6 +1073,25 @@ function fakeRepositoryAdapter(records, options = {}) {
       pathBlobByCommit.set(`HEAD:${ownedPath.path}`, ownedPath.blobSha);
     }
   }
+  const successorSource = records.find(
+    (record) => record.cardId === task136FcPortsStillOwnedSuccessor.cardId
+  );
+  if (successorSource) {
+    const successorPath =
+      options.stillOwnedSuccessorPath ?? task136FcPortsStillOwnedSuccessor.path;
+    pathBlobByCommit.set(
+      `${task136FcPortsStillOwnedSuccessor.candidateSha}:${successorPath}`,
+      task136FcPortsStillOwnedSuccessor.currentBlobSha
+    );
+    pathBlobByCommit.set(
+      `${task136FcPortsStillOwnedSuccessor.integrationSha}:${successorPath}`,
+      task136FcPortsStillOwnedSuccessor.currentBlobSha
+    );
+    pathBlobByCommit.set(
+      `HEAD:${successorPath}`,
+      task136FcPortsStillOwnedSuccessor.currentBlobSha
+    );
+  }
 
   return {
     commandCalls,
@@ -1089,6 +1119,13 @@ function fakeRepositoryAdapter(records, options = {}) {
         options.prerequisiteNotAncestral &&
         ancestorSha === options.prerequisiteNotAncestral.integrationSha &&
         descendantSha === options.prerequisiteNotAncestral.candidateSha
+      ) {
+        return false;
+      }
+      if (
+        options.ancestryNotPreserved &&
+        ancestorSha === options.ancestryNotPreserved.ancestorSha &&
+        descendantSha === options.ancestryNotPreserved.descendantSha
       ) {
         return false;
       }
@@ -1279,6 +1316,11 @@ test("verifies release records against Git evidence and argument-array commands"
   const records = releaseRecordsFor(contract);
   const adapter = fakeRepositoryAdapter(records);
   const result = verifyReleaseClosure(contract, releaseRecordMarkdown(records), adapter);
+  assert.equal(
+    typeof assurance.repositoryExecutionArgsForCard,
+    "function",
+    "repositoryExecutionArgsForCard export"
+  );
 
   assert.equal(result.records, 29);
   assert.equal(result.commands, 29);
@@ -1287,6 +1329,50 @@ test("verifies release records against Git evidence and argument-array commands"
     cardId: "Task126",
     args: ["packages/agent/test/byok-provider.test.ts"]
   });
+
+  const controlTail = ["--maxWorkers=1", "--testTimeout=120000"];
+  const controlledCardIds = new Set(["Task137B-W", "Task136"]);
+  for (const card of contract.releaseGraph.cards) {
+    const rawArgs = Object.freeze(
+      card.command.slice("npm test -- ".length).split(" ")
+    );
+    const expectedArgs = controlledCardIds.has(card.id)
+      ? [...rawArgs, ...controlTail]
+      : [...rawArgs];
+    assert.deepEqual(
+      assurance.repositoryExecutionArgsForCard(card.id, rawArgs),
+      expectedArgs,
+      card.id
+    );
+    assert.deepEqual(
+      rawArgs,
+      card.command.slice("npm test -- ".length).split(" "),
+      `${card.id} raw input`
+    );
+  }
+
+  for (const cardId of [
+    "unknown",
+    "Task137B-W-sibling",
+    "Task136-sibling"
+  ]) {
+    const rawArgs = Object.freeze(["abstract/local.test.ts"]);
+    assert.deepEqual(
+      assurance.repositoryExecutionArgsForCard(cardId, rawArgs),
+      ["abstract/local.test.ts"],
+      cardId
+    );
+    assert.deepEqual(rawArgs, ["abstract/local.test.ts"], `${cardId} raw input`);
+  }
+
+  for (const card of contract.releaseGraph.cards) {
+    const call = adapter.commandCalls.find((entry) => entry.cardId === card.id);
+    assert.deepEqual(
+      call?.args,
+      card.command.slice("npm test -- ".length).split(" "),
+      `${card.id} fake-adapter raw args`
+    );
+  }
 });
 
 test("rejects frozen repository-evidence and execution mutations", () => {
@@ -1323,6 +1409,60 @@ test("rejects frozen repository-evidence and execution mutations", () => {
       })
     },
     {
+      id: "still-owned successor candidate missing",
+      message: new RegExp(
+        `still-owned successor candidate missing: ${task136FcPortsStillOwnedSuccessor.cardId}:${task136FcPortsStillOwnedSuccessor.path.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`
+      ),
+      adapter: () => fakeRepositoryAdapter(validRecords, {
+        missingCommitSha: task136FcPortsStillOwnedSuccessor.candidateSha
+      })
+    },
+    {
+      id: "still-owned successor integration missing",
+      message: new RegExp(
+        `still-owned successor integration missing: ${task136FcPortsStillOwnedSuccessor.cardId}:${task136FcPortsStillOwnedSuccessor.path.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`
+      ),
+      adapter: () => fakeRepositoryAdapter(validRecords, {
+        missingCommitSha: task136FcPortsStillOwnedSuccessor.integrationSha
+      })
+    },
+    {
+      id: "source integration not ancestral to still-owned successor candidate",
+      message: new RegExp(
+        `still-owned source integration is not an ancestor of successor candidate: ${task136FcPortsStillOwnedSuccessor.cardId}:${task136FcPortsStillOwnedSuccessor.path.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`
+      ),
+      adapter: () => fakeRepositoryAdapter(validRecords, {
+        ancestryNotPreserved: {
+          ancestorSha: task136FcPortsStillOwnedSuccessor.rawIntegrationSha,
+          descendantSha: task136FcPortsStillOwnedSuccessor.candidateSha
+        }
+      })
+    },
+    {
+      id: "still-owned successor candidate not ancestral to integration",
+      message: new RegExp(
+        `still-owned successor candidate is not an ancestor of integration: ${task136FcPortsStillOwnedSuccessor.cardId}:${task136FcPortsStillOwnedSuccessor.path.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`
+      ),
+      adapter: () => fakeRepositoryAdapter(validRecords, {
+        ancestryNotPreserved: {
+          ancestorSha: task136FcPortsStillOwnedSuccessor.candidateSha,
+          descendantSha: task136FcPortsStillOwnedSuccessor.integrationSha
+        }
+      })
+    },
+    {
+      id: "still-owned successor integration not ancestral to HEAD",
+      message: new RegExp(
+        `still-owned successor integration is not an ancestor of HEAD: ${task136FcPortsStillOwnedSuccessor.cardId}:${task136FcPortsStillOwnedSuccessor.path.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`
+      ),
+      adapter: () => fakeRepositoryAdapter(validRecords, {
+        ancestryNotPreserved: {
+          ancestorSha: task136FcPortsStillOwnedSuccessor.integrationSha,
+          descendantSha: "HEAD"
+        }
+      })
+    },
+    {
       id: "dirty checkout",
       message: /repository checkout is dirty/,
       adapter: () => fakeRepositoryAdapter(validRecords, { dirtyCheckout: true })
@@ -1340,11 +1480,13 @@ test("rejects frozen repository-evidence and execution mutations", () => {
   ];
 
   for (const testCase of cases) {
+    const adapter = testCase.adapter();
     assert.throws(
-      () => verifyReleaseClosure(contract, releaseRecordMarkdown(validRecords), testCase.adapter()),
+      () => verifyReleaseClosure(contract, releaseRecordMarkdown(validRecords), adapter),
       testCase.message,
       testCase.id
     );
+    assert.equal(adapter.commandCalls.length, 0, testCase.id);
   }
 });
 
@@ -1378,16 +1520,34 @@ test("rejects non-blob owned-path Git objects before release commands", () => {
 });
 
 test("rejects unsafe frozen command grammar before executing commands", () => {
-  const contract = clone(loadV4Contract());
-  contract.releaseGraph.cards[0].command = "npm test -- packages/agent/test/byok-provider.test.ts; echo unsafe";
-  const records = releaseRecordsFor(contract);
-  const adapter = fakeRepositoryAdapter(records);
+  const cases = [
+    {
+      id: "shell grammar",
+      command: "npm test -- packages/agent/test/byok-provider.test.ts; echo unsafe"
+    },
+    {
+      id: "raw max-workers control",
+      command: "npm test -- --maxWorkers=1 packages/agent/test/byok-provider.test.ts"
+    },
+    {
+      id: "raw timeout control",
+      command: "npm test -- --testTimeout=120000 packages/agent/test/byok-provider.test.ts"
+    }
+  ];
 
-  assert.throws(
-    () => verifyReleaseClosure(contract, releaseRecordMarkdown(records), adapter),
-    /invalid exact targeted Vitest command/
-  );
-  assert.equal(adapter.commandCalls.length, 0);
+  for (const testCase of cases) {
+    const contract = clone(loadV4Contract());
+    contract.releaseGraph.cards[0].command = testCase.command;
+    const records = releaseRecordsFor(contract);
+    const adapter = fakeRepositoryAdapter(records);
+
+    assert.throws(
+      () => verifyReleaseClosure(contract, releaseRecordMarkdown(records), adapter),
+      /invalid exact targeted Vitest command/,
+      testCase.id
+    );
+    assert.equal(adapter.commandCalls.length, 0, testCase.id);
+  }
 });
 
 test("rejects finite Task136 graph, compatibility, baseline, raw-pin, and record-29 migration mutations", () => {
@@ -1841,7 +2001,21 @@ test("rejects finite Task136 graph, compatibility, baseline, raw-pin, and record
   assert.equal(records.length, 29);
   const record29Registry = releaseRecordMarkdown(records);
   const task136Record = records.find((record) => record.cardId === "Task136");
+  const task136FcPortsRecord = records.find(
+    (record) => record.cardId === task136FcPortsStillOwnedSuccessor.cardId
+  );
   assert.ok(task136Record);
+  assert.ok(task136FcPortsRecord);
+  assert.equal(
+    task136FcPortsRecord.integrationSha,
+    task136FcPortsStillOwnedSuccessor.rawIntegrationSha
+  );
+  assert.equal(
+    task136FcPortsRecord.ownedPathBlobs.find(
+      ({ path }) => path === task136FcPortsStillOwnedSuccessor.path
+    )?.blobSha,
+    task136FcPortsStillOwnedSuccessor.rawBlobSha
+  );
   const successfulRecord29Adapter = fakeRepositoryAdapter(records);
   const record29Result = assurance.verifyTask136ReleasePrefix(contract, {
     registryText: record29Registry,
@@ -1881,6 +2055,119 @@ test("rejects finite Task136 graph, compatibility, baseline, raw-pin, and record
       );
       assert.equal(adapter.commandCalls.length, 0, `record-29 Task136 blob: ${commitish}:${path}`);
     }
+  }
+
+  for (const commitish of [
+    task136FcPortsRecord.candidateSha,
+    task136FcPortsRecord.integrationSha
+  ]) {
+    const nonBlobAdapter = fakeRepositoryAdapter(records, {
+      nonBlobObject: {
+        commitish,
+        path: task136FcPortsStillOwnedSuccessor.path,
+        type: "tree"
+      }
+    });
+    assert.throws(
+      () => assurance.verifyTask136ReleasePrefix(contract, {
+        registryText: record29Registry,
+        adapter: nonBlobAdapter
+      }),
+      new RegExp(
+        `path is not a Git blob: ${task136FcPortsStillOwnedSuccessor.cardId}:${task136FcPortsStillOwnedSuccessor.path.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`
+      ),
+      `raw FC-Ports path object: ${commitish}`
+    );
+    assert.equal(nonBlobAdapter.commandCalls.length, 0, `raw FC-Ports path object: ${commitish}`);
+
+    const wrongBlobAdapter = fakeRepositoryAdapter(records, {
+      blobMismatch: { commitish, path: task136FcPortsStillOwnedSuccessor.path }
+    });
+    assert.throws(
+      () => assurance.verifyTask136ReleasePrefix(contract, {
+        registryText: record29Registry,
+        adapter: wrongBlobAdapter
+      }),
+      new RegExp(
+        `blob mismatch: ${task136FcPortsStillOwnedSuccessor.cardId}:${task136FcPortsStillOwnedSuccessor.path.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`
+      ),
+      `raw FC-Ports path blob: ${commitish}`
+    );
+    assert.equal(wrongBlobAdapter.commandCalls.length, 0, `raw FC-Ports path blob: ${commitish}`);
+  }
+
+  for (const testCase of [
+    {
+      id: "successor candidate",
+      commitish: task136FcPortsStillOwnedSuccessor.candidateSha
+    },
+    {
+      id: "successor integration",
+      commitish: task136FcPortsStillOwnedSuccessor.integrationSha
+    },
+    { id: "current HEAD", commitish: "HEAD" }
+  ]) {
+    const nonBlobAdapter = fakeRepositoryAdapter(records, {
+      nonBlobObject: {
+        commitish: testCase.commitish,
+        path: task136FcPortsStillOwnedSuccessor.path,
+        type: "tree"
+      }
+    });
+    assert.throws(
+      () => assurance.verifyTask136ReleasePrefix(contract, {
+        registryText: record29Registry,
+        adapter: nonBlobAdapter
+      }),
+      new RegExp(
+        `still-owned ${testCase.id} path is not a Git blob: ${task136FcPortsStillOwnedSuccessor.cardId}:${task136FcPortsStillOwnedSuccessor.path.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`
+      ),
+      `${testCase.id} object`
+    );
+    assert.equal(nonBlobAdapter.commandCalls.length, 0, `${testCase.id} object`);
+
+    const wrongBlobAdapter = fakeRepositoryAdapter(records, {
+      blobMismatch: {
+        commitish: testCase.commitish,
+        path: task136FcPortsStillOwnedSuccessor.path
+      }
+    });
+    assert.throws(
+      () => assurance.verifyTask136ReleasePrefix(contract, {
+        registryText: record29Registry,
+        adapter: wrongBlobAdapter
+      }),
+      new RegExp(
+        `still-owned ${testCase.id} blob mismatch: ${task136FcPortsStillOwnedSuccessor.cardId}:${task136FcPortsStillOwnedSuccessor.path.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`
+      ),
+      `${testCase.id} blob`
+    );
+    assert.equal(wrongBlobAdapter.commandCalls.length, 0, `${testCase.id} blob`);
+  }
+
+  const task136FcPortsSiblingPaths = task136FcPortsRecord.ownedPathBlobs
+    .map(({ path }) => path)
+    .filter((path) => path !== task136FcPortsStillOwnedSuccessor.path);
+  assert.equal(task136FcPortsSiblingPaths.length, 4);
+  for (const siblingPath of task136FcPortsSiblingPaths) {
+    const adapter = fakeRepositoryAdapter(records, {
+      stillOwnedSuccessorPath: siblingPath
+    });
+    assert.throws(
+      () => assurance.verifyTask136ReleasePrefix(contract, {
+        registryText: record29Registry,
+        adapter
+      }),
+      new RegExp(
+        `still-owned current HEAD blob mismatch: ${task136FcPortsStillOwnedSuccessor.cardId}:${task136FcPortsStillOwnedSuccessor.path.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`
+      ),
+      `still-owned successor sibling isolation: ${siblingPath}`
+    );
+    assert.equal(
+      adapter.commandCalls.length,
+      0,
+      `still-owned successor sibling isolation: ${siblingPath}`
+    );
   }
 
   const task137b = records.find((record) => record.cardId === "Task137B-W");
