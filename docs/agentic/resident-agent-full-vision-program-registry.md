@@ -15254,6 +15254,73 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   release is authorized by this event. Strict historical frontier remains
   `29/29`.
 
+## RV-1-E-1331 — Successor mission candidate rejected; exact lifecycle-topology repair authorized
+
+- Recorded at: 2026-07-31T14:22:33Z
+- Completely fresh independent read-only executability reviewer
+  `/root/successor_executability_review` returns **APPROVED** with no material
+  defect for exact candidate
+  `47c3e1a9f957a251ff2a4af2abc3e634b03fb36a`, tree
+  `9e6e29630377e5f87007b202613739b48fc88d0f`, and sole parent E1329
+  `639ff359f67d7cd156bc1b6be5ac56a842dbb030`. Completely fresh independent
+  read-only architecture reviewer `/root/successor_architecture_review`
+  returns **NEEDS-CHANGES** for those same bytes on one material fail-closed
+  lifecycle-topology defect. Preserve both verdicts; the architecture defect
+  rejects the candidate and the executability verdict is not approval to
+  integrate it. Changed candidate bytes invalidate both reviews.
+- The defect is reproduced independently in disposable local Git histories
+  against the canonical checker without a registry fixture. First, a
+  two-parent integration whose second parent is the exact reviewed candidate
+  and whose first parent is merely a descendant of the approval event is
+  accepted even when that intervening commit changes the integrated tree;
+  the projection then reports Task140P eligible. Second, a one-parent
+  Task140P candidate changing only a path outside all eleven owned paths is
+  accepted and advances projected eligibility to Task140R0. These are local
+  checker counterexamples only; no repository worktree or ref was changed.
+- Root cause is bounded to
+  `scripts/check-software-factory-active-mission.mjs`: lifecycle validation
+  requires approval ancestry and the candidate as second parent, but does not
+  require the exact approval commit as first parent, authenticate the
+  deterministic integration tree, or compare a candidate's changed paths to
+  its feature `allowedPaths` and `pathCeiling`.
+- Authorize one forward TDD correction in exactly these five existing
+  control-plane paths:
+  `scripts/check-software-factory-active-mission.test.mjs`,
+  `scripts/check-software-factory-active-mission.mjs`,
+  `docs/agentic/contracts/software-factory-active-mission.v1.json`,
+  `scripts/check-agent-readiness.mjs`, and
+  `docs/agentic/claims/resident-agent-full-vision-successor-mission-control.md`.
+  First add one real checker-level black-box test that completes both local
+  histories and expects rejection; before checker edits the active suite must
+  be **9 = eight passed + one causal failure** because both invalid histories
+  are still accepted. Then require every projected candidate to be a
+  one-parent commit, require its direct changed paths to be a subset of the
+  feature's exact allowed paths and no greater than its ceiling, require the
+  integration merge's first parent to equal the exact approval registry
+  commit and second parent to equal the reviewed candidate, and require the
+  integration tree to equal Git's deterministic merge tree for those exact
+  parents. The control-plane candidate additionally keeps E1329's exact nine
+  non-registry path ceiling across its forward lineage.
+- Updating the active selector's checker digest, readiness's selector digest,
+  and the claim's exact repair evidence is part of this same correction.
+  Freeze the machine-readable mission, immutable envelope, historical
+  calibration mission/checker/test, all other documentation and scripts, all
+  package product source and product tests, `package.json`, parked preview,
+  `neo`, and unrelated worktrees. No product behavior or external effect is
+  authorized.
+- Record this event first, forward-merge its exact authority into the
+  successor candidate branch history-preservingly, reproduce RED, implement
+  the single root-cause correction, pass active black-box, historical 20/20,
+  V4 20/20, typecheck, readiness, skill, scope, ancestry, hash-chain, and
+  clean-state gates, and commit a new immutable candidate without rewriting
+  rejected history. Obtain completely fresh architecture and executability
+  reviews of the changed bytes before any approval or integration.
+- Advance successor mission control
+  `reviewing -> rejected -> implementing`. Task140P remains closed; strict
+  historical frontier remains `29/29`. This event is not approval,
+  integration, Task140P lifecycle authority, Wave 3 start, publication,
+  repository closure, production readiness, or release.
+
 ## RV-1-E-1318 — Task136 strict-record candidate rejected; finite currentness repair authorized
 
 - Recorded at: 2026-07-31T06:02:45Z
