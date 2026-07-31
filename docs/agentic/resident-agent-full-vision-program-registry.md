@@ -15713,6 +15713,209 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   external-system, pull-request, production-route, preview-branch, or
   unrelated action is claimed or authorized by this event.
 
+## RV-1-E-1328 — Task21 post-publication recovery handoff; mission task absent
+
+- Recorded at: 2026-07-31T08:44:32Z
+- Task20 lawfully published exact record-29 milestone
+  `2bc1c6362e4c3b9cea4a82c890f287db78ef2f6c` to `neo` by
+  history-preserving merge
+  `baab662fb6ecd79de9a34f1c3801aa76d3428848`, whose parents are prior `neo`
+  `dc05c43c4b9a592d0396acd034bfc32e177fd09a` first and the exact milestone
+  second. Local `neo`, local `origin/neo`, and remote-advertised `neo` are
+  equal at `baab662f`. Local program, local tracking, and remote-advertised
+  program are equal at `2bc1c636`. Task136 remains `released`; record-29
+  assurance remains `integrated`; strict product frontier remains
+  **29 of 29**.
+- Task21 rehydration starts from clean exact heads: `neo`
+  `baab662fb6ecd79de9a34f1c3801aa76d3428848`; program
+  `2bc1c6362e4c3b9cea4a82c890f287db78ef2f6c`; preserved Task138-H
+  `6d4517a40d8394526ee2c9c2dad7695ddb396483`; preserved V4 candidate
+  `f33329919ce256d71e28b1bb6c1e34bb1421da78`; and Task136 product
+  candidate `21ac850894ff3e040069b4307c95e20148db96fc`. Each of these five
+  authoritative worktrees is clean. Task136 local, tracking, and
+  remote-advertised refs equal `21ac8508`.
+- Fresh mission inspection reports mission `software-factory-calibration`
+  `integrated`, exact fingerprint
+  `sha256:799af83764d6c098f3b1a97d6d30fc3b9b13f32f7c57204d92383fab371179ac`,
+  immutable-envelope fingerprint
+  `sha256:82e666a86d2b3ccd0ceafd634975d0a7459d3fe7600d27cc8345dd0f531fbc1e`,
+  three integrated features, and exact `eligibleFeatureIds: []`.
+  Factory readiness passes. The current mission names no ready Task140,
+  Task141, Task142-through-152, acceptance, or Task153 feature.
+- The committed Task21 rule therefore requires this recovery handoff rather
+  than an invented implementation authorization. Every Wave 3 row requires
+  exact Task136 and Task140 readiness plus `CF1-INTEGRATION-SHA`; Task140
+  readiness is absent, no Task140 claim/release authority exists, and
+  `packages/local-runtime/test/agent-runtime-composition.test.ts` is absent on
+  published `neo`. Deferred Task131 still waits for Tasks137/140, then must
+  precede Task141; Task141's route/UI paths are also absent. No Task142-through-
+  153 claim exists. The exact missing committed authority is a mission-state
+  revision that names and scopes the next dependency-ready task and its
+  lifecycle. Until that exists, no implementation task is ready and no Wave 3
+  dispatch is authorized.
+
+### Exact default-verifier classification
+
+- Fresh `TMPDIR=/dev/shm npm run verify` on clean exact published `neo`
+  `baab662f` exits one after typecheck passes. Vitest reports
+  **3,372 = 3,311 passed + 56 failed + 5 skipped**, with
+  **242 = 224 passed + 15 failed + 3 skipped** files. Exact log SHA-256 is
+  `a670b01c1319783e0a6e87acdfafad6e6f546a7d386706880558e16e33e37750`.
+  The 56 occurrences split exactly into 45 inherited semantic failures and
+  11 timeout-only occurrences.
+- Assign exactly **37** inherited semantic failures to Task140R0's unopened
+  R-owned default-factory registration/composition boundary. Direct diagnosis
+  reproduces `blocked.factory-context-attestation-required`; these downstream
+  route/CLI failures do not weaken that fail-closed boundary:
+  - `packages/local-runtime/test/agent-memory-routes.test.ts`:
+    `records, lists, supersedes, details, and retracts memory without hidden
+    effects`; `rejects unsafe or unproven memory bodies without echoing source
+    text`; and `requires a human actor for HTTP memory correction routes`.
+  - `packages/local-runtime/test/agent-cockpit-routes.test.ts`:
+    `returns cockpit DTO from current runtime status and approval queue`;
+    `keeps cockpit and generic run routes out of the legacy bootstrap
+    boundary`; `does not expose a generic POST /api/agent/runs execution
+    route`; `keeps forbidden-effect cockpit and run subpaths unavailable`;
+    and `keeps generic run bodies fail-closed before validating run
+    semantics`.
+  - `packages/local-runtime/test/agent-approval-routes.test.ts`:
+    `lists provider byte-transfer approvals without executing provider
+    transfer`; `tolerates mixed read-only and approval requests on GET
+    /api/agent/approvals`; `shows a single approval request by tool request
+    id`; `appends exact human approval and no execution events`; `appends
+    human denial and no execution events`; `rejects direct deny requests for
+    filtered read-only tool requests`; `rejects stale approval hashes and
+    secret-shaped rationales safely`; `uses denial diagnostics for malformed
+    deny JSON and object bodies`; `rejects locked provider byte-transfer
+    approvals without appending approval events`; `rejects
+    missing-provenance blocked approvals without appending approval events`;
+    and `requires human route actors for approval decisions`.
+  - `packages/local-runtime/test/agent-task-orchestrator-routes.test.ts`:
+    `default local runtime factory injects task orchestrator capabilities
+    before task claim`.
+  - `packages/local-runtime/test/agent-http-routes.test.ts`:
+    `returns agent-status.v1 from GET /api/agent/status without live
+    credentials`; `includes provider readiness in agent status for configured
+    Nous`; `returns pending tool requests from GET /api/agent/tool-requests`;
+    `creates a durable task through POST /api/agent/tasks`; `accepts and
+    persists urgent task priority through POST /api/agent/tasks`; `returns a
+    stable conflict for duplicate task ids`; `returns a stable conflict when
+    duplicate task ids race`; `returns a stable conflict when duplicate task
+    ids race on an empty ledger`; `returns HTTP 400 for invalid task bodies
+    without echoing secret-shaped text`; `wakes the resident agent scheduler
+    without accepting tool input`; `does not double-execute an approved
+    descriptor across concurrent scheduler wake posts`; `uses existing auth
+    policy for scheduler wake routes`; `uses existing auth policy for
+    protected agent routes`; and `applies the same auth policy to agent memory
+    routes`.
+  - `packages/local-runtime/test/cli.test.ts`: `prints resident agent status
+    as stable JSON without live credentials` and `creates resident agent tasks
+    as stable JSON`.
+  - `packages/local-runtime/test/server.test.ts`: `serves operator status from
+    production workspace, ingestion, legacy, and PRR providers`.
+- Assign exactly **one** inherited semantic failure to serialized Task140R1:
+  `packages/agent/test/runtime.test.ts` title `optional runtime wake service
+  composes task orchestrator tick then approved tool scheduler wake with
+  separate summaries`. Task140R1's committed ceiling owns this typed consumer.
+- Assign exactly **seven** inherited semantic failures to Task142's
+  evidence-triage vertical in
+  `packages/agent/test/evidence-triage-workflow.test.ts`: `permits bounded
+  instructional narrative while writing source-bound local artifacts`;
+  `treats governance, quarantine, and assertion booleans as local review
+  suggestions only`; `rejects model output that cites evidence outside the
+  current run before artifacts or tools`; `uses the preflight evidence ID
+  snapshot even if provider invocation mutates caller input`; `records a safe
+  failed handoff when a later derivative write fails after model invocation`;
+  `rejects model output that claims an assertion was proposed, accepted, or
+  added to the accepted graph`; and `is replay-safe and refuses to duplicate
+  the local derivative step`. Each stops at the missing current mounted
+  production-prompt readback witness. Task142's focused command includes the
+  existing workflow suite; no earlier fixture edit is authorized.
+- Classify the remaining **11** occurrences as environmental timeout-only
+  variance: one Task126-R BYOK import-policy title; one transferred
+  G136-SC/G136-R scheduler-completion import-policy title; five Task135C
+  prerequisite-checker Git-fixture titles; one FC-Ports factory-ports
+  import-policy title; one Task135D/Task136-FC-Ports runtime-handle
+  import-policy title; and two Task137B-W/Task136 wake import-policy titles.
+  Fresh serialized execution with `TMPDIR=/dev/shm`, `maxWorkers=1`, no file
+  parallelism, and `testTimeout=120000` passes all six affected files and all
+  **39/39** tests in 104.24 seconds. These occurrences require runner
+  calibration, not a product repair. No verifier occurrence is unassigned or
+  causally attributable to the released Task136 product.
+
+### Preserved unrelated dirty-worktree inventory
+
+- A read-only inventory finds **185** worktrees: **180** clean and exactly
+  **five** unrelated historical worktrees dirty. None is modified, staged,
+  committed, discarded, rebased, reset, merged, or adopted by this handoff.
+  Each working blob below is recorded before any future bounded disposition:
+  1. Branch `codex/task-106-resident-full-vision-w0-provider-spec`, HEAD
+     `6fb76fb1969fc074066ea5f5fbeb4e101bb3ced5`: modified
+     `docs/agentic/claims/task-106-resident-full-vision-w0-provider-spec.md`,
+     working blob `bcf45f1d66b82e7afc26158ba92fdbfe2b377342`, HEAD blob
+     `f22cb8ffe31329172c63b8b8a529c1436d9c686d`.
+  2. Branch `codex/task-113-resident-full-vision-w0-trigger-plan`, HEAD
+     `3f7b03012c1d2cfa33330f7f7f09c7069ec4632d`: untracked
+     `docs/superpowers/plans/2026-07-12-resident-agent-proactive-triggers-implementation.md`,
+     working blob `ad654999a4d4e81d65b1008971e7e543bec4fec7`,
+     absent from HEAD.
+  3. Branch `codex/task-123-resident-full-vision-bootstrap-repair-2`, HEAD
+     `34c211dd00f4a62e76f65c95bc494378d2010b10`: modified
+     `packages/agent/src/ontology-bootstrap-workflow.ts`
+     `38c7ef218740a58b98d91c64ce790fee87639741` / HEAD
+     `8fb44a1e0abc75cdda9decf5358818da80c735e2`;
+     `packages/agent/test/ontology-bootstrap-workflow.test.ts`
+     `4b18b80c91406c2935fe2cb29a01ec5711ab6c1e` / HEAD
+     `690da48b1dcb6363486e66266e83c5dac9584c96`;
+     `packages/local-runtime/src/agent-ontology-bootstrap-routes.ts`
+     `73860a43b3d52ac308ffec93201970c4c6c68bb6` / HEAD
+     `c6cfc9f38fc380df854b4506b3aaa0c87143619f`; and
+     `packages/local-runtime/test/agent-ontology-bootstrap-routes.test.ts`
+     `0158d114cfe926368bd668dddce106799dd836ef` / HEAD
+     `384442e046008e992bd5205d601c28c9f04e4afe`.
+  4. Branch `codex/task-132a-factory-closure-recovery`, HEAD
+     `c7f36114973857019a2d25735790489b406189f5`: modified
+     `packages/local-runtime/src/agent-runtime-context-packs.ts`
+     `cfab68461c9718533e81c44c566676128fe5cbb5` / HEAD
+     `1b676070bb9717dbe6ccf37417d9b258164e1a2f`;
+     `packages/local-runtime/src/agent-runtime-factory.ts`
+     `cb834639a2e76cbb25d7d1c8fbe426016510846d` / HEAD
+     `d0f9364ee3d2c79a9aa0bf86edf284c51bfb8e7c`;
+     `packages/local-runtime/test/agent-runtime-context-attestation.test.ts`
+     `bb9e883e929c683cfc3cc5e91d448d8a91caa4e5` / HEAD
+     `f04121cd39141f61aa683a8e210d01f0ab77ea64`; and
+     `packages/local-runtime/test/agent-runtime-context-packs.test.ts`
+     `174ad32d573cc48e4324fed8a09ffff340451459` / HEAD
+     `cb4d29f347a509ee001bf90b646d77fd978a5b72`.
+  5. Branch `codex/task-133-runtime-prompt-binding-v2`, HEAD
+     `adc4470dcadba4b5f1357ad652d07d150e4fa8aa`: modified
+     `packages/agent/src/production-specialist-prompts.ts`
+     `dc8f4a147404696f44a35e5c5b954e8f5dc93b68` / HEAD
+     `96e8921388623984e4320e8ca3bb31663faa8fb8`;
+     `packages/agent/src/prompt-artifacts.ts`
+     `53261cc4eb99fb03d421354b62f43434156709a9` / HEAD
+     `4ed798c4d77f0a34b4bb530e479f226a7e48eedd`;
+     `packages/agent/test/production-specialist-prompts.test.ts`
+     `1e7654b8400a20e9a284329985b7a02cdab9c10e` / HEAD
+     `8ec5dfa5f400653ce69dad4e0bd5df5dcc4a44c4`; and
+     `packages/agent/test/prompt-artifacts.test.ts`
+     `4f880082e824fde9fca78ddc720ebf1fc320569f` / HEAD
+     `5c510dd6af781b3d352538eddf26e000a5309fc6`.
+- The parked Central Florida preview remains independent, clean, and untouched
+  at branch `codex/central-fl-ice-engineering-preview`, exact HEAD/tracking
+  `59b9589ef654ce9c53d113eb778b1d4515afac4c`. Its code, ledger, preview
+  artifacts, and claims remain non-authoritative and are not inspected,
+  copied, merged, cherry-picked, deleted, or modified.
+- This event is a registry-only Task21 recovery checkpoint, not a lifecycle
+  transition or new task authorization. It grants no Task140, Task141,
+  Task142-through-152, acceptance, Task153, provider, credential, external
+  system, production route, pull request, preview-branch, `neo`, or unrelated
+  action. Task-scoped subagent-driven development and test-driven development
+  remain the mandated method for a later authorized task, but no executable
+  task scope exists until the missing mission task/readiness authority is
+  committed. No Wave 3 start, production readiness, repository-wide clean
+  claim, Wave 5 release, or product release is made.
+
 ## Task136 dispatch release v4: Task127
 
 ```json
