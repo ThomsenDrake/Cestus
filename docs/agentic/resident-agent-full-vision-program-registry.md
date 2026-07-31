@@ -53025,6 +53025,82 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   production-route, preview-branch, and unrelated actions remain
   unauthorized.
 
+## RV-1-E-1302 — Progressive H output defect isolated; one-test frozen-readback RED authorized
+
+- Recorded at: 2026-07-31T00:56:53Z
+- E-1301 is committed and pushed at exact program head
+  `98f6e701b7df39101fd558708c5aa390915fa24d`, then forward-merged and
+  pushed into Task136 at exact two-parent head
+  `5fa19f33680769e9519ca557ee3b0f803357d7dc`. The three E-1298 source
+  diagnostics remain unstaged, uncommitted, and exact blobs
+  `60e99de6b7fb147274f4f0989f288735ee88e81e`,
+  `4ede1f22a599e66e1316ceadac2ebd133938f7b8`, and
+  `a79ccac55f4b4b6693bc18c5c88eda54d080a97b`. They are not candidates
+  and must remain preserved while this test-only correction advances.
+- Completely fresh independent read-only diagnostic
+  `/root/task17_h_projection_freeze_diagnostic` reproduces the corrected
+  real-mounted title through C136-P, T120, W catalog currentness, terminal
+  result, and exact full-H selection, then observes R's frozen-output trust
+  check reject in `readVerifiedHandoff`. The exact Task15 internal port
+  returns a frozen projection and handoff shell, but the first selected
+  context-pack reference and its nested arrays/optional records are mutable.
+  W, C136-P, and T120 cannot repair an H-owned returned object graph; R's
+  exact check is correct and remains frozen.
+- Current H focused **37/37** and released Task138 boundary **355/355** pass,
+  proving the direct Task15 oracle does not yet exercise this returned-data
+  property. Authorize only the smallest forward test-only correction in
+  `packages/agent/test/specialist-handoff-projection.test.ts`, starting from
+  exact blob `67014dae42649e6370ed6a212cc468af81cfa24e`.
+- Extend only the existing title
+  `issues an internal exact-hash full-readback port without widening Task138
+  DTO`. Capture its successful `readFull` result and require the complete
+  returned graph to be an exact deeply frozen, non-proxy, plain own-data
+  tree: frozen arrays and records, `Object.prototype` records, no symbols or
+  accessors, and recursively frozen values. A compact local assertion helper
+  and the existing Node `types.isProxy` primitive are permitted. Add no
+  title, fixture case, corpus value, import-policy exception, public DTO
+  assertion, or unrelated cleanup. Preserve its existing prebound-reader
+  counters and all other assertions exactly.
+- Freeze every product source at the E-1301 integrated tree and every other
+  test. In particular H source
+  `packages/agent/src/specialist-handoff-projection.ts` remains exact blob
+  `3d9d0ee4d38183fd9b1275b51738e7d48fb5e1d0`; T120/C136-P/W remain their
+  committed starting blobs, R remains
+  `215b324629534236321cc56fa9988d38096fb0c8`, and Task138 source/test/claim
+  remain frozen. No product edit is authorized by this event.
+- Required committed-tree RED under `TMPDIR=/dev/shm`, one worker, no file
+  parallelism, and the 120-second timeout is H focused
+  **37 = 36 passed + one causal failure**, Task138 boundary
+  **355 = 354 passed + one causal failure**, provider
+  **25 = zero passed + 25 causal failures**, Task16 focused
+  **9 = eight passed + one causal failure**, producer
+  **144 = 143 passed + one causal failure**, factory boundary
+  **10 = nine passed + one causal failure**, wake boundary
+  **140 = 139 passed + one causal failure**, Task136 card
+  **383 = 355 passed + 28 causal failures**, and exact 37-file cross-card
+  **1,042 = 1,014 passed + 28 causal failures**. The only added failure is
+  the exact mutable internal full-readback output on frozen H.
+- Also require passing typecheck, factory readiness, mission and V4
+  **20/20**, markers **29 / 20 / 29 / 15**, exact repository first-stop,
+  one-test scope, all source and other-test freezes, ancestry, local
+  dependencies, 33-path hash, diff hygiene, strict Git integrity, and clean
+  isolated candidate state.
+- Commit only the corrected H test with subject
+  `test(agent): require frozen full handoff readback`. Obtain a completely
+  fresh independent read-only review of exact immutable RED bytes, append
+  approval, integrate approval-first/candidate-second on the program branch,
+  rerun the integration packet, append integration, and forward-merge into
+  Task136. Changed bytes invalidate review.
+- Only after this RED is approved, recorded, integrated, and forward-merged
+  may a separate GREEN authority extend E-1298 to the smallest H-owned output
+  repair. Task16 remains `integrated`; Task136 remains `implementing`; strict
+  product frontier remains **28 of 29**. This is one-test RED authority, not
+  product authority, Task136 candidacy, strict record 29, publication,
+  Wave 3 start, repository closure, production readiness, or release.
+  `neo`, provider, credential, external-system, pull-request,
+  production-route, preview-branch, and unrelated actions remain
+  unauthorized.
+
 ## RV-1-E-1298 — Three-source mounted-completion GREEN authorized; W diagnostic rejected
 
 - Recorded at: 2026-07-31T00:03:18Z
