@@ -1538,7 +1538,13 @@ function connectedLegacyRuntime(
         if (evidence === undefined) {
           throw new Error("factory fixture local evidence is required");
         }
-        const assertionId = `as_factory_ports_${suffix}`;
+        const assertionId = `as_legacy_${createHash("sha256").update([
+          input.sourceCollectionId,
+          input.scanBatchId,
+          input.stagingBatchId,
+          hash("1"),
+          candidateId
+        ].join(":")).digest("hex")}`;
         const proposal = await handle.ledger.append({
           type: "assertion.proposed",
           version: 1,
