@@ -54433,3 +54433,298 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   product release. `neo`, provider, credential, external-system,
   pull-request, production-route, preview-branch, and unrelated actions
   remain unauthorized.
+
+## RV-1-E-1317 — Exact Task136 strict-record candidate staged without release
+
+- Recorded at: 2026-07-31T05:39:06Z
+- Completely fresh independent read-only architecture reviewer
+  `/root/task18_uuid_architecture_review`, exact directly exposed task UUID
+  `019fb696-5a3a-7582-b7c7-2af3536bd056`, and different completely fresh
+  independent read-only executability reviewer
+  `/root/task18_uuid_executability_review`, exact directly exposed task UUID
+  `019fb696-a34b-7c13-8a2e-78cf9ce90c77`, each return **APPROVED** with no
+  P0-P3 finding. The identifiers are exact system-provided
+  `CODEX_THREAD_ID` values, are distinct from each other and root task
+  `019fa064-7edf-7870-8d90-0e0cd5d78415`, and were neither inferred nor
+  invented.
+- Both reviews bind unchanged immutable Task136 candidate
+  `21ac850894ff3e040069b4307c95e20148db96fc`, tree
+  `e9a7251fae72fc8b169b38d4eb42853d2bbfce26`, parents
+  `320c801c16e487a4b0487fef7550c5fb702a2588` and
+  `87b8931ec4eacaf3b3621a9a08e847da61b37628`, and current E-1314 through
+  E-1316 authority at
+  `714d8796dbb0af684863bed946f4ed93fb3bbbfc`. Changed candidate bytes
+  invalidate both reviews.
+- Architecture independently confirms the exact private lexical issuer,
+  generic-runtime ineligibility, prepared-composition identity
+  authentication, one owner, one consuming bind, exact stop ownership and
+  idempotency, segmented replay, at-most-once permit and receipt semantics,
+  full-H frozen readback, adapter ABI, fail-closed behavior, no fallback,
+  and no activation or unrelated product behavior.
+- Executability independently reproduces historical Task9 RED
+  **255 = 228 passed + 27 causal failures**, historical Task12 RED
+  **79 = 76 passed + three causal failures**, focused **9/9**, producer
+  **144/144**, factory boundary **10/10**, wake boundary **140/140**, H
+  **37/37**, provider **25/25**, Task138 **355/355**, Task136 card
+  **383/383**, and exact cross-card **1,042/1,042**. Typecheck, factory
+  readiness, mission and V4 **20/20**, markers **29 / 20 / 29 / 15**,
+  E-1314 historical/current Task12 lineage, exact repository first-stop,
+  scope, ancestry, freezes, strict Git integrity, and clean detached state
+  pass.
+- Exact current contract reconstruction contains **33** ordered Task136-owned
+  paths and **ten** prerequisite records. E-1109's true-EOF
+  `Task136-FC-Core` insertion and every later preserved 33-path authority
+  supersede the older embedded Task18 block's pre-insertion 32-path and
+  nine-prerequisite counts. Ordered path SHA-256 remains
+  `4cca816c5004bf922d47a44bc8e9216a7f4d1e00a030f20b34d59fb0cd1e442e`;
+  every candidate blob equals exact product-integration merge
+  `4feb71d1042d8a0a537731ec9c2f7b3902dac0b6`.
+- The following exact committed JSON object is a direct **strict-record
+  candidate** only. Task136 remains `integrated`, strict product frontier
+  remains **28 of 29**, and no release, repository closure, publication,
+  Wave 3 start, production readiness, or product release is claimed.
+  Product, test, assurance, contract, checker, mission, design, plan, and
+  claim bytes remain frozen.
+
+## Task136 dispatch release v4: Task136
+
+```json
+{
+  "schemaVersion": "task136-dispatch-release.v4",
+  "cardId": "Task136",
+  "candidateSha": "21ac850894ff3e040069b4307c95e20148db96fc",
+  "reviews": [
+    {
+      "threadId": "019fb696-5a3a-7582-b7c7-2af3536bd056",
+      "candidateSha": "21ac850894ff3e040069b4307c95e20148db96fc",
+      "verdict": "APPROVED"
+    },
+    {
+      "threadId": "019fb696-a34b-7c13-8a2e-78cf9ce90c77",
+      "candidateSha": "21ac850894ff3e040069b4307c95e20148db96fc",
+      "verdict": "APPROVED"
+    }
+  ],
+  "integrationSha": "4feb71d1042d8a0a537731ec9c2f7b3902dac0b6",
+  "releaseEventId": "task136-release-v4-Task136",
+  "prerequisites": [
+    {
+      "cardId": "T120-R",
+      "integrationSha": "0b5185f0d0dd276164ec70d5db150f5f6ccb3a79",
+      "releaseEventId": "task136-release-v4-T120-R"
+    },
+    {
+      "cardId": "Task136-FC-Core",
+      "integrationSha": "7a7a650e7db97c1aad63447e3669e66ddf3dc7fe",
+      "releaseEventId": "task136-release-v4-Task136-FC-Core"
+    },
+    {
+      "cardId": "Task136-FC-Ports",
+      "integrationSha": "365279fdd4e772c389188d05376ba87afe9782df",
+      "releaseEventId": "task136-release-v4-Task136-FC-Ports"
+    },
+    {
+      "cardId": "Task139-P2",
+      "integrationSha": "6472c92bce3b6cd23e3128666524e575d9f9d236",
+      "releaseEventId": "task136-release-v4-Task139-P2"
+    },
+    {
+      "cardId": "C136-P",
+      "integrationSha": "b69ebd003ec1c3afd7cc849f076cb245e98c58f6",
+      "releaseEventId": "task136-release-v4-C136-P"
+    },
+    {
+      "cardId": "G136-R",
+      "integrationSha": "4e7e4f8069ad494b865c4c134b21767be4d7f961",
+      "releaseEventId": "task136-release-v4-G136-R"
+    },
+    {
+      "cardId": "Task137B-W",
+      "integrationSha": "9e680b44c4284456eebaad79c00fabda5c2bd4ea",
+      "releaseEventId": "task136-release-v4-Task137B-W"
+    },
+    {
+      "cardId": "Task138-H",
+      "integrationSha": "12d23a69047d58e14dd04c4f89daf3f8a528e8aa",
+      "releaseEventId": "task136-release-v4-Task138-H"
+    },
+    {
+      "cardId": "CF1-HR",
+      "integrationSha": "32d4e3fdf8b4b79178d616daff91ecc5dd341548",
+      "releaseEventId": "task136-release-v4-CF1-HR"
+    },
+    {
+      "cardId": "G136-SC",
+      "integrationSha": "253150b2ab5f2271d2b04a5b8fc5b82b7bf757a5",
+      "releaseEventId": "task136-release-v4-G136-SC"
+    }
+  ],
+  "ownedPathBlobs": [
+    {
+      "path": "packages/agent/src/bounded-agent-loop.ts",
+      "disposition": "owned",
+      "blobSha": "215b324629534236321cc56fa9988d38096fb0c8"
+    },
+    {
+      "path": "packages/agent/test/bounded-agent-loop.test.ts",
+      "disposition": "owned",
+      "blobSha": "9d5f473e7dc499ed8e2cb047299a7153905be9f6"
+    },
+    {
+      "path": "packages/agent/src/plan-observation-contracts.ts",
+      "disposition": "owned",
+      "blobSha": "60e99de6b7fb147274f4f0989f288735ee88e81e"
+    },
+    {
+      "path": "packages/agent/src/plan-observation-projection.ts",
+      "disposition": "owned",
+      "blobSha": "1ec3a0e8f9a16a4a4e5aebbb85cbf77f2ace595f"
+    },
+    {
+      "path": "packages/agent/test/plan-observation-contracts.test.ts",
+      "disposition": "owned",
+      "blobSha": "da5f18eaae191ac8d54e301b3671927da726d652"
+    },
+    {
+      "path": "packages/agent/test/plan-observation-projection.test.ts",
+      "disposition": "owned",
+      "blobSha": "9e8ee5a6c13cd83bfa98ce419bce036dd8f3cdf2"
+    },
+    {
+      "path": "packages/agent/src/resident-plan-candidate-provider.ts",
+      "disposition": "owned",
+      "blobSha": "4ede1f22a599e66e1316ceadac2ebd133938f7b8"
+    },
+    {
+      "path": "packages/agent/test/resident-plan-candidate-provider.test.ts",
+      "disposition": "owned",
+      "blobSha": "a1c6a7c8484c2f143cbc247bcc517af62c735b80"
+    },
+    {
+      "path": "packages/agent/src/adapters/legacy-staging.ts",
+      "disposition": "owned",
+      "blobSha": "a8e0d185e0ad3e7f5b4b10be62ce4d26ad56c919"
+    },
+    {
+      "path": "packages/agent/test/legacy-staging-adapter.test.ts",
+      "disposition": "owned",
+      "blobSha": "741bf9c02184c0367c4b4aa08a1b06202bac362e"
+    },
+    {
+      "path": "packages/agent/src/resident-loop-tool-gateway.ts",
+      "disposition": "owned",
+      "blobSha": "cb2f9dcbfa71beca2600cc08134b1d1c5284e4da"
+    },
+    {
+      "path": "packages/agent/test/resident-loop-tool-gateway.test.ts",
+      "disposition": "owned",
+      "blobSha": "667f0e9fc448282f04d955d7c4757535edf98b33"
+    },
+    {
+      "path": "packages/agent/test/resident-loop-scheduler-completion-imports.test.ts",
+      "disposition": "owned",
+      "blobSha": "6522e06d27b0b22d88a0c97acb599782d14135cc"
+    },
+    {
+      "path": "packages/local-runtime/src/wake-supervisor-runtime.ts",
+      "disposition": "owned",
+      "blobSha": "a7e34e53fff3b4194c77f3b2dfb626dbe5dff2eb"
+    },
+    {
+      "path": "packages/local-runtime/src/mounted-wake-lifecycle-store.ts",
+      "disposition": "owned",
+      "blobSha": "a79ccac55f4b4b6693bc18c5c88eda54d080a97b"
+    },
+    {
+      "path": "packages/local-runtime/test/wake-supervisor-runtime.test.ts",
+      "disposition": "owned",
+      "blobSha": "7edeec96b9d525c452f3d972354f61d6ac1b03df"
+    },
+    {
+      "path": "packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts",
+      "disposition": "owned",
+      "blobSha": "a3a5a28de9149ce6f42cb6791b934d75e03f42d3"
+    },
+    {
+      "path": "packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts",
+      "disposition": "owned",
+      "blobSha": "0ec9f6840d5f6e84515417c42503e4f012a90078"
+    },
+    {
+      "path": "packages/agent/src/specialist-handoff-projection.ts",
+      "disposition": "owned",
+      "blobSha": "8d4a1993732bbe7cf3057ef092d734c3932f3030"
+    },
+    {
+      "path": "packages/agent/test/specialist-handoff-projection.test.ts",
+      "disposition": "owned",
+      "blobSha": "124cb586c05a697668890690facf66c9e862f852"
+    },
+    {
+      "path": "packages/ontology/src/contracts.ts",
+      "disposition": "owned",
+      "blobSha": "73003baf6bb5c6c8737e69ff2972d5faed6eed3c"
+    },
+    {
+      "path": "packages/ontology/test/agent-resident-loop-contracts.test.ts",
+      "disposition": "owned",
+      "blobSha": "f1a8bc5eeaf33eaaa9fdd4b793245b4c8aa4f423"
+    },
+    {
+      "path": "packages/local-runtime/src/resident-loop-factory-composition.ts",
+      "disposition": "owned",
+      "blobSha": "a5e554dd138dc82bcd9e01b79aef82742b12c366"
+    },
+    {
+      "path": "packages/local-runtime/src/resident-loop-factory-ports.ts",
+      "disposition": "owned",
+      "blobSha": "ea45eddd73ed7c3f208abb6da7ce287d03bd6da2"
+    },
+    {
+      "path": "packages/local-runtime/test/resident-loop-factory-ports.test.ts",
+      "disposition": "owned",
+      "blobSha": "20050ab80db05e71f76ab503e408bc4c1306dc95"
+    },
+    {
+      "path": "packages/local-runtime/test/resident-loop-factory-ports-imports.test.ts",
+      "disposition": "owned",
+      "blobSha": "140b521d38350f765c8bfdae79aad26d98d4ec15"
+    },
+    {
+      "path": "packages/agent/src/domain-execution-dispatcher.ts",
+      "disposition": "owned",
+      "blobSha": "4518ba3cb08f23c02eba19faa269092ae4a44b87"
+    },
+    {
+      "path": "packages/agent/test/domain-execution-dispatcher.test.ts",
+      "disposition": "owned",
+      "blobSha": "d88d435cda590b1922685f9a68f085e14d957e75"
+    },
+    {
+      "path": "packages/agent/src/task-orchestrator.ts",
+      "disposition": "owned",
+      "blobSha": "47317a4554ef2ba2accc14ae480d9b1632d19bc9"
+    },
+    {
+      "path": "packages/agent/test/task-orchestrator-claims.test.ts",
+      "disposition": "owned",
+      "blobSha": "c12c00292efccd6fef621d86b5f693a0da3ad8e2"
+    },
+    {
+      "path": "packages/agent/src/task-orchestrator-projection.ts",
+      "disposition": "owned",
+      "blobSha": "e203840a748dd1cb47cdcd751000298b02c42559"
+    },
+    {
+      "path": "packages/agent/test/task-orchestrator-projection.test.ts",
+      "disposition": "owned",
+      "blobSha": "23bdb9415de1a5fa536b75e0d8262b33c224dfe6"
+    },
+    {
+      "path": "docs/agentic/claims/task-136-resident-full-vision-bounded-loop.md",
+      "disposition": "owned",
+      "blobSha": "2f783a01265f246c33f043f9fe03bdc73cfe7d51"
+    }
+  ]
+}
+```
