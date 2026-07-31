@@ -53458,3 +53458,82 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   production readiness, or release. `neo`, provider, credential,
   external-system, pull-request, production-route, preview-branch, and
   unrelated actions remain unauthorized.
+
+## RV-1-E-1304 — Exact frozen-readback RED rejected; array own-data correction authorized
+
+- Recorded at: 2026-07-31T01:24:02Z
+- Exact immutable RED candidate
+  `87717c34349ffad85d52b555ad33f651fd05d95c`, tree
+  `3e7d8b6f63ad7c9aa98fc6c0efb1f33dbf33d526`, sole parent
+  `5f2b38198f009b2a1eac3f5e33ad53afbabe29e7`, and sole changed H-test
+  blob `501af596f85fe0462524f024c8fa08ec8eb30540` advances
+  `implementing -> reviewing -> implementing`; no approval is issued.
+  Changed bytes invalidate this review.
+- Completely fresh independent read-only reviewer
+  `/root/task17_lineage_packet` returns **REJECTED** with one candidate-bound
+  P2 unit-test-oracle defect. The helper's array branch iterates values and
+  returns without inspecting array own-property descriptors or constraining
+  the ordinary array prototype. A frozen array with accessor-backed indices
+  or additional accessor properties can therefore satisfy the oracle, and
+  iteration can execute the accessor, contrary to E-1302's complete-graph
+  non-proxy, frozen, no-symbol, no-accessor, plain-own-data requirement.
+- The reviewer otherwise confirms the same title constructs the exact
+  released authority-bound V2 completed lifecycle, preserves the abstract
+  corpus, counters, public Task138 DTO boundary, and import controls, and
+  reaches the causal H-owned returned-data boundary. Exact one-test scope,
+  every source and other-test freeze, H source blob
+  `3d9d0ee4d38183fd9b1275b51738e7d48fb5e1d0`, diff hygiene, and clean
+  detached candidate state pass.
+- Independent execution under `TMPDIR=/dev/shm`, one worker, no file
+  parallelism, and the 120-second timeout reproduces H focused
+  **37 = 36 passed + one causal failure**, Task138 boundary
+  **355 = 354 passed + one causal failure**, provider
+  **25 = zero passed + 25 causal failures**, Task16 focused
+  **9 = eight passed + one causal failure**, producer
+  **144 = 143 passed + one causal failure**, factory boundary
+  **10 = nine passed + one causal failure**, wake boundary
+  **140 = 139 passed + one causal failure**, Task136 card
+  **383 = 355 passed + 28 causal failures**, and exact 37-file cross-card
+  **1,042 = 1,014 passed + 28 causal failures**. The only added failure is
+  the exact H full-readback title at recursive `Object.isFrozen`; the prior
+  27-title set is unchanged.
+- Typecheck and factory readiness pass. Mission and V4 each pass **20/20**;
+  markers remain **29 / 20 / 29 / 15**. Repository mode exits one and stops
+  first only at exact
+  `blob mismatch: Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`.
+  Exact `33 = 15 sources / 17 tests / 1 claim` scope and canonical hash
+  `4cca816c5004bf922d47a44bc8e9216a7f4d1e00a030f20b34d59fb0cd1e442e`,
+  ancestry, local non-symlink dependencies, TypeScript **5.9.3**, Vitest
+  **4.1.9**, unmerged index, strict Git integrity, and all freezes pass.
+- Authorize only the smallest forward correction in the same H test from
+  exact rejected blob `501af596f85fe0462524f024c8fa08ec8eb30540`.
+  Preserve the exact V2 fixture, title, capture, counters, abstract corpus,
+  public DTO and import controls, and every other assertion. In the local
+  helper, inspect array own-property descriptors without reading through
+  them; require exact ordinary `Array.prototype`; require every own property
+  to be a data property with no getter or setter; account for the ordinary
+  non-enumerable `length` data property; require all other own properties to
+  be enumerable; and recurse only through descriptor values. Preserve the
+  existing record checks and require exact `Object.prototype` for records.
+  Add no title, fixture, global helper, corpus value, import exception,
+  product assertion, or unrelated case.
+- Freeze every product source and every other test. The three held E-1298
+  source diagnostics remain unstaged, uncommitted, and exact blobs
+  `60e99de6b7fb147274f4f0989f288735ee88e81e`,
+  `4ede1f22a599e66e1316ceadac2ebd133938f7b8`, and
+  `a79ccac55f4b4b6693bc18c5c88eda54d080a97b`; they are not candidates
+  and must not enter this test-only commit.
+- The corrected committed-tree RED must reproduce the exact unchanged
+  executable and static packet above. Commit only the corrected H test with
+  subject `test(agent): require frozen full handoff readback`. Obtain a new,
+  completely fresh independent read-only review of the corrected immutable
+  bytes, append approval, integrate approval-first/candidate-second on the
+  program branch, rerun the integration packet, append integration, and
+  forward-merge into Task136. Changed bytes invalidate review.
+- Task16 remains `integrated`; Task136 remains `implementing`; strict product
+  frontier remains **28 of 29**. This is forward unit-test-oracle correction
+  authority, not product authority, Task136 candidacy, strict record 29,
+  publication, Wave 3 start, repository closure, production readiness, or
+  release. `neo`, provider, credential, external-system, pull-request,
+  production-route, preview-branch, and unrelated actions remain
+  unauthorized.
