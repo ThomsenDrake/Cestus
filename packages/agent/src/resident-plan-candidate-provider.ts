@@ -58,6 +58,11 @@ const idnaDotEquivalentPattern = /[\u3002\uFF0E\uFF61]/gu;
 const releasedDottedVersionPattern = /^(?:resident-plan-record|resident-loop-provider-posture|agent-provider-capability|agent-provider-auth|policy|adapter)\.v[12]$|^1\.0\.0$/;
 const canonicalIsoTimestampPattern = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
 const rawCommandPattern = /(?:^|\s)(?:curl|wget|bash|sh|zsh|powershell|cmd)(?:\s|$)/i;
+const mountInstanceIdPattern = /^mount_[a-zA-Z0-9_-]+$/;
+const admissionGenerationIdPattern = /^admission_generation_([0-9]+)$/;
+const handoffMountGenerationPattern = /^admission:[0-9]+$/;
+const mountedAutomaticToolId = "legacy.staging.execute";
+const mountedAutomaticToolVersion = "0.1.0";
 const runModes = new Set([
   "evidence-triage", "ontology-bootstrap", "investigation-planner", "prr-negotiation",
   "timeline-builder", "contradiction-finder", "report-builder", "memory-curation"
@@ -411,7 +416,10 @@ function validateAuthority(authority: NormalizedRecord, plan: NormalizedRecord):
     "workspaceIdentityHash", "mountGeneration", "ledgerStoreIdentity", "artifactStoreIdentity", "ledgerHighWaterEventId", "policyHash", "activeLocksHash"
   ]);
   for (const key of ["workspaceIdentityHash", "policyHash", "activeLocksHash"] as const) hash(string(authority, key));
-  for (const key of ["mountGeneration", "ledgerStoreIdentity", "artifactStoreIdentity"] as const) safe(string(authority, key));
+  if (!handoffMountGenerationPattern.test(unclassifiedString(authority, "mountGeneration"))) {
+    throw unavailable();
+  }
+  for (const key of ["ledgerStoreIdentity", "artifactStoreIdentity"] as const) safe(string(authority, key));
   requirePattern(string(authority, "ledgerHighWaterEventId"), eventPattern);
   if (string(authority, "policyHash") !== string(requireRecord(plan, "policy"), "policyHash")) throw unavailable();
 }
@@ -459,9 +467,8 @@ function validateConstraints(constraints: NormalizedRecord): void {
     requireExactKeys(record, [
       "toolId", "toolVersion", "allowlistEntryHash", "expectedSafeOutputClass", "prerequisiteStepOrdinals", "sideEffectClass", "requiredApprovalClass"
     ]);
-    const toolId = string(record, "toolId");
-    const toolVersion = string(record, "toolVersion");
-    safe(toolId); safe(toolVersion); hash(string(record, "allowlistEntryHash"));
+    const [toolId, toolVersion] = validateToolFields(record);
+    hash(string(record, "allowlistEntryHash"));
     if (!outputClasses.has(string(record, "expectedSafeOutputClass"))) throw unavailable();
     validatePrerequisites(requireArray(record, "prerequisiteStepOrdinals"), Number.MAX_SAFE_INTEGER);
     const sideEffectClass = string(record, "sideEffectClass");
@@ -490,8 +497,7 @@ function validateUnboundSteps(steps: NormalizedArray): void {
     ]);
     if (number(step, "ordinal") !== index + 1) throw unavailable();
     safe(string(step, "purpose"));
-    safe(string(step, "toolId"));
-    safe(string(step, "toolVersion"));
+    validateToolFields(step);
     hash(string(step, "allowlistEntryHash"));
     if (!outputClasses.has(string(step, "expectedSafeOutputClass"))) {
       throw unavailable();
@@ -512,8 +518,10 @@ function validateStepsAgainstConstraints(
     const step = requireNormalizedRecord(stepValue);
     const allowlist = allowed.find((entry) => {
       const record = requireNormalizedRecord(entry);
-      return string(record, "toolId") === string(step, "toolId") &&
-        string(record, "toolVersion") === string(step, "toolVersion") &&
+      return unclassifiedString(record, "toolId") ===
+          unclassifiedString(step, "toolId") &&
+        unclassifiedString(record, "toolVersion") ===
+          unclassifiedString(step, "toolVersion") &&
         string(record, "allowlistEntryHash") === string(step, "allowlistEntryHash") &&
         string(record, "expectedSafeOutputClass") === string(step, "expectedSafeOutputClass") &&
         sameValue(value(record, "prerequisiteStepOrdinals"), value(step, "prerequisiteStepOrdinals"));
@@ -535,14 +543,16 @@ function validatePosture(posture: NormalizedRecord, plan: NormalizedRecord, cons
   const authority = requireRecord(plan, "authority");
   const workspaceId = string(workspace, "workspaceId");
   const mountInstanceId = string(workspace, "mountInstanceId");
-  string(workspace, "admissionGenerationId");
+  const mountGeneration =
+    mountedGeneration(string(workspace, "admissionGenerationId"));
   const policyVersion = string(workspace, "policyVersion");
   const policyDigest = string(workspace, "policyDigest");
   const lockStateDigest = string(workspace, "lockStateDigest");
   const highWaterMark = string(workspace, "highWaterMark");
   if (
     workspaceId !== string(plan, "workspaceId") ||
-    mountInstanceId !== string(authority, "mountGeneration") ||
+    !mountInstanceIdPattern.test(mountInstanceId) ||
+    mountGeneration !== unclassifiedString(authority, "mountGeneration") ||
     policyVersion !== string(policy, "policyVersion") ||
     policyDigest !== string(policy, "policyHash") ||
     lockStateDigest !== string(authority, "activeLocksHash") ||
@@ -728,10 +738,36 @@ function value(record: NormalizedRecord, key: string): NormalizedValue {
 }
 
 function string(record: NormalizedRecord, key: string): string {
-  const candidate = value(record, key);
-  if (typeof candidate !== "string") throw unavailable();
+  const candidate = unclassifiedString(record, key);
   safe(candidate);
   return candidate;
+}
+
+function unclassifiedString(record: NormalizedRecord, key: string): string {
+  const candidate = value(record, key);
+  if (typeof candidate !== "string") throw unavailable();
+  return candidate;
+}
+
+function mountedGeneration(admissionGenerationId: string): string {
+  const match = admissionGenerationIdPattern.exec(admissionGenerationId);
+  if (match === null || match[1] === undefined) throw unavailable();
+  return `admission:${match[1]}`;
+}
+
+function validateToolFields(
+  record: NormalizedRecord
+): readonly [toolId: string, toolVersion: string] {
+  const toolId = unclassifiedString(record, "toolId");
+  const toolVersion = unclassifiedString(record, "toolVersion");
+  if (
+    toolId !== mountedAutomaticToolId ||
+    toolVersion !== mountedAutomaticToolVersion
+  ) {
+    safe(toolId);
+    safe(toolVersion);
+  }
+  return Object.freeze([toolId, toolVersion]);
 }
 
 function number(record: NormalizedRecord, key: string): number {
