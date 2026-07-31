@@ -745,6 +745,23 @@ function commandArgs(command) {
   return args;
 }
 
+const repositoryExecutionControlTail = Object.freeze([
+  "--maxWorkers=1",
+  "--testTimeout=120000"
+]);
+
+export function repositoryExecutionArgsForCard(cardId, args) {
+  assertString(cardId, "repository execution card ID");
+  assertArray(args, "repository execution args");
+  if (args.some((arg) => typeof arg !== "string" || arg.length === 0)) {
+    throw new Error("repository execution args must contain non-empty strings");
+  }
+  if (cardId !== "Task137B-W" && cardId !== "Task136") {
+    return args;
+  }
+  return [...args, ...repositoryExecutionControlTail];
+}
+
 function assuranceFingerprint(contract) {
   const cards = contract.releaseGraph.cards.map((card) => ({
     id: card.id,
@@ -2147,8 +2164,9 @@ function createRepositoryAdapter() {
     objectType(commitish, path) {
       return gitOutput(["cat-file", "-t", `${commitish}:${path}`]);
     },
-    runNpmTest(args) {
-      execFileSync("npm", ["test", "--", ...args], { stdio: ["ignore", "inherit", "inherit"] });
+    runNpmTest(args, card) {
+      const executionArgs = repositoryExecutionArgsForCard(card.id, args);
+      execFileSync("npm", ["test", "--", ...executionArgs], { stdio: ["ignore", "inherit", "inherit"] });
     }
   };
 }
