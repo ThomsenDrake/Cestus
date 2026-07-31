@@ -2,9 +2,12 @@
 
 **Date:** 2026-07-22
 
-**Status:** Approach 1 is program-owner approved. This exact written revision
-requires program-owner review before implementation planning or any assurance,
-mission-state, product, or Task136 RED change.
+**Status:** Approach 1 remains program-owner approved. RV-1-E-954 authorizes
+this exact forward written correction after preserving and rejecting exact
+candidate `eb36b46edb19ff68fe3738093702b0a49f0eede2`. This descendant requires
+a completely new fresh independent architecture and executability review pair
+before coordinator approval, history-preserving integration, or any further
+Task136 RED or source change.
 
 **Revision note:** the first committed written revision at
 `7bafcef52aefa096112d6b2d6928ce4ae4c89b4b` failed independent design review
@@ -38,10 +41,29 @@ orchestrator summary reason and left domain-evidence causation undefined; the
 second specified a loader forbidden by released repository policy, exposed no
 cycle-safe non-barrel runtime API or pre-request preview operation, omitted
 the automatic adapter/T120 bridge and unknown-result mapping, and did not
-freeze mounted-ledger identity. RV-1-E-934 and this descendant correct that
-construction without adding a producer seam or product path: 22 transferred
-paths, five exact baseline-adopted paths, and a 30-path Task136 card. The
-strict frontier and all 29 card IDs/order remain unchanged.
+freeze mounted-ledger identity. RV-1-E-934 and the reviewed design at
+`d475edd5cafd57a6f7db6c26aeeecb48bd9459cd` corrected that construction
+without adding a producer seam or product path: 22 transferred paths, five
+exact baseline-adopted paths, and the historical 30-path Task136 card. The
+RV-1-E-1017 forward amendment below adopts the legacy-staging source/test
+pair, yielding seven baseline adoptions and the current 32-path card. Rejected Task12
+checkpoint `b54281b06ef420189ec0b1ffd82caa5d8bf4c2eb` then proved one remaining
+written ABI gap: the design named an executable human-approved stage but no
+same-process operation could advance the exact still-live human-request brand
+through a later independent durable decision, and its dispatcher oracle proved
+only forged-permit rejection rather than legitimate positive admissibility for
+catalog ordinals 2 through 7 and 9 through 10. RV-1-E-952 froze the missing
+same-instance transition and real adapter-specific positive evidence without
+adding a path, seam, export, resolver, or callback. Exact descendant
+`eb36b46edb19ff68fe3738093702b0a49f0eede2` preserved those corrections and
+passed its fresh architecture review, but its different fresh executability
+review rejected it with one P1: the PRR and export/report factory variants
+still supplied one singular family context even though each of those families
+constructs two ordinal-specific adapters with different trusted bindings.
+RV-1-E-954 freezes the smallest correction: exact `initialContext` and
+`followUpContext` inputs for ordinals 2 and 3, and exact `exportContext` and
+`reportContext` inputs for ordinals 5 and 6. The strict frontier and all 29
+card IDs/order remain unchanged.
 
 ## Decision And Authority
 
@@ -59,6 +81,14 @@ The governing repository evidence is:
   `fea8a7d267170d4a5216b7eb4aa64865dd18a3e4`;
 - zero-path loader/ABI addendum `RV-1-E-934` at exact revised-design base
   `1512cd7d76156842febf9fe1ca955bf2c05c22e2`;
+- fresh-decision ABI correction authority `RV-1-E-952`, preserving rejected
+  Task12 checkpoint `b54281b06ef420189ec0b1ffd82caa5d8bf4c2eb`,
+  forward-merged at
+  `ea739b5140b00b9c4660267e89c36e8614b853b3`;
+- dual-context dispatcher correction authority `RV-1-E-954`, preserving
+  rejected exact candidate
+  `eb36b46edb19ff68fe3738093702b0a49f0eede2`, forward-merged at
+  `1c6b0866949761e56fce21411e83038b8a992365`;
 - the clean, history-preserving Task136 checkpoint
   `72e1ee6624c582218995e3e075e2303998811834`;
 - strict record-28 integration
@@ -229,7 +259,7 @@ source for the dispatcher test and exact adopted-source baseline:
 ]
 ```
 
-Task136 owns exactly 30 paths in this order at record 29:
+Task136 owns exactly 32 paths in this order at record 29:
 
 ```text
 packages/agent/src/bounded-agent-loop.ts
@@ -240,6 +270,8 @@ packages/agent/test/plan-observation-contracts.test.ts
 packages/agent/test/plan-observation-projection.test.ts
 packages/agent/src/resident-plan-candidate-provider.ts
 packages/agent/test/resident-plan-candidate-provider.test.ts
+packages/agent/src/adapters/legacy-staging.ts
+packages/agent/test/legacy-staging-adapter.test.ts
 packages/agent/src/resident-loop-tool-gateway.ts
 packages/agent/test/resident-loop-tool-gateway.test.ts
 packages/agent/test/resident-loop-scheduler-completion-imports.test.ts
@@ -267,8 +299,84 @@ docs/agentic/claims/task-136-resident-full-vision-bounded-loop.md
 Its exact card command is:
 
 ```text
-npm test -- packages/agent/test/bounded-agent-loop.test.ts packages/agent/test/plan-observation-contracts.test.ts packages/agent/test/plan-observation-projection.test.ts packages/agent/test/resident-plan-candidate-provider.test.ts packages/agent/test/resident-loop-tool-gateway.test.ts packages/agent/test/resident-loop-scheduler-completion-imports.test.ts packages/local-runtime/test/wake-supervisor-runtime.test.ts packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts packages/agent/test/specialist-handoff-projection.test.ts packages/ontology/test/agent-resident-loop-contracts.test.ts packages/local-runtime/test/resident-loop-factory-ports.test.ts packages/local-runtime/test/resident-loop-factory-ports-imports.test.ts packages/agent/test/domain-execution-dispatcher.test.ts packages/agent/test/task-orchestrator-claims.test.ts packages/agent/test/task-orchestrator-projection.test.ts
+npm test -- packages/agent/test/bounded-agent-loop.test.ts packages/agent/test/plan-observation-contracts.test.ts packages/agent/test/plan-observation-projection.test.ts packages/agent/test/resident-plan-candidate-provider.test.ts packages/agent/test/legacy-staging-adapter.test.ts packages/agent/test/resident-loop-tool-gateway.test.ts packages/agent/test/resident-loop-scheduler-completion-imports.test.ts packages/local-runtime/test/wake-supervisor-runtime.test.ts packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts packages/agent/test/specialist-handoff-projection.test.ts packages/ontology/test/agent-resident-loop-contracts.test.ts packages/local-runtime/test/resident-loop-factory-ports.test.ts packages/local-runtime/test/resident-loop-factory-ports-imports.test.ts packages/agent/test/domain-execution-dispatcher.test.ts packages/agent/test/task-orchestrator-claims.test.ts packages/agent/test/task-orchestrator-projection.test.ts
 ```
+
+The canonical newline-delimited path-list SHA-256 is
+`8fc076b8b7f3c23f513381fd771bf26ee81ad967c28b741bdb1c766d52554a41`.
+The order above is the only source for contract order, release-record
+`ownedPathBlobs` order, candidate/integration blob comparison, and every
+path-list hash. The historical thirty-path hash is not current authority.
+
+### RV-1-E-1017 secret-safe ordinal-10 binding amendment
+
+The legacy-staging adapter source/test pair is adopted as Task136 baseline
+authority, not transferred from another release-graph card. Before record 29,
+both paths must equal their exact bytes at candidate
+`3be15212776ab3c96e66bf0bade4630960c362eb`, published integration
+`dc05c43c4b9a592d0396acd034bfc32e177fd09a`, and current HEAD. Their frozen
+blobs are source `99fbafda3844435109bc249b015b111b9258c210` and test
+`de7cef3123a15fb82891943dc51005165c8c9fcd`.
+
+`AgentDomainPreview` exposes one additional ordered field only:
+
+```ts
+readonly selectedCandidateBindingHashes: readonly `sha256:${string}`[];
+```
+
+It never exposes raw candidate predicate or object values. For each exact
+current selected candidate, in selected-candidate order, the adapter computes:
+
+```text
+sha256(
+  utf8("legacy-selected-candidate-binding.v1\n") ||
+  utf8(stableJson({
+    candidateId,
+    evidenceId,
+    evidenceContentHash,
+    predicate,
+    object,
+    confidence,
+    subjectRef: {
+      present: Object.hasOwn(candidate, "subjectRef"),
+      value: Object.hasOwn(candidate, "subjectRef")
+        ? candidate.subjectRef
+        : null
+    }
+  }))
+)
+```
+
+The canonical JSON object has exactly the seven displayed top-level fields;
+the version domain is the literal prefix, and `subjectRef` always has exactly
+`present` then `value`. Absence is distinct from a present empty or other
+valid scalar value. Predicate, independent scalar object, confidence, and
+subject reference remain inside the hash preimage and never enter the
+preview. Candidate ID, evidence ID, and evidence content hash remain in their
+released preview fields and are also covered by this non-substitutable
+binding.
+
+The adapter derives the ordered hashes from the authoritative current
+candidate objects, includes the exact array in `normalizedInputHash`, and
+returns it in the preview. The existing complete preview hash therefore binds
+the array a second time. It must not accept caller-supplied hashes or compute
+them from fixture-only fields.
+
+After ordinal-10 execution, the dispatcher independently reconstructs each
+preimage from the exact ordered `assertion.proposed` payload and its uniquely
+matched `evidence.ingested` event. It compares the recomputed ordered hashes
+to the approved current preview before issuing the attestation. It retains
+exact assertion/evidence IDs, review state, causation, event order,
+currentness, exact result, private branding, and at-most-once checks. In
+particular, `payload.object` is the candidate's independent scalar object and
+is never substituted with `candidateId`.
+
+Recovery performs the same independent recomputation from the durable
+proposal and evidence events before terminalizing a receipt. It also retains
+the complete branch-specific evidence table, receipt hash, request/approval/
+claim chronology, mounted preview, currentness, and at-most-once rules. The
+receipt is not its own oracle, no report-store port is added, and no runtime
+route or fallback write is introduced.
 
 ## Historical Compatibility And Immutable Release Evidence
 
@@ -694,11 +802,15 @@ issuer, binder, or resolver exists for the barrel to re-export.
 `ResidentDomainFactoryBindingsV1` is a closed discriminated union with exactly
 six variants: provider-byte-transfer, PRR-correspondence,
 accepted-graph-review, export-report, destructive-repair, and legacy-staging.
-Each variant accepts only the existing package adapter context for that family.
-It forbids an adapter object, descriptor, executor function, factory function,
-implementation name, implementation revision, identity string, or lookup
-callback. Hostile accessors, inherited keys, extra keys, proxies, sparse
-arrays, and post-call mutation fail before a constructor or I/O runs.
+Provider-byte-transfer, accepted-graph-review, and legacy-staging retain one
+existing package adapter context because each exact selected pair or singleton
+legitimately shares that binding. PRR-correspondence and export-report require
+two exact ordinal-specific contexts. Destructive-repair retains its two
+already separate contexts. No variant accepts any other context, adapter
+object, descriptor, executor function, factory function, implementation name,
+implementation revision, identity string, or lookup callback. Hostile
+accessors, inherited keys, extra keys, proxies, sparse arrays, and post-call
+mutation fail before a constructor or I/O runs.
 
 ```ts
 type ResidentLegacyStagingContextV1 =
@@ -718,7 +830,8 @@ type ResidentDomainFactoryBindingsV1 = {
     }
   | {
       readonly kind: "prr-correspondence";
-      readonly context: PrrCorrespondenceAdapterContext;
+      readonly initialContext: PrrCorrespondenceAdapterContext;
+      readonly followUpContext: PrrCorrespondenceAdapterContext;
     }
   | {
       readonly kind: "accepted-graph-review";
@@ -726,7 +839,8 @@ type ResidentDomainFactoryBindingsV1 = {
     }
   | {
       readonly kind: "export-report";
-      readonly context: ExportReportAdapterContext;
+      readonly exportContext: ExportReportAdapterContext;
+      readonly reportContext: ExportReportAdapterContext;
     }
   | {
       readonly kind: "destructive-repair";
@@ -740,11 +854,16 @@ type ResidentDomainFactoryBindingsV1 = {
 );
 ```
 
-Every selected context must contain a present validated `EventLedger`; both
-destructive-repair contexts must reference the same one. Every context
-resident/task identity that it carries must equal the union's exact
-`residentAgentId`/`taskId`. The top-level workspace identity is retained for
-later W comparison and is not caller authority.
+Every selected context must contain a present validated `EventLedger`.
+`initialContext` and `followUpContext` must reference the same exact ledger
+object; `exportContext` and `reportContext` must reference the same exact
+ledger object; and both destructive-repair contexts must continue to reference
+the same exact ledger object. Each context is validated independently, and
+every resident/task identity it carries must equal the union's exact
+`residentAgentId`/`taskId`. The union's one exact `workspaceId` plus those
+matching resident/task values forms the retained workspace/resident/task tuple
+for both contexts in either paired family. The top-level workspace identity is
+retained for later W comparison and is not caller authority.
 
 The dispatcher uses literal static imports for the exact descriptors and these
 eleven existing package constructors:
@@ -793,11 +912,23 @@ evaluation has completed. Neither the imported modules nor callers provide
 the revisions. No dynamic import, computed loader, `require`, evaluator, or
 loader-policy exemption is permitted.
 
+The dispatcher independently validates every supplied context and instantiates
+exactly the one or two catalog ordinals named by the selected union variant.
+For PRR it passes `initialContext` unchanged to
+`createPrrInitialSendExecutionAdapter` and `followUpContext` unchanged to
+`createPrrFollowUpExecutionAdapter`. For export/report it passes
+`exportContext` unchanged to `createExportGenerationAdapter` and
+`reportContext` unchanged to `createReportGenerationAdapter`. It never
+derives, spreads, copies-and-rewrites, substitutes, swaps, or cross-uses one
+context to construct the other ordinal. Provider and legacy continue to pass
+their singular context unchanged to both exact constructors;
+destructive-repair continues to pass its two already separate contexts to
+their respective constructors.
+
 The dispatcher validates each constructed adapter through
 `createAgentDomainToolRegistry`, requires its imported canonical descriptor to
-equal the catalog entry, and instantiates exactly the one or two catalog
-ordinals named by the selected union variant. It copies and freezes those
-resolved functions, binding identities, and validated binding-ledger
+equal the catalog entry, copies and freezes the resolved functions, binding
+identities, exact workspace/resident/task tuple, and validated binding-ledger
 identities in a module-private WeakMap, and returns only an opaque capability.
 
 During W's one-shot composition,
@@ -1018,6 +1149,47 @@ require the exact `decisionEventId`, `approvedBy`, and
 `approvedPreviewHash`, and human denial terminates from requested without a
 claim. No combined branch has an optional `decisionEventId`.
 
+The import-gated internal G object has exactly these frozen operations:
+
+```text
+preparePlannedStepBindings
+requestFreshAuthorized(locator)
+readFreshHumanDecision(requested: OpaqueFreshHumanRequestedStage)
+executeFreshAuthorized
+rereadAndIssueFromLedger
+```
+
+Its internal constructor composition accepts only the authenticated ledger
+and `now`, the opaque package-owned resident execution port, W-private
+before-effect and after-effect currentness closures, and the trusted
+tool-request-ID closure. The constructor accepts no raw adapter, executor,
+claim, attestation, decision, provider, lookup, fallback, public resolver, or
+caller-replaceable callback. It is non-barrel and import-gated to W. G's
+default export remains only the frozen package-private permit consumer, the
+dispatcher remains that default's sole production direct importer, and there
+is no public or named permit issuer, decision resolver, or raw execution
+callback.
+
+`requestFreshAuthorized(locator)` first rebuilds the package-owned current
+preview and revalidates W before and after that await, then appends and rereads
+the exact automatic or human resident request. Automatic request issuance is
+permitted only for catalog ordinal 10; every other executable ordinal requires
+the human branch. The returned request is branded to that exact live G
+instance and transition.
+
+`readFreshHumanDecision(requested: OpaqueFreshHumanRequestedStage)` accepts
+only the exact unconsumed same-instance human-request brand. It revalidates W,
+rereads exactly one later independent durable human approval caused by that
+request and bound to its exact preview and unexpired deadline, revalidates W
+again, consumes the requested-to-approved transition, and returns a distinct
+same-instance `human-approved` brand. The independent actor/path appends the
+decision; G never appends or synthesizes it and only performs the exact durable
+reread. The method accepts no locator, raw decision, callback, decision or
+request ID, approval DTO, or caller-supplied permit.
+Reusing the request, supplying a copied or foreign-instance brand, or observing
+zero, multiple, stale, self, denied, revoked, mismatched-preview, or expired
+decisions fails closed without a claim or effect.
+
 Request append/reread binds the exact plan, locator, current preview and hash,
 policy allowlist, side-effect/output/approval classes, source/context/artifact
 provenance, authority, budgets, and capability hash. Human approval requires
@@ -1033,16 +1205,15 @@ post-claim failed names the receipt; and proven pre-claim failed names the
 request. Correlation, locator, and capability hash remain identical across the
 whole prefix.
 
-`executeFreshAuthorized` accepts only a newly issued automatic `requested` or
-human `human-approved` stage. It revalidates W currentness, appends and rereads
-the permanent claim, then creates a non-serializable, in-memory, one-shot
-execution permit bound to that exact claim and privately resolved catalog
-entry. Only that permit can call the dispatcher's private
+`executeFreshAuthorized` accepts only a fresh same-instance automatic
+`requested` brand for ordinal 10 or the fresh same-instance human
+`human-approved` brand returned by `readFreshHumanDecision`. It consumes that
+transition, revalidates W currentness, appends and rereads the permanent claim,
+then creates a non-serializable, in-memory, one-shot execution permit bound to
+that exact claim and privately resolved catalog entry. Only that permit can
+call the dispatcher's private
 `invokeAndAttest(permit, residentInvocationInput)` operation; the claim ID is
-read from the consumed permit rather than accepted as a separate string. A
-stage reconstructed by `rereadAndIssueFromLedger` never has an execution
-permit: a reread `claimed` stage is observation/reconciliation-only and can
-never execute or reexecute the effect.
+read from the consumed permit rather than accepted as a separate string.
 
 After the dispatcher returns its branded invocation attestation, G verifies
 its exact claim, capability, catalog ordinal, implementation revision,
@@ -1076,8 +1247,12 @@ approver, and approved-preview hash. That branch is never represented as
 `rereadAndIssueFromLedger(locator)` accepts exactly one valid prefix with no
 duplicate, gap, foreign event, changed canonical bytes, or second terminal.
 It can reissue request, human-approved, claimed, completed, denied, or failed
-readbacks. A receipt after a crash permits terminal finalization without an
-effect; a claim without a receipt yields only `effect-outcome-unknown`.
+readbacks, but every brand it returns is recovery/reread-only and
+nonexecutable, including a reread automatic request or human-approved stage.
+It never issues or recreates an execution permit and can never be passed to
+`readFreshHumanDecision` or `executeFreshAuthorized`. A receipt after a crash
+permits terminal finalization without an effect; a claim without a receipt
+yields only `effect-outcome-unknown`.
 Each issued readback maps only to the same authorization/stage branch in
 `ResidentLoopV2GatewayReadbacks`: completed supplies its exact claim, receipt,
 and terminal IDs; human denied supplies only its request and denial IDs;
@@ -1415,8 +1590,12 @@ The permanent RED matrix covers at least:
   impostor; changed/missing/reordered/duplicate catalog entries; descriptor/
   implementation-revision drift; function-stringification provenance; a
   legacy caller-registered dispatcher minting or satisfying a resident
-  capability; missing/optional/foreign retained ledgers, unequal destructive
-  ledgers, or a workspace/resident/task mismatch; any dynamic/computed loader,
+  capability; missing/optional/foreign per-ordinal contexts or retained
+  ledgers; unequal PRR, export/report, or destructive paired ledgers; a
+  workspace/resident/task mismatch between either paired context and the
+  union; derivation, spread/copy-rewrite, substitution, swapping, or cross-use
+  of `initialContext`/`followUpContext` or
+  `exportContext`/`reportContext`; any dynamic/computed loader,
   `require`, evaluator, loader exemption, or module-initialization read of a
   statically imported adapter value; a barrel-first/adapter-first import that
   triggers TDZ or changes descriptors; a named/namespace/barrel resident
@@ -1440,6 +1619,15 @@ The permanent RED matrix covers at least:
   automatic stage carrying any of those fields or an approval event; request/
   claim causation drift; changed preview; reused authorization; duplicate
   permanent claim; claim-expiry reexecution; or a terminal stream;
+- G construction with anything beyond the authenticated ledger/clock, opaque
+  resident port, W-private before/after-effect currentness closures, and
+  trusted tool-request-ID closure; a public or named permit issuer, decision
+  resolver, raw callback, or a default export wider than the dispatcher-only
+  permit consumer; a copied, replayed, recovery-issued, consumed, or
+  foreign-instance human-request/human-approved brand; zero, multiple, stale,
+  self, denied, revoked, preview-mismatched, or expired decisions; decision
+  read without W revalidation; automatic issuance for any ordinal other than
+  10; or any recovery/reread brand acquiring execution authority;
 - the ordinal-10 automatic compatibility bridge used for any other ordinal,
   used with an approval class other than `none`, carrying a preview mismatch,
   accepting a caller actor label, or leaking its internal label/legacy
@@ -1468,6 +1656,21 @@ The permanent RED matrix covers at least:
   newly appended event; ordinal 7 carrying an event ID, an empty/mismatched
   projection-artifact set, a wrong read-model change, or any ledger advance;
   and any adapter/source/DTO widening used to inject the resident claim;
+- executable positive package-owned fixtures for each exact catalog ordinal
+  2 through 7 and 9 through 10. Ordinals 2 and 3 use independently built real
+  `initialContext` and `followUpContext` values, and ordinals 5 and 6 use
+  independently built real `exportContext` and `reportContext` values; the
+  paired contexts share only their required exact ledger identity and matching
+  workspace/resident/task tuple and each is passed unchanged to its static
+  constructor. All selected contexts use real adapter-specific services rather
+  than construction-only throwers. Ordinals 2 through 6 and 9 through 10 each
+  prove both wholly `new-ledger-events` and wholly
+  `idempotent-existing-ledger-events` evidence; ordinal 7 alone proves exact
+  `nonledger-projection-artifacts` with zero ledger delta; and ordinals 0, 1,
+  and 8 prove that no successful attestation, receipt, or terminal can exist.
+  Forged-permit rejection, one family context rewritten for another ordinal,
+  and construction-only fixtures are necessary negatives but are never
+  sufficient positive admissibility evidence;
 - G a structural/replayed invocation attestation, empty overall evidence,
   ordinal-7 empty events treated as an event-backed result, changed normalized
   result or envelope hash, or completion without the exact outcome receipt; a
@@ -1529,9 +1732,12 @@ The permanent RED matrix covers at least:
 
 ## Assurance And Mission-State Migration
 
-The authority correction changes exactly six files:
+The forward assurance amendment changes exactly nine files:
 
 ```text
+docs/superpowers/specs/2026-07-22-task136-record29-producer-reconciliation-design.md
+docs/superpowers/plans/2026-07-23-task136-record29-producer-reconciliation-implementation.md
+docs/agentic/claims/task-136-resident-full-vision-bounded-loop.md
 docs/agentic/contracts/task136-bounded-assurance-v4.json
 scripts/resident-agent/assurance/task136-bounded-assurance.mjs
 scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs
@@ -1546,7 +1752,12 @@ G136-SC dispatcher-test transfer and dispatcher-source baseline-adoption
 validator. It also adds exact source/target scope and command validators, the
 eleven-entry compatibility constant, source-specific historical target/
 current-head migration branches, the 28 raw pins, and new exact fingerprints.
-The baseline validator requires the dispatcher source blob
+The baseline validator requires the adopted legacy-staging source and test
+blobs `99fbafda3844435109bc249b015b111b9258c210` and
+`de7cef3123a15fb82891943dc51005165c8c9fcd` at common candidate
+`3be15212776ab3c96e66bf0bade4630960c362eb`, published integration
+`dc05c43c4b9a592d0396acd034bfc32e177fd09a`, and pre-record-29 HEAD.
+It also requires the dispatcher source blob
 `96b0ade273696b9ffcf497119f1943f128821a58` at the G136-SC candidate,
 G136-SC integration, and pre-record-29 HEAD; it does not invent historical
 G136-SC ownership for that previously unowned source. The same finite baseline
@@ -1566,13 +1777,16 @@ and one final LF produce:
 
 ```text
 V4 JSON SHA-256:
-81a34419ae5d25853279be96c14a95c65dcc127d1bb5f5b09cecbbf03c55b53a
+3adbf85ccc071667df73809f44b0e1451b66fdd81dfc6021afafcc4feec20930
 
 V4 assurance fingerprint:
-34628c6687644f224ef426254a6461c25f549d696c5de08bd9dccc14b7946af6
+da850dfd3068efda96b96e9a274777e3b97e2922017c16be8ea703b09e7cd1ec
 
 Mission immutable-envelope fingerprint after pin synchronization:
-sha256:ac80fb8d78cbd1c8abb135604327b284c638304796cc74dc094ce6168aaa5ce5
+sha256:1fcbb344a125ae874ea174022f051486267f0f7afa75e743bdb8fab24632d5ab
+
+Mission source fingerprint after pin synchronization:
+sha256:5b5b6b71dc5d0f4b96954ac00d3e7b8a4ccb7c31465eabac149b7f312f39028b
 ```
 
 The mission JSON changes only `mission.frozenAuthority.sha256`; card count
@@ -1591,25 +1805,25 @@ minimum history-preserving sequence is:
 2. In the existing V4-assurance lineage, forward-merge current program
    authority. Commit a claim-only checkpoint, then a permanent causal RED that
    fails only for the absent seven seam mappings, direct CF1-HR and G136-SC
-   prerequisites, 30-path Task136 scope, 16-test command, eleven compatibility
-   entries, five exact baseline adoptions, record-29 migration, and raw pins.
+   prerequisites, 32-path Task136 scope, 17-test command, eleven compatibility
+   entries, seven exact baseline adoptions, record-29 migration, and raw pins.
    Apply the smallest GREEN contract/checker change, then synchronize the two
    mission pins. Preserve each commit separately.
 3. Run assurance 20/20, all four exact contract markers, factory readiness,
    repository strict 28/28 followed only by expected incomplete-29 closure,
    typecheck, exact scope/diff/ancestry/dependency/clean gates, and obtain a
    fresh independent architecture/executability review pair on one exact
-   six-file candidate. Integrate only after both approve.
+   nine-file amendment candidate. Integrate only after both approve.
 4. Forward-merge that approved program authority into the existing clean
    Task136 lineage at `72e1ee6624c582218995e3e075e2303998811834` without
    reset, rebase, amend, reconstruction, or discarded history.
 5. Commit claim-only recovery evidence. Commit one permanent product RED that
    adds the exact producer and Task136 negative tests before source GREEN.
-   Apply only the 13 product source files required by those tests. The final
-   Task136 product candidate has exactly the 30-path card scope above. The RED
+   Apply only the 14 product source files required by those tests. The final
+   Task136 product candidate has exactly the 32-path card scope above. The RED
    must exercise `createResidentBoundedAgentLoopFactory` with the real mounted
    fixture and must not add a default runtime or route call site.
-6. Run the exact 16-test card command, the original focused and cross-boundary
+6. Run the exact 17-test card command, the original focused and cross-boundary
    Task136/Task120/execution-loop/portable-workspace/Task138 suites, standalone
    typecheck, factory readiness, assurance 20/20, all contract markers,
    repository-prefix behavior, diff/scope/ancestry/dependency/clean checks,
@@ -1647,7 +1861,7 @@ The correction is complete only when all of the following hold:
   stop only at incomplete 29, while changed transferred bytes or a dispatcher
   source or task-orchestrator path that differs from its exact candidate/
   integration baseline fails source currentness;
-- after record 29, Task136 owns and matches all 30 blobs, all 29 commands pass,
+- after record 29, Task136 owns and matches all 32 blobs, all 29 commands pass,
   every exact prerequisite integration is ancestral, and closure is complete;
 - focused, cross-boundary, typecheck, factory, V4, marker, repository, diff,
   scope, ancestry, dependency, clean-state, and full-verification differential
@@ -1693,3 +1907,586 @@ Task122 b607b582e227f558d1340b3b9f098f90e356db9f343109ec6a4e37276624171a
 W1-123-BOOTSTRAP-HANDOFF a8ed548c473fca9e7f4016a001032d151c204be2347db43d1ff77b386fd5cd9d
 Task138-H 186ebee9d0364a6a6f93fb1d6adcb80970c63a49352a1c26b598c0323a444fc8
 ```
+
+## RV-1-E-1109 Current Exact-Identity 33-Path Amendment
+
+This true-EOF section is the current design authority. It supersedes only the
+current 32-path mechanics above; every earlier design revision, candidate,
+review, pin, RED, GREEN, release, and strict-record hash remains immutable
+historical evidence for its exact commit. The strict release graph remains
+exactly 29 cards and the product frontier remains 28 of 29.
+
+Transfer exactly
+`packages/local-runtime/src/resident-loop-factory-composition.ts` from
+`Task136-FC-Core` to `Task136`. `Task136-FC-Core.transferToIds` is exactly
+`["Task136"]`; only that source has current disposition `transferred`. The
+two FC-Core tests and
+`docs/agentic/claims/task-136-factory-authority-composition.md` remain current
+`owned`, retain their original command, and never migrate to Task136.
+Historical strict record 19 retains `owned` for all four FC-Core paths.
+
+The immutable record-19 evidence is:
+
+```text
+candidate c6efd58a3e385d0097b4df9f73703a75b145e660
+integration 7a7a650e7db97c1aad63447e3669e66ddf3dc7fe
+composition source blob 8e69a7ac55f16a9d3e1c2646c985ffc6539fe064
+raw record SHA-256 5e78c42b3753cd3ce086ab45862479f2e5569fdaae1fc683528a67101630b920
+compact canonical record SHA-256 ff24eb56771db9a1a7ea015783a9b83c17f246d5e0215364b7fecb547c92c0c1
+```
+
+Task136 has exactly ten direct prerequisites. Insert `Task136-FC-Core`
+immediately before `Task136-FC-Ports` while preserving all other prerequisite
+order. Task136 has exactly 33 ordered paths: 15 sources, 17 tests, and one
+product claim. Insert the composition source at one-based position 23,
+immediately after
+`packages/ontology/test/agent-resident-loop-contracts.test.ts` and before
+`packages/local-runtime/src/resident-loop-factory-ports.ts`. Every other path
+retains its relative order. The canonical newline-delimited 33-path SHA-256 is
+`4cca816c5004bf922d47a44bc8e9216a7f4d1e00a030f20b34d59fb0cd1e442e`.
+The Task136 card command remains the exact existing 17-test command.
+
+Release compatibility is exactly twelve entries. Insert
+`Task136-FC-Core` immediately before `Task136-FC-Ports`, with only the
+composition source and historical disposition `owned`; its compact hash still
+binds the complete four-path raw record. Before record 29, source currentness
+remains bound to the FC-Core record's exact candidate, integration, and
+current-HEAD blob. At record 29, only the composition source migrates to the
+Task136 candidate, integration, and current HEAD. The FC-Core tests and claim
+remain FC-Core-owned.
+
+The mandatory Task136 cross-boundary control grows from 35 to exactly 37 tests
+by adding, unchanged:
+
+```text
+npm test -- packages/local-runtime/test/resident-loop-factory-composition.test.ts packages/local-runtime/test/resident-loop-factory-composition-imports.test.ts
+```
+
+The exact-identity repair uses a private non-barrel one-shot issuer seam at
+the actual Core composition allocation and issuance point. Composition
+privately registers or brands the exact completed frozen authority readback
+against the exact issued wake-runtime identity before returning. W accepts
+only the original outer, provider, handoff, and authority-binding allocations
+and rejects any copy or substitution before mounted-store I/O. The seam is
+not caller-visible and exposes no copyable brand, callback, report-store port,
+barrel export, fallback, activation, route, provider, credential, or network
+authority. Structural equality, first-seen state, timing, allocation order,
+call-stack inspection, source-text inspection, hidden globals, and
+process-local rendezvous are forbidden substitutes for package-owned identity.
+
+The synchronized current pins are:
+
+```text
+V4 JSON SHA-256:
+96b6104617103b85916df22b46168781c58b4465b729369f3e7179cf0a89b8e5
+V4 assurance fingerprint:
+f73e9d7090dfdd388b18c2b13ca207f3cfa11697fe4473026e0b09492d083df4
+Mission immutable-envelope fingerprint:
+sha256:82e666a86d2b3ccd0ceafd634975d0a7459d3fe7600d27cc8345dd0f531fbc1e
+Mission source fingerprint:
+sha256:799af83764d6c098f3b1a97d6d30fc3b9b13f32f7c57204d92383fab371179ac
+```
+
+The amendment changes only the nine authority paths named by RV-1-E-1109 and
+changes no package/product byte. After completely fresh independent design and
+executability approval plus history-preserving integration, a separate
+append-only event may authorize the already approved 42-failure Task14 GREEN
+in exactly the composition source, wake-supervisor source, and mounted-store
+source.
+
+## RV-1-E-1181 Current Private Lexical-Capability Amendment
+
+This true-EOF section supersedes only Task14's public readback-registrar
+mechanism above. Every 33-path ownership rule, prerequisite, compatibility
+entry, raw release pin, historical candidate/review/integration fact, and
+record-29 gate remains unchanged.
+
+### Feasibility boundary
+
+An exported wake constructor plus an exported later registrar cannot prove a
+composition-only caller. A direct caller controls and retains every constructor
+argument and receives the exact runtime. If legitimate composition can derive a
+registrar issuer from those public inputs or outputs, the direct caller can
+derive or retain the same value. A deterministic public registrar therefore
+cannot accept the composition trace and reject the equivalent direct trace
+without a private lexical capability or a forbidden contextual heuristic.
+
+Normalization, cloning, or branding inside the public constructor does not
+repair this boundary. A hidden value cannot be supplied later by composition;
+an exposed value is equally available to the direct caller. Static import
+policy may prove repository ownership but cannot substitute for runtime
+unforgeability.
+
+### Approved module topology
+
+`packages/local-runtime/src/wake-supervisor-runtime.ts` owns both wake-runtime
+state and the complete legitimate composition issuance flow.
+
+- Exported `createWakeSupervisorRuntime(input)` remains the generic public wake
+  constructor. It returns a runtime whose private state has no factory
+  registrar capability and can never acquire a factory readback.
+- Nonexported `issueResidentLoopFactoryWakeRuntime` creates the exact wake
+  runtime plus a one-shot `registerReadback(readback)` closure. Its private
+  issuance pair is returned only to
+  `createResidentLoopFactoryCompositionForFacade` in the same
+  `wake-supervisor-runtime.ts` lexical module.
+- The registrar closure captures its exact wake-runtime state lexically. It
+  checks accepted-start readiness and unused state before inspecting the
+  proposed readback, freezes no caller object, and stores only the exact
+  completed outer/provider/handoff/authority-binding allocations.
+- The closure is never exported, re-exported, returned from the public
+  composition object, installed on a public object, passed to caller code, or
+  represented by a caller-visible brand or structural field.
+- Exported `bindResidentLoopCapabilitiesForFactory` remains the downstream
+  consumer. It rejects a generic runtime before reading the proposed binding
+  or authenticated ledger because that runtime has no registered factory
+  binding.
+- Exported `registerResidentLoopFactoryAuthorityReadback` is removed.
+
+`packages/local-runtime/src/resident-loop-factory-composition.ts` becomes only
+the compatibility facade for the existing safe composition API. To preserve
+the frozen released FC-Core import-policy contract, it uses exactly six static,
+named, unaliased, causally used imports: the wake result type; handoff types;
+mounted-provider types; one distinctly named safe composition-builder value
+from the wake module; wake runtime/input types in a separate type import; and
+the local runtime-handle type.
+
+The frozen released FC-Core import-policy test remains exact blob
+`ad06c10be1fd5eb87fb70ddc94cbde4d81821129`.
+
+The facade locally declares the existing composition input, bind-input,
+readback, and composition interfaces. Its only value implementation is the
+existing exported `createResidentLoopFactoryComposition(rawInput)` wrapper,
+which immediately calls the safe wake-module builder and returns its safe
+composition object. It uses no export-list syntax and contains no issuer,
+registrar, wake construction, bind implementation, mutable state, provider
+operation, route, activation, or fallback.
+
+`createResidentLoopFactoryCompositionForFacade` is callable behavior, not an
+authority capability. It accepts only the same untrusted `rawInput`, consumes
+the private issuance pair inside the wake module, performs the complete
+co-located composition flow, and never accepts or returns the private
+registrar. Static policy permits exactly the one facade import and wrapper
+call; it forbids every alternate production importer, alias, re-export, or
+caller.
+
+The safe public composition behavior is unchanged: normalize one caller input;
+create and start one exact wake runtime; authenticate provider and handoff
+authority; construct one completed frozen readback; register it through the
+nonescaping lexical closure; return it; and allow one later exact downstream
+binding. Repeated bind, copied outer/nested allocations, generic runtimes,
+wrong runtimes, stale authority, and substitutions reject before mounted-store
+effects.
+
+### Test and static-policy contract
+
+The corrected runtime oracle must prove:
+
+1. the wake module has no exported
+   `registerResidentLoopFactoryAuthorityReadback`;
+2. a directly created generic runtime reaches accepted start but
+   `bindResidentLoopCapabilitiesForFactory` rejects an accessor-backed
+   proposed readback with zero accessor and authenticated-ledger reads;
+3. legitimate composition creates, registers, returns, and consumes its exact
+   one-shot binding; and
+4. copied, wrong-runtime, repeated, stale, and other existing hostile controls
+   retain their fail-closed outcomes.
+
+The corrected TypeScript AST/symbol-resolution oracle must prove:
+
+- the old registrar has zero declarations in the exported module surface,
+  zero imports, and zero callers;
+- the factory-only issuance function and registrar closure are nonexported,
+  remain in `wake-supervisor-runtime.ts`, and cannot escape through the
+  already committed direct, aliased, destructured, callable, conditional,
+  logical, await, spread, default, and comma-expression cases;
+- the safe builder has exactly one production importer and one wrapper call in
+  the narrow compatibility facade, while the existing public composition
+  function and interfaces remain local facade declarations;
+- the facade has exactly six static named unaliased imports, one wrapper value
+  implementation, no export-list syntax, and no cycle; and
+- no barrel, namespace, dynamic-loader, alternate-source, optional-call,
+  spread-call, copied-construction, or alternate-caller path gains the private
+  capability.
+
+No new unrelated alias fixture is added. The mounted lifecycle store and its
+test remain byte-frozen unless a separately approved causal RED proves a
+change necessary.
+
+### Scope and gates
+
+The test-first correction changes only the existing runtime and import-policy
+tests. It preserves 96 focused tests and must begin as
+**96 = 94 passed + two Task14 failures**. The exact Task136 card is
+**383 = 374 passed + nine failed** and the exact 37-file cross-boundary result
+is **1,042 = 1,033 passed + nine failed**; the other seven failures are the
+preserved Task15-through-16 REDs.
+
+After independent RED approval, append-only recording, and history-preserving
+integration, a separate GREEN may change only
+`packages/local-runtime/src/wake-supervisor-runtime.ts` and
+`packages/local-runtime/src/resident-loop-factory-composition.ts`. GREEN is
+exact **96/96**, card **383 = 376 passed + seven failed**, and cross-boundary
+**1,042 = 1,035 passed + seven failed**.
+
+The amendment adds no path and retains the exact 33-path ceiling. It adds no
+provider, route, activation behavior, default runtime, fallback write,
+structural/first-seen/timing/allocation-order heuristic, call-stack or
+source-text inspection, hidden global mutable authority, process-local
+rendezvous, dependency, credential, network call, or external effect.
+Task14 and Task136 remain `implementing`; the strict product frontier remains
+28 of 29 until every later committed gate exists.
+
+## RV-1-E-1213 Current Task16 Producer-Ownership Reconciliation
+
+This true-EOF section supersedes only the blocked Task16 R/W/G construction
+details. Task14 is complete. The exact 33-path ceiling, card and cross-card
+arrays, public factory input, eight-argument bounded issuer, T120 schemas,
+gateway readback own-key shapes, Task138 boundary, release graph, and every
+record-29 gate remain unchanged.
+
+### W owns orchestration-claim completion
+
+R does not receive raw-ledger authority and cannot lawfully invent
+`orchestrationClaimEventId` or `leaseClaimGeneration`. The public W operation
+remains:
+
+```ts
+suspendAndRelease(
+  checkpoint: unknown,
+  authority:
+    | OpaqueResidentLoopCurrentnessToken
+    | OpaqueResidentLoopSuspensionOnlyCapability
+): Promise<OpaqueReleasedCheckpointReadback | ResidentLoopUnavailableV1>;
+```
+
+R supplies the canonical checkpoint draft containing only fields it owns. W
+consumes the exact currentness or suspension-only capability, rereads its
+authenticated mounted snapshot, resolves the one exact orchestration claim
+for the bound task/attempt/run/retry tuple, and supplies the claim event ID and
+lease generation before normal checkpoint validation and append. Existing
+callers may include those two fields, but they are never authority: W requires
+exact equality with its reread claim and rejects a mismatch before append or
+release. The private claim identity is not added to the bounded issuer
+arguments, factory input, metadata, token, or any returned capability.
+
+### G owns canonical T120 tool-step material
+
+The internal mounted G port has exactly six operations. Its existing five
+remain unchanged and it gains one sixth non-executable operation:
+
+```ts
+readCanonicalToolStepMaterial(
+  exactIssuedReadback: object
+): Readonly<{
+  gatewayReadbacks: Readonly<Record<string, unknown>>;
+  allowlistEntryHash: `sha256:${string}`;
+  sideEffectClass: AgentToolSideEffectClass;
+  requiredApprovalClass: AgentApprovalClass;
+  previewHash: `sha256:${string}`;
+  inputArtifactHashes: readonly `sha256:${string}`[];
+  resultArtifactHashes: readonly `sha256:${string}`[];
+}>;
+```
+
+G records this material in a private WeakMap when it issues an exact
+same-instance `requested`, claim-without-receipt `claimed`, `completed`,
+`denied`, or `failed` readback. The operation rejects copied, foreign,
+unissued, transient `human-approved`, consumed-incompatible, and otherwise
+ineligible values. Requested and claimed material has empty result artifacts;
+terminal material uses the exact durable artifacts permitted by its prefix and
+is empty where that prefix carries none. The return is frozen plain own-data
+and exposes no preview body, descriptor, permit, adapter, executor, ledger,
+reader, callback, or authority. Existing readback own-key shapes remain
+byte-for-byte unchanged. R combines only this G-owned material with T120
+replay-owned identity/plan/budget fields; it never reconstructs G fields from
+C, fixture literals, or raw ledger access.
+
+Human branches use the package catalog's ordinal-9
+`legacy.staging.approve` descriptor with `ledger-review` side effect and
+approval class. Automatic branches retain ordinal-10
+`legacy.staging.execute` with `ledger-proposal` and `none`. Preview, input,
+and result artifact hashes originate from G material and are deliberately
+independent of plan/observation fixture hashes.
+
+### Dispatcher capability staleness is one-shot consumption
+
+The already committed dispatcher binder is genuinely one-shot. It consumes
+the exact capability WeakMap membership only after successful membership,
+mounted-ledger identity, and workspace/resident/task validation. A failed
+bind does not consume. A capability that has already bound once is stale and
+its first later factory presentation rejects. No issuance generation,
+ledger-high-water heuristic, global clock, caller inspection, or new public
+field is added.
+
+### Corrected RED and GREEN sequence
+
+The executable Task16 RED changes only the seven existing tests named by
+RV-1-E-1213, preserves every title and test cardinality, and has:
+
+```text
+Task16 focused: 9 = 3 passed + 6 failed
+producer controls: 144 = 140 passed + 4 failed
+Task136 card: 383 = 373 passed + 10 failed
+37-file cross-boundary: 1,042 = 1,032 passed + 10 failed
+Task138 boundary: 355/355
+```
+
+The four producer failures are W claim completion, G material behavior, G
+static ownership, and dispatcher one-shot consumption. The six remaining
+failures retain the three bounded-loop and three factory/import titles.
+
+Only after independent RED approval, append-only recording, and
+history-preserving integration may a producer-prerequisite GREEN change
+`mounted-wake-lifecycle-store.ts`, `resident-loop-tool-gateway.ts`, and
+`domain-execution-dispatcher.ts`. It must restore producer controls
+**144/144**, the card to **383 = 377 passed + six failed**, and cross-boundary
+to **1,042 = 1,036 passed + six failed**. Only after that GREEN is separately
+approved and integrated may the final R GREEN create `bounded-agent-loop.ts`
+and modify `resident-loop-factory-ports.ts`, producing complete card and
+cross-boundary GREEN.
+
+No path, provider, route, activation, default runtime, fallback write,
+dependency, credential, network call, external effect, raw-ledger port, or
+public authority is added. Mounted storage changes only for the newly causal
+W-owned claim completion. Task16 and Task136 remain `implementing`; the
+strict frontier remains 28 of 29.
+
+## RV-1-E-1244 Current Task16 Prepared-Composition Bootstrap
+
+This true-EOF section supersedes only Task16C's fresh-composition bootstrap
+and stop procedure. The Task14 private lexical-capability design, Task15 and
+Task16 producer ownership, the public bounded-loop issuer, all T120 behavior,
+the exact 33-path ceiling and canonical path hash, Tasks17-through-21, and
+every record-29 and publication gate remain unchanged.
+
+### One durable supervisor-lease owner
+
+The already-created and already-started Task14
+`ResidentLoopFactoryComposition` is the sole durable supervisor-lease owner.
+Before Task16 factory entry, that exact composition:
+
+1. starts once;
+2. issues the current provider and handoff authorities;
+3. completes the portable handoff preflight;
+4. binds once; and
+5. returns the exact privately registered
+   `ResidentLoopFactoryAuthorityReadback`.
+
+`createResidentBoundedAgentLoopFactory` does not import the composition
+builder as a value, create a composition, start or bind a composition, accept
+a structural composition object, repeat the portable handoff preflight, or
+accept a stop callback. The composition bind has already consumed the handoff
+witness, so a second factory-owned preflight is both unnecessary and
+causally invalid.
+
+The factory's exact frozen own-data prepared input has only:
+
+```ts
+interface PreparedResidentBoundedAgentLoopFactoryInput {
+  readonly runtimeHandle: LocalRuntimeHandle;
+  readonly wakeRuntime: WakeSupervisorRuntime;
+  readonly authorityReadback: ResidentLoopFactoryAuthorityReadback;
+  readonly providerPosture: ResidentLoopProviderPosture;
+  readonly domainExecution: object;
+  readonly nowMonotonicMs: () => number;
+}
+```
+
+It has no actor, epoch, policy, wall clock, safe-ID factory, provider
+authority, provider operation, handoff authority, handoff lifecycle,
+composition, registrar, callback, or other authority field. Descriptor-safe
+normalization captures exactly these six own data values before the first
+await, accessor read, ledger read, provider call, handoff call, dispatcher
+bind, or other effect.
+
+### Exact triple authentication
+
+The wake module extends its existing private `ResidentWakeRuntimeState` only
+to retain the exact `LocalRuntimeHandle` captured when that wake runtime was
+created and the stopped, resident-binding-in-flight, and consumed state. No
+new registry, cache, rendezvous, memoized lookup table, process-global
+authority, caller heuristic, timing test, stack inspection, or structural
+authority is introduced.
+
+The prepared factory invokes the existing bounded seam explicitly as:
+
+```ts
+await bindResidentLoopCapabilitiesForFactory(
+  prepared.wakeRuntime,
+  prepared.authorityReadback,
+  prepared.domainExecution,
+  prepared.runtimeHandle
+);
+```
+
+Inside the wake module, before inspecting the proposed readback or touching
+mounted state, the binder requires:
+
+1. exact WeakMap membership for the supplied wake runtime;
+2. exact top-level identity with that runtime's privately registered
+   authority readback;
+3. exact identity between the supplied runtime handle and the handle captured
+   at runtime construction;
+4. Core-ready, not-stopped, not-in-flight, and unconsumed resident-binding
+   state;
+5. a synchronous private in-flight reservation for that exact triple; and
+   only then
+6. exact registered provider, handoff, and authority-binding identities.
+
+Only after all six steps may W call the mounted binder and allow metadata, C,
+H, R, provider, handoff, gateway, approval, dispatcher, or effectful
+boundaries. A concurrent presentation rejects before nested readback access
+or mounted work. A mounted bind that rejects before issuing capabilities
+releases the private reservation and remains unconsumed. Once mounted binding
+issues capabilities, W burns the resident binding even if a later local
+capability validation rejects. H receives the ledger only from the
+authenticated prepared runtime handle. Copied, fabricated, proxied, swapped,
+generic, stopped, stale, concurrent, or already-consumed runtime/readback/
+handle presentations fail before any downstream read or effect.
+
+The explicit fourth handle argument is a clean extension of the existing
+bounded seam, not a caller-detection mechanism. The already-failing factory
+import-policy title is the causal RED and requires that exact four-argument
+factory call plus private-state provenance. The frozen Task14 static oracle
+currently passes while pinning the earlier three-parameter declaration.
+After the two-factory-test RED is integrated and before product GREEN, a
+separately reviewed passing compatibility-oracle transition changes only the
+two wake tests. Existing behavior calls visibly present their fixture's exact
+handle through a test-only transition type, and the static oracle accepts
+exactly either the historical three required named parameters or the approved
+four required named parameters ending in `runtimeHandle`. It continues to
+reject optional/default/rest parameters, overload ambiguity, `arguments`,
+callback carriers, optional/spread calls, alternate declarations, and hidden
+arity channels. This transition adds no failing title, path, or product
+behavior; producer and card accounting remain exact.
+
+### Exact owner stop
+
+The returned factory product remains exact frozen
+`{ metadata, loop, stop }`. `stop` closes over only the authenticated
+`prepared.wakeRuntime`; it accepts no callback or composition. It memoizes
+the one direct `wakeRuntime.stop()` promise, returns that same outcome for
+concurrent or repeated calls, never retries after rejection, and propagates
+the exact failure. The authenticated wake runtime marks its private stopped
+state before any later bind can reach mounted reads.
+
+### Scope and lifecycle gates
+
+The first corrected RED changes only
+`packages/local-runtime/test/resident-loop-factory-ports.test.ts` and
+`packages/local-runtime/test/resident-loop-factory-ports-imports.test.ts`.
+It retains the valid direct dispatcher/G import ownership correction in
+`mounted-wake-lifecycle-store.ts`, proves one prepared composition succeeds
+with no second construction/start/bind, exercises every hostile triple
+dimension and concurrent duplicate presentation before downstream reads, and
+proves exact owner-stop idempotency and propagation. It preserves titles,
+cardinality, abstract local fixtures, and adds no unrelated alias case.
+
+After that RED and the separately reviewed passing compatibility-oracle
+transition are approved and integrated, the smallest GREEN may change only:
+
+- `packages/agent/src/bounded-agent-loop.ts`;
+- `packages/local-runtime/src/resident-loop-factory-ports.ts`; and
+- `packages/local-runtime/src/wake-supervisor-runtime.ts`.
+
+`resident-loop-factory-composition.ts` and mounted storage remain frozen
+unless a newly approved causal RED proves otherwise.
+
+Required RED accounting remains focused
+**9 = 3 passed + six failed**, producer **144/144**, card
+**383 = 377 passed + six failed**, cross-boundary
+**1,042 = 1,036 passed + six failed**, and Task138 **355/355**. Required
+GREEN is complete focused **9/9**, producer **144/144**, card **383/383**,
+cross-boundary **1,042/1,042**, and Task138 **355/355**, plus typecheck,
+factory readiness, mission and V4 **20/20**, markers
+**29 / 20 / 29 / 15**, exact repository first-stop, scope, freezes,
+ancestry, dependencies, diff hygiene, strict Git integrity, and clean state.
+
+This amendment adds no path, provider, route, activation, default runtime,
+fallback, credential, network call, external effect, new public authority,
+structural authority object, hidden mutable global, or heuristic. Task16 and
+Task136 remain `implementing`; strict frontier remains **28 of 29**.
+
+## RV-1-E-1266 Current Task16 Consuming-Bind Prepared Bootstrap
+
+This true-EOF section supersedes only E-1244's requirement that Task16's
+prepared-composition fixture separately call
+`preflightPortableMountedAgentHandoffBinding`, together with the E-1264
+ordering correction derived from that requirement. Every other E-1244
+lexical-capability, exact identity-authentication, one-owner, one-bind,
+stop-idempotency, fail-closed, zero-downstream-effect, and exact frozen
+six-field prepared-input requirement remains current.
+
+### Sole portable witness validation and exact order
+
+The exact abstract resident task identity and its task-created, task-queued,
+and orchestration-claimed prefix are durable before the legitimate Task14
+composition is constructed or started and before the mounted operation,
+provider authority, or portable handoff authority is issued. The exact
+task/attempt/run/run-type tuple used by that prefix remains the same tuple
+used by later handoff, lifecycle, posture, and prepared-factory inputs.
+
+Only after that prefix exists may the fixture:
+
+1. construct and start the sole legitimate Task14
+   `ResidentLoopFactoryComposition`;
+2. issue the current mounted operation, provider authority, and portable
+   handoff authority;
+3. call that exact composition's `bind()` exactly once; and
+4. retain its exact `wakeRuntime`, returned `authorityReadback`, and captured
+   `LocalRuntimeHandle` identities for the frozen six-field prepared input.
+
+The composition bind's existing one-shot consuming handoff-witness
+revalidation is the sole portable witness/currentness validation for this
+prepared path. No separate early portable preflight is imported, called,
+duplicated, substituted, weakened, bypassed, or moved. The bind continues to
+consume and revalidate the exact current witness under its existing
+fail-closed semantics.
+
+The factory still does not construct, start, bind, structurally accept, or
+stop a composition. W still authenticates exact wake-runtime membership,
+registered readback identity, captured handle identity, readiness and private
+one-shot state before downstream access, then validates the exact registered
+nested identities. Copied, fabricated, proxied, swapped, generic, stopped,
+stale, concurrent, or already-consumed presentations still fail before
+accessor, ledger, provider, handoff, dispatcher, or other effectful reads.
+The returned stop still memoizes the one direct exact authenticated
+`wakeRuntime.stop()` outcome and propagates its exact success or failure.
+
+### Corrected RED and frozen GREEN boundary
+
+After this three-document amendment is independently approved and integrated,
+the smallest corrected RED changes only:
+
+- `packages/local-runtime/test/resident-loop-factory-ports.test.ts`; and
+- `packages/agent/test/bounded-agent-loop.test.ts`.
+
+The resident fixture removes only the obsolete separate-preflight action and
+places its existing exact canonical task-created/queued/claimed prefix before
+composition construction and authority issuance. The bounded fixture retains
+only the already-approved authenticated-H terminal-hash correction. Titles,
+cardinality, the abstract local corpus, both import-policy tests, every other
+test, and every product source remain frozen.
+
+Required committed RED remains focused
+**9 = 3 passed + six failed**, producer **144/144**, card
+**383 = 377 passed + six failed**, cross-boundary
+**1,042 = 1,036 passed + six failed**, and Task138 **355/355**. Only after
+fresh independent RED approval, append-only approval, approval-first/
+candidate-second integration, and forward Task136 integration may the
+existing E-1261 GREEN resume for exactly:
+
+- `packages/agent/src/bounded-agent-loop.ts`;
+- `packages/local-runtime/src/resident-loop-factory-ports.ts`; and
+- `packages/local-runtime/src/wake-supervisor-runtime.ts`.
+
+`portable-mounted-agent-artifact-stores.ts`, mounted storage,
+`resident-loop-factory-composition.ts`, contracts, routes, providers,
+credentials, activation behavior, and unrelated product paths remain frozen.
+The exact **33 = 15 sources + 17 tests + one claim** ceiling and canonical
+path SHA-256
+`4cca816c5004bf922d47a44bc8e9216a7f4d1e00a030f20b34d59fb0cd1e442e`
+remain unchanged. Tasks17-through-21 and every record-29/publication gate
+remain in committed order. Task16 and Task136 remain `implementing`; strict
+frontier remains **28 of 29**.

@@ -124,6 +124,8 @@ export function buildLegacyStagingApprovalPreview(input: BuildLegacyStagingPrevi
   const selectedCandidates = selectedCandidatesFor(validated.preview.candidates, validated.selectedCandidateIds);
   const importedEvidenceIds = selectedCandidates.map((candidate) => candidate.evidenceId);
   const evidenceContentHashes = selectedCandidates.map((candidate) => candidate.evidenceContentHash);
+  const selectedCandidateBindingHashes =
+    legacySelectedCandidateBindingHashes(selectedCandidates);
   const descriptor = descriptorForLegacyStagingTool(validated.toolId, validated.toolVersion);
   const normalizedInputHash = sha256(stableJson({
     sourceCollectionId: validated.sourceCollectionId,
@@ -133,6 +135,7 @@ export function buildLegacyStagingApprovalPreview(input: BuildLegacyStagingPrevi
     reportHash: validated.preview.reportHash,
     candidateSetHash: validated.preview.candidateSetHash,
     selectedCandidateIds: [...validated.selectedCandidateIds],
+    selectedCandidateBindingHashes,
     importedEvidenceIds,
     evidenceContentHashes
   }));
@@ -201,9 +204,75 @@ export function buildLegacyStagingApprovalPreview(input: BuildLegacyStagingPrevi
     reportHash: validated.preview.reportHash,
     candidateSetHash: validated.preview.candidateSetHash,
     selectedCandidateIds: [...validated.selectedCandidateIds],
+    selectedCandidateBindingHashes,
     importedEvidenceIds,
     evidenceContentHashes
   };
+}
+
+function legacySelectedCandidateBindingHashes(
+  candidates: readonly LegacyApprovedAssertionCandidate[]
+): readonly `sha256:${string}`[] {
+  if (candidates.some((candidate) =>
+    !hasCanonicalLegacySelectedCandidateBindingMaterial(candidate)
+  )) {
+    throw new Error(
+      "Legacy staging current candidates have incomplete assertion binding material."
+    );
+  }
+  return candidates.map(legacySelectedCandidateBindingHash);
+}
+
+function hasCanonicalLegacySelectedCandidateBindingMaterial(
+  candidate: LegacyApprovedAssertionCandidate
+): boolean {
+  const object = Reflect.get(candidate, "object");
+  const predicate = Reflect.get(candidate, "predicate");
+  const confidence = Reflect.get(candidate, "confidence");
+  const subjectRefPresent = Object.hasOwn(candidate, "subjectRef");
+  const subjectRef = Reflect.get(candidate, "subjectRef");
+  return (
+    Object.hasOwn(candidate, "predicate") &&
+    Object.hasOwn(candidate, "object") &&
+    Object.hasOwn(candidate, "confidence") &&
+    typeof predicate === "string" &&
+    predicate.length > 0 &&
+    (
+      object === null ||
+      typeof object === "string" ||
+      typeof object === "boolean" ||
+      (typeof object === "number" && Number.isFinite(object))
+    ) &&
+    typeof confidence === "number" &&
+    Number.isFinite(confidence) &&
+    confidence >= 0 &&
+    confidence <= 1 &&
+    (
+      !subjectRefPresent ||
+      (typeof subjectRef === "string" && subjectRef.length > 0)
+    )
+  );
+}
+
+function legacySelectedCandidateBindingHash(
+  candidate: LegacyApprovedAssertionCandidate
+): `sha256:${string}` {
+  const subjectRefPresent = Object.hasOwn(candidate, "subjectRef");
+  return sha256(
+    "legacy-selected-candidate-binding.v1\n" +
+    stableJson({
+      candidateId: candidate.candidateId,
+      evidenceId: candidate.evidenceId,
+      evidenceContentHash: candidate.evidenceContentHash,
+      predicate: candidate.predicate,
+      object: candidate.object,
+      confidence: candidate.confidence,
+      subjectRef: {
+        present: subjectRefPresent,
+        value: subjectRefPresent ? candidate.subjectRef : null
+      }
+    })
+  );
 }
 
 function validateLegacyStagingPreviewInput(input: BuildLegacyStagingPreviewInput): BuildLegacyStagingPreviewInput {

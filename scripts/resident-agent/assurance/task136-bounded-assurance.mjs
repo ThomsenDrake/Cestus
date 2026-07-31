@@ -39,7 +39,7 @@ const expectedCardIds = Object.freeze([
   "Task136"
 ]);
 
-const expectedAssuranceFingerprint = "34628c6687644f224ef426254a6461c25f549d696c5de08bd9dccc14b7946af6";
+const expectedAssuranceFingerprint = "f73e9d7090dfdd388b18c2b13ca207f3cfa11697fe4473026e0b09492d083df4";
 const immutableContractPins = Object.freeze([
   Object.freeze({ label: "v1", path: "docs/agentic/contracts/task136-bounded-assurance-v1.json", sha256: "d33864d9964a355067b7be86c78951d3df184a80b80765da3f51aab66e903fed" }),
   Object.freeze({ label: "v2", path: "docs/agentic/contracts/task136-bounded-assurance-v2.json", sha256: "c23a390cc3e4a3395c018a8532e0fa84b23a880782805f7cbcc463d9e8162ba4" }),
@@ -144,6 +144,13 @@ const expectedHistoricalCompatibility = Object.freeze([
     ])
   }),
   Object.freeze({
+    cardId: "Task136-FC-Core",
+    canonicalJsonSha256: "ff24eb56771db9a1a7ea015783a9b83c17f246d5e0215364b7fecb547c92c0c1",
+    pathDispositions: Object.freeze([
+      Object.freeze({ path: "packages/local-runtime/src/resident-loop-factory-composition.ts", recordDisposition: "owned" })
+    ])
+  }),
+  Object.freeze({
     cardId: "Task136-FC-Ports",
     canonicalJsonSha256: "d860a7ea14900431a361e95604d49efa6dbf824d8ccc85a06f27fe277698bc0d",
     pathDispositions: Object.freeze([
@@ -191,6 +198,7 @@ const canonicalHistoricalRecordHashIds = Object.freeze([
   "Task135B",
   "Task137B-W",
   "CF1-HR",
+  "Task136-FC-Core",
   "Task122"
 ]);
 const task137aToTask129MfaPaths = Object.freeze([
@@ -306,16 +314,26 @@ const g136ScOwnedPaths = Object.freeze([
   "packages/agent/test/resident-loop-scheduler-completion-imports.test.ts"
 ]);
 const g136ScCommand = "npm test -- packages/agent/test/tool-gateway.test.ts packages/agent/test/scheduler.test.ts packages/agent/test/resident-loop-scheduler-completion.test.ts packages/agent/test/execution-loop.test.ts packages/agent/test/domain-execution-dispatcher.test.ts packages/agent/test/resident-loop-scheduler-completion-imports.test.ts";
+const task136FcCoreOwnedPaths = Object.freeze([
+  "packages/local-runtime/src/resident-loop-factory-composition.ts",
+  "packages/local-runtime/test/resident-loop-factory-composition.test.ts",
+  "packages/local-runtime/test/resident-loop-factory-composition-imports.test.ts",
+  "docs/agentic/claims/task-136-factory-authority-composition.md"
+]);
+const task136FcCoreCommand = "npm test -- packages/local-runtime/test/resident-loop-factory-composition.test.ts packages/local-runtime/test/resident-loop-factory-composition-imports.test.ts";
 const task136TransferredSourceGroups = Object.freeze([
   "T120-R",
   "Task137B-W",
   "CF1-HR",
+  "Task136-FC-Core",
   "Task136-FC-Ports",
   "G136-SC",
   "G136-R",
   "C136-P"
 ]);
 const task136BaselineAdoptions = Object.freeze([
+  "packages/agent/src/adapters/legacy-staging.ts",
+  "packages/agent/test/legacy-staging-adapter.test.ts",
   "packages/agent/src/domain-execution-dispatcher.ts",
   "packages/agent/src/task-orchestrator.ts",
   "packages/agent/test/task-orchestrator-claims.test.ts",
@@ -342,6 +360,9 @@ const task136TransferPathsBySource = Object.freeze({
     "packages/ontology/src/contracts.ts",
     "packages/ontology/test/agent-resident-loop-contracts.test.ts"
   ]),
+  "Task136-FC-Core": Object.freeze([
+    "packages/local-runtime/src/resident-loop-factory-composition.ts"
+  ]),
   "Task136-FC-Ports": Object.freeze([
     "packages/local-runtime/src/resident-loop-factory-ports.ts",
     "packages/local-runtime/test/resident-loop-factory-ports.test.ts",
@@ -364,6 +385,7 @@ const task136TransferTargetsBySource = Object.freeze({
   "T120-R": Object.freeze(["Task136"]),
   "Task137B-W": Object.freeze(["CF1-HR", "Task139-PM", "Task136"]),
   "CF1-HR": Object.freeze(["Task122", "W1-123-BOOTSTRAP-HANDOFF", "Task136"]),
+  "Task136-FC-Core": Object.freeze(["Task136"]),
   "Task136-FC-Ports": Object.freeze(["Task136"]),
   "G136-SC": Object.freeze(["G136-R", "Task136"]),
   "G136-R": Object.freeze(["Task136"]),
@@ -371,6 +393,7 @@ const task136TransferTargetsBySource = Object.freeze({
 });
 const task136PrerequisiteIds = Object.freeze([
   "T120-R",
+  "Task136-FC-Core",
   "Task136-FC-Ports",
   "Task139-P2",
   "C136-P",
@@ -389,6 +412,8 @@ const task136OwnedPaths = Object.freeze([
   "packages/agent/test/plan-observation-projection.test.ts",
   "packages/agent/src/resident-plan-candidate-provider.ts",
   "packages/agent/test/resident-plan-candidate-provider.test.ts",
+  "packages/agent/src/adapters/legacy-staging.ts",
+  "packages/agent/test/legacy-staging-adapter.test.ts",
   "packages/agent/src/resident-loop-tool-gateway.ts",
   "packages/agent/test/resident-loop-tool-gateway.test.ts",
   "packages/agent/test/resident-loop-scheduler-completion-imports.test.ts",
@@ -401,6 +426,7 @@ const task136OwnedPaths = Object.freeze([
   "packages/agent/test/specialist-handoff-projection.test.ts",
   "packages/ontology/src/contracts.ts",
   "packages/ontology/test/agent-resident-loop-contracts.test.ts",
+  "packages/local-runtime/src/resident-loop-factory-composition.ts",
   "packages/local-runtime/src/resident-loop-factory-ports.ts",
   "packages/local-runtime/test/resident-loop-factory-ports.test.ts",
   "packages/local-runtime/test/resident-loop-factory-ports-imports.test.ts",
@@ -412,8 +438,20 @@ const task136OwnedPaths = Object.freeze([
   "packages/agent/test/task-orchestrator-projection.test.ts",
   "docs/agentic/claims/task-136-resident-full-vision-bounded-loop.md"
 ]);
-const task136Command = "npm test -- packages/agent/test/bounded-agent-loop.test.ts packages/agent/test/plan-observation-contracts.test.ts packages/agent/test/plan-observation-projection.test.ts packages/agent/test/resident-plan-candidate-provider.test.ts packages/agent/test/resident-loop-tool-gateway.test.ts packages/agent/test/resident-loop-scheduler-completion-imports.test.ts packages/local-runtime/test/wake-supervisor-runtime.test.ts packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts packages/agent/test/specialist-handoff-projection.test.ts packages/ontology/test/agent-resident-loop-contracts.test.ts packages/local-runtime/test/resident-loop-factory-ports.test.ts packages/local-runtime/test/resident-loop-factory-ports-imports.test.ts packages/agent/test/domain-execution-dispatcher.test.ts packages/agent/test/task-orchestrator-claims.test.ts packages/agent/test/task-orchestrator-projection.test.ts";
+const task136Command = "npm test -- packages/agent/test/bounded-agent-loop.test.ts packages/agent/test/plan-observation-contracts.test.ts packages/agent/test/plan-observation-projection.test.ts packages/agent/test/resident-plan-candidate-provider.test.ts packages/agent/test/legacy-staging-adapter.test.ts packages/agent/test/resident-loop-tool-gateway.test.ts packages/agent/test/resident-loop-scheduler-completion-imports.test.ts packages/local-runtime/test/wake-supervisor-runtime.test.ts packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts packages/agent/test/specialist-handoff-projection.test.ts packages/ontology/test/agent-resident-loop-contracts.test.ts packages/local-runtime/test/resident-loop-factory-ports.test.ts packages/local-runtime/test/resident-loop-factory-ports-imports.test.ts packages/agent/test/domain-execution-dispatcher.test.ts packages/agent/test/task-orchestrator-claims.test.ts packages/agent/test/task-orchestrator-projection.test.ts";
 const task136BaselinePins = Object.freeze([
+  ...Object.freeze([
+    "packages/agent/src/adapters/legacy-staging.ts",
+    "packages/agent/test/legacy-staging-adapter.test.ts"
+  ]).map((path) => Object.freeze({
+    sourceId: "Task136-LEGACY-STAGING-ADOPTION",
+    candidateSha: "3be15212776ab3c96e66bf0bade4630960c362eb",
+    integrationSha: "dc05c43c4b9a592d0396acd034bfc32e177fd09a",
+    path,
+    blobSha: path.endsWith(".test.ts")
+      ? "de7cef3123a15fb82891943dc51005165c8c9fcd"
+      : "99fbafda3844435109bc249b015b111b9258c210"
+  })),
   Object.freeze({
     sourceId: "G136-SC",
     candidateSha: "70814c1259871c5458a3578fae8a5c8281540377",
@@ -446,6 +484,15 @@ const task136BaselinePins = Object.freeze([
     blobSha: pin.blobSha
   }))
 ]);
+const task136FcPortsStillOwnedSuccessor = Object.freeze({
+  cardId: "Task136-FC-Ports",
+  path: "packages/local-runtime/test/runtime-handle-mounted-authority-imports.test.ts",
+  rawIntegrationSha: "365279fdd4e772c389188d05376ba87afe9782df",
+  rawBlobSha: "0d3bdc674ac08278453dcba67023da4a177cceb0",
+  candidateSha: "e652ec2cae47fea30771f6d223f7af0f65852366",
+  integrationSha: "f3cd6caaf5c4ad97501d173eaee4e4f4887ad3e5",
+  currentBlobSha: "68aa54a4ed1af4cc531023b063e767286757f0ec"
+});
 const releaseRecordSchemaVersion = "task136-dispatch-release.v4";
 const releaseRecordKeys = Object.freeze([
   "schemaVersion",
@@ -696,6 +743,23 @@ function commandArgs(command) {
     throw new Error("invalid exact targeted Vitest command");
   }
   return args;
+}
+
+const repositoryExecutionControlTail = Object.freeze([
+  "--maxWorkers=1",
+  "--testTimeout=120000"
+]);
+
+export function repositoryExecutionArgsForCard(cardId, args) {
+  assertString(cardId, "repository execution card ID");
+  assertArray(args, "repository execution args");
+  if (args.some((arg) => typeof arg !== "string" || arg.length === 0)) {
+    throw new Error("repository execution args must contain non-empty strings");
+  }
+  if (cardId !== "Task137B-W" && cardId !== "Task136") {
+    return args;
+  }
+  return [...args, ...repositoryExecutionControlTail];
 }
 
 function assuranceFingerprint(contract) {
@@ -950,6 +1014,7 @@ function task136AllowedTransferredPaths(sourceId) {
   }
   if (
     sourceId === "T120-R" ||
+    sourceId === "Task136-FC-Core" ||
     sourceId === "Task136-FC-Ports" ||
     sourceId === "G136-R" ||
     sourceId === "C136-P"
@@ -957,6 +1022,36 @@ function task136AllowedTransferredPaths(sourceId) {
     return task136TransferPathsBySource[sourceId];
   }
   throw new Error(`invalid Task136 transfer source: ${sourceId}`);
+}
+
+function validateTask136FcCoreScope(graph) {
+  const card = graph.get("Task136-FC-Core");
+  const task136 = graph.get("Task136");
+  if (!card || !task136) throw new Error("Task136-FC-Core card");
+  assertExactStrings(
+    card.ownedPaths.map((ownedPath) => ownedPath.path),
+    task136FcCoreOwnedPaths,
+    "Task136-FC-Core owned paths"
+  );
+  assertExactStrings(
+    card.ownedPaths.map((ownedPath) => ownedPath.disposition),
+    ["transferred", "owned", "owned", "owned"],
+    "Task136-FC-Core path dispositions"
+  );
+  assertExactStrings(
+    card.transferToIds,
+    task136TransferTargetsBySource["Task136-FC-Core"],
+    "Task136-FC-Core transfer targets"
+  );
+  if (card.command !== task136FcCoreCommand) {
+    throw new Error("Task136-FC-Core command");
+  }
+  validateTransferredPathGroup(
+    card,
+    task136,
+    task136TransferPathsBySource["Task136-FC-Core"],
+    "Task136-FC-Core:Task136"
+  );
 }
 
 function validateTask136FiniteTransfer(graph) {
@@ -1002,8 +1097,9 @@ function validateTask136FiniteTransfer(graph) {
 
   assertExactStrings(
     [
-      task136.ownedPaths[23],
-      ...task136.ownedPaths.slice(25, 29)
+      ...task136.ownedPaths.slice(8, 10),
+      task136.ownedPaths[26],
+      ...task136.ownedPaths.slice(28, 32)
     ].map((ownedPath) => ownedPath.path),
     task136BaselineAdoptions,
     "Task136 baseline adoptions"
@@ -1036,6 +1132,9 @@ function historicalTargetGroups(cardId) {
     { targetId: "Task122", paths: cf1HrToTask122Paths },
     { targetId: "W1-123-BOOTSTRAP-HANDOFF", paths: cf1HrToW1BootstrapPaths },
     { targetId: "Task136", paths: task136TransferPathsBySource["CF1-HR"] }
+  ];
+  if (cardId === "Task136-FC-Core") return [
+    { targetId: "Task136", paths: task136TransferPathsBySource["Task136-FC-Core"] }
   ];
   if (cardId === "Task136-FC-Ports") return [
     { targetId: "Task136", paths: task136TransferPathsBySource["Task136-FC-Ports"] }
@@ -1156,6 +1255,7 @@ export function verifyStaticGraph(contract = loadContract()) {
   validateTask137bCeiling(graph);
   validateTask139PmScope(graph);
   validateCorrectedCardScopes(graph);
+  validateTask136FcCoreScope(graph);
   validateTask136FiniteTransfer(graph);
 
   const finalOwners = new Map();
@@ -1827,6 +1927,65 @@ function assertBlob(adapter, commitish, path, expectedBlobSha, cardId) {
   }
 }
 
+function isTask136FcPortsStillOwnedSuccessor(cardId, path) {
+  return cardId === task136FcPortsStillOwnedSuccessor.cardId &&
+    path === task136FcPortsStillOwnedSuccessor.path;
+}
+
+function assertTask136FcPortsStillOwnedSuccessorBlob(adapter, commitish, label) {
+  const pin = task136FcPortsStillOwnedSuccessor;
+  if (adapter.objectType(commitish, pin.path) !== "blob") {
+    throw new Error(
+      `still-owned ${label} path is not a Git blob: ${pin.cardId}:${pin.path}`
+    );
+  }
+  if (adapter.blobSha(commitish, pin.path) !== pin.currentBlobSha) {
+    throw new Error(`still-owned ${label} blob mismatch: ${pin.cardId}:${pin.path}`);
+  }
+}
+
+function verifyTask136FcPortsStillOwnedSuccessor(recordsById, adapter) {
+  const pin = task136FcPortsStillOwnedSuccessor;
+  const sourceRecord = recordsById.get(pin.cardId);
+  if (!sourceRecord) return;
+
+  const sourcePath = sourceRecord.ownedPathBlobs.find(
+    (entry) => entry.path === pin.path
+  );
+  if (
+    sourceRecord.integrationSha !== pin.rawIntegrationSha ||
+    sourcePath?.blobSha !== pin.rawBlobSha
+  ) {
+    throw new Error(`still-owned raw pin mismatch: ${pin.cardId}:${pin.path}`);
+  }
+  if (!adapter.commitExists(pin.candidateSha)) {
+    throw new Error(`still-owned successor candidate missing: ${pin.cardId}:${pin.path}`);
+  }
+  if (!adapter.commitExists(pin.integrationSha)) {
+    throw new Error(`still-owned successor integration missing: ${pin.cardId}:${pin.path}`);
+  }
+  if (!adapter.isAncestor(pin.rawIntegrationSha, pin.candidateSha)) {
+    throw new Error(
+      `still-owned source integration is not an ancestor of successor candidate: ${pin.cardId}:${pin.path}`
+    );
+  }
+  if (!adapter.isAncestor(pin.candidateSha, pin.integrationSha)) {
+    throw new Error(
+      `still-owned successor candidate is not an ancestor of integration: ${pin.cardId}:${pin.path}`
+    );
+  }
+  const currentHead = adapter.currentHead();
+  if (!adapter.isAncestor(pin.integrationSha, currentHead)) {
+    throw new Error(
+      `still-owned successor integration is not an ancestor of HEAD: ${pin.cardId}:${pin.path}`
+    );
+  }
+
+  assertTask136FcPortsStillOwnedSuccessorBlob(adapter, currentHead, "current HEAD");
+  assertTask136FcPortsStillOwnedSuccessorBlob(adapter, pin.candidateSha, "successor candidate");
+  assertTask136FcPortsStillOwnedSuccessorBlob(adapter, pin.integrationSha, "successor integration");
+}
+
 function currentHeadMigrationTarget(cardId, path) {
   if (cardId === "Task137A" && task137aToTask137bPaths.includes(path)) return "Task137B-W";
   if (cardId === "Task129-MFA" && task129MfaToTask137bPaths.includes(path)) return "Task137B-W";
@@ -1843,6 +2002,10 @@ function currentHeadMigrationTarget(cardId, path) {
     task136TransferPathsBySource["Task137B-W"].includes(path)
   ) return "Task136";
   if (cardId === "CF1-HR" && task136TransferPathsBySource["CF1-HR"].includes(path)) return "Task136";
+  if (
+    cardId === "Task136-FC-Core" &&
+    task136TransferPathsBySource["Task136-FC-Core"].includes(path)
+  ) return "Task136";
   if (
     cardId === "Task136-FC-Ports" &&
     task136TransferPathsBySource["Task136-FC-Ports"].includes(path)
@@ -1884,6 +2047,7 @@ function verifyGitReleaseEvidence(contract, records, adapter) {
     }
   }
   verifyTask136BaselinePins(recordsById, adapter);
+  verifyTask136FcPortsStillOwnedSuccessor(recordsById, adapter);
 
   const cardsById = new Map(contract.releaseGraph.cards.map((card) => [card.id, card]));
   for (const record of records) {
@@ -1901,7 +2065,10 @@ function verifyGitReleaseEvidence(contract, records, adapter) {
       assertBlob(adapter, record.candidateSha, staticPath.path, pathRecord.blobSha, card.id);
       assertBlob(adapter, record.integrationSha, staticPath.path, pathRecord.blobSha, card.id);
       const migrationTarget = currentHeadMigrationTarget(record.cardId, staticPath.path);
-      if (staticPath.disposition === "owned" || (migrationTarget && !recordsById.has(migrationTarget))) {
+      if (
+        !isTask136FcPortsStillOwnedSuccessor(record.cardId, staticPath.path) &&
+        (staticPath.disposition === "owned" || (migrationTarget && !recordsById.has(migrationTarget)))
+      ) {
         assertBlob(adapter, adapter.currentHead(), staticPath.path, pathRecord.blobSha, card.id);
       }
     }
@@ -1997,8 +2164,9 @@ function createRepositoryAdapter() {
     objectType(commitish, path) {
       return gitOutput(["cat-file", "-t", `${commitish}:${path}`]);
     },
-    runNpmTest(args) {
-      execFileSync("npm", ["test", "--", ...args], { stdio: ["ignore", "inherit", "inherit"] });
+    runNpmTest(args, card) {
+      const executionArgs = repositoryExecutionArgsForCard(card.id, args);
+      execFileSync("npm", ["test", "--", ...executionArgs], { stdio: ["ignore", "inherit", "inherit"] });
     }
   };
 }

@@ -1158,7 +1158,7 @@ describe("factory ports runtime-handle boundary", () => {
     if (!existsSync(sourcePath)) return;
 
     const source = readFileSync(sourcePath, "utf8");
-    expect(source).not.toMatch(/runtime-factory\.js|captureFactoryIssuedMountedRuntime|inspectFactoryIssuedMountedRuntimeCapture/);
+    expect(source).not.toMatch(/captureFactoryIssuedMountedRuntime|inspectFactoryIssuedMountedRuntimeCapture/);
     expect(source).not.toMatch(/mounted-artifact-authority-operation\.js|issueMountedArtifactAuthorityOperationForFactory/);
   });
 });

@@ -27,8 +27,12 @@ const task136V4ClaimPath = "docs/agentic/claims/task-136-v4-task137b-authority-t
 const v1ContractSha256 = "d33864d9964a355067b7be86c78951d3df184a80b80765da3f51aab66e903fed";
 const v2ContractSha256 = "c23a390cc3e4a3395c018a8532e0fa84b23a880782805f7cbcc463d9e8162ba4";
 const v3ContractSha256 = "8934dbaf8246d295eba5ce825169ac08bb98f0e1b6b75a977657000cb46a1bbb";
-const v4ContractSha256 = "81a34419ae5d25853279be96c14a95c65dcc127d1bb5f5b09cecbbf03c55b53a";
-const v4AssuranceFingerprint = "34628c6687644f224ef426254a6461c25f549d696c5de08bd9dccc14b7946af6";
+const v4ContractSha256 = "96b6104617103b85916df22b46168781c58b4465b729369f3e7179cf0a89b8e5";
+const v4AssuranceFingerprint = "f73e9d7090dfdd388b18c2b13ca207f3cfa11697fe4473026e0b09492d083df4";
+const task136FactoryCompositionPath =
+  "packages/local-runtime/src/resident-loop-factory-composition.ts";
+const task136ThirtyThreePathSha256 =
+  "4cca816c5004bf922d47a44bc8e9216a7f4d1e00a030f20b34d59fb0cd1e442e";
 const historicalTask137ASha256 = "ac3ac479d5b1e41db4ae15cea88b746f86bbc31f6af3ea74a6120834dc2c2198";
 const historicalTask129MfaSha256 = "23cb98725d67ada15c0e2913816f82407c171912564423e669cf73995aaead76";
 const historicalTask135bSha256 = "73d8e28bdc56dbecf924a45a14c4caf8bb0864c89a4db98e1114f62f83d53409";
@@ -165,6 +169,8 @@ const task136OwnedPaths = [
   "packages/agent/test/plan-observation-projection.test.ts",
   "packages/agent/src/resident-plan-candidate-provider.ts",
   "packages/agent/test/resident-plan-candidate-provider.test.ts",
+  "packages/agent/src/adapters/legacy-staging.ts",
+  "packages/agent/test/legacy-staging-adapter.test.ts",
   "packages/agent/src/resident-loop-tool-gateway.ts",
   "packages/agent/test/resident-loop-tool-gateway.test.ts",
   "packages/agent/test/resident-loop-scheduler-completion-imports.test.ts",
@@ -177,6 +183,7 @@ const task136OwnedPaths = [
   "packages/agent/test/specialist-handoff-projection.test.ts",
   "packages/ontology/src/contracts.ts",
   "packages/ontology/test/agent-resident-loop-contracts.test.ts",
+  "packages/local-runtime/src/resident-loop-factory-composition.ts",
   "packages/local-runtime/src/resident-loop-factory-ports.ts",
   "packages/local-runtime/test/resident-loop-factory-ports.test.ts",
   "packages/local-runtime/test/resident-loop-factory-ports-imports.test.ts",
@@ -188,7 +195,7 @@ const task136OwnedPaths = [
   "packages/agent/test/task-orchestrator-projection.test.ts",
   "docs/agentic/claims/task-136-resident-full-vision-bounded-loop.md"
 ];
-const task136SixteenTestCommand = "npm test -- packages/agent/test/bounded-agent-loop.test.ts packages/agent/test/plan-observation-contracts.test.ts packages/agent/test/plan-observation-projection.test.ts packages/agent/test/resident-plan-candidate-provider.test.ts packages/agent/test/resident-loop-tool-gateway.test.ts packages/agent/test/resident-loop-scheduler-completion-imports.test.ts packages/local-runtime/test/wake-supervisor-runtime.test.ts packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts packages/agent/test/specialist-handoff-projection.test.ts packages/ontology/test/agent-resident-loop-contracts.test.ts packages/local-runtime/test/resident-loop-factory-ports.test.ts packages/local-runtime/test/resident-loop-factory-ports-imports.test.ts packages/agent/test/domain-execution-dispatcher.test.ts packages/agent/test/task-orchestrator-claims.test.ts packages/agent/test/task-orchestrator-projection.test.ts";
+const task136SeventeenTestCommand = "npm test -- packages/agent/test/bounded-agent-loop.test.ts packages/agent/test/plan-observation-contracts.test.ts packages/agent/test/plan-observation-projection.test.ts packages/agent/test/resident-plan-candidate-provider.test.ts packages/agent/test/legacy-staging-adapter.test.ts packages/agent/test/resident-loop-tool-gateway.test.ts packages/agent/test/resident-loop-scheduler-completion-imports.test.ts packages/local-runtime/test/wake-supervisor-runtime.test.ts packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts packages/agent/test/specialist-handoff-projection.test.ts packages/ontology/test/agent-resident-loop-contracts.test.ts packages/local-runtime/test/resident-loop-factory-ports.test.ts packages/local-runtime/test/resident-loop-factory-ports-imports.test.ts packages/agent/test/domain-execution-dispatcher.test.ts packages/agent/test/task-orchestrator-claims.test.ts packages/agent/test/task-orchestrator-projection.test.ts";
 const exactTask136HistoricalPathDispositions = [
   [
     "Task137A",
@@ -250,6 +257,10 @@ const exactTask136HistoricalPathDispositions = [
       ["packages/ontology/src/contracts.ts", "owned"],
       ["packages/ontology/test/agent-resident-loop-contracts.test.ts", "owned"]
     ]
+  ],
+  [
+    "Task136-FC-Core",
+    [["packages/local-runtime/src/resident-loop-factory-composition.ts", "owned"]]
   ],
   [
     "Task136-FC-Ports",
@@ -318,6 +329,21 @@ const exactRawPrefixPins1Through28 = [
 ];
 const rawPrefixPins = new Map(exactRawPrefixPins1Through28);
 const task136BaselineFixtureBlobs = [
+  ...[
+    [
+      "packages/agent/src/adapters/legacy-staging.ts",
+      "99fbafda3844435109bc249b015b111b9258c210"
+    ],
+    [
+      "packages/agent/test/legacy-staging-adapter.test.ts",
+      "de7cef3123a15fb82891943dc51005165c8c9fcd"
+    ]
+  ].map(([path, blobSha]) => ({
+    candidateSha: "3be15212776ab3c96e66bf0bade4630960c362eb",
+    integrationSha: "dc05c43c4b9a592d0396acd034bfc32e177fd09a",
+    path,
+    blobSha
+  })),
   {
     candidateSha: "70814c1259871c5458a3578fae8a5c8281540377",
     integrationSha: "253150b2ab5f2271d2b04a5b8fc5b82b7bf757a5",
@@ -348,6 +374,15 @@ const task136BaselineFixtureBlobs = [
     blobSha
   }))
 ];
+const task136FcPortsStillOwnedSuccessor = Object.freeze({
+  cardId: "Task136-FC-Ports",
+  path: "packages/local-runtime/test/runtime-handle-mounted-authority-imports.test.ts",
+  rawIntegrationSha: "365279fdd4e772c389188d05376ba87afe9782df",
+  rawBlobSha: "0d3bdc674ac08278453dcba67023da4a177cceb0",
+  candidateSha: "e652ec2cae47fea30771f6d223f7af0f65852366",
+  integrationSha: "f3cd6caaf5c4ad97501d173eaee4e4f4887ad3e5",
+  currentBlobSha: "68aa54a4ed1af4cc531023b063e767286757f0ec"
+});
 const task136TransferPathsBySource = [
   [
     "T120-R",
@@ -392,6 +427,10 @@ const task136TransferPathsBySource = [
       "packages/ontology/src/contracts.ts",
       "packages/ontology/test/agent-resident-loop-contracts.test.ts"
     ]
+  ],
+  [
+    "Task136-FC-Core",
+    ["packages/local-runtime/src/resident-loop-factory-composition.ts"]
   ],
   [
     "Task136-FC-Ports",
@@ -460,6 +499,7 @@ test("verifies the 29-card topological graph, exact Task136 transfers, and prere
         "G136-R",
         "Task137B-W",
         "CF1-HR",
+        "Task136-FC-Core",
         "Task136-FC-Ports"
       ].map((id) => [id, cardsById.get(id)?.transferToIds])
     ),
@@ -470,11 +510,13 @@ test("verifies the 29-card topological graph, exact Task136 transfers, and prere
       "G136-R": ["Task136"],
       "Task137B-W": ["CF1-HR", "Task139-PM", "Task136"],
       "CF1-HR": ["Task122", "W1-123-BOOTSTRAP-HANDOFF", "Task136"],
+      "Task136-FC-Core": ["Task136"],
       "Task136-FC-Ports": ["Task136"]
     }
   );
   assert.deepEqual(cardsById.get("Task136")?.prerequisiteIds, [
     "T120-R",
+    "Task136-FC-Core",
     "Task136-FC-Ports",
     "Task139-P2",
     "C136-P",
@@ -562,7 +604,7 @@ test("requires corrected producer ownership and exact Task136 scope and command"
     task136?.ownedPaths,
     task136OwnedPaths.map((path) => ({ disposition: "owned", path }))
   );
-  assert.equal(task136?.command, task136SixteenTestCommand);
+  assert.equal(task136?.command, task136SeventeenTestCommand);
 
   const cardMutants = [
     {
@@ -590,6 +632,21 @@ test("requires corrected producer ownership and exact Task136 scope and command"
       id: "G136-SC wrong disposition",
       mutate(mutant) {
         mutant.releaseGraph.cards.find((card) => card.id === "G136-SC").ownedPaths[0].disposition = "transferred";
+      }
+    },
+    {
+      id: "Task136-FC-Core test incorrectly transfers",
+      mutate(mutant) {
+        mutant.releaseGraph.cards
+          .find((card) => card.id === "Task136-FC-Core")
+          .ownedPaths[1].disposition = "transferred";
+      }
+    },
+    {
+      id: "Task136-FC-Core command changes",
+      mutate(mutant) {
+        mutant.releaseGraph.cards.find((card) => card.id === "Task136-FC-Core").command =
+          "npm test -- packages/local-runtime/test/resident-loop-factory-composition.test.ts";
       }
     },
     {
@@ -667,6 +724,7 @@ test("requires frozen v4 compatibility branches and all 28 raw prefix pins", () 
       ["T120-R", "bb2e2bcdd90d1036f0e0ad16719dcc99405ec3170691f115641649dc59b56830"],
       ["Task137B-W", "833ca5cc5aa191fdf9f98c692255133afaaf73b541b36275cab7ed04ef601e29"],
       ["CF1-HR", "d55028e1bd036051f5ec2c9d496267623ff2748e54713d3881a198667ac62f12"],
+      ["Task136-FC-Core", "ff24eb56771db9a1a7ea015783a9b83c17f246d5e0215364b7fecb547c92c0c1"],
       ["Task136-FC-Ports", "d860a7ea14900431a361e95604d49efa6dbf824d8ccc85a06f27fe277698bc0d"],
       ["G136-SC", "b7ec22083b3b8be5140b3a40b09dfa4e34c2e86f01fe15c3cc3453d16c77d0b0"],
       ["G136-R", "ba3fb8927ec24348f405db53cd6cf200481cb979ca6ce4cbe1216b5ce635d9b8"],
@@ -871,13 +929,15 @@ function rawRecordJson(cardId) {
 }
 
 function registryPrefixRecords() {
-  return expectedIds.slice(0, 17).map((cardId) => recordFromRegistry(cardId));
+  return expectedIds.slice(0, 19).map((cardId) => recordFromRegistry(cardId));
 }
 
 function releaseRecordsFor(contract) {
   const records = [];
   const historicalRecords = new Map([
     ...registryPrefixRecords(),
+    recordFromRegistry("Task139-P2"),
+    recordFromRegistry(task136FcPortsStillOwnedSuccessor.cardId),
     recordFromRegistry("Task122")
   ].map((record) => [record.cardId, record]));
   for (const [index, card] of contract.releaseGraph.cards.entries()) {
@@ -1013,6 +1073,25 @@ function fakeRepositoryAdapter(records, options = {}) {
       pathBlobByCommit.set(`HEAD:${ownedPath.path}`, ownedPath.blobSha);
     }
   }
+  const successorSource = records.find(
+    (record) => record.cardId === task136FcPortsStillOwnedSuccessor.cardId
+  );
+  if (successorSource) {
+    const successorPath =
+      options.stillOwnedSuccessorPath ?? task136FcPortsStillOwnedSuccessor.path;
+    pathBlobByCommit.set(
+      `${task136FcPortsStillOwnedSuccessor.candidateSha}:${successorPath}`,
+      task136FcPortsStillOwnedSuccessor.currentBlobSha
+    );
+    pathBlobByCommit.set(
+      `${task136FcPortsStillOwnedSuccessor.integrationSha}:${successorPath}`,
+      task136FcPortsStillOwnedSuccessor.currentBlobSha
+    );
+    pathBlobByCommit.set(
+      `HEAD:${successorPath}`,
+      task136FcPortsStillOwnedSuccessor.currentBlobSha
+    );
+  }
 
   return {
     commandCalls,
@@ -1040,6 +1119,13 @@ function fakeRepositoryAdapter(records, options = {}) {
         options.prerequisiteNotAncestral &&
         ancestorSha === options.prerequisiteNotAncestral.integrationSha &&
         descendantSha === options.prerequisiteNotAncestral.candidateSha
+      ) {
+        return false;
+      }
+      if (
+        options.ancestryNotPreserved &&
+        ancestorSha === options.ancestryNotPreserved.ancestorSha &&
+        descendantSha === options.ancestryNotPreserved.descendantSha
       ) {
         return false;
       }
@@ -1230,6 +1316,11 @@ test("verifies release records against Git evidence and argument-array commands"
   const records = releaseRecordsFor(contract);
   const adapter = fakeRepositoryAdapter(records);
   const result = verifyReleaseClosure(contract, releaseRecordMarkdown(records), adapter);
+  assert.equal(
+    typeof assurance.repositoryExecutionArgsForCard,
+    "function",
+    "repositoryExecutionArgsForCard export"
+  );
 
   assert.equal(result.records, 29);
   assert.equal(result.commands, 29);
@@ -1238,6 +1329,50 @@ test("verifies release records against Git evidence and argument-array commands"
     cardId: "Task126",
     args: ["packages/agent/test/byok-provider.test.ts"]
   });
+
+  const controlTail = ["--maxWorkers=1", "--testTimeout=120000"];
+  const controlledCardIds = new Set(["Task137B-W", "Task136"]);
+  for (const card of contract.releaseGraph.cards) {
+    const rawArgs = Object.freeze(
+      card.command.slice("npm test -- ".length).split(" ")
+    );
+    const expectedArgs = controlledCardIds.has(card.id)
+      ? [...rawArgs, ...controlTail]
+      : [...rawArgs];
+    assert.deepEqual(
+      assurance.repositoryExecutionArgsForCard(card.id, rawArgs),
+      expectedArgs,
+      card.id
+    );
+    assert.deepEqual(
+      rawArgs,
+      card.command.slice("npm test -- ".length).split(" "),
+      `${card.id} raw input`
+    );
+  }
+
+  for (const cardId of [
+    "unknown",
+    "Task137B-W-sibling",
+    "Task136-sibling"
+  ]) {
+    const rawArgs = Object.freeze(["abstract/local.test.ts"]);
+    assert.deepEqual(
+      assurance.repositoryExecutionArgsForCard(cardId, rawArgs),
+      ["abstract/local.test.ts"],
+      cardId
+    );
+    assert.deepEqual(rawArgs, ["abstract/local.test.ts"], `${cardId} raw input`);
+  }
+
+  for (const card of contract.releaseGraph.cards) {
+    const call = adapter.commandCalls.find((entry) => entry.cardId === card.id);
+    assert.deepEqual(
+      call?.args,
+      card.command.slice("npm test -- ".length).split(" "),
+      `${card.id} fake-adapter raw args`
+    );
+  }
 });
 
 test("rejects frozen repository-evidence and execution mutations", () => {
@@ -1274,6 +1409,60 @@ test("rejects frozen repository-evidence and execution mutations", () => {
       })
     },
     {
+      id: "still-owned successor candidate missing",
+      message: new RegExp(
+        `still-owned successor candidate missing: ${task136FcPortsStillOwnedSuccessor.cardId}:${task136FcPortsStillOwnedSuccessor.path.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`
+      ),
+      adapter: () => fakeRepositoryAdapter(validRecords, {
+        missingCommitSha: task136FcPortsStillOwnedSuccessor.candidateSha
+      })
+    },
+    {
+      id: "still-owned successor integration missing",
+      message: new RegExp(
+        `still-owned successor integration missing: ${task136FcPortsStillOwnedSuccessor.cardId}:${task136FcPortsStillOwnedSuccessor.path.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`
+      ),
+      adapter: () => fakeRepositoryAdapter(validRecords, {
+        missingCommitSha: task136FcPortsStillOwnedSuccessor.integrationSha
+      })
+    },
+    {
+      id: "source integration not ancestral to still-owned successor candidate",
+      message: new RegExp(
+        `still-owned source integration is not an ancestor of successor candidate: ${task136FcPortsStillOwnedSuccessor.cardId}:${task136FcPortsStillOwnedSuccessor.path.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`
+      ),
+      adapter: () => fakeRepositoryAdapter(validRecords, {
+        ancestryNotPreserved: {
+          ancestorSha: task136FcPortsStillOwnedSuccessor.rawIntegrationSha,
+          descendantSha: task136FcPortsStillOwnedSuccessor.candidateSha
+        }
+      })
+    },
+    {
+      id: "still-owned successor candidate not ancestral to integration",
+      message: new RegExp(
+        `still-owned successor candidate is not an ancestor of integration: ${task136FcPortsStillOwnedSuccessor.cardId}:${task136FcPortsStillOwnedSuccessor.path.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`
+      ),
+      adapter: () => fakeRepositoryAdapter(validRecords, {
+        ancestryNotPreserved: {
+          ancestorSha: task136FcPortsStillOwnedSuccessor.candidateSha,
+          descendantSha: task136FcPortsStillOwnedSuccessor.integrationSha
+        }
+      })
+    },
+    {
+      id: "still-owned successor integration not ancestral to HEAD",
+      message: new RegExp(
+        `still-owned successor integration is not an ancestor of HEAD: ${task136FcPortsStillOwnedSuccessor.cardId}:${task136FcPortsStillOwnedSuccessor.path.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`
+      ),
+      adapter: () => fakeRepositoryAdapter(validRecords, {
+        ancestryNotPreserved: {
+          ancestorSha: task136FcPortsStillOwnedSuccessor.integrationSha,
+          descendantSha: "HEAD"
+        }
+      })
+    },
+    {
       id: "dirty checkout",
       message: /repository checkout is dirty/,
       adapter: () => fakeRepositoryAdapter(validRecords, { dirtyCheckout: true })
@@ -1291,11 +1480,13 @@ test("rejects frozen repository-evidence and execution mutations", () => {
   ];
 
   for (const testCase of cases) {
+    const adapter = testCase.adapter();
     assert.throws(
-      () => verifyReleaseClosure(contract, releaseRecordMarkdown(validRecords), testCase.adapter()),
+      () => verifyReleaseClosure(contract, releaseRecordMarkdown(validRecords), adapter),
       testCase.message,
       testCase.id
     );
+    assert.equal(adapter.commandCalls.length, 0, testCase.id);
   }
 });
 
@@ -1329,20 +1520,83 @@ test("rejects non-blob owned-path Git objects before release commands", () => {
 });
 
 test("rejects unsafe frozen command grammar before executing commands", () => {
-  const contract = clone(loadV4Contract());
-  contract.releaseGraph.cards[0].command = "npm test -- packages/agent/test/byok-provider.test.ts; echo unsafe";
-  const records = releaseRecordsFor(contract);
-  const adapter = fakeRepositoryAdapter(records);
+  const cases = [
+    {
+      id: "shell grammar",
+      command: "npm test -- packages/agent/test/byok-provider.test.ts; echo unsafe"
+    },
+    {
+      id: "raw max-workers control",
+      command: "npm test -- --maxWorkers=1 packages/agent/test/byok-provider.test.ts"
+    },
+    {
+      id: "raw timeout control",
+      command: "npm test -- --testTimeout=120000 packages/agent/test/byok-provider.test.ts"
+    }
+  ];
 
-  assert.throws(
-    () => verifyReleaseClosure(contract, releaseRecordMarkdown(records), adapter),
-    /invalid exact targeted Vitest command/
-  );
-  assert.equal(adapter.commandCalls.length, 0);
+  for (const testCase of cases) {
+    const contract = clone(loadV4Contract());
+    contract.releaseGraph.cards[0].command = testCase.command;
+    const records = releaseRecordsFor(contract);
+    const adapter = fakeRepositoryAdapter(records);
+
+    assert.throws(
+      () => verifyReleaseClosure(contract, releaseRecordMarkdown(records), adapter),
+      /invalid exact targeted Vitest command/,
+      testCase.id
+    );
+    assert.equal(adapter.commandCalls.length, 0, testCase.id);
+  }
 });
 
 test("rejects finite Task136 graph, compatibility, baseline, raw-pin, and record-29 migration mutations", () => {
   const contract = loadV4Contract();
+  const task136FcCore = contract.releaseGraph.cards.find(
+    (card) => card.id === "Task136-FC-Core"
+  );
+  const task136 = contract.releaseGraph.cards.find((card) => card.id === "Task136");
+  assert.deepEqual(task136FcCore.transferToIds, ["Task136"]);
+  assert.deepEqual(task136FcCore.ownedPaths, [
+    { disposition: "transferred", path: task136FactoryCompositionPath },
+    {
+      disposition: "owned",
+      path: "packages/local-runtime/test/resident-loop-factory-composition.test.ts"
+    },
+    {
+      disposition: "owned",
+      path: "packages/local-runtime/test/resident-loop-factory-composition-imports.test.ts"
+    },
+    {
+      disposition: "owned",
+      path: "docs/agentic/claims/task-136-factory-authority-composition.md"
+    }
+  ]);
+  assert.deepEqual(task136.prerequisiteIds.slice(0, 3), [
+    "T120-R",
+    "Task136-FC-Core",
+    "Task136-FC-Ports"
+  ]);
+  assert.equal(task136.ownedPaths.length, 33);
+  assert.equal(task136.ownedPaths[22].path, task136FactoryCompositionPath);
+  assert.equal(
+    createHash("sha256")
+      .update(`${task136.ownedPaths.map(({ path }) => path).join("\n")}\n`)
+      .digest("hex"),
+    task136ThirtyThreePathSha256
+  );
+  assert.deepEqual(
+    contract.releaseCompatibility.historicalRecords
+      .find((record) => record.cardId === "Task136-FC-Core"),
+    {
+      cardId: "Task136-FC-Core",
+      canonicalJsonSha256:
+        "ff24eb56771db9a1a7ea015783a9b83c17f246d5e0215364b7fecb547c92c0c1",
+      pathDispositions: [
+        { path: task136FactoryCompositionPath, recordDisposition: "owned" }
+      ]
+    }
+  );
   const fingerprint = createHash("sha256").update(JSON.stringify({
     releaseGraph: {
       version: contract.releaseGraph.version,
@@ -1358,7 +1612,7 @@ test("rejects finite Task136 graph, compatibility, baseline, raw-pin, and record
   })).digest("hex");
   assert.equal(fingerprint, v4AssuranceFingerprint);
 
-  const task136CommandArguments = task136SixteenTestCommand.split(" ").slice(3);
+  const task136CommandArguments = task136SeventeenTestCommand.split(" ").slice(3);
   const staticCases = [
     {
       id: "thirtieth card",
@@ -1424,6 +1678,7 @@ test("rejects finite Task136 graph, compatibility, baseline, raw-pin, and record
     },
     ...[
       "T120-R",
+      "Task136-FC-Core",
       "Task136-FC-Ports",
       "Task139-P2",
       "C136-P",
@@ -1513,7 +1768,7 @@ test("rejects finite Task136 graph, compatibility, baseline, raw-pin, and record
         id: `Task136 command relabeled ${argument}`,
         mutate(mutant) {
           const task136 = mutant.releaseGraph.cards.find((card) => card.id === "Task136");
-          task136.command = task136SixteenTestCommand.replace(argument, `${argument}.drift`);
+          task136.command = task136SeventeenTestCommand.replace(argument, `${argument}.drift`);
         }
       }
     ]),
@@ -1663,7 +1918,50 @@ test("rejects finite Task136 graph, compatibility, baseline, raw-pin, and record
 
   const beforeRecord29Records = releaseRecordsFor(contract).slice(0, 28);
   const beforeRecord29Registry = releaseRecordMarkdown(beforeRecord29Records);
+  const task136FcCoreRecord = beforeRecord29Records.find(
+    (record) => record.cardId === "Task136-FC-Core"
+  );
+  assert.equal(
+    task136FcCoreRecord.candidateSha,
+    "c6efd58a3e385d0097b4df9f73703a75b145e660"
+  );
+  assert.equal(
+    task136FcCoreRecord.integrationSha,
+    "7a7a650e7db97c1aad63447e3669e66ddf3dc7fe"
+  );
+  assert.equal(
+    task136FcCoreRecord.ownedPathBlobs.find(
+      ({ path }) => path === task136FactoryCompositionPath
+    ).blobSha,
+    "8e69a7ac55f16a9d3e1c2646c985ffc6539fe064"
+  );
+  for (const commitish of [
+    task136FcCoreRecord.candidateSha,
+    task136FcCoreRecord.integrationSha,
+    "HEAD"
+  ]) {
+    const adapter = fakeRepositoryAdapter(beforeRecord29Records, {
+      blobMismatch: { commitish, path: task136FactoryCompositionPath }
+    });
+    assert.throws(
+      () => assurance.verifyTask136ReleasePrefix(contract, {
+        registryText: beforeRecord29Registry,
+        adapter
+      }),
+      new RegExp(`blob mismatch: Task136-FC-Core:${task136FactoryCompositionPath.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`),
+      `FC-Core composition remains current before record 29: ${commitish}`
+    );
+    assert.equal(adapter.commandCalls.length, 0);
+  }
   const baselineCases = [
+    ...[
+      "packages/agent/src/adapters/legacy-staging.ts",
+      "packages/agent/test/legacy-staging-adapter.test.ts"
+    ].flatMap((path) => [
+      ["3be15212776ab3c96e66bf0bade4630960c362eb", path],
+      ["dc05c43c4b9a592d0396acd034bfc32e177fd09a", path],
+      ["HEAD", path]
+    ]),
     [
       "70814c1259871c5458a3578fae8a5c8281540377",
       "packages/agent/src/domain-execution-dispatcher.ts"
@@ -1703,7 +2001,21 @@ test("rejects finite Task136 graph, compatibility, baseline, raw-pin, and record
   assert.equal(records.length, 29);
   const record29Registry = releaseRecordMarkdown(records);
   const task136Record = records.find((record) => record.cardId === "Task136");
+  const task136FcPortsRecord = records.find(
+    (record) => record.cardId === task136FcPortsStillOwnedSuccessor.cardId
+  );
   assert.ok(task136Record);
+  assert.ok(task136FcPortsRecord);
+  assert.equal(
+    task136FcPortsRecord.integrationSha,
+    task136FcPortsStillOwnedSuccessor.rawIntegrationSha
+  );
+  assert.equal(
+    task136FcPortsRecord.ownedPathBlobs.find(
+      ({ path }) => path === task136FcPortsStillOwnedSuccessor.path
+    )?.blobSha,
+    task136FcPortsStillOwnedSuccessor.rawBlobSha
+  );
   const successfulRecord29Adapter = fakeRepositoryAdapter(records);
   const record29Result = assurance.verifyTask136ReleasePrefix(contract, {
     registryText: record29Registry,
@@ -1713,7 +2025,7 @@ test("rejects finite Task136 graph, compatibility, baseline, raw-pin, and record
   assert.equal(successfulRecord29Adapter.commandCalls.length, 29);
 
   const transferredAndAdoptedProductPaths = task136OwnedPaths.slice(2, -1);
-  assert.equal(transferredAndAdoptedProductPaths.length, 27);
+  assert.equal(transferredAndAdoptedProductPaths.length, 30);
   for (const path of transferredAndAdoptedProductPaths) {
     const adapter = fakeRepositoryAdapter(records, {
       blobMismatch: { commitish: "HEAD", path }
@@ -1743,6 +2055,119 @@ test("rejects finite Task136 graph, compatibility, baseline, raw-pin, and record
       );
       assert.equal(adapter.commandCalls.length, 0, `record-29 Task136 blob: ${commitish}:${path}`);
     }
+  }
+
+  for (const commitish of [
+    task136FcPortsRecord.candidateSha,
+    task136FcPortsRecord.integrationSha
+  ]) {
+    const nonBlobAdapter = fakeRepositoryAdapter(records, {
+      nonBlobObject: {
+        commitish,
+        path: task136FcPortsStillOwnedSuccessor.path,
+        type: "tree"
+      }
+    });
+    assert.throws(
+      () => assurance.verifyTask136ReleasePrefix(contract, {
+        registryText: record29Registry,
+        adapter: nonBlobAdapter
+      }),
+      new RegExp(
+        `path is not a Git blob: ${task136FcPortsStillOwnedSuccessor.cardId}:${task136FcPortsStillOwnedSuccessor.path.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`
+      ),
+      `raw FC-Ports path object: ${commitish}`
+    );
+    assert.equal(nonBlobAdapter.commandCalls.length, 0, `raw FC-Ports path object: ${commitish}`);
+
+    const wrongBlobAdapter = fakeRepositoryAdapter(records, {
+      blobMismatch: { commitish, path: task136FcPortsStillOwnedSuccessor.path }
+    });
+    assert.throws(
+      () => assurance.verifyTask136ReleasePrefix(contract, {
+        registryText: record29Registry,
+        adapter: wrongBlobAdapter
+      }),
+      new RegExp(
+        `blob mismatch: ${task136FcPortsStillOwnedSuccessor.cardId}:${task136FcPortsStillOwnedSuccessor.path.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`
+      ),
+      `raw FC-Ports path blob: ${commitish}`
+    );
+    assert.equal(wrongBlobAdapter.commandCalls.length, 0, `raw FC-Ports path blob: ${commitish}`);
+  }
+
+  for (const testCase of [
+    {
+      id: "successor candidate",
+      commitish: task136FcPortsStillOwnedSuccessor.candidateSha
+    },
+    {
+      id: "successor integration",
+      commitish: task136FcPortsStillOwnedSuccessor.integrationSha
+    },
+    { id: "current HEAD", commitish: "HEAD" }
+  ]) {
+    const nonBlobAdapter = fakeRepositoryAdapter(records, {
+      nonBlobObject: {
+        commitish: testCase.commitish,
+        path: task136FcPortsStillOwnedSuccessor.path,
+        type: "tree"
+      }
+    });
+    assert.throws(
+      () => assurance.verifyTask136ReleasePrefix(contract, {
+        registryText: record29Registry,
+        adapter: nonBlobAdapter
+      }),
+      new RegExp(
+        `still-owned ${testCase.id} path is not a Git blob: ${task136FcPortsStillOwnedSuccessor.cardId}:${task136FcPortsStillOwnedSuccessor.path.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`
+      ),
+      `${testCase.id} object`
+    );
+    assert.equal(nonBlobAdapter.commandCalls.length, 0, `${testCase.id} object`);
+
+    const wrongBlobAdapter = fakeRepositoryAdapter(records, {
+      blobMismatch: {
+        commitish: testCase.commitish,
+        path: task136FcPortsStillOwnedSuccessor.path
+      }
+    });
+    assert.throws(
+      () => assurance.verifyTask136ReleasePrefix(contract, {
+        registryText: record29Registry,
+        adapter: wrongBlobAdapter
+      }),
+      new RegExp(
+        `still-owned ${testCase.id} blob mismatch: ${task136FcPortsStillOwnedSuccessor.cardId}:${task136FcPortsStillOwnedSuccessor.path.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`
+      ),
+      `${testCase.id} blob`
+    );
+    assert.equal(wrongBlobAdapter.commandCalls.length, 0, `${testCase.id} blob`);
+  }
+
+  const task136FcPortsSiblingPaths = task136FcPortsRecord.ownedPathBlobs
+    .map(({ path }) => path)
+    .filter((path) => path !== task136FcPortsStillOwnedSuccessor.path);
+  assert.equal(task136FcPortsSiblingPaths.length, 4);
+  for (const siblingPath of task136FcPortsSiblingPaths) {
+    const adapter = fakeRepositoryAdapter(records, {
+      stillOwnedSuccessorPath: siblingPath
+    });
+    assert.throws(
+      () => assurance.verifyTask136ReleasePrefix(contract, {
+        registryText: record29Registry,
+        adapter
+      }),
+      new RegExp(
+        `still-owned current HEAD blob mismatch: ${task136FcPortsStillOwnedSuccessor.cardId}:${task136FcPortsStillOwnedSuccessor.path.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`
+      ),
+      `still-owned successor sibling isolation: ${siblingPath}`
+    );
+    assert.equal(
+      adapter.commandCalls.length,
+      0,
+      `still-owned successor sibling isolation: ${siblingPath}`
+    );
   }
 
   const task137b = records.find((record) => record.cardId === "Task137B-W");
@@ -2770,7 +3195,23 @@ test("requires the durable V4 claim to retain history and the RV-1-E-941 authori
     "c8fd4c43c6eb7a29755b83edf65004254ceb52ff49f840c972885f885426e566",
     "cbf1cb3317cc9581f976a2cd27a2f4c1745aecf2b00650a59e93f46bc9dc40a4",
     "15125944a80d1f605487560f1dd13e28603a7b72335baf53a2d1c081177008f3",
-    "Task136 product/package byte may change before the exact six-file V4"
+    "Task136 product/package byte may change before the exact six-file V4",
+    "RV-1-E-1017 forward assurance-scope amendment",
+    "32 ordered paths: 14 sources, 17 tests",
+    "8fc076b8b7f3c23f513381fd771bf26ee81ad967c28b741bdb1c766d52554a41",
+    "3adbf85ccc071667df73809f44b0e1451b66fdd81dfc6021afafcc4feec20930",
+    "da850dfd3068efda96b96e9a274777e3b97e2922017c16be8ea703b09e7cd1ec",
+    "sha256:1fcbb344a125ae874ea174022f051486267f0f7afa75e743bdb8fab24632d5ab",
+    "selectedCandidateBindingHashes",
+    "RV-1-E-1109 forward exact-identity 33-path amendment",
+    "2f5834947b350c96171ed665b8280902661cbf7a",
+    "ordered paths = 15 sources, 17 tests, and one claim",
+    "4cca816c5004bf922d47a44bc8e9216a7f4d1e00a030f20b34d59fb0cd1e442e",
+    "ff24eb56771db9a1a7ea015783a9b83c17f246d5e0215364b7fecb547c92c0c1",
+    "96b6104617103b85916df22b46168781c58b4465b729369f3e7179cf0a89b8e5",
+    "f73e9d7090dfdd388b18c2b13ca207f3cfa11697fe4473026e0b09492d083df4",
+    "sha256:82e666a86d2b3ccd0ceafd634975d0a7459d3fe7600d27cc8345dd0f531fbc1e",
+    "sha256:799af83764d6c098f3b1a97d6d30fc3b9b13f32f7c57204d92383fab371179ac"
   ];
 
   for (const evidence of requiredEvidence) {

@@ -822,3 +822,126 @@ Implementation evidence:
   packages/product bytes, provider behavior, credentials, network behavior,
   external systems, `neo`, and remote refs remain unchanged. This mechanical
   pin synchronization is an assurance checkpoint, not a product release.
+
+## RV-1-E-1017 forward assurance-scope amendment
+
+The historical V4 candidate, approval, integration, JSON hash, assurance
+fingerprint, mission fingerprint, and every prior review above remain
+immutable evidence for their exact commits. They are not rewritten. Human
+scope authority is recorded at program commit
+`9aa73c2cb9063d97ed438fa074911ba527995cc9` and Task136 two-parent merge
+`d0136f6960f0355fe7ea29320498c80dd276c963`.
+
+The forward amendment preserves all 29 card IDs/order, all 28 raw release
+pins, eleven historical compatibility records, nine Task136 prerequisites,
+and every existing transfer. It expands only Task136's finite owned scope by
+adopting these two previously unowned release-graph paths:
+
+```text
+packages/agent/src/adapters/legacy-staging.ts
+packages/agent/test/legacy-staging-adapter.test.ts
+```
+
+The exact current Task136 scope is 32 ordered paths: 14 sources, 17 tests,
+and one claim. The adopted pair occupies positions 9 and 10 immediately
+before the gateway pair; the newline-delimited ordered-path SHA-256 is
+`8fc076b8b7f3c23f513381fd771bf26ee81ad967c28b741bdb1c766d52554a41`.
+The Task136 command contains all 17 tests in owned-path order.
+
+The two paths are finite baseline adoptions with source blob
+`99fbafda3844435109bc249b015b111b9258c210` and test blob
+`de7cef3123a15fb82891943dc51005165c8c9fcd`, exact candidate
+`3be15212776ab3c96e66bf0bade4630960c362eb`, and published integration
+`dc05c43c4b9a592d0396acd034bfc32e177fd09a`. Before record 29, candidate,
+integration, and current HEAD must match. After record 29 they migrate to
+Task136 candidate/integration/current equality with the other 30 paths.
+
+The amended contract/checker keeps the finite mutation corpus and adds both
+paths to baseline and record-29 blob mismatch proof. The forward exact pins
+are:
+
+```text
+V4 JSON SHA-256:
+3adbf85ccc071667df73809f44b0e1451b66fdd81dfc6021afafcc4feec20930
+V4 assurance fingerprint:
+da850dfd3068efda96b96e9a274777e3b97e2922017c16be8ea703b09e7cd1ec
+Mission immutable-envelope fingerprint:
+sha256:1fcbb344a125ae874ea174022f051486267f0f7afa75e743bdb8fab24632d5ab
+Mission source fingerprint:
+sha256:5b5b6b71dc5d0f4b96954ac00d3e7b8a4ccb7c31465eabac149b7f312f39028b
+```
+
+The amendment also freezes the secret-safe ordinal-10 design: the released
+adapter derives ordered `selectedCandidateBindingHashes` from authoritative
+current candidates using the exact versioned canonical preimage in the
+Task136 design, binds them into `normalizedInputHash` and the complete
+preview hash, and exposes no raw predicate/object values. Fresh dispatcher
+execution and gateway recovery independently recompute from exact proposal
+and evidence durable facts; neither trusts a receipt as its own oracle and no
+report-store port is added.
+
+This is a pre-product authority amendment candidate, not Task12 product
+editing, approval, integration, strict record 29, assurance-only transition,
+publication, Wave 3 start, or product release. Task12 remains implementing
+and the strict frontier remains **28 of 29** pending completely fresh design
+and executability reviews of one exact candidate.
+
+## RV-1-E-1109 forward exact-identity 33-path amendment
+
+This true-EOF claim records the current forward assurance authority. Every
+earlier V1-V4 contract hash, strict release record, candidate, review,
+fixture, RED, GREEN, integration, and release remains immutable evidence for
+its exact commit.
+
+The permanent E-1109 causal RED is commit
+`2f5834947b350c96171ed665b8280902661cbf7a`. The unchanged 20-test assurance
+corpus produced exactly 19 passes and one causal failure: the old contract
+carried `Task136-FC-Core.transferToIds: []` instead of exact `["Task136"]`.
+No package/product byte changed.
+
+The finite GREEN transfers only
+`packages/local-runtime/src/resident-loop-factory-composition.ts` from
+Task136-FC-Core to Task136. The FC-Core tests and claim remain owned, and the
+FC-Core command remains unchanged. Historical record 19 retains `owned`
+disposition for all four paths, exact raw SHA-256
+`5e78c42b3753cd3ce086ab45862479f2e5569fdaae1fc683528a67101630b920`,
+and exact compact canonical SHA-256
+`ff24eb56771db9a1a7ea015783a9b83c17f246d5e0215364b7fecb547c92c0c1`.
+
+The exact graph remains 29 cards. Task136 now has ten prerequisites and 33
+ordered paths = 15 sources, 17 tests, and one claim. The composition source is
+one-based position 23, and the exact newline-delimited path SHA-256 is
+`4cca816c5004bf922d47a44bc8e9216a7f4d1e00a030f20b34d59fb0cd1e442e`.
+The card command remains the exact existing 17-test command. Compatibility
+grows from eleven to twelve entries with FC-Core immediately before FC-Ports.
+Only the source migrates to Task136 at record 29.
+
+The released FC-Core composition tests remain FC-Core-owned and are added
+unchanged to the mandatory cross-boundary control, taking it from 35 to 37
+tests. The product design requires a private non-barrel one-shot issuer seam
+at actual composition allocation: privately register or brand the exact
+completed frozen readback against the exact wake runtime before returning,
+then reject copied outer/provider/handoff/authority-binding allocations before
+store I/O. Structural, first-seen, timing, allocation-order, call-stack,
+source-text, global, and process-local heuristics remain forbidden.
+
+The final canonical synchronized pins are:
+
+```text
+V4 JSON SHA-256:
+96b6104617103b85916df22b46168781c58b4465b729369f3e7179cf0a89b8e5
+V4 assurance fingerprint:
+f73e9d7090dfdd388b18c2b13ca207f3cfa11697fe4473026e0b09492d083df4
+Mission frozen-authority SHA-256:
+96b6104617103b85916df22b46168781c58b4465b729369f3e7179cf0a89b8e5
+Mission immutable-envelope fingerprint:
+sha256:82e666a86d2b3ccd0ceafd634975d0a7459d3fe7600d27cc8345dd0f531fbc1e
+Mission source fingerprint:
+sha256:799af83764d6c098f3b1a97d6d30fc3b9b13f32f7c57204d92383fab371179ac
+```
+
+The amendment candidate contains exactly nine authority paths and no
+package/product byte. It is review-ready only after final committed-byte
+validation. It is not approved, integrated, Task14 GREEN authority, a Task136
+product candidate, strict record 29, repository closure, publication, Wave 3
+start, or product release.
