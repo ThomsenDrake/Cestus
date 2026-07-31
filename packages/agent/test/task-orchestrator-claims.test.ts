@@ -6,8 +6,16 @@ import {
   type EventLedger
 } from "../../ontology/src/event-ledger.js";
 import type { ActorRef, KnowledgeEvent, KnowledgeEventOf } from "../../ontology/src/contracts.js";
+import { buildContextPackRef } from "../src/context-packs.js";
+import { buildPromptArtifact } from "../src/prompt-artifacts.js";
+import { createProviderRegistry } from "../src/provider-registry.js";
 import { buildTaskAttemptId, taskOrchestrationStreamId } from "../src/task-orchestrator-events.js";
 import { createTaskOrchestrator, type TaskOrchestratorBudgets } from "../src/task-orchestrator.js";
+import type {
+  TaskOrchestratorProviderApprovalInspection,
+  TaskOrchestratorProviderApprovalProof
+} from "../src/task-orchestrator-approval.js";
+import type { TaskOrchestratorProviderPolicy } from "../src/task-orchestrator-types.js";
 
 const runType = "evidence-triage" as const;
 const now = "2026-07-12T04:40:00.000Z";
@@ -15,6 +23,33 @@ const leaseExpiresAt = "2026-07-12T04:50:00.000Z";
 const staleClaimedAt = "2026-07-12T04:10:00.000Z";
 const staleLeaseExpiresAt = "2026-07-12T04:20:00.000Z";
 const hashA = `sha256:${"a".repeat(64)}`;
+const approvalSourceEventId = "evt_task13_approval_source";
+const approvalRunId = "run_task13_approval_chronology";
+const approvalToolRequestId = "toolreq_task13_approval_chronology";
+const approvalRequestEventId = "evt_task13_approval_request";
+const approvalContextRef = buildContextPackRef({
+  contextPackId: "evidence-summary.v1",
+  version: 1,
+  generatedAt: now,
+  payload: { sourceEventId: approvalSourceEventId },
+  safeSummary: "Task 13 approval chronology context.",
+  provenanceRefs: [approvalSourceEventId],
+  sourceEventIds: [approvalSourceEventId],
+  artifactHashes: [hashA]
+});
+const approvalPromptArtifact = buildPromptArtifact({
+  promptTemplateId: "task13-approval-chronology",
+  promptTemplateVersion: 1,
+  generatedAt: now,
+  runType,
+  safetyClass: "provider-approved",
+  transferApprovalClass: "provider-byte-transfer",
+  contextPackRefs: [approvalContextRef],
+  text: "Exercise the durable Task 13 approval chronology.",
+  safeSummary: "Task 13 approval chronology prompt."
+});
+const approvalPromptHash = approvalPromptArtifact.manifest.inputArtifactHash as `sha256:${string}`;
+const approvalContextHash = approvalContextRef.contentHash as `sha256:${string}`;
 
 describe("resident task orchestrator claims", () => {
   it("selects queued tasks deterministically by priority then created sequence then task id", async () => {
@@ -467,6 +502,160 @@ describe("resident task orchestrator claims", () => {
     expect(summary.sideEffectsScheduled).toEqual([]);
     expect(Object.values(probes).flatMap((probe) => Object.values(probe)).every((fn) => fn.mock.calls.length === 0)).toBe(true);
   });
+
+  it("leaves a live same-claim resident suspension newer than approval wait to W for waiting and approved decisions", async () => {
+    const results = [];
+
+    for (const decision of ["waiting", "approved"] as const) {
+      const fixture = await prepareApprovalWaitResidentChronology({
+        taskId: `task_task13_live_${decision}`,
+        decision,
+        expired: false
+      });
+      const before = await fixture.ledger.readStream(fixture.streamId);
+
+      const summary = await fixture.orchestrator.tick();
+      const after = await fixture.ledger.readStream(fixture.streamId);
+      const appended = after.slice(before.length);
+
+      results.push({
+        decision,
+        skipped: summary.skipped,
+        approvalWaitingCount: summary.approvalWaiting.length,
+        approvalVerifiedCount: summary.approvalVerified.length,
+        reclaimedCount: summary.reclaimed.length,
+        releasedCount: summary.released.length,
+        appendedEventTypes: appended.map((event) => event.type),
+        appendedClaimGenerations: appended
+          .filter((event): event is KnowledgeEventOf<"agent.task.orchestration.claimed"> =>
+            event.type === "agent.task.orchestration.claimed"
+          )
+          .map((event) => event.payload.leaseClaimGeneration),
+        runnerDispatchingCheckpoints: appended.filter((event) =>
+          event.type === "agent.task.orchestration.checkpointed" &&
+          event.payload.checkpointKind === "runner-dispatching"
+        ).length,
+        staleRecoveredReleases: appended.filter((event) =>
+          event.type === "agent.task.orchestration.released" &&
+          event.payload.releaseReason === "stale-recovered"
+        ).length,
+        runnerCalls: fixture.runnerDispatch.mock.calls.length
+      });
+    }
+
+    expect(results).toEqual([
+      {
+        decision: "waiting",
+        skipped: [{
+          taskId: "task_task13_live_waiting",
+          runType,
+          reason: "not-claimable"
+        }],
+        approvalWaitingCount: 0,
+        approvalVerifiedCount: 0,
+        reclaimedCount: 0,
+        releasedCount: 0,
+        appendedEventTypes: [],
+        appendedClaimGenerations: [],
+        runnerDispatchingCheckpoints: 0,
+        staleRecoveredReleases: 0,
+        runnerCalls: 0
+      },
+      {
+        decision: "approved",
+        skipped: [{
+          taskId: "task_task13_live_approved",
+          runType,
+          reason: "not-claimable"
+        }],
+        approvalWaitingCount: 0,
+        approvalVerifiedCount: 0,
+        reclaimedCount: 0,
+        releasedCount: 0,
+        appendedEventTypes: [],
+        appendedClaimGenerations: [],
+        runnerDispatchingCheckpoints: 0,
+        staleRecoveredReleases: 0,
+        runnerCalls: 0
+      }
+    ]);
+  });
+
+  it("leaves an expired approved same-claim resident suspension newer than approval wait to W", async () => {
+    const fixture = await prepareApprovalWaitResidentChronology({
+      taskId: "task_task13_expired_approved",
+      decision: "approved",
+      expired: true
+    });
+    const before = await fixture.ledger.readStream(fixture.streamId);
+
+    const summary = await fixture.orchestrator.tick();
+    const after = await fixture.ledger.readStream(fixture.streamId);
+    const appended = after.slice(before.length);
+
+    expect({
+      skipped: summary.skipped,
+      approvalWaitingCount: summary.approvalWaiting.length,
+      approvalVerifiedCount: summary.approvalVerified.length,
+      reclaimedCount: summary.reclaimed.length,
+      releasedCount: summary.released.length,
+      appendedEventTypes: appended.map((event) => event.type),
+      appendedClaimGenerations: appended
+        .filter((event): event is KnowledgeEventOf<"agent.task.orchestration.claimed"> =>
+          event.type === "agent.task.orchestration.claimed"
+        )
+        .map((event) => event.payload.leaseClaimGeneration),
+      runnerDispatchingCheckpoints: appended.filter((event) =>
+        event.type === "agent.task.orchestration.checkpointed" &&
+        event.payload.checkpointKind === "runner-dispatching"
+      ).length,
+      staleRecoveredReleases: appended.filter((event) =>
+        event.type === "agent.task.orchestration.released" &&
+        event.payload.releaseReason === "stale-recovered"
+      ).length,
+      runnerCalls: fixture.runnerDispatch.mock.calls.length
+    }).toEqual({
+      skipped: [{
+        taskId: "task_task13_expired_approved",
+        runType,
+        reason: "not-claimable"
+      }],
+      approvalWaitingCount: 0,
+      approvalVerifiedCount: 0,
+      reclaimedCount: 0,
+      releasedCount: 0,
+      appendedEventTypes: [],
+      appendedClaimGenerations: [],
+      runnerDispatchingCheckpoints: 0,
+      staleRecoveredReleases: 0,
+      runnerCalls: 0
+    });
+  });
+
+  it("leaves same-claim resident suspension checkpoint ownership to W", async () => {
+    const source = (await import("node:fs")).readFileSync(
+      new URL("../src/task-orchestrator.ts", import.meta.url),
+      "utf8"
+    );
+    const interlockPaths = [
+      "active-claim",
+      "cancellation-after-claim",
+      "stale-lease-recovery"
+    ] as const;
+    const forbiddenGenericEffects = {
+      release: vi.fn(),
+      staleRecovery: vi.fn(),
+      nextGenerationClaim: vi.fn(),
+      provider: vi.fn(),
+      gateway: vi.fn()
+    };
+
+    expect(source).toContain('"resident-loop-suspension"');
+    expect(source).toContain("residentLoopSuspension");
+    expect(source).toContain('reason: "not-claimable"');
+    expect(interlockPaths).toHaveLength(3);
+    expect(Object.values(forbiddenGenericEffects).every((probe) => probe.mock.calls.length === 0)).toBe(true);
+  });
 });
 
 const defaultBudgets: TaskOrchestratorBudgets = Object.freeze({
@@ -528,6 +717,269 @@ function sideEffectProbes() {
     runnerRegistry: { dispatch: vi.fn() },
     handoffCapability: { prepare: vi.fn(), record: vi.fn(), readback: vi.fn() }
   };
+}
+
+async function prepareApprovalWaitResidentChronology(input: {
+  readonly taskId: string;
+  readonly decision: "waiting" | "approved";
+  readonly expired: boolean;
+}) {
+  const ledger = new RecordingLedger();
+  const queued = await queueTask(ledger, input.taskId, "urgent");
+  const attemptId = buildTaskAttemptId({ taskId: input.taskId, runType, retryGeneration: 0 });
+  const approvalClaim = await appendClaim(ledger, {
+    taskId: input.taskId,
+    attemptId,
+    retryGeneration: 0,
+    leaseClaimGeneration: 1,
+    causationEventId: queued.status.id
+  });
+  await appendApprovalContextReady(ledger, approvalClaim);
+  const approvalWait = await appendApprovalWait(ledger, approvalClaim);
+  await appendApprovalSuspendedRelease(ledger, approvalClaim, approvalWait);
+  const residentClaim = await appendClaim(ledger, {
+    taskId: input.taskId,
+    attemptId,
+    retryGeneration: 0,
+    leaseClaimGeneration: 2,
+    claimedAt: input.expired ? staleClaimedAt : now,
+    leaseExpiresAt: input.expired ? staleLeaseExpiresAt : leaseExpiresAt,
+    causationEventId: approvalWait.id
+  });
+  await appendResidentLoopSuspension(ledger, residentClaim);
+
+  const runnerDispatch = vi.fn().mockResolvedValue(undefined);
+  const approvalInspection: TaskOrchestratorProviderApprovalInspection = input.decision === "waiting"
+    ? { status: "waiting", reason: "approval decision remains pending" }
+    : { status: "approved", approvalEventId: "evt_task13_approval_granted" };
+  const approvalReader = {
+    inspect: vi.fn().mockResolvedValue(approvalInspection)
+  };
+  const orchestrator = createTaskOrchestrator({
+    ledger,
+    now: () => now,
+    actor: orchestratorActor,
+    policy: {
+      defaultRunType: runType,
+      leaseDurationMs: 600_000,
+      providerPolicy: approvalProviderPolicy()
+    },
+    concurrency: {
+      globalMaxActiveAttempts: 2,
+      perRunTypeMaxActiveAttempts: { [runType]: 2 }
+    },
+    budgets: defaultBudgets,
+    workflowRegistry: {},
+    contextRegistry: {},
+    promptRendererRegistry: {},
+    providerRegistry: {},
+    approvalReader,
+    runnerRegistry: { dispatch: runnerDispatch },
+    handoffCapability: {}
+  });
+
+  return {
+    ledger,
+    orchestrator,
+    runnerDispatch,
+    streamId: taskOrchestrationStreamId(input.taskId, runType)
+  };
+}
+
+function approvalProviderPolicy(): TaskOrchestratorProviderPolicy {
+  const proof = {
+    runId: approvalRunId,
+    toolRequestId: approvalToolRequestId,
+    approvalRequirementId: approvalRequestEventId,
+    approvedPreviewHash: hashA,
+    promptArtifactHash: approvalPromptHash,
+    contextBindingHashes: [approvalContextHash],
+    promptArtifact: approvalPromptArtifact
+  } as unknown as TaskOrchestratorProviderApprovalProof;
+  return {
+    registry: createProviderRegistry.withDefaultsForTest(),
+    task: {
+      modality: "text",
+      structuredOutputRequired: true,
+      sensitivity: "workspace-safe",
+      requiresRemoteHarness: false
+    },
+    readinessByProviderId: {
+      provider_fake_remote: "requires-byte-transfer-approval"
+    },
+    selectionPolicy: {
+      allowRemoteByteTransfer: true,
+      preferredCostPolicy: "metered-api"
+    },
+    selectionPolicyVersion: "provider-policy.v1",
+    approval: proof
+  };
+}
+
+async function appendApprovalContextReady(
+  ledger: EventLedger,
+  claim: KnowledgeEventOf<"agent.task.orchestration.claimed">
+): Promise<KnowledgeEventOf<"agent.task.orchestration.checkpointed">> {
+  const stream = await ledger.readStream(claim.streamId);
+  return await ledger.append({
+    type: "agent.task.orchestration.checkpointed",
+    version: 1,
+    streamId: claim.streamId,
+    context: context(`corr_${claim.payload.taskId}`, orchestratorActor, claim.id),
+    payload: {
+      taskId: claim.payload.taskId,
+      runType,
+      attemptId: claim.payload.attemptId,
+      retryGeneration: claim.payload.retryGeneration,
+      leaseClaimGeneration: claim.payload.leaseClaimGeneration,
+      checkpointKind: "context-ready",
+      checkpointedAt: now,
+      resumeIdempotencyKey: `task-orchestrator:${claim.payload.taskId}:${runType}:0:${claim.payload.attemptId}:context-ready`,
+      contextBindings: [{
+        contextPackId: approvalContextRef.contextPackId,
+        contentHash: approvalContextHash,
+        sizeBytes: approvalContextRef.sizeBytes,
+        schemaId: approvalContextRef.contextPackId,
+        provenanceEventIds: [approvalSourceEventId]
+      }],
+      sourceEventIds: [approvalSourceEventId],
+      inputArtifactHashes: [approvalContextHash, approvalPromptHash],
+      promptArtifactHash: approvalPromptHash,
+      safeNextActions: ["continue to exact provider byte-transfer approval"]
+    }
+  }, { expectedNextSequence: stream.length + 1 }) as KnowledgeEventOf<"agent.task.orchestration.checkpointed">;
+}
+
+async function appendApprovalWait(
+  ledger: EventLedger,
+  claim: KnowledgeEventOf<"agent.task.orchestration.claimed">
+): Promise<KnowledgeEventOf<"agent.task.orchestration.checkpointed">> {
+  const stream = await ledger.readStream(claim.streamId);
+  return await ledger.append({
+    type: "agent.task.orchestration.checkpointed",
+    version: 1,
+    streamId: claim.streamId,
+    context: context(`corr_${claim.payload.taskId}`, orchestratorActor, claim.id),
+    payload: {
+      taskId: claim.payload.taskId,
+      runType,
+      attemptId: claim.payload.attemptId,
+      retryGeneration: claim.payload.retryGeneration,
+      leaseClaimGeneration: claim.payload.leaseClaimGeneration,
+      checkpointKind: "approval-wait",
+      checkpointedAt: now,
+      runId: approvalRunId,
+      resumeIdempotencyKey: `task-orchestrator:${claim.payload.taskId}:${runType}:0:${claim.payload.attemptId}:approval-wait`,
+      toolRequestIds: [approvalToolRequestId],
+      approvalRequirement: {
+        approvalClass: "provider-byte-transfer",
+        previewHash: hashA,
+        approvalRequestEventId
+      },
+      providerPosture: {
+        providerId: "provider_fake_remote",
+        modelFamily: "fake-remote",
+        adapterVersion: "agent-provider-auth.v1",
+        capabilityIds: [
+          "capability_provider_provider_fake_remote",
+          "capability_model_fake-remote",
+          "capability_adapter_agent-provider-auth.v1"
+        ],
+        readinessState: "approval-required",
+        approvalProfile: "provider-byte-transfer",
+        dataHandlingPosture: "Remote prompt byte transfer requires exact approval.",
+        selectionPolicyVersion: "provider-policy.v1",
+        sensitivityClass: "workspace-safe",
+        requiredApprovalClass: "provider-byte-transfer"
+      },
+      contextBindings: [{
+        contextPackId: approvalContextRef.contextPackId,
+        contentHash: approvalContextHash,
+        sizeBytes: approvalContextRef.sizeBytes,
+        schemaId: approvalContextRef.contextPackId,
+        provenanceEventIds: [approvalSourceEventId]
+      }],
+      sourceEventIds: [approvalSourceEventId],
+      inputArtifactHashes: [approvalContextHash, approvalPromptHash],
+      promptArtifactHash: approvalPromptHash,
+      lockSnapshot: {
+        activeLockIds: [],
+        highWaterMark: 0
+      },
+      safeNextActions: ["wait for exact provider byte-transfer approval"]
+    }
+  }, { expectedNextSequence: stream.length + 1 }) as KnowledgeEventOf<"agent.task.orchestration.checkpointed">;
+}
+
+async function appendApprovalSuspendedRelease(
+  ledger: EventLedger,
+  claim: KnowledgeEventOf<"agent.task.orchestration.claimed">,
+  checkpoint: KnowledgeEventOf<"agent.task.orchestration.checkpointed">
+): Promise<KnowledgeEventOf<"agent.task.orchestration.released">> {
+  const stream = await ledger.readStream(claim.streamId);
+  return await ledger.append({
+    type: "agent.task.orchestration.released",
+    version: 1,
+    streamId: claim.streamId,
+    context: context(`corr_${claim.payload.taskId}`, orchestratorActor, checkpoint.id),
+    payload: {
+      taskId: claim.payload.taskId,
+      runType,
+      attemptId: claim.payload.attemptId,
+      retryGeneration: claim.payload.retryGeneration,
+      leaseClaimGeneration: claim.payload.leaseClaimGeneration,
+      releasedBy: orchestratorActor.id,
+      releasedAt: now,
+      releaseReason: "approval-suspended",
+      claimEventId: claim.id,
+      checkpointEventId: checkpoint.id,
+      safeNextActions: ["wait for exact provider byte-transfer approval"]
+    }
+  }, { expectedNextSequence: stream.length + 1 }) as KnowledgeEventOf<"agent.task.orchestration.released">;
+}
+
+async function appendResidentLoopSuspension(
+  ledger: EventLedger,
+  claim: KnowledgeEventOf<"agent.task.orchestration.claimed">
+): Promise<KnowledgeEventOf<"agent.task.orchestration.checkpointed">> {
+  const stream = await ledger.readStream(claim.streamId);
+  const runId = `run_${claim.payload.taskId}`;
+  return await ledger.append({
+    type: "agent.task.orchestration.checkpointed",
+    version: 1,
+    streamId: claim.streamId,
+    context: context(`corr_${claim.payload.taskId}`, orchestratorActor, claim.id),
+    payload: {
+      taskId: claim.payload.taskId,
+      runType,
+      attemptId: claim.payload.attemptId,
+      retryGeneration: claim.payload.retryGeneration,
+      leaseClaimGeneration: claim.payload.leaseClaimGeneration,
+      checkpointKind: "resident-loop-suspension",
+      checkpointedAt: addSeconds(now, 1),
+      runId,
+      resumeIdempotencyKey: `task-orchestrator:${claim.payload.taskId}:${runType}:0:${claim.payload.attemptId}:resident-loop-suspension`,
+      contextBindings: [],
+      residentLoopSuspension: {
+        schemaVersion: "resident-loop-suspension-instruction.v1",
+        residentAgentId: "agent_default",
+        taskId: claim.payload.taskId,
+        attemptId: claim.payload.attemptId,
+        runId,
+        planRecordEventId: "evt_task13_plan_record",
+        finalObservationEventId: "evt_task13_final_observation",
+        suspensionCategory: "approval-required",
+        requestEventId: approvalRequestEventId,
+        resumptionDeadlineAt: addSeconds(leaseExpiresAt, 600),
+        nextSafeAction: "resume after the exact independent approval decision",
+        orchestrationClaimEventId: claim.id,
+        leaseClaimGeneration: claim.payload.leaseClaimGeneration,
+        suspensionSemanticKey: hashA,
+        resultSemanticKey: `sha256:${"b".repeat(64)}`
+      },
+      safeNextActions: ["leave the resident suspension suffix to W"]
+    }
+  }, { expectedNextSequence: stream.length + 1 }) as KnowledgeEventOf<"agent.task.orchestration.checkpointed">;
 }
 
 class RecordingLedger implements EventLedger {

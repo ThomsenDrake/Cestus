@@ -168,6 +168,16 @@
         ]
       },
       {
+        "cardId": "Task136-FC-Core",
+        "canonicalJsonSha256": "ff24eb56771db9a1a7ea015783a9b83c17f246d5e0215364b7fecb547c92c0c1",
+        "pathDispositions": [
+          {
+            "path": "packages/local-runtime/src/resident-loop-factory-composition.ts",
+            "recordDisposition": "owned"
+          }
+        ]
+      },
+      {
         "cardId": "Task136-FC-Ports",
         "canonicalJsonSha256": "d860a7ea14900431a361e95604d49efa6dbf824d8ccc85a06f27fe277698bc0d",
         "pathDispositions": [
@@ -854,7 +864,7 @@
         ],
         "ownedPaths": [
           {
-            "disposition": "owned",
+            "disposition": "transferred",
             "path": "packages/local-runtime/src/resident-loop-factory-composition.ts"
           },
           {
@@ -870,7 +880,9 @@
             "path": "docs/agentic/claims/task-136-factory-authority-composition.md"
           }
         ],
-        "transferToIds": [],
+        "transferToIds": [
+          "Task136"
+        ],
         "command": "npm test -- packages/local-runtime/test/resident-loop-factory-composition.test.ts packages/local-runtime/test/resident-loop-factory-composition-imports.test.ts"
       },
       {
@@ -1175,6 +1187,7 @@
         "id": "Task136",
         "prerequisiteIds": [
           "T120-R",
+          "Task136-FC-Core",
           "Task136-FC-Ports",
           "Task139-P2",
           "C136-P",
@@ -1216,6 +1229,14 @@
           {
             "disposition": "owned",
             "path": "packages/agent/test/resident-plan-candidate-provider.test.ts"
+          },
+          {
+            "disposition": "owned",
+            "path": "packages/agent/src/adapters/legacy-staging.ts"
+          },
+          {
+            "disposition": "owned",
+            "path": "packages/agent/test/legacy-staging-adapter.test.ts"
           },
           {
             "disposition": "owned",
@@ -1267,6 +1288,10 @@
           },
           {
             "disposition": "owned",
+            "path": "packages/local-runtime/src/resident-loop-factory-composition.ts"
+          },
+          {
+            "disposition": "owned",
             "path": "packages/local-runtime/src/resident-loop-factory-ports.ts"
           },
           {
@@ -1307,7 +1332,7 @@
           }
         ],
         "transferToIds": [],
-        "command": "npm test -- packages/agent/test/bounded-agent-loop.test.ts packages/agent/test/plan-observation-contracts.test.ts packages/agent/test/plan-observation-projection.test.ts packages/agent/test/resident-plan-candidate-provider.test.ts packages/agent/test/resident-loop-tool-gateway.test.ts packages/agent/test/resident-loop-scheduler-completion-imports.test.ts packages/local-runtime/test/wake-supervisor-runtime.test.ts packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts packages/agent/test/specialist-handoff-projection.test.ts packages/ontology/test/agent-resident-loop-contracts.test.ts packages/local-runtime/test/resident-loop-factory-ports.test.ts packages/local-runtime/test/resident-loop-factory-ports-imports.test.ts packages/agent/test/domain-execution-dispatcher.test.ts packages/agent/test/task-orchestrator-claims.test.ts packages/agent/test/task-orchestrator-projection.test.ts"
+        "command": "npm test -- packages/agent/test/bounded-agent-loop.test.ts packages/agent/test/plan-observation-contracts.test.ts packages/agent/test/plan-observation-projection.test.ts packages/agent/test/resident-plan-candidate-provider.test.ts packages/agent/test/legacy-staging-adapter.test.ts packages/agent/test/resident-loop-tool-gateway.test.ts packages/agent/test/resident-loop-scheduler-completion-imports.test.ts packages/local-runtime/test/wake-supervisor-runtime.test.ts packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts packages/agent/test/specialist-handoff-projection.test.ts packages/ontology/test/agent-resident-loop-contracts.test.ts packages/local-runtime/test/resident-loop-factory-ports.test.ts packages/local-runtime/test/resident-loop-factory-ports-imports.test.ts packages/agent/test/domain-execution-dispatcher.test.ts packages/agent/test/task-orchestrator-claims.test.ts packages/agent/test/task-orchestrator-projection.test.ts"
       }
     ]
   },

@@ -1,5 +1,8 @@
 import { existsSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { join } from "node:path";
 import { isDeepStrictEqual } from "node:util";
+import { isProxy } from "node:util/types";
 import {
   validateKnowledgeEvent,
   type ActorRef,
@@ -8,6 +11,9 @@ import {
   type KnowledgeEventOf
 } from "../../ontology/src/contracts.js";
 import { isConcurrencyConflict } from "../../ontology/src/event-ledger.js";
+import { FileBlobStore } from "../../ontology/src/blob-store.js";
+import dispatcherDefault from "../../agent/src/domain-execution-dispatcher.js";
+import { createResidentLoopToolGateway } from "../../agent/src/resident-loop-tool-gateway.js";
 import type {
   ActiveClaimReconciliationPort,
   ClaimReconciliationAdmissionTuple,
@@ -19,6 +25,11 @@ import type {
   WakeLifecyclePort,
   WakeRuntimePort
 } from "../../agent/src/wake-supervisor.js";
+import {
+  createResidentPlanObservationStoreV2,
+  residentLoopStreamId,
+  type ResidentPlanObservationStoreV2
+} from "../../agent/src/plan-observation-contracts.js";
 import {
   inspectFactoryAuthenticatedMountedWakeCapabilityForMountedWakeLifecycleStore,
   type FactoryAuthenticatedMountedWakeCapability
@@ -80,11 +91,148 @@ interface NormalizedWakeInstant {
   readonly milliseconds: number;
 }
 
+interface ResidentLoopFactoryBinding {
+  readonly provider: {
+    readonly schemaVersion: "mounted-provider-authority-readback.v1";
+    readonly stage: "locator";
+    readonly workspaceId: string;
+    readonly mountInstanceId: string;
+    readonly admissionGenerationId: string;
+    readonly policyVersion: string;
+    readonly policyDigest: string;
+    readonly lockStateDigest: string;
+    readonly highWaterMark: string;
+    readonly highWaterOrdinal: number;
+    readonly durableLedgerEventCount: number;
+  };
+  readonly handoff: {
+    readonly taskId: string;
+    readonly attemptId: string;
+    readonly runId: string;
+    readonly runType: string;
+    readonly retryGeneration: number;
+    readonly authorityBinding: Readonly<Record<string, unknown>>;
+  };
+}
+
+export interface ExactResidentLoopSuspensionLocator {
+  readonly taskId: string;
+  readonly attemptId: string;
+  readonly runId: string;
+  readonly checkpointSemanticKey: string;
+}
+
+export interface ResidentLoopUnavailableV1 {
+  readonly schemaVersion: "resident-loop-unavailable.v1";
+  readonly outcome: "unavailable";
+  readonly category: "workspace-unavailable";
+  readonly durable: false;
+  readonly allowedActions: readonly ["remount", "resume"];
+  readonly safeDiagnosticId: string;
+}
+
+export interface OpaqueResidentLoopCurrentnessToken {
+  readonly schemaVersion: "resident-loop-currentness-token.v1";
+}
+
+export interface OpaqueResidentLoopSuspensionOnlyCapability {
+  readonly schemaVersion: "resident-loop-suspension-only-capability.v1";
+}
+
+export interface OpaqueReleasedCheckpointReadback {
+  readonly schemaVersion: "resident-loop-released-checkpoint-readback.v1";
+}
+
+export interface ResidentLoopMountedAuthorityPort {
+  reverifyAfterAwait(
+    token: OpaqueResidentLoopCurrentnessToken
+  ): Promise<
+    | {
+        readonly kind: "current";
+        readonly token: OpaqueResidentLoopCurrentnessToken;
+      }
+    | {
+        readonly kind: "recordable-stale";
+        readonly capability: OpaqueResidentLoopSuspensionOnlyCapability;
+      }
+    | { readonly kind: "unavailable" }
+  >;
+  suspendAndRelease(
+    input: unknown,
+    authority:
+      | OpaqueResidentLoopCurrentnessToken
+      | OpaqueResidentLoopSuspensionOnlyCapability
+  ): Promise<OpaqueReleasedCheckpointReadback | ResidentLoopUnavailableV1>;
+  recoverSuspensionPrefix(
+    locator: ExactResidentLoopSuspensionLocator
+  ): Promise<OpaqueReleasedCheckpointReadback | ResidentLoopUnavailableV1>;
+  reclaimAndReverify(
+    anchor: unknown
+  ): Promise<OpaqueResidentLoopCurrentnessToken | undefined>;
+}
+
+export interface MountedResidentLoopCapabilities {
+  readonly planObservation: ResidentPlanObservationStoreV2;
+  readonly gateway: object;
+  readonly mountedAuthority: ResidentLoopMountedAuthorityPort;
+  readonly currentnessToken: OpaqueResidentLoopCurrentnessToken;
+  readonly handoffReader: {
+    readExact(contentHash: `sha256:${string}`): Promise<Uint8Array>;
+  };
+}
+
+interface ResidentAuthoritySnapshot {
+  readonly facts: PortableWorkspaceMountedFacts;
+  readonly events: readonly KnowledgeEvent[];
+  readonly activeLockIds: readonly string[];
+}
+
+interface MountedResidentStoreState {
+  readonly input: MountedWakeLifecycleStoreInput;
+  readonly authority: FactoryAuthenticatedMountedWakeStoreAuthority;
+  readonly binding: MountedWorkspaceBinding;
+  readonly ledger: FactoryAuthenticatedMountedWakeStoreAuthority["ledger"];
+  readonly readSnapshot: () => Promise<ResidentAuthoritySnapshot>;
+  readonly requireCurrent: (expectedRevision: number) => void;
+  readonly revision: () => number;
+  bound: boolean;
+}
+
+interface CurrentnessState {
+  readonly owner: ResidentLoopBoundState;
+  readonly snapshot: ResidentAuthoritySnapshot;
+}
+
+interface SuspensionOnlyState {
+  readonly owner: ResidentLoopBoundState;
+  readonly snapshot: ResidentAuthoritySnapshot;
+}
+
+interface ResidentLoopBoundState {
+  readonly mounted: MountedResidentStoreState;
+  readonly binding: ResidentLoopFactoryBinding;
+  readonly planObservation: ResidentPlanObservationStoreV2;
+  readonly gateway: object;
+  readonly refreshGatewayCurrentness: (
+    snapshot: ResidentAuthoritySnapshot
+  ) => void;
+}
+
 type ReconciliationAppendInput = Parameters<ActiveClaimReconciliationPort["appendAndReadBack"]>[0];
 type ReconciliationLookupInput = Parameters<ActiveClaimReconciliationPort["readByIdempotencyKey"]>[0];
+type ResidentCheckpointEvent = KnowledgeEventOf<"agent.task.orchestration.checkpointed">;
+type ResidentClaimEvent = KnowledgeEventOf<"agent.task.orchestration.claimed">;
+type ResidentReleaseEvent = KnowledgeEventOf<"agent.task.orchestration.released">;
+type ResidentSuspensionEvent = KnowledgeEventOf<"agent.resident-loop.suspended.v2">;
+type ResidentResultEvent = KnowledgeEventOf<"agent.resident-loop.result.recorded.v2">;
 type FactoryAuthenticatedMountedWakeStoreAuthority = ReturnType<
   typeof inspectFactoryAuthenticatedMountedWakeCapabilityForMountedWakeLifecycleStore
 >;
+
+const mountedResidentStoreStates = new WeakMap<MountedWakeLifecycleStore, MountedResidentStoreState>();
+const issuedResidentCurrentness = new WeakMap<object, CurrentnessState>();
+const issuedResidentSuspensionOnly = new WeakMap<object, SuspensionOnlyState>();
+const issuedReleasedCheckpointReadbacks = new WeakSet<object>();
 
 export type MountedWakeLifecycleEventType =
   | "agent.wake.supervisor.lease.claimed.v1"
@@ -223,7 +371,7 @@ export function createMountedWakeLifecycleStore(rawInput: MountedWakeLifecycleSt
     invalidate: invalidateLocal
   }));
 
-  const readMountedSnapshot = async (): Promise<MountedSnapshot> => {
+  const readResidentAuthoritySnapshot = async (): Promise<ResidentAuthoritySnapshot> => {
     const expectedRevision = revision;
     validateMountedWorkspaceStorage(storeAuthority, ledger, mountedWorkspace, mountedBinding);
     const events = await ledger.readAll();
@@ -240,13 +388,13 @@ export function createMountedWakeLifecycleStore(rawInput: MountedWakeLifecycleSt
     if (identity === undefined) {
       throw new Error("mounted wake lifecycle store requires durable resident identity readback");
     }
-    const sourceHighWater = events.filter((event) => !wakeLifecycleTypes.has(event.type as MountedWakeLifecycleEventType)).at(-1);
-    if (sourceHighWater === undefined) {
+    const sourceHighWaterIndex = events.findLastIndex(
+      (event) => !wakeLifecycleTypes.has(event.type as MountedWakeLifecycleEventType)
+    );
+    if (sourceHighWaterIndex < 0) {
       throw new Error("mounted wake lifecycle store requires durable mounted ledger readback");
     }
-    if (hasActiveResidentLock(events)) {
-      throw new ActiveMountedWakeLockError("mounted wake lifecycle store has an active resident lock");
-    }
+    const sourceHighWater = events[sourceHighWaterIndex]!;
 
     const facts = {
       schemaVersion: "portable-workspace-mounted-facts.v1" as const,
@@ -265,13 +413,22 @@ export function createMountedWakeLifecycleStore(rawInput: MountedWakeLifecycleSt
       policyAndLockReadbackEventId: identity.id,
       highWaterMark: sourceHighWater.id,
       highWaterReadbackEventId: sourceHighWater.id,
-      highWaterOrdinal: events.length
+      highWaterOrdinal: sourceHighWaterIndex + 1
     };
     const observedActiveClaim = activeClaimFromEvents(events, workspaceId, input.supervisorEpoch, input.now);
     return Object.freeze({
       events: Object.freeze(events.map((event) => structuredClone(event))),
-      facts: Object.freeze(observedActiveClaim === undefined ? facts : { ...facts, observedActiveClaim })
+      facts: Object.freeze(observedActiveClaim === undefined ? facts : { ...facts, observedActiveClaim }),
+      activeLockIds: activeResidentLockIds(events)
     });
+  };
+
+  const readMountedSnapshot = async (): Promise<MountedSnapshot> => {
+    const snapshot = await readResidentAuthoritySnapshot();
+    if (snapshot.activeLockIds.length > 0) {
+      throw new ActiveMountedWakeLockError("mounted wake lifecycle store has an active resident lock");
+    }
+    return Object.freeze({ facts: snapshot.facts, events: snapshot.events });
   };
 
   const readMountedFacts = async (): Promise<PortableWorkspaceMountedFacts> => (await readMountedSnapshot()).facts;
@@ -552,7 +709,7 @@ export function createMountedWakeLifecycleStore(rawInput: MountedWakeLifecycleSt
     }
   });
 
-  return Object.freeze({
+  const store: MountedWakeLifecycleStore = Object.freeze({
     readMountedFacts,
     appendAndReadBack,
     readOrAcquireSupervisorLease,
@@ -566,6 +723,2223 @@ export function createMountedWakeLifecycleStore(rawInput: MountedWakeLifecycleSt
     lifecycle,
     runtime
   });
+  mountedResidentStoreStates.set(store, {
+    input,
+    authority: storeAuthority,
+    binding: mountedBinding,
+    ledger,
+    readSnapshot: readResidentAuthoritySnapshot,
+    requireCurrent,
+    revision: () => revision,
+    bound: false
+  });
+  return store;
+}
+
+export async function bindMountedResidentLoopAuthorityForFactory(
+  store: MountedWakeLifecycleStore,
+  rawBinding: unknown,
+  domainExecution: unknown
+): Promise<MountedResidentLoopCapabilities> {
+  const mounted = mountedResidentStoreStates.get(store);
+  if (
+    mounted === undefined ||
+    mounted.bound ||
+    domainExecution === null ||
+    typeof domainExecution !== "object"
+  ) {
+    throw new Error("mounted resident-loop factory binding is unavailable");
+  }
+  const binding = normalizeResidentFactoryBinding(rawBinding);
+  const snapshot = await mounted.readSnapshot();
+  assertResidentFactoryBindingCurrent(binding, snapshot, mounted);
+
+  const domainPort = dispatcherDefault.bindPackageOwnedResidentDomainExecutionPort({
+    capability: domainExecution,
+    mountedLedger: mounted.ledger,
+    workspaceId: binding.provider.workspaceId,
+    residentAgentId: "agent_default",
+    taskId: binding.handoff.taskId
+  });
+  if (domainPort === null || typeof domainPort !== "object") {
+    throw new Error("mounted resident-loop dispatcher did not issue its package-owned port");
+  }
+
+  const planObservation = createResidentPlanObservationStoreV2({
+    ledger: mounted.ledger,
+    actor: mounted.input.actor,
+    now: mounted.input.now
+  });
+  const ownerShell = {} as ResidentLoopBoundState;
+  let gatewayToken = issueCurrentness(ownerShell, snapshot);
+  const reverifyGatewayCurrentness = async (
+    afterEffect = false
+  ): Promise<{
+    readonly kind: "current";
+    readonly token: OpaqueResidentLoopCurrentnessToken;
+  }> => {
+    if (afterEffect) {
+      const issued = issuedResidentCurrentness.get(gatewayToken);
+      if (issued === undefined) {
+        throw new Error("mounted resident-loop effect currentness was already consumed");
+      }
+      issuedResidentCurrentness.delete(gatewayToken);
+      const current = await issued.owner.mounted.readSnapshot();
+      if (!sameResidentMountedIdentity(issued, current)) {
+        throw new Error("mounted resident-loop authority changed across the effect boundary");
+      }
+      gatewayToken = issueCurrentness(issued.owner, current);
+      return Object.freeze({ kind: "current" as const, token: gatewayToken });
+    }
+    const result = await reverifyCurrentness(ownerShell, gatewayToken);
+    if (result.kind !== "current") {
+      throw new Error("mounted resident-loop authority changed across the effect boundary");
+    }
+    gatewayToken = result.token;
+    return Object.freeze({ kind: "current" as const, token: gatewayToken });
+  };
+  let trustedIdOrdinal = 0;
+  const gateway = createResidentLoopToolGateway({
+    ledger: mounted.ledger,
+    now: mounted.input.now,
+    residentDomainExecutionPort: domainPort,
+    reverifyBeforeEffect: () => reverifyGatewayCurrentness(false),
+    reverifyAfterEffect: () => reverifyGatewayCurrentness(true),
+    createTrustedToolRequestId: () => {
+      trustedIdOrdinal += 1;
+      const entropy = requiredText(
+        mounted.input.createSafeId("reconciliation"),
+        "resident tool-request entropy"
+      );
+      return `toolreq_${createHash("sha256")
+        .update("resident-loop-tool-request.v1\n")
+        .update(entropy)
+        .update("\n")
+        .update(String(trustedIdOrdinal))
+        .digest("hex")}`;
+    }
+  });
+  const owner: ResidentLoopBoundState = Object.freeze({
+    mounted,
+    binding,
+    planObservation,
+    gateway,
+    refreshGatewayCurrentness(snapshot: ResidentAuthoritySnapshot) {
+      const issued = issuedResidentCurrentness.get(gatewayToken);
+      if (issued === undefined || issued.owner !== ownerShell) {
+        throw new Error("mounted resident-loop gateway currentness is unavailable");
+      }
+      issuedResidentCurrentness.delete(gatewayToken);
+      gatewayToken = issueCurrentness(ownerShell, snapshot);
+    }
+  });
+  Object.assign(ownerShell, owner);
+  Object.freeze(ownerShell);
+  mounted.bound = true;
+
+  const mountedAuthority: ResidentLoopMountedAuthorityPort = Object.freeze({
+    reverifyAfterAwait: async (token: OpaqueResidentLoopCurrentnessToken) =>
+      await reverifyCurrentness(ownerShell, token),
+    suspendAndRelease: async (
+      candidate: unknown,
+      authority: OpaqueResidentLoopCurrentnessToken | OpaqueResidentLoopSuspensionOnlyCapability
+    ) =>
+      await suspendAndReleaseResidentPrefix(ownerShell, candidate, authority),
+    recoverSuspensionPrefix: async (locator: ExactResidentLoopSuspensionLocator) =>
+      await recoverResidentSuspensionPrefix(ownerShell, locator),
+    reclaimAndReverify: async (anchor: unknown) =>
+      await reclaimResidentSuspension(ownerShell, anchor)
+  });
+  const handoffReader = createMountedResidentHandoffReader(ownerShell);
+  return Object.freeze({
+    planObservation,
+    gateway,
+    mountedAuthority,
+    currentnessToken: issueCurrentness(ownerShell, snapshot),
+    handoffReader
+  });
+}
+
+function issueCurrentness(
+  owner: ResidentLoopBoundState,
+  snapshot: ResidentAuthoritySnapshot
+): OpaqueResidentLoopCurrentnessToken {
+  const token = Object.freeze({
+    schemaVersion: "resident-loop-currentness-token.v1" as const
+  });
+  issuedResidentCurrentness.set(token, { owner, snapshot });
+  return token;
+}
+
+function issueSuspensionOnly(
+  owner: ResidentLoopBoundState,
+  snapshot: ResidentAuthoritySnapshot
+): OpaqueResidentLoopSuspensionOnlyCapability {
+  const capability = Object.freeze({
+    schemaVersion: "resident-loop-suspension-only-capability.v1" as const
+  });
+  issuedResidentSuspensionOnly.set(capability, { owner, snapshot });
+  return capability;
+}
+
+async function reverifyCurrentness(
+  owner: ResidentLoopBoundState,
+  token: OpaqueResidentLoopCurrentnessToken
+): Promise<
+  | { readonly kind: "current"; readonly token: OpaqueResidentLoopCurrentnessToken }
+  | { readonly kind: "recordable-stale"; readonly capability: OpaqueResidentLoopSuspensionOnlyCapability }
+  | { readonly kind: "unavailable" }
+> {
+  const issued = issuedResidentCurrentness.get(token);
+  if (issued === undefined) throw new Error("resident-loop currentness token was not issued or was already consumed");
+  if (issued.owner !== owner) {
+    throw new Error("resident-loop currentness token belongs to another mounted authority");
+  }
+  issuedResidentCurrentness.delete(token);
+  let current: ResidentAuthoritySnapshot;
+  try {
+    current = await issued.owner.mounted.readSnapshot();
+  } catch {
+    return Object.freeze({ kind: "unavailable" as const });
+  }
+  if (sameResidentCurrentness(issued, current)) {
+    return Object.freeze({
+      kind: "current" as const,
+      token: issueCurrentness(issued.owner, current)
+    });
+  }
+  return Object.freeze({
+    kind: "recordable-stale" as const,
+    capability: issueSuspensionOnly(issued.owner, current)
+  });
+}
+
+function sameResidentCurrentness(
+  prior: CurrentnessState,
+  current: ResidentAuthoritySnapshot
+): boolean {
+  const before = prior.snapshot;
+  const binding = prior.owner.binding;
+  return current.facts.workspaceId === before.facts.workspaceId &&
+    current.facts.workspaceId === binding.provider.workspaceId &&
+    current.facts.residentId === "agent_default" &&
+    current.facts.mountInstanceId === before.facts.mountInstanceId &&
+    current.facts.workspaceIdentityEventId === before.facts.workspaceIdentityEventId &&
+    current.facts.ledgerStoreEvidenceId === before.facts.ledgerStoreEvidenceId &&
+    current.facts.artifactStoreEvidenceId === before.facts.artifactStoreEvidenceId &&
+    current.facts.policyVersion === before.facts.policyVersion &&
+    current.facts.policyDigest === before.facts.policyDigest &&
+    current.facts.lockStateDigest === before.facts.lockStateDigest &&
+    current.activeLockIds.length === 0 &&
+    isPermittedResidentLedgerAdvance(before.events, current.events, binding);
+}
+
+function sameResidentMountedIdentity(
+  prior: CurrentnessState,
+  current: ResidentAuthoritySnapshot
+): boolean {
+  const before = prior.snapshot.facts;
+  const after = current.facts;
+  return current.activeLockIds.length === 0 &&
+    after.workspaceId === before.workspaceId &&
+    after.workspaceId === prior.owner.binding.provider.workspaceId &&
+    after.residentId === "agent_default" &&
+    after.mountInstanceId === before.mountInstanceId &&
+    after.workspaceIdentityEventId === before.workspaceIdentityEventId &&
+    after.ledgerStoreEvidenceId === before.ledgerStoreEvidenceId &&
+    after.artifactStoreEvidenceId === before.artifactStoreEvidenceId &&
+    after.policyVersion === before.policyVersion &&
+    after.policyDigest === before.policyDigest &&
+    after.lockStateDigest === before.lockStateDigest &&
+    current.events.length >= prior.snapshot.events.length &&
+    prior.snapshot.events.every((event, index) => isDeepStrictEqual(current.events[index], event));
+}
+
+function isPermittedResidentLedgerAdvance(
+  prior: readonly KnowledgeEvent[],
+  current: readonly KnowledgeEvent[],
+  binding: ResidentLoopFactoryBinding
+): boolean {
+  if (current.length < prior.length) return false;
+  for (let index = 0; index < prior.length; index += 1) {
+    if (!isDeepStrictEqual(prior[index], current[index])) return false;
+  }
+  const appended = current.slice(prior.length);
+  const catalogMemberIds = exactAppendedResidentCatalogMemberIds(
+    appended,
+    current,
+    binding
+  );
+  if (catalogMemberIds === undefined) return false;
+  return appended.every((event) => {
+    if (catalogMemberIds.has(event.id)) return true;
+    const payload = event.payload as Record<string, unknown>;
+    if (event.type === "agent.resident-loop.result.recorded.v2") {
+      return isExactBoundResidentResult(event, current, binding);
+    }
+    if (event.type.startsWith("agent.resident-domain.")) {
+      if (catalogMemberIds.size > 0) return false;
+      const locator = payload.logicalLocator as Record<string, unknown> | undefined;
+      return isExactResidentLocatorIdentity(locator, binding);
+    }
+    if (
+      event.type === "agent.resident-plan.recorded.v2" ||
+      event.type === "agent.resident-observation.recorded.v2" ||
+      event.type === "agent.resident-tool-step.recorded.v2"
+    ) {
+      return isExactResidentIdentity(payload, binding);
+    }
+    return false;
+  });
+}
+
+function isExactResidentIdentity(
+  value: unknown,
+  binding: ResidentLoopFactoryBinding
+): boolean {
+  return isPlainRecord(value) &&
+    value.workspaceId === binding.provider.workspaceId &&
+    value.residentAgentId === "agent_default" &&
+    value.taskId === binding.handoff.taskId &&
+    value.attemptId === binding.handoff.attemptId &&
+    value.runId === binding.handoff.runId;
+}
+
+function isExactResidentLocatorIdentity(
+  value: unknown,
+  binding: ResidentLoopFactoryBinding
+): value is Record<string, unknown> {
+  return isPlainRecord(value) &&
+    hasExactKeys(value, [
+      "workspaceId",
+      "residentAgentId",
+      "taskId",
+      "attemptId",
+      "runId",
+      "planId",
+      "planRevision",
+      "stepOrdinal",
+      "toolRequestId",
+      "toolId",
+      "toolVersion",
+      "executionCapabilityHash"
+    ]) &&
+    isExactResidentIdentity(value, binding);
+}
+
+function isExactBoundResidentResult(
+  event: KnowledgeEventOf<"agent.resident-loop.result.recorded.v2">,
+  current: readonly KnowledgeEvent[],
+  binding: ResidentLoopFactoryBinding
+): boolean {
+  const streamId = residentLoopStreamId({
+    taskId: binding.handoff.taskId,
+    attemptId: binding.handoff.attemptId,
+    runId: binding.handoff.runId
+  });
+  const residentStream = current.filter((candidate) =>
+    candidate.streamId === streamId
+  );
+  const resultIndex = residentStream.findIndex(
+    (candidate) => candidate.id === event.id
+  );
+  const observation = resultIndex < 1
+    ? undefined
+    : residentStream[resultIndex - 1];
+  if (
+    event.streamId !== streamId ||
+    observation?.type !== "agent.resident-observation.recorded.v2"
+  ) {
+    return false;
+  }
+  const expectedObservationReadback = {
+    observationEventId: observation.id,
+    workspaceId: binding.provider.workspaceId,
+    residentAgentId: "agent_default",
+    taskId: binding.handoff.taskId,
+    attemptId: binding.handoff.attemptId,
+    runId: binding.handoff.runId,
+    planId: observation.payload.planId,
+    planRevision: observation.payload.planRevision
+  };
+  return (
+    event.payload.outcome === "completed" ||
+    event.payload.outcome === "failed"
+  ) &&
+    isExactResidentIdentity(event.payload, binding) &&
+    isExactResidentIdentity(observation.payload, binding) &&
+    event.payload.planId === observation.payload.planId &&
+    event.payload.planRevision === observation.payload.planRevision &&
+    event.context.causationId === observation.id &&
+    event.payload.causationId === observation.id &&
+    event.context.correlationId === observation.context.correlationId &&
+    event.payload.correlationId === observation.payload.correlationId &&
+    isDeepStrictEqual(
+      event.payload.finalObservationReadback,
+      expectedObservationReadback
+    ) &&
+    isDeepStrictEqual(
+      event.payload.authority,
+      binding.handoff.authorityBinding
+    );
+}
+
+function exactAppendedResidentCatalogMemberIds(
+  appended: readonly KnowledgeEvent[],
+  current: readonly KnowledgeEvent[],
+  binding: ResidentLoopFactoryBinding
+): ReadonlySet<string> | undefined {
+  const assertions = new Map<
+    string,
+    KnowledgeEventOf<"assertion.proposed">
+  >();
+  for (const event of appended) {
+    let assertion: KnowledgeEventOf<"assertion.proposed"> | undefined;
+    if (event.type === "assertion.proposed") {
+      assertion = event;
+    } else if (
+      event.type === "agent.resident-domain.outcome-observed.v1" &&
+      event.payload.catalogOrdinal === 10
+    ) {
+      const [assertionId] = event.payload.domainEventIds;
+      assertion = current.find(
+        (candidate): candidate is KnowledgeEventOf<"assertion.proposed"> =>
+          candidate.id === assertionId &&
+          candidate.type === "assertion.proposed"
+      );
+      if (assertion === undefined) return undefined;
+    } else if (event.type === "agent.resident-domain.completed.v1") {
+      const receipt = current.find(
+        (
+          candidate
+        ): candidate is KnowledgeEventOf<"agent.resident-domain.outcome-observed.v1"> =>
+          candidate.id === event.payload.outcomeReceiptEventId &&
+          candidate.type === "agent.resident-domain.outcome-observed.v1"
+      );
+      if (receipt?.payload.catalogOrdinal === 10) {
+        const [assertionId] = receipt.payload.domainEventIds;
+        assertion = current.find(
+          (
+            candidate
+          ): candidate is KnowledgeEventOf<"assertion.proposed"> =>
+            candidate.id === assertionId &&
+            candidate.type === "assertion.proposed"
+        );
+        if (assertion === undefined) return undefined;
+      }
+    }
+    if (assertion !== undefined) assertions.set(assertion.id, assertion);
+  }
+  if (assertions.size === 0) return new Set<string>();
+  if (assertions.size !== 1) return undefined;
+  const assertion = assertions.values().next().value;
+  if (assertion === undefined) return undefined;
+  const members = exactResidentCatalogChainMemberIds(
+    assertion,
+    current,
+    binding
+  );
+  return members === undefined ? undefined : new Set(members);
+}
+
+function exactResidentCatalogChainMemberIds(
+  assertion: KnowledgeEventOf<"assertion.proposed">,
+  current: readonly KnowledgeEvent[],
+  binding: ResidentLoopFactoryBinding
+): readonly string[] | undefined {
+  const assertionIndex = current.findIndex((event) => event.id === assertion.id);
+  if (assertionIndex < 2) return undefined;
+  const request = current[assertionIndex - 2];
+  const claim = current[assertionIndex - 1];
+  const receipt = current[assertionIndex + 1];
+  const completed = current[assertionIndex + 2];
+  if (
+    request?.type !== "agent.resident-domain.requested.v1" ||
+    claim?.type !== "agent.resident-domain.execution-claimed.v1" ||
+    receipt?.type !== "agent.resident-domain.outcome-observed.v1" ||
+    completed?.type !== "agent.resident-domain.completed.v1"
+  ) {
+    return undefined;
+  }
+  const locator = request.payload.logicalLocator;
+  if (
+    !isExactResidentLocatorIdentity(locator, binding) ||
+    locator.toolId !== "legacy.staging.execute" ||
+    locator.toolVersion !== "0.1.0"
+  ) {
+    return undefined;
+  }
+  const expectedStreamId = residentDomainStreamIdForCurrentness(locator);
+  const automaticAuthorization = { authorizationKind: "automatic-policy" };
+  const plans = current.filter(
+    (event): event is KnowledgeEventOf<"agent.resident-plan.recorded.v2"> =>
+      event.id === request.payload.planRecordEventId &&
+      event.type === "agent.resident-plan.recorded.v2"
+  );
+  const matchingReceipts = current.filter(
+    (
+      event
+    ): event is KnowledgeEventOf<"agent.resident-domain.outcome-observed.v1"> =>
+      event.type === "agent.resident-domain.outcome-observed.v1" &&
+      isDeepStrictEqual(event.payload.domainEventIds, [assertion.id])
+  );
+  const matchingCompletions = current.filter(
+    (
+      event
+    ): event is KnowledgeEventOf<"agent.resident-domain.completed.v1"> =>
+      event.type === "agent.resident-domain.completed.v1" &&
+      event.payload.outcomeReceiptEventId === receipt.id
+  );
+  if (
+    plans.length !== 1 ||
+    plans[0] === undefined ||
+    matchingReceipts.length !== 1 ||
+    matchingReceipts[0]?.id !== receipt.id ||
+    matchingCompletions.length !== 1 ||
+    matchingCompletions[0]?.id !== completed.id
+  ) {
+    return undefined;
+  }
+  const plan = plans[0];
+  const planStep = plan.payload.steps.find(
+    (step) => step.ordinal === locator.stepOrdinal
+  );
+  if (
+    plan.streamId !== residentLoopStreamId({
+      taskId: binding.handoff.taskId,
+      attemptId: binding.handoff.attemptId,
+      runId: binding.handoff.runId
+    }) ||
+    !isExactResidentIdentity(plan.payload, binding) ||
+    plan.payload.planId !== locator.planId ||
+    plan.payload.planRevision !== locator.planRevision ||
+    planStep === undefined ||
+    planStep.toolId !== locator.toolId ||
+    planStep.toolVersion !== locator.toolVersion ||
+    planStep.toolRequestId !== locator.toolRequestId ||
+    planStep.executionCapabilityHash !== locator.executionCapabilityHash ||
+    !isDeepStrictEqual(plan.payload.authority, binding.handoff.authorityBinding) ||
+    request.streamId !== expectedStreamId ||
+    claim.streamId !== expectedStreamId ||
+    receipt.streamId !== expectedStreamId ||
+    completed.streamId !== expectedStreamId ||
+    request.payload.executionCapabilityHash !== locator.executionCapabilityHash ||
+    request.payload.authorizationKind !== "automatic-policy" ||
+    request.payload.sideEffectClass !== "ledger-proposal" ||
+    request.payload.expectedSafeOutputClass !== "proposal" ||
+    request.payload.requiredApprovalClass !== "none" ||
+    !isDeepStrictEqual(request.payload.authority, binding.handoff.authorityBinding) ||
+    request.context.causationId !== plan.id ||
+    request.payload.causationId !== plan.id ||
+    request.context.correlationId !== request.payload.correlationId ||
+    claim.payload.requestEventId !== request.id ||
+    claim.payload.executionCapabilityHash !== locator.executionCapabilityHash ||
+    !isDeepStrictEqual(claim.payload.logicalLocator, locator) ||
+    !isDeepStrictEqual(claim.payload.authorization, automaticAuthorization) ||
+    claim.context.causationId !== request.id ||
+    claim.payload.causationId !== request.id ||
+    claim.context.correlationId !== request.context.correlationId ||
+    claim.payload.correlationId !== request.payload.correlationId ||
+    receipt.payload.requestEventId !== request.id ||
+    receipt.payload.executionClaimEventId !== claim.id ||
+    receipt.payload.executionCapabilityHash !== locator.executionCapabilityHash ||
+    !isDeepStrictEqual(receipt.payload.logicalLocator, locator) ||
+    !isDeepStrictEqual(receipt.payload.authorization, automaticAuthorization) ||
+    receipt.payload.catalogOrdinal !== 10 ||
+    receipt.payload.implementationRevision !==
+      "legacy-staging-execution.adapter.v1" ||
+    receipt.payload.evidenceMode !== "new-ledger-events" ||
+    receipt.payload.outcomeDisposition !== "completed" ||
+    !isDeepStrictEqual(receipt.payload.domainEventIds, [assertion.id]) ||
+    !isDeepStrictEqual(receipt.payload.artifactHashes, []) ||
+    !isDeepStrictEqual(receipt.payload.readModelChanges, ["legacy-staging"]) ||
+    receipt.payload.resultSummary !==
+      "Legacy ontology staging appended evidence-tied assertion proposals." ||
+    receipt.context.causationId !== claim.id ||
+    receipt.payload.causationId !== claim.id ||
+    receipt.context.correlationId !== request.context.correlationId ||
+    receipt.payload.correlationId !== request.payload.correlationId ||
+    completed.payload.requestEventId !== request.id ||
+    completed.payload.executionClaimEventId !== claim.id ||
+    completed.payload.outcomeReceiptEventId !== receipt.id ||
+    completed.payload.executionCapabilityHash !== locator.executionCapabilityHash ||
+    !isDeepStrictEqual(completed.payload.logicalLocator, locator) ||
+    !isDeepStrictEqual(completed.payload.authorization, automaticAuthorization) ||
+    completed.payload.resultHash !== receipt.payload.envelopeHash ||
+    !isDeepStrictEqual(
+      completed.payload.resultArtifactHashes,
+      receipt.payload.artifactHashes
+    ) ||
+    completed.context.causationId !== receipt.id ||
+    completed.payload.causationId !== receipt.id ||
+    completed.context.correlationId !== request.context.correlationId ||
+    completed.payload.correlationId !== request.payload.correlationId
+  ) {
+    return undefined;
+  }
+  const preInvocationLedgerFingerprint = residentCanonicalHash(
+    current.slice(0, assertionIndex)
+  );
+  const postInvocationLedgerFingerprint = residentCanonicalHash(
+    current.slice(0, assertionIndex + 1)
+  );
+  const expectedEnvelopeHash = residentCanonicalHash({
+    logicalLocator: locator,
+    executionCapabilityHash: locator.executionCapabilityHash,
+    requestEventId: request.id,
+    executionClaimEventId: claim.id,
+    authorization: automaticAuthorization,
+    catalogOrdinal: 10,
+    implementationRevision: "legacy-staging-execution.adapter.v1",
+    evidenceMode: "new-ledger-events",
+    residentInvocationInputHash: receipt.payload.residentInvocationInputHash,
+    outcomeDisposition: "completed",
+    preInvocationLedgerFingerprint,
+    postInvocationLedgerFingerprint,
+    domainEventIds: [assertion.id],
+    artifactHashes: [],
+    readModelChanges: ["legacy-staging"],
+    resultSummary:
+      "Legacy ontology staging appended evidence-tied assertion proposals."
+  });
+  return /^sha256:[a-f0-9]{64}$/.test(
+    receipt.payload.residentInvocationInputHash
+  ) &&
+    receipt.payload.preInvocationLedgerFingerprint ===
+      preInvocationLedgerFingerprint &&
+    receipt.payload.postInvocationLedgerFingerprint ===
+      postInvocationLedgerFingerprint &&
+    receipt.payload.envelopeHash === expectedEnvelopeHash
+    ? Object.freeze([
+        request.id,
+        claim.id,
+        assertion.id,
+        receipt.id,
+        completed.id
+      ])
+    : undefined;
+}
+
+function residentDomainStreamIdForCurrentness(
+  locator: Readonly<Record<string, unknown>>
+): string {
+  return `agent_resident_domain_${createHash("sha256")
+    .update(canonicalResidentJson(locator))
+    .digest("hex")}`;
+}
+
+function unavailableResidentLoop(owner: ResidentLoopBoundState): ResidentLoopUnavailableV1 {
+  return Object.freeze({
+    schemaVersion: "resident-loop-unavailable.v1" as const,
+    outcome: "unavailable" as const,
+    category: "workspace-unavailable" as const,
+    durable: false as const,
+    allowedActions: Object.freeze(["remount", "resume"] as const),
+    safeDiagnosticId: safeDiagnosticId(owner.mounted.input.createSafeId("diagnostic"))
+  });
+}
+
+function createMountedResidentHandoffReader(
+  owner: ResidentLoopBoundState
+): MountedResidentLoopCapabilities["handoffReader"] {
+  const material = new FileBlobStore(join(
+    owner.mounted.binding.derivativeRoot,
+    "specialist-handoff-material"
+  ));
+  const manifest = new FileBlobStore(join(
+    owner.mounted.binding.derivativeRoot,
+    "specialist-handoff-manifest"
+  ));
+  return Object.freeze({
+    async readExact(contentHash: `sha256:${string}`): Promise<Uint8Array> {
+      if (!/^sha256:[a-f0-9]{64}$/.test(contentHash)) {
+        throw new Error("mounted resident handoff reader requires one exact content hash");
+      }
+      const before = await owner.mounted.readSnapshot();
+      const matches: Buffer[] = [];
+      for (const fixedStore of [material, manifest]) {
+        try {
+          matches.push(await fixedStore.get(contentHash));
+        } catch (error) {
+          if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+        }
+      }
+      const after = await owner.mounted.readSnapshot();
+      const proof: CurrentnessState = { owner, snapshot: before };
+      if (!sameResidentMountedIdentity(proof, after) || matches.length !== 1) {
+        throw new Error("mounted resident handoff hash is missing, ambiguous, or stale");
+      }
+      return Uint8Array.from(matches[0]!);
+    }
+  });
+}
+
+async function suspendAndReleaseResidentPrefix(
+  owner: ResidentLoopBoundState,
+  rawCheckpoint: unknown,
+  authority: OpaqueResidentLoopCurrentnessToken | OpaqueResidentLoopSuspensionOnlyCapability
+): Promise<OpaqueReleasedCheckpointReadback | ResidentLoopUnavailableV1> {
+  const consumed = consumeSuspensionAuthority(owner, authority);
+  const copiedCheckpoint = copyResidentOwnData(rawCheckpoint);
+  let snapshot: ResidentAuthoritySnapshot;
+  try {
+    snapshot = await owner.mounted.readSnapshot();
+  } catch {
+    return unavailableResidentLoop(owner);
+  }
+  const currentEnough = consumed.kind === "current"
+    ? sameResidentCurrentness(consumed.state, snapshot)
+    : sameResidentMountedIdentity(
+        { owner: consumed.state.owner, snapshot: consumed.state.snapshot },
+        snapshot
+      );
+  if (!currentEnough) return unavailableResidentLoop(owner);
+  const completedCheckpoint = completeResidentCheckpointClaimFields(
+    owner,
+    copiedCheckpoint,
+    snapshot
+  );
+  const payload = normalizeResidentCheckpointPayload(owner, completedCheckpoint);
+  assertResidentCheckpointBinding(owner, payload, snapshot);
+  const checkpoint = await readOrAppendResidentCheckpoint(owner, payload);
+  return await completeResidentSuspensionPrefix(owner, checkpoint);
+}
+
+async function recoverResidentSuspensionPrefix(
+  owner: ResidentLoopBoundState,
+  rawLocator: ExactResidentLoopSuspensionLocator
+): Promise<OpaqueReleasedCheckpointReadback | ResidentLoopUnavailableV1> {
+  let snapshot: ResidentAuthoritySnapshot;
+  try {
+    snapshot = await owner.mounted.readSnapshot();
+  } catch {
+    return unavailableResidentLoop(owner);
+  }
+  const locator = normalizeResidentSuspensionLocator(rawLocator);
+  if (
+    locator.taskId !== owner.binding.handoff.taskId ||
+    locator.attemptId !== owner.binding.handoff.attemptId ||
+    locator.runId !== owner.binding.handoff.runId ||
+    snapshot.facts.workspaceId !== owner.binding.provider.workspaceId
+  ) {
+    throw new Error("resident-loop suspension locator does not match mounted authority");
+  }
+  const stream = await owner.mounted.ledger.readStream(orchestrationStreamId(
+    locator.taskId,
+    owner.binding.handoff.runType
+  ));
+  const checkpoints = stream.filter((event): event is ResidentCheckpointEvent =>
+    event.type === "agent.task.orchestration.checkpointed" &&
+    event.payload.checkpointKind === "resident-loop-suspension" &&
+    event.payload.resumeIdempotencyKey === locator.checkpointSemanticKey
+  );
+  if (checkpoints.length !== 1 || checkpoints[0] === undefined) {
+    throw new Error("resident-loop recovery requires one already durable checkpoint");
+  }
+  assertResidentCheckpointBinding(owner, checkpoints[0].payload, snapshot);
+  return await completeResidentSuspensionPrefix(owner, checkpoints[0]);
+}
+
+async function reclaimResidentSuspension(
+  owner: ResidentLoopBoundState,
+  anchor: unknown
+): Promise<OpaqueResidentLoopCurrentnessToken | undefined> {
+  const locator = normalizeResidentSuspensionLocator(anchor);
+  const initialSnapshot = await owner.mounted.readSnapshot().catch(() => undefined);
+  if (
+    initialSnapshot === undefined ||
+    residentWorkIsIneligible(owner, initialSnapshot.events)
+  ) {
+    return undefined;
+  }
+  const released = await recoverResidentSuspensionPrefix(owner, locator);
+  if (released.schemaVersion === "resident-loop-unavailable.v1") return undefined;
+  const snapshot = await owner.mounted.readSnapshot().catch(() => undefined);
+  if (snapshot === undefined || snapshot.activeLockIds.length > 0) return undefined;
+  const checkpoint = await readResidentCheckpointByLocator(owner, locator);
+  const instruction = checkpoint.payload.residentLoopSuspension;
+  if (instruction === undefined) throw new Error("resident-loop recovery checkpoint instruction is absent");
+  if (!await residentReclaimIsEligible(owner, checkpoint, snapshot)) {
+    return undefined;
+  }
+  const claim = await readOrAppendResidentReclaim(owner, checkpoint);
+  if (claim === undefined) return undefined;
+  const afterClaim = await owner.mounted.readSnapshot().catch(() => undefined);
+  if (
+    afterClaim === undefined ||
+    afterClaim.activeLockIds.length > 0 ||
+    !afterClaim.events.some((event) => event.id === claim.id)
+  ) {
+    return undefined;
+  }
+  return issueCurrentness(owner, afterClaim);
+}
+
+function residentWorkIsIneligible(
+  owner: ResidentLoopBoundState,
+  events: readonly KnowledgeEvent[]
+): boolean {
+  return events.some((event) =>
+    (
+      event.type === "agent.task.status.changed" &&
+      event.payload.taskId === owner.binding.handoff.taskId &&
+      event.payload.status === "canceled"
+    ) ||
+    (
+      (
+        event.type === "agent.task.orchestration.completed" ||
+        event.type === "agent.task.orchestration.failed"
+      ) &&
+      event.payload.taskId === owner.binding.handoff.taskId &&
+      event.payload.attemptId === owner.binding.handoff.attemptId
+    )
+  );
+}
+
+async function residentReclaimIsEligible(
+  owner: ResidentLoopBoundState,
+  checkpoint: ResidentCheckpointEvent,
+  snapshot: ResidentAuthoritySnapshot
+): Promise<boolean> {
+  const instruction = checkpoint.payload.residentLoopSuspension;
+  if (instruction === undefined) return false;
+  if (residentWorkIsIneligible(owner, snapshot.events)) {
+    return false;
+  }
+  if (instruction.suspensionCategory === "approval-required") {
+    return residentApprovalReclaimIsEligible(owner, instruction, snapshot.events);
+  }
+  if (instruction.suspensionCategory === "effect-outcome-unknown") {
+    return await residentUnknownOutcomeReclaimIsEligible(
+      owner,
+      instruction,
+      snapshot
+    );
+  }
+  return instruction.requestEventId === undefined &&
+    instruction.executionClaimEventId === undefined &&
+    instruction.executionCapabilityHash === undefined &&
+    instruction.logicalLocator === undefined &&
+    instruction.decisionEventId === undefined &&
+    instruction.approvedBy === undefined &&
+    instruction.approvedPreviewHash === undefined;
+}
+
+function residentApprovalReclaimIsEligible(
+  owner: ResidentLoopBoundState,
+  instruction: NonNullable<ResidentCheckpointEvent["payload"]["residentLoopSuspension"]>,
+  events: readonly KnowledgeEvent[]
+): boolean {
+  if (
+    instruction.requestEventId === undefined ||
+    instruction.executionClaimEventId !== undefined ||
+    instruction.executionCapabilityHash !== undefined ||
+    instruction.logicalLocator !== undefined ||
+    instruction.decisionEventId !== undefined ||
+    instruction.approvedBy !== undefined ||
+    instruction.approvedPreviewHash !== undefined
+  ) {
+    return false;
+  }
+  const request = events.find(
+    (event): event is KnowledgeEventOf<"agent.resident-domain.requested.v1"> =>
+      event.id === instruction.requestEventId &&
+      event.type === "agent.resident-domain.requested.v1"
+  );
+  if (
+    request === undefined ||
+    request.payload.authorizationKind !== "human-approval" ||
+    request.payload.logicalLocator.workspaceId !== owner.binding.provider.workspaceId ||
+    request.payload.logicalLocator.residentAgentId !== "agent_default" ||
+    request.payload.logicalLocator.taskId !== owner.binding.handoff.taskId ||
+    request.payload.logicalLocator.attemptId !== owner.binding.handoff.attemptId ||
+    request.payload.logicalLocator.runId !== owner.binding.handoff.runId ||
+    request.payload.planRecordEventId !== instruction.planRecordEventId
+  ) {
+    return false;
+  }
+  const decisions = events.filter(
+    (event): event is KnowledgeEventOf<"agent.resident-domain.human-approved.v1"> =>
+      event.type === "agent.resident-domain.human-approved.v1" &&
+      event.streamId === request.streamId
+  );
+  if (decisions.length !== 1 || decisions[0] === undefined) return false;
+  const decision = decisions[0];
+  const requestAt = normalizedWakeInstant(
+    request.context.occurredAt,
+    "resident approval request"
+  ).milliseconds;
+  const decisionAt = normalizedWakeInstant(
+    decision.context.occurredAt,
+    "resident approval decision"
+  ).milliseconds;
+  const deadline = normalizedWakeInstant(
+    instruction.resumptionDeadlineAt,
+    "resident approval deadline"
+  ).milliseconds;
+  return decisionAt > requestAt &&
+    decisionAt < deadline &&
+    decision.context.actor.id !== request.context.actor.id &&
+    decision.context.actor.id !== owner.mounted.input.actor.id &&
+    decision.context.causationId === request.id &&
+    decision.context.correlationId === request.payload.correlationId &&
+    decision.payload.causationId === request.id &&
+    decision.payload.correlationId === request.payload.correlationId &&
+    decision.payload.authorizationKind === "human-approval" &&
+    decision.payload.requestEventId === request.id &&
+    decision.payload.approvedBy === decision.context.actor.id &&
+    decision.payload.approvedPreviewHash === request.payload.previewHash &&
+    isDeepStrictEqual(
+      decision.payload.logicalLocator,
+      request.payload.logicalLocator
+    ) &&
+    decision.payload.executionCapabilityHash ===
+      request.payload.executionCapabilityHash;
+}
+
+async function residentUnknownOutcomeReclaimIsEligible(
+  owner: ResidentLoopBoundState,
+  instruction: NonNullable<ResidentCheckpointEvent["payload"]["residentLoopSuspension"]>,
+  snapshot: ResidentAuthoritySnapshot
+): Promise<boolean> {
+  if (
+    instruction.logicalLocator === undefined ||
+    instruction.requestEventId === undefined ||
+    instruction.executionClaimEventId === undefined ||
+    instruction.executionCapabilityHash === undefined
+  ) {
+    return false;
+  }
+  if (snapshot.events.some((event) =>
+    (
+      event.type === "agent.resident-domain.outcome-observed.v1" &&
+      (
+        event.payload.requestEventId === instruction.requestEventId ||
+        event.payload.executionClaimEventId === instruction.executionClaimEventId
+      )
+    ) ||
+    (
+      (
+        event.type === "agent.resident-domain.completed.v1" ||
+        event.type === "agent.resident-domain.failed.v1"
+      ) &&
+      event.payload.requestEventId === instruction.requestEventId
+    )
+  )) {
+    return false;
+  }
+  owner.refreshGatewayCurrentness(snapshot);
+  const reread = (
+    owner.gateway as {
+      readonly rereadAndIssueFromLedger?: unknown;
+    }
+  ).rereadAndIssueFromLedger;
+  if (typeof reread !== "function") return false;
+  let issued: unknown;
+  try {
+    issued = await Reflect.apply(reread, owner.gateway, [
+      instruction.logicalLocator
+    ]);
+  } catch {
+    return false;
+  }
+  const human = instruction.decisionEventId !== undefined ||
+    instruction.approvedBy !== undefined ||
+    instruction.approvedPreviewHash !== undefined;
+  if (
+    human &&
+    (
+      instruction.decisionEventId === undefined ||
+      instruction.approvedBy === undefined ||
+      instruction.approvedPreviewHash === undefined
+    )
+  ) {
+    return false;
+  }
+  const expected = Object.freeze({
+    authorizationKind: human ? "human-approval" : "automatic-policy",
+    stage: "claimed",
+    logicalLocator: instruction.logicalLocator,
+    executionCapabilityHash: instruction.executionCapabilityHash,
+    requestEventId: instruction.requestEventId,
+    ...(human
+      ? {
+          decisionEventId: instruction.decisionEventId,
+          approvedBy: instruction.approvedBy,
+          approvedPreviewHash: instruction.approvedPreviewHash
+        }
+      : {}),
+    executionClaimEventId: instruction.executionClaimEventId,
+    category: "effect-outcome-unknown"
+  });
+  if (!isDeepStrictEqual(issued, expected)) {
+    return false;
+  }
+  return true;
+}
+
+async function readOrAppendResidentReclaim(
+  owner: ResidentLoopBoundState,
+  checkpoint: ResidentCheckpointEvent
+): Promise<ResidentClaimEvent | undefined> {
+  const instruction = checkpoint.payload.residentLoopSuspension!;
+  const ledger = owner.mounted.ledger;
+  const stream = await ledger.readStream(checkpoint.streamId);
+  const allEvents = await ledger.readAll();
+  const original = stream.find((event): event is ResidentClaimEvent =>
+    event.id === instruction.orchestrationClaimEventId &&
+    event.type === "agent.task.orchestration.claimed"
+  );
+  const release = stream.find((event): event is ResidentReleaseEvent =>
+    event.type === "agent.task.orchestration.released" &&
+    event.payload.releaseReason === "resident-loop-suspended" &&
+    event.payload.checkpointEventId === checkpoint.id &&
+    event.payload.claimEventId === instruction.orchestrationClaimEventId
+  );
+  if (original === undefined || release === undefined) {
+    throw new Error("resident-loop reclaim requires its exact released claim");
+  }
+  if (stream.some((event) =>
+    (event.type === "agent.task.orchestration.completed" ||
+      event.type === "agent.task.orchestration.failed") &&
+    event.payload.taskId === checkpoint.payload.taskId &&
+    event.payload.attemptId === checkpoint.payload.attemptId
+  )) {
+    return undefined;
+  }
+  const nextGeneration = original.payload.leaseClaimGeneration + 1;
+  const laterClaims = stream.filter((event): event is ResidentClaimEvent =>
+    event.type === "agent.task.orchestration.claimed" &&
+    event.payload.taskId === original.payload.taskId &&
+    event.payload.attemptId === original.payload.attemptId &&
+    event.payload.leaseClaimGeneration === nextGeneration
+  );
+  if (laterClaims.length > 1) throw new Error("resident-loop reclaim generation is ambiguous");
+  if (laterClaims[0] !== undefined) {
+    if (laterClaims[0].context.causationId !== release.id) return undefined;
+    return laterClaims[0];
+  }
+  const claimed = normalizedWakeInstant(owner.mounted.input.now(), "resident-loop reclaim");
+  const leaseExpiresAt = new Date(claimed.milliseconds + maximumWakeSupervisorLeaseDurationMs).toISOString();
+  const appendable: AppendableKnowledgeEvent<"agent.task.orchestration.claimed"> = {
+    type: "agent.task.orchestration.claimed",
+    version: 1,
+    streamId: checkpoint.streamId,
+    context: {
+      actor: owner.mounted.input.actor,
+      occurredAt: claimed.iso,
+      causationId: release.id,
+      correlationId: checkpoint.context.correlationId,
+      coreVersion: "0.1.0",
+      packVersions: { core: "0.1.0", agent: "0.1.0" }
+    },
+    payload: {
+      taskId: original.payload.taskId,
+      runType: original.payload.runType,
+      attemptId: original.payload.attemptId,
+      retryGeneration: original.payload.retryGeneration,
+      leaseClaimGeneration: nextGeneration,
+      workerId: owner.mounted.input.actor.id,
+      claimedAt: claimed.iso,
+      leaseExpiresAt,
+      idempotencyKey: [
+        "resident-loop-reclaim",
+        original.payload.taskId,
+        original.payload.attemptId,
+        String(nextGeneration)
+      ].join(":"),
+      selectedOrderingPosition: original.payload.selectedOrderingPosition,
+      activeBudgetSnapshot: original.payload.activeBudgetSnapshot,
+      causationEventId: release.id
+    }
+  };
+  const appended = await ledger.append(appendable, {
+    expectedNextSequence: stream.length + 1,
+    expectedGlobalEventCount: allEvents.length
+  });
+  const reread = (await ledger.readStream(checkpoint.streamId)).find((event): event is ResidentClaimEvent =>
+    event.id === appended.id &&
+    event.type === "agent.task.orchestration.claimed"
+  );
+  if (
+    reread === undefined ||
+    reread.payload.leaseClaimGeneration !== nextGeneration ||
+    reread.context.causationId !== release.id
+  ) {
+    throw new Error("resident-loop reclaim lacks exact durable claim reread");
+  }
+  return reread;
+}
+
+function consumeSuspensionAuthority(
+  owner: ResidentLoopBoundState,
+  authority: OpaqueResidentLoopCurrentnessToken | OpaqueResidentLoopSuspensionOnlyCapability
+):
+  | { readonly kind: "current"; readonly state: CurrentnessState }
+  | { readonly kind: "recordable-stale"; readonly state: SuspensionOnlyState } {
+  const current = issuedResidentCurrentness.get(authority);
+  if (current !== undefined) {
+    issuedResidentCurrentness.delete(authority);
+    if (current.owner !== owner) throw new Error("resident-loop currentness belongs to another mounted authority");
+    return Object.freeze({ kind: "current" as const, state: current });
+  }
+  const stale = issuedResidentSuspensionOnly.get(authority);
+  if (stale === undefined) {
+    throw new Error("resident-loop suspension requires one live currentness or suspension-only capability");
+  }
+  issuedResidentSuspensionOnly.delete(authority);
+  if (stale.owner !== owner) throw new Error("resident-loop suspension capability belongs to another mounted authority");
+  return Object.freeze({ kind: "recordable-stale" as const, state: stale });
+}
+
+async function completeResidentSuspensionPrefix(
+  owner: ResidentLoopBoundState,
+  checkpoint: ResidentCheckpointEvent
+): Promise<OpaqueReleasedCheckpointReadback | ResidentLoopUnavailableV1> {
+  const instruction = checkpoint.payload.residentLoopSuspension;
+  if (instruction === undefined) throw new Error("resident-loop checkpoint lacks its strict suspension instruction");
+  const ledger = owner.mounted.ledger;
+  const residentStreamId = residentLoopStreamId({
+    taskId: instruction.taskId,
+    attemptId: instruction.attemptId,
+    runId: instruction.runId
+  });
+  let residentStream = await ledger.readStream(residentStreamId);
+  await assertResidentSuspensionPrefix(owner, checkpoint, residentStream);
+  let suspensions = matchingResidentSuspensions(residentStream, checkpoint);
+  if (suspensions.length > 1) throw new Error("resident-loop suspension semantic key is duplicated");
+  let suspension = suspensions[0];
+  if (suspension === undefined) {
+    const material = requireResidentSuspensionMaterial(owner, checkpoint, residentStream);
+    suspension = await owner.planObservation.appendSuspension(material.suspension);
+    const reread = await owner.planObservation.readSuspension(suspension.id);
+    if (reread === undefined || !isDeepStrictEqual(reread, suspension)) {
+      throw new Error("resident-loop suspension lacks exact durable reread");
+    }
+    residentStream = await ledger.readStream(residentStreamId);
+    suspensions = matchingResidentSuspensions(residentStream, checkpoint);
+    if (suspensions.length !== 1) throw new Error("resident-loop suspension append is not unique");
+    suspension = suspensions[0]!;
+  }
+
+  let results = matchingResidentResults(residentStream, suspension);
+  if (results.length > 1) throw new Error("resident-loop resumable-result semantic key is duplicated");
+  let result = results[0];
+  if (result === undefined) {
+    const material = requireResidentSuspensionMaterial(owner, checkpoint, residentStream);
+    result = await owner.planObservation.appendResult(
+      expectedResidentResultPayload(material, suspension, instruction)
+    );
+    const reread = await owner.planObservation.readResult(result.id);
+    if (reread === undefined || !isDeepStrictEqual(reread, result)) {
+      throw new Error("resident-loop resumable result lacks exact durable reread");
+    }
+    residentStream = await ledger.readStream(residentStreamId);
+    results = matchingResidentResults(residentStream, suspension);
+    if (results.length !== 1) throw new Error("resident-loop resumable result append is not unique");
+    result = results[0]!;
+  }
+
+  const release = await readOrAppendResidentRelease(owner, checkpoint, suspension, result);
+  await assertResidentSuspensionPrefix(
+    owner,
+    checkpoint,
+    await ledger.readStream(residentStreamId)
+  );
+  return issueReleasedCheckpointReadback(checkpoint, suspension, result, release);
+}
+
+function requireResidentSuspensionMaterial(
+  owner: ResidentLoopBoundState,
+  checkpoint: ResidentCheckpointEvent,
+  stream: readonly KnowledgeEvent[]
+): {
+  readonly plan: KnowledgeEventOf<"agent.resident-plan.recorded.v2">;
+  readonly observation: KnowledgeEventOf<"agent.resident-observation.recorded.v2">;
+  readonly binding: Readonly<Record<string, unknown>>;
+  readonly planReadback: Readonly<Record<string, unknown>>;
+  readonly finalObservationReadback: Readonly<Record<string, unknown>>;
+  readonly suspension: Readonly<Record<string, unknown>>;
+} {
+  const instruction = checkpoint.payload.residentLoopSuspension;
+  if (instruction === undefined) throw new Error("resident-loop checkpoint instruction is absent");
+  const plan = stream.find((event): event is KnowledgeEventOf<"agent.resident-plan.recorded.v2"> =>
+    event.id === instruction.planRecordEventId &&
+    event.type === "agent.resident-plan.recorded.v2"
+  );
+  const observation = stream.find((event): event is KnowledgeEventOf<"agent.resident-observation.recorded.v2"> =>
+    event.id === instruction.finalObservationEventId &&
+    event.type === "agent.resident-observation.recorded.v2"
+  );
+  if (plan === undefined || observation === undefined) {
+    throw new Error("resident-loop suspension requires exact durable plan and observation readbacks");
+  }
+  for (const field of ["workspaceId", "residentAgentId", "taskId", "attemptId", "runId", "planId", "planRevision"] as const) {
+    if (plan.payload[field] !== observation.payload[field]) {
+      throw new Error("resident-loop suspension plan and observation bindings differ");
+    }
+  }
+  if (
+    plan.payload.workspaceId !== owner.binding.provider.workspaceId ||
+    plan.payload.taskId !== owner.binding.handoff.taskId ||
+    plan.payload.attemptId !== owner.binding.handoff.attemptId ||
+    plan.payload.runId !== owner.binding.handoff.runId
+  ) {
+    throw new Error("resident-loop suspension material is foreign to mounted authority");
+  }
+  const binding = Object.freeze({
+    residentAgentId: observation.payload.residentAgentId,
+    workspaceId: observation.payload.workspaceId,
+    taskId: observation.payload.taskId,
+    attemptId: observation.payload.attemptId,
+    runId: observation.payload.runId,
+    runMode: observation.payload.runMode,
+    workflowDescriptor: observation.payload.workflowDescriptor,
+    policy: observation.payload.policy,
+    authority: observation.payload.authority,
+    sourceEventIds: observation.payload.sourceEventIds,
+    contextPackRefs: observation.payload.contextPackRefs,
+    budget: observation.payload.budget,
+    correlationId: observation.payload.correlationId
+  });
+  const planReadback = Object.freeze({
+    planRecordEventId: plan.id,
+    workspaceId: plan.payload.workspaceId,
+    residentAgentId: plan.payload.residentAgentId,
+    taskId: plan.payload.taskId,
+    attemptId: plan.payload.attemptId,
+    runId: plan.payload.runId,
+    planId: plan.payload.planId,
+    planRevision: plan.payload.planRevision
+  });
+  const finalObservationReadback = Object.freeze({
+    observationEventId: observation.id,
+    workspaceId: observation.payload.workspaceId,
+    residentAgentId: observation.payload.residentAgentId,
+    taskId: observation.payload.taskId,
+    attemptId: observation.payload.attemptId,
+    runId: observation.payload.runId,
+    planId: observation.payload.planId,
+    planRevision: observation.payload.planRevision
+  });
+  const suspension = Object.freeze({
+    ...binding,
+    schemaVersion: "resident-loop-suspension.v2",
+    budget: advanceResidentBudget(
+      observation.payload.budget,
+      "approvalSuspensionMs"
+    ),
+    planId: plan.payload.planId,
+    planRevision: plan.payload.planRevision,
+    planReadback,
+    finalObservationReadback,
+    causationId: checkpoint.id,
+    suspensionCategory: instruction.suspensionCategory,
+    checkpoint: residentSuspensionCheckpoint(instruction, checkpoint.id)
+  });
+  return Object.freeze({
+    plan,
+    observation,
+    binding,
+    planReadback,
+    finalObservationReadback,
+    suspension
+  });
+}
+
+function advanceResidentBudget(
+  prior: ResidentSuspensionEvent["payload"]["budget"],
+  field: keyof ResidentSuspensionEvent["payload"]["budget"]["consumed"]
+): ResidentSuspensionEvent["payload"]["budget"] {
+  const consumed = { ...prior.consumed, [field]: prior.consumed[field] + 1 };
+  const remaining = { ...prior.remaining, [field]: prior.remaining[field] - 1 };
+  if (remaining[field] < 0) {
+    throw new Error("resident-loop suspension budget is exhausted");
+  }
+  const actionConsumption = Object.fromEntries(
+    Object.keys(prior.actionConsumption).map((key) => [key, key === field ? 1 : 0])
+  ) as unknown as ResidentSuspensionEvent["payload"]["budget"]["actionConsumption"];
+  return Object.freeze({
+    ceilings: Object.freeze({ ...prior.ceilings }),
+    consumed: Object.freeze(consumed),
+    remaining: Object.freeze(remaining),
+    actionConsumption: Object.freeze(actionConsumption)
+  });
+}
+
+function expectedResidentResultPayload(
+  material: ReturnType<typeof requireResidentSuspensionMaterial>,
+  suspension: ResidentSuspensionEvent,
+  instruction: NonNullable<ResidentCheckpointEvent["payload"]["residentLoopSuspension"]>
+): ResidentResultEvent["payload"] {
+  return {
+    ...material.binding,
+    schemaVersion: "resident-loop-result.v2",
+    budget: advanceResidentBudget(
+      suspension.payload.budget,
+      "activeExecutionMs"
+    ),
+    planId: material.plan.payload.planId,
+    planRevision: material.plan.payload.planRevision,
+    planReadback: material.planReadback,
+    finalObservationReadback: material.finalObservationReadback,
+    causationId: suspension.id,
+    outcome: "resumable",
+    category: instruction.suspensionCategory,
+    resultHash: instruction.resultSemanticKey,
+    resumeAnchor: {
+      checkpointEventId: suspension.id,
+      nextSafeAction: instruction.nextSafeAction,
+      resumptionDeadlineAt: instruction.resumptionDeadlineAt
+    }
+  } as ResidentResultEvent["payload"];
+}
+
+async function assertResidentSuspensionPrefix(
+  owner: ResidentLoopBoundState,
+  checkpoint: ResidentCheckpointEvent,
+  residentStream: readonly KnowledgeEvent[]
+): Promise<void> {
+  const instruction = checkpoint.payload.residentLoopSuspension;
+  if (instruction === undefined) {
+    throw new Error("resident-loop prefix checkpoint instruction is absent");
+  }
+  const orchestration = await owner.mounted.ledger.readStream(checkpoint.streamId);
+  const checkpointIndex = orchestration.findIndex((event) => event.id === checkpoint.id);
+  const observationIndex = residentStream.findIndex(
+    (event) => event.id === instruction.finalObservationEventId
+  );
+  if (checkpointIndex < 0 || observationIndex < 0) {
+    throw new Error("resident-loop prefix durable anchors are absent");
+  }
+  const expectedCheckpointContext = {
+    actor: owner.mounted.input.actor,
+    occurredAt: checkpoint.payload.checkpointedAt,
+    causationId: instruction.orchestrationClaimEventId,
+    correlationId: `corr_${checkpoint.payload.taskId}`,
+    coreVersion: "0.1.0",
+    packVersions: { core: "0.1.0", agent: "0.1.0" }
+  };
+  if (
+    checkpoint.streamId !== orchestrationStreamId(
+      checkpoint.payload.taskId,
+      checkpoint.payload.runType
+    ) ||
+    !isDeepStrictEqual(checkpoint.context, expectedCheckpointContext)
+  ) {
+    throw new Error("resident-loop prefix checkpoint context is not canonical");
+  }
+
+  const residentTail = residentStream.slice(observationIndex + 1);
+  const orchestrationTail = orchestration.slice(checkpointIndex + 1);
+  if (
+    residentTail.length > 2 ||
+    orchestrationTail.length > 1 ||
+    residentTail.some((event, index) =>
+      index === 0
+        ? event.type !== "agent.resident-loop.suspended.v2"
+        : event.type !== "agent.resident-loop.result.recorded.v2"
+    ) ||
+    orchestrationTail.some((event) =>
+      event.type !== "agent.task.orchestration.released"
+    ) ||
+    (orchestrationTail.length === 1 && residentTail.length !== 2)
+  ) {
+    throw new Error("resident-loop target prefix has an invalid order or extra suffix");
+  }
+
+  const material = requireResidentSuspensionMaterial(owner, checkpoint, residentStream);
+  const suspension = residentTail[0] as ResidentSuspensionEvent | undefined;
+  const result = residentTail[1] as ResidentResultEvent | undefined;
+  const release = orchestrationTail[0] as ResidentReleaseEvent | undefined;
+  if (suspension !== undefined) {
+    assertResidentPrefixContext(
+      owner,
+      suspension.context,
+      checkpoint.id,
+      checkpoint.context.occurredAt
+    );
+    if (!isDeepStrictEqual(suspension.payload, material.suspension)) {
+      throw new Error("resident-loop suspension prefix bytes are not canonical");
+    }
+  }
+  if (result !== undefined) {
+    if (suspension === undefined) {
+      throw new Error("resident-loop result prefix skipped its suspension");
+    }
+    assertResidentPrefixContext(
+      owner,
+      result.context,
+      suspension.id,
+      suspension.context.occurredAt
+    );
+    if (!isDeepStrictEqual(
+      result.payload,
+      expectedResidentResultPayload(material, suspension, instruction)
+    )) {
+      throw new Error("resident-loop result prefix bytes are not canonical");
+    }
+  }
+  if (release !== undefined) {
+    if (result === undefined || suspension === undefined) {
+      throw new Error("resident-loop release prefix skipped resident state");
+    }
+    assertResidentPrefixContext(
+      owner,
+      release.context,
+      result.id,
+      result.context.occurredAt
+    );
+    if (
+      release.payload.taskId !== checkpoint.payload.taskId ||
+      release.payload.runType !== checkpoint.payload.runType ||
+      release.payload.attemptId !== checkpoint.payload.attemptId ||
+      release.payload.retryGeneration !== checkpoint.payload.retryGeneration ||
+      release.payload.leaseClaimGeneration !== checkpoint.payload.leaseClaimGeneration ||
+      release.payload.releasedBy !== owner.mounted.input.actor.id ||
+      release.payload.releasedAt !== release.context.occurredAt ||
+      release.payload.releaseReason !== "resident-loop-suspended" ||
+      release.payload.claimEventId !== instruction.orchestrationClaimEventId ||
+      release.payload.checkpointEventId !== checkpoint.id ||
+      !isDeepStrictEqual(release.payload.safeNextActions, checkpoint.payload.safeNextActions)
+    ) {
+      throw new Error("resident-loop release prefix bytes are not canonical");
+    }
+  }
+}
+
+function assertResidentPrefixContext(
+  owner: ResidentLoopBoundState,
+  context: KnowledgeEvent["context"],
+  causationId: string,
+  priorOccurredAt: string
+): void {
+  if (
+    !isDeepStrictEqual(context.actor, owner.mounted.input.actor) ||
+    context.causationId !== causationId ||
+    context.correlationId !== `corr_${owner.binding.handoff.taskId}` ||
+    context.coreVersion !== "0.1.0" ||
+    !isDeepStrictEqual(context.packVersions, { core: "0.1.0", agent: "0.1.0" }) ||
+    normalizedWakeInstant(context.occurredAt, "resident-loop prefix occurrence").milliseconds <
+      normalizedWakeInstant(priorOccurredAt, "resident-loop prior occurrence").milliseconds
+  ) {
+    throw new Error("resident-loop prefix chronology or causation is not canonical");
+  }
+}
+
+function residentSuspensionCheckpoint(
+  instruction: NonNullable<ResidentCheckpointEvent["payload"]["residentLoopSuspension"]>,
+  checkpointEventId: string
+): Readonly<Record<string, unknown>> {
+  const common = {
+    orchestrationCheckpointEventId: checkpointEventId,
+    resumptionDeadlineAt: instruction.resumptionDeadlineAt,
+    nextSafeAction: instruction.nextSafeAction
+  };
+  if (instruction.suspensionCategory === "approval-required") {
+    if (instruction.requestEventId === undefined) {
+      throw new Error("approval suspension requires its exact request");
+    }
+    return Object.freeze({
+      authorizationKind: "awaiting-human-approval",
+      ...common,
+      requestEventId: instruction.requestEventId
+    });
+  }
+  if (instruction.suspensionCategory !== "effect-outcome-unknown") {
+    if (
+      instruction.requestEventId !== undefined ||
+      instruction.executionClaimEventId !== undefined ||
+      instruction.logicalLocator !== undefined
+    ) {
+      throw new Error("ordinary suspension cannot carry gateway claim authority");
+    }
+    return Object.freeze({ authorizationKind: "not-applicable", ...common });
+  }
+  if (
+    instruction.logicalLocator === undefined ||
+    instruction.requestEventId === undefined ||
+    instruction.executionClaimEventId === undefined ||
+    instruction.executionCapabilityHash === undefined
+  ) {
+    throw new Error("unknown effect suspension requires exact claimed gateway authority");
+  }
+  const humanFields = [
+    instruction.decisionEventId,
+    instruction.approvedBy,
+    instruction.approvedPreviewHash
+  ];
+  if (humanFields.every((field) => field === undefined)) {
+    return Object.freeze({
+      authorizationKind: "effect-outcome-unknown-automatic",
+      ...common,
+      logicalLocator: instruction.logicalLocator,
+      requestEventId: instruction.requestEventId,
+      executionClaimEventId: instruction.executionClaimEventId,
+      executionCapabilityHash: instruction.executionCapabilityHash
+    });
+  }
+  if (humanFields.some((field) => field === undefined)) {
+    throw new Error("unknown human effect suspension requires its complete approval tuple");
+  }
+  return Object.freeze({
+    authorizationKind: "effect-outcome-unknown-human",
+    ...common,
+    logicalLocator: instruction.logicalLocator,
+    requestEventId: instruction.requestEventId,
+    decisionEventId: instruction.decisionEventId,
+    approvedBy: instruction.approvedBy,
+    approvedPreviewHash: instruction.approvedPreviewHash,
+    executionClaimEventId: instruction.executionClaimEventId,
+    executionCapabilityHash: instruction.executionCapabilityHash
+  });
+}
+
+function normalizeResidentFactoryBinding(value: unknown): ResidentLoopFactoryBinding {
+  const binding = exactResidentRecord(value, ["provider", "handoff"], "resident factory authority binding");
+  const provider = exactResidentRecord(binding.provider, [
+    "schemaVersion",
+    "stage",
+    "workspaceId",
+    "mountInstanceId",
+    "admissionGenerationId",
+    "policyVersion",
+    "policyDigest",
+    "lockStateDigest",
+    "highWaterMark",
+    "highWaterOrdinal",
+    "durableLedgerEventCount"
+  ], "resident provider authority readback");
+  const handoff = exactResidentRecord(binding.handoff, [
+    "taskId",
+    "attemptId",
+    "runId",
+    "runType",
+    "retryGeneration",
+    "authorityBinding"
+  ], "resident handoff authority readback");
+  const authorityBinding = exactResidentRecord(
+    handoff.authorityBinding,
+    [
+      "workspaceIdentityHash",
+      "mountGeneration",
+      "ledgerStoreIdentity",
+      "artifactStoreIdentity",
+      "ledgerHighWaterEventId",
+      "policyHash",
+      "activeLocksHash"
+    ],
+    "resident handoff authority binding"
+  );
+  if (
+    !Object.isFrozen(value) ||
+    !Object.isFrozen(binding.provider) ||
+    !Object.isFrozen(binding.handoff) ||
+    !Object.isFrozen(handoff.authorityBinding) ||
+    provider.schemaVersion !== "mounted-provider-authority-readback.v1" ||
+    provider.stage !== "locator" ||
+    !Number.isInteger(provider.highWaterOrdinal) ||
+    (provider.highWaterOrdinal as number) < 0 ||
+    !Number.isInteger(provider.durableLedgerEventCount) ||
+    (provider.durableLedgerEventCount as number) < 0 ||
+    !Number.isInteger(handoff.retryGeneration) ||
+    (handoff.retryGeneration as number) < 0
+  ) {
+    throw new Error("resident factory authority binding is not an exact issued readback");
+  }
+  for (const [field, raw] of Object.entries({
+    workspaceId: provider.workspaceId,
+    mountInstanceId: provider.mountInstanceId,
+    admissionGenerationId: provider.admissionGenerationId,
+    policyVersion: provider.policyVersion,
+    policyDigest: provider.policyDigest,
+    lockStateDigest: provider.lockStateDigest,
+    highWaterMark: provider.highWaterMark,
+    taskId: handoff.taskId,
+    attemptId: handoff.attemptId,
+    runId: handoff.runId,
+    runType: handoff.runType
+  })) {
+    requiredText(raw, field);
+  }
+  return Object.freeze({
+    provider: Object.freeze({ ...provider }) as unknown as ResidentLoopFactoryBinding["provider"],
+    handoff: Object.freeze({
+      ...handoff,
+      authorityBinding: Object.freeze({ ...authorityBinding })
+    }) as unknown as ResidentLoopFactoryBinding["handoff"]
+  });
+}
+
+function assertResidentFactoryBindingCurrent(
+  binding: ResidentLoopFactoryBinding,
+  snapshot: ResidentAuthoritySnapshot,
+  mounted: MountedResidentStoreState
+): void {
+  const facts = snapshot.facts;
+  if (
+    snapshot.activeLockIds.length > 0 ||
+    facts.workspaceId !== binding.provider.workspaceId ||
+    facts.mountInstanceId !== binding.provider.mountInstanceId ||
+    facts.policyVersion !== binding.provider.policyVersion ||
+    facts.policyDigest !== binding.provider.policyDigest ||
+    facts.lockStateDigest !== binding.provider.lockStateDigest ||
+    snapshot.events.length !== binding.provider.durableLedgerEventCount ||
+    mounted.binding.workspaceId !== binding.provider.workspaceId
+  ) {
+    throw new Error("resident factory authority binding is stale or foreign");
+  }
+  const anchor = binding.provider.highWaterOrdinal < 1
+    ? undefined
+    : snapshot.events[binding.provider.highWaterOrdinal - 1];
+  const claims = snapshot.events.filter((event): event is KnowledgeEventOf<"agent.task.orchestration.claimed"> =>
+    event.type === "agent.task.orchestration.claimed" &&
+    event.payload.taskId === binding.handoff.taskId &&
+    event.payload.attemptId === binding.handoff.attemptId &&
+    event.payload.retryGeneration === binding.handoff.retryGeneration &&
+    event.payload.runType === binding.handoff.runType
+  );
+  if (
+    anchor?.type !== "agent.task.orchestration.claimed" ||
+    anchor.id !== binding.provider.highWaterMark ||
+    claims.length !== 1 ||
+    claims[0]?.id !== anchor.id ||
+    anchor.streamId !== orchestrationStreamId(
+      binding.handoff.taskId,
+      binding.handoff.runType
+    ) ||
+    !hasExactResidentFactoryAuthorityAgreement(binding, snapshot) ||
+    !hasExactCompletedHandoffSourceEnvelope(
+      snapshot.events
+        .slice(binding.provider.highWaterOrdinal)
+        .filter((event) =>
+          !wakeLifecycleTypes.has(
+            event.type as MountedWakeLifecycleEventType
+          )
+        ),
+      anchor,
+      binding
+    )
+  ) {
+    throw new Error("resident factory authority binding requires one exact mounted orchestration claim");
+  }
+}
+
+function hasExactResidentFactoryAuthorityAgreement(
+  binding: ResidentLoopFactoryBinding,
+  snapshot: ResidentAuthoritySnapshot
+): boolean {
+  const authority = binding.handoff.authorityBinding;
+  const generation = /^admission_generation_([0-9]+)$/.exec(
+    binding.provider.admissionGenerationId
+  )?.[1];
+  return generation !== undefined &&
+    authority.workspaceIdentityHash === residentCanonicalHash({
+      schemaVersion: "mounted-handoff-workspace-identity.v1",
+      workspaceId: snapshot.facts.workspaceId,
+      workspaceIdentityEventId: snapshot.facts.workspaceIdentityEventId
+    }) &&
+    authority.mountGeneration === `admission:${generation}` &&
+    authority.ledgerStoreIdentity === snapshot.facts.ledgerStoreEvidenceId &&
+    authority.artifactStoreIdentity ===
+      snapshot.facts.artifactStoreEvidenceId &&
+    authority.ledgerHighWaterEventId === binding.provider.highWaterMark &&
+    authority.policyHash === binding.provider.policyDigest &&
+    authority.activeLocksHash === binding.provider.lockStateDigest;
+}
+
+function hasExactCompletedHandoffSourceEnvelope(
+  events: readonly KnowledgeEvent[],
+  claim: KnowledgeEventOf<"agent.task.orchestration.claimed">,
+  binding: ResidentLoopFactoryBinding
+): boolean {
+  if (events.length === 0) return true;
+  if (events.length !== 8) return false;
+  const [
+    checkpoint,
+    started,
+    finalOutput,
+    prepared,
+    recorded,
+    completed,
+    orchestrationCompleted,
+    taskStatus
+  ] = events;
+  if (
+    checkpoint?.type !== "agent.task.orchestration.checkpointed" ||
+    started?.type !== "agent.specialist-run.started" ||
+    finalOutput?.type !== "agent.specialist-run.step.recorded" ||
+    prepared?.type !== "agent.specialist-handoff.prepared" ||
+    recorded?.type !== "agent.specialist-handoff.recorded" ||
+    completed?.type !== "agent.specialist-run.completed" ||
+    orchestrationCompleted?.type !== "agent.task.orchestration.completed" ||
+    taskStatus?.type !== "agent.task.status.changed"
+  ) {
+    return false;
+  }
+  const checkpointPayload = checkpoint.payload;
+  const startedPayload = started.payload;
+  const finalOutputPayload = finalOutput.payload;
+  const preparedPayload = prepared.payload;
+  const recordedPayload = recorded.payload;
+  const completedPayload = completed.payload;
+  const orchestrationPayload = orchestrationCompleted.payload;
+  const statusPayload = taskStatus.payload;
+  const runStreamId = `agent_run_${binding.handoff.runId}`;
+  const correlationId = claim.context.correlationId;
+  if (
+    checkpoint.streamId !== claim.streamId ||
+    checkpoint.context.causationId !== claim.id ||
+    checkpointPayload.taskId !== binding.handoff.taskId ||
+    checkpointPayload.attemptId !== binding.handoff.attemptId ||
+    checkpointPayload.runId !== binding.handoff.runId ||
+    checkpointPayload.runType !== binding.handoff.runType ||
+    checkpointPayload.retryGeneration !== binding.handoff.retryGeneration ||
+    checkpointPayload.leaseClaimGeneration !==
+      claim.payload.leaseClaimGeneration ||
+    started.streamId !== runStreamId ||
+    started.context.causationId !== checkpoint.id ||
+    startedPayload.taskId !== binding.handoff.taskId ||
+    startedPayload.runId !== binding.handoff.runId ||
+    startedPayload.runType !== binding.handoff.runType ||
+    startedPayload.residentAgentId !== "agent_default" ||
+    startedPayload.startedBy !== "agent_default" ||
+    finalOutput.streamId !== runStreamId ||
+    finalOutput.context.causationId !== started.id ||
+    finalOutputPayload.runId !== binding.handoff.runId ||
+    finalOutputPayload.stepKind !== "final-output" ||
+    prepared.streamId !== runStreamId ||
+    prepared.context.causationId !== finalOutput.id ||
+    preparedPayload.taskId !== binding.handoff.taskId ||
+    preparedPayload.runId !== binding.handoff.runId ||
+    preparedPayload.runType !== binding.handoff.runType ||
+    preparedPayload.residentAgentId !== "agent_default" ||
+    preparedPayload.finalOutputEventId !== finalOutput.id ||
+    preparedPayload.finalOutputStepId !== finalOutputPayload.stepId ||
+    !("authorityBinding" in preparedPayload) ||
+    !isDeepStrictEqual(
+      preparedPayload.authorityBinding,
+      binding.handoff.authorityBinding
+    ) ||
+    recorded.streamId !== runStreamId ||
+    recorded.context.causationId !== prepared.id ||
+    recordedPayload.taskId !== binding.handoff.taskId ||
+    recordedPayload.runId !== binding.handoff.runId ||
+    recordedPayload.runType !== binding.handoff.runType ||
+    recordedPayload.residentAgentId !== "agent_default" ||
+    recordedPayload.finalOutputEventId !== finalOutput.id ||
+    recordedPayload.finalOutputStepId !== finalOutputPayload.stepId ||
+    recordedPayload.preparedEventId !== prepared.id ||
+    !("authorityBinding" in recordedPayload) ||
+    !isDeepStrictEqual(
+      recordedPayload.authorityBinding,
+      binding.handoff.authorityBinding
+    ) ||
+    completed.streamId !== runStreamId ||
+    completed.context.causationId !== recorded.id ||
+    completedPayload.runId !== binding.handoff.runId ||
+    !isDeepStrictEqual(
+      completedPayload.outputArtifactHashes,
+      recordedPayload.outputArtifactHashes
+    ) ||
+    orchestrationCompleted.streamId !== claim.streamId ||
+    orchestrationCompleted.context.causationId !== completed.id ||
+    orchestrationPayload.taskId !== binding.handoff.taskId ||
+    orchestrationPayload.attemptId !== binding.handoff.attemptId ||
+    orchestrationPayload.runId !== binding.handoff.runId ||
+    orchestrationPayload.runType !== binding.handoff.runType ||
+    orchestrationPayload.retryGeneration !== binding.handoff.retryGeneration ||
+    orchestrationPayload.specialistRunCompletedEventId !== completed.id ||
+    orchestrationPayload.finalOutputStepEventId !== finalOutput.id ||
+    orchestrationPayload.handoffPreparedEventId !== prepared.id ||
+    orchestrationPayload.handoffRecordedEventId !== recorded.id ||
+    taskStatus.streamId !== `agent_task_${binding.handoff.taskId}` ||
+    taskStatus.context.causationId !== orchestrationCompleted.id ||
+    statusPayload.taskId !== binding.handoff.taskId ||
+    statusPayload.runId !== binding.handoff.runId ||
+    statusPayload.status !== "completed" ||
+    statusPayload.changedBy !== "agent_default"
+  ) {
+    return false;
+  }
+  return events.every((event) =>
+    event.context.correlationId === correlationId
+  );
+}
+
+function completeResidentCheckpointClaimFields(
+  owner: ResidentLoopBoundState,
+  copiedCheckpoint: unknown,
+  snapshot: ResidentAuthoritySnapshot
+): unknown {
+  if (
+    copiedCheckpoint === null ||
+    typeof copiedCheckpoint !== "object" ||
+    Array.isArray(copiedCheckpoint)
+  ) {
+    throw new Error("resident-loop checkpoint input must be plain own-data");
+  }
+  const payload = copiedCheckpoint as Readonly<Record<string, unknown>>;
+  const rawInstruction = payload.residentLoopSuspension;
+  if (
+    rawInstruction === null ||
+    typeof rawInstruction !== "object" ||
+    Array.isArray(rawInstruction)
+  ) {
+    throw new Error("resident-loop checkpoint input lacks its exact strict instruction");
+  }
+  const instruction = rawInstruction as Readonly<Record<string, unknown>>;
+  const observed = snapshot.facts.observedActiveClaim;
+  if (
+    observed === undefined ||
+    observed.workspaceId !== owner.binding.provider.workspaceId ||
+    observed.workspaceId !== snapshot.facts.workspaceId ||
+    observed.residentId !== snapshot.facts.residentId ||
+    observed.supervisorEpoch !== owner.mounted.input.supervisorEpoch
+  ) {
+    throw new Error("resident-loop checkpoint requires one authenticated active claim");
+  }
+  const matchingClaims = snapshot.events.filter(
+    (event): event is ResidentClaimEvent =>
+      event.id === observed.priorClaimEventId &&
+      event.type === "agent.task.orchestration.claimed"
+  );
+  if (matchingClaims.length !== 1 || matchingClaims[0] === undefined) {
+    throw new Error("resident-loop checkpoint active claim is absent or ambiguous");
+  }
+  const claim = matchingClaims[0];
+  const binding = owner.binding.handoff;
+  if (
+    claim.streamId !== orchestrationStreamId(binding.taskId, binding.runType) ||
+    claim.payload.taskId !== binding.taskId ||
+    claim.payload.attemptId !== binding.attemptId ||
+    claim.payload.runType !== binding.runType ||
+    claim.payload.retryGeneration !== binding.retryGeneration ||
+    claim.payload.workerId !== snapshot.facts.residentId ||
+    observed.claimId !== claim.payload.taskId ||
+    observed.attemptId !== claim.payload.attemptId ||
+    observed.priorClaimLeaseId !== claim.payload.idempotencyKey ||
+    observed.readbackEventId !== claim.id ||
+    observed.causation.causationId !== claim.payload.causationEventId ||
+    observed.causation.correlationId !== claim.context.correlationId
+  ) {
+    throw new Error("resident-loop checkpoint active claim does not match its bound tuple");
+  }
+  const generation = claim.payload.leaseClaimGeneration;
+  if (
+    Object.hasOwn(payload, "leaseClaimGeneration") &&
+    payload.leaseClaimGeneration !== generation
+  ) {
+    throw new Error("resident-loop checkpoint outer claim generation does not match");
+  }
+  if (
+    Object.hasOwn(instruction, "orchestrationClaimEventId") &&
+    instruction.orchestrationClaimEventId !== claim.id
+  ) {
+    throw new Error("resident-loop checkpoint claim event ID does not match");
+  }
+  if (
+    Object.hasOwn(instruction, "leaseClaimGeneration") &&
+    instruction.leaseClaimGeneration !== generation
+  ) {
+    throw new Error("resident-loop checkpoint inner claim generation does not match");
+  }
+  const completedInstruction = Object.freeze({
+    ...instruction,
+    ...(Object.hasOwn(instruction, "orchestrationClaimEventId")
+      ? {}
+      : { orchestrationClaimEventId: claim.id }),
+    ...(Object.hasOwn(instruction, "leaseClaimGeneration")
+      ? {}
+      : { leaseClaimGeneration: generation })
+  });
+  return Object.freeze({
+    ...payload,
+    ...(Object.hasOwn(payload, "leaseClaimGeneration")
+      ? {}
+      : { leaseClaimGeneration: generation }),
+    residentLoopSuspension: completedInstruction
+  });
+}
+
+function normalizeResidentCheckpointPayload(
+  owner: ResidentLoopBoundState,
+  value: unknown
+): ResidentCheckpointEvent["payload"] {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error("resident-loop checkpoint input must be plain own-data");
+  }
+  const payload = value as ResidentCheckpointEvent["payload"];
+  const instruction = payload.residentLoopSuspension;
+  if (
+    payload.checkpointKind !== "resident-loop-suspension" ||
+    instruction === undefined ||
+    payload.taskId !== instruction.taskId ||
+    payload.attemptId !== instruction.attemptId ||
+    payload.runId !== instruction.runId ||
+    payload.leaseClaimGeneration !== instruction.leaseClaimGeneration ||
+    payload.safeNextActions.length === 0 ||
+    !payload.safeNextActions.includes(instruction.nextSafeAction)
+  ) {
+    throw new Error("resident-loop checkpoint input lacks its exact strict instruction");
+  }
+  const candidate = {
+    id: "evt_resident_checkpoint_validation",
+    type: "agent.task.orchestration.checkpointed",
+    version: 1,
+    streamId: orchestrationStreamId(payload.taskId, payload.runType),
+    sequence: 1,
+    context: {
+      actor: owner.mounted.input.actor,
+      occurredAt: payload.checkpointedAt,
+      causationId: instruction.orchestrationClaimEventId,
+      correlationId: `corr_${payload.taskId}`,
+      coreVersion: "0.1.0",
+      packVersions: { core: "0.1.0", agent: "0.1.0" }
+    },
+    payload
+  };
+  const parsed = validateKnowledgeEvent(candidate);
+  if (!parsed.success || parsed.data.type !== "agent.task.orchestration.checkpointed") {
+    throw new Error("resident-loop checkpoint input is not canonical");
+  }
+  return payload;
+}
+
+function assertResidentCheckpointBinding(
+  owner: ResidentLoopBoundState,
+  payload: ResidentCheckpointEvent["payload"],
+  snapshot: ResidentAuthoritySnapshot
+): void {
+  const instruction = payload.residentLoopSuspension;
+  if (
+    instruction === undefined ||
+    payload.checkpointKind !== "resident-loop-suspension" ||
+    payload.taskId !== owner.binding.handoff.taskId ||
+    payload.attemptId !== owner.binding.handoff.attemptId ||
+    payload.runId !== owner.binding.handoff.runId ||
+    payload.runType !== owner.binding.handoff.runType ||
+    payload.retryGeneration !== owner.binding.handoff.retryGeneration ||
+    instruction.taskId !== owner.binding.handoff.taskId ||
+    instruction.attemptId !== owner.binding.handoff.attemptId ||
+    instruction.runId !== owner.binding.handoff.runId ||
+    snapshot.facts.workspaceId !== owner.binding.provider.workspaceId
+  ) {
+    throw new Error("resident-loop checkpoint does not match mounted task authority");
+  }
+  const claim = snapshot.events.find((event): event is KnowledgeEventOf<"agent.task.orchestration.claimed"> =>
+    event.id === instruction.orchestrationClaimEventId &&
+    event.type === "agent.task.orchestration.claimed"
+  );
+  if (
+    claim === undefined ||
+    claim.payload.taskId !== payload.taskId ||
+    claim.payload.attemptId !== payload.attemptId ||
+    claim.payload.runType !== payload.runType ||
+    claim.payload.retryGeneration !== payload.retryGeneration ||
+    claim.payload.leaseClaimGeneration !== payload.leaseClaimGeneration
+  ) {
+    throw new Error("resident-loop checkpoint does not name its exact durable claim");
+  }
+}
+
+async function readOrAppendResidentCheckpoint(
+  owner: ResidentLoopBoundState,
+  payload: ResidentCheckpointEvent["payload"]
+): Promise<ResidentCheckpointEvent> {
+  const instruction = payload.residentLoopSuspension!;
+  const ledger = owner.mounted.ledger;
+  const streamId = orchestrationStreamId(payload.taskId, payload.runType);
+  const [stream, allEvents] = await Promise.all([ledger.readStream(streamId), ledger.readAll()]);
+  const matching = stream.filter((event): event is ResidentCheckpointEvent =>
+    event.type === "agent.task.orchestration.checkpointed" &&
+    event.payload.checkpointKind === "resident-loop-suspension" &&
+    event.payload.resumeIdempotencyKey === payload.resumeIdempotencyKey
+  );
+  if (matching.length > 1) throw new Error("resident-loop checkpoint semantic key is duplicated");
+  if (matching[0] !== undefined) {
+    if (
+      canonicalResidentJson(matching[0].payload) !== canonicalResidentJson(payload) ||
+      matching[0].context.causationId !== instruction.orchestrationClaimEventId
+    ) {
+      throw new Error("resident-loop checkpoint semantic key binds different canonical bytes");
+    }
+    return matching[0];
+  }
+  const appendable: AppendableKnowledgeEvent<"agent.task.orchestration.checkpointed"> = {
+    type: "agent.task.orchestration.checkpointed",
+    version: 1,
+    streamId,
+    context: {
+      actor: owner.mounted.input.actor,
+      occurredAt: payload.checkpointedAt,
+      causationId: instruction.orchestrationClaimEventId,
+      correlationId: `corr_${payload.taskId}`,
+      coreVersion: "0.1.0",
+      packVersions: { core: "0.1.0", agent: "0.1.0" }
+    },
+    payload
+  };
+  const appended = await ledger.append(appendable, {
+    expectedNextSequence: stream.length + 1,
+    expectedGlobalEventCount: allEvents.length
+  });
+  const reread = (await ledger.readStream(streamId)).filter((event): event is ResidentCheckpointEvent =>
+    event.id === appended.id && event.type === "agent.task.orchestration.checkpointed"
+  );
+  if (reread.length !== 1 || canonicalResidentJson(reread[0]!.payload) !== canonicalResidentJson(payload)) {
+    throw new Error("resident-loop checkpoint lacks exact durable reread");
+  }
+  return reread[0]!;
+}
+
+function matchingResidentSuspensions(
+  stream: readonly KnowledgeEvent[],
+  checkpoint: ResidentCheckpointEvent
+): ResidentSuspensionEvent[] {
+  const instruction = checkpoint.payload.residentLoopSuspension!;
+  return stream.filter((event): event is ResidentSuspensionEvent =>
+    event.type === "agent.resident-loop.suspended.v2" &&
+    event.context.causationId === checkpoint.id &&
+    event.payload.checkpoint.orchestrationCheckpointEventId === checkpoint.id &&
+    event.payload.suspensionCategory === instruction.suspensionCategory
+  );
+}
+
+function matchingResidentResults(
+  stream: readonly KnowledgeEvent[],
+  suspension: ResidentSuspensionEvent
+): ResidentResultEvent[] {
+  return stream.filter((event): event is ResidentResultEvent =>
+    event.type === "agent.resident-loop.result.recorded.v2" &&
+    event.context.causationId === suspension.id &&
+    event.payload.outcome === "resumable" &&
+    event.payload.category === suspension.payload.suspensionCategory &&
+    event.payload.resumeAnchor?.checkpointEventId === suspension.id
+  );
+}
+
+async function readOrAppendResidentRelease(
+  owner: ResidentLoopBoundState,
+  checkpoint: ResidentCheckpointEvent,
+  suspension: ResidentSuspensionEvent,
+  result: ResidentResultEvent
+): Promise<ResidentReleaseEvent> {
+  const ledger = owner.mounted.ledger;
+  const payload = checkpoint.payload;
+  const instruction = payload.residentLoopSuspension!;
+  const streamId = checkpoint.streamId;
+  const [stream, allEvents] = await Promise.all([ledger.readStream(streamId), ledger.readAll()]);
+  const releases = stream.filter((event): event is ResidentReleaseEvent =>
+    event.type === "agent.task.orchestration.released" &&
+    event.payload.releaseReason === "resident-loop-suspended" &&
+    event.payload.checkpointEventId === checkpoint.id
+  );
+  if (releases.length > 1) throw new Error("resident-loop checkpoint release is duplicated");
+  if (releases[0] !== undefined) {
+    if (
+      releases[0].payload.claimEventId !== instruction.orchestrationClaimEventId ||
+      releases[0].context.causationId !== result.id
+    ) {
+      throw new Error("resident-loop checkpoint release binds different canonical bytes");
+    }
+    return releases[0];
+  }
+  const releasedAt = normalizedWakeInstant(
+    owner.mounted.input.now(),
+    "resident-loop suspension release"
+  ).iso;
+  const appendable: AppendableKnowledgeEvent<"agent.task.orchestration.released"> = {
+    type: "agent.task.orchestration.released",
+    version: 1,
+    streamId,
+    context: {
+      actor: owner.mounted.input.actor,
+      occurredAt: releasedAt,
+      causationId: result.id,
+      correlationId: checkpoint.context.correlationId,
+      coreVersion: "0.1.0",
+      packVersions: { core: "0.1.0", agent: "0.1.0" }
+    },
+    payload: {
+      taskId: payload.taskId,
+      runType: payload.runType,
+      attemptId: payload.attemptId,
+      retryGeneration: payload.retryGeneration,
+      leaseClaimGeneration: payload.leaseClaimGeneration,
+      releasedBy: owner.mounted.input.actor.id,
+      releasedAt,
+      releaseReason: "resident-loop-suspended",
+      claimEventId: instruction.orchestrationClaimEventId,
+      checkpointEventId: checkpoint.id,
+      safeNextActions: [...payload.safeNextActions]
+    }
+  };
+  const appended = await ledger.append(appendable, {
+    expectedNextSequence: stream.length + 1,
+    expectedGlobalEventCount: allEvents.length
+  });
+  const reread = (await ledger.readStream(streamId)).find((event): event is ResidentReleaseEvent =>
+    event.id === appended.id && event.type === "agent.task.orchestration.released"
+  );
+  if (
+    reread === undefined ||
+    reread.payload.checkpointEventId !== checkpoint.id ||
+    reread.context.causationId !== result.id
+  ) {
+    throw new Error("resident-loop release lacks exact durable reread");
+  }
+  void suspension;
+  return reread;
+}
+
+function issueReleasedCheckpointReadback(
+  checkpoint: ResidentCheckpointEvent,
+  suspension: ResidentSuspensionEvent,
+  result: ResidentResultEvent,
+  release: ResidentReleaseEvent
+): OpaqueReleasedCheckpointReadback {
+  const readback = Object.freeze({
+    schemaVersion: "resident-loop-released-checkpoint-readback.v1" as const,
+    checkpointEventId: checkpoint.id,
+    suspensionEventId: suspension.id,
+    resultEventId: result.id,
+    releaseEventId: release.id
+  });
+  issuedReleasedCheckpointReadbacks.add(readback);
+  return readback;
+}
+
+async function readResidentCheckpointByLocator(
+  owner: ResidentLoopBoundState,
+  locator: ExactResidentLoopSuspensionLocator
+): Promise<ResidentCheckpointEvent> {
+  const stream = await owner.mounted.ledger.readStream(orchestrationStreamId(
+    locator.taskId,
+    owner.binding.handoff.runType
+  ));
+  const matches = stream.filter((event): event is ResidentCheckpointEvent =>
+    event.type === "agent.task.orchestration.checkpointed" &&
+    event.payload.checkpointKind === "resident-loop-suspension" &&
+    event.payload.resumeIdempotencyKey === locator.checkpointSemanticKey
+  );
+  if (matches.length !== 1 || matches[0] === undefined) {
+    throw new Error("resident-loop checkpoint locator is absent or ambiguous");
+  }
+  return matches[0];
+}
+
+function normalizeResidentSuspensionLocator(value: unknown): ExactResidentLoopSuspensionLocator {
+  const locator = exactResidentRecord(value, [
+    "taskId",
+    "attemptId",
+    "runId",
+    "checkpointSemanticKey"
+  ], "resident-loop suspension locator");
+  return Object.freeze({
+    taskId: requiredText(locator.taskId, "resident suspension task ID"),
+    attemptId: requiredText(locator.attemptId, "resident suspension attempt ID"),
+    runId: requiredText(locator.runId, "resident suspension run ID"),
+    checkpointSemanticKey: requiredText(
+      locator.checkpointSemanticKey,
+      "resident suspension checkpoint semantic key"
+    )
+  });
+}
+
+function orchestrationStreamId(taskId: string, runType: string): string {
+  return `agent_task_orchestration_${taskId}_${runType}`;
+}
+
+function exactResidentRecord(
+  value: unknown,
+  expectedKeys: readonly string[],
+  label: string
+): Record<string, unknown> {
+  if (
+    value === null ||
+    typeof value !== "object" ||
+    Array.isArray(value) ||
+    isProxy(value) ||
+    (Object.getPrototypeOf(value) !== Object.prototype && Object.getPrototypeOf(value) !== null) ||
+    Object.getOwnPropertySymbols(value).length > 0
+  ) {
+    throw new Error(`${label} must be a plain own-data object`);
+  }
+  const descriptors = Object.getOwnPropertyDescriptors(value);
+  const keys = Object.keys(descriptors);
+  if (
+    keys.length !== expectedKeys.length ||
+    expectedKeys.some((key) => !Object.prototype.hasOwnProperty.call(descriptors, key)) ||
+    Object.values(descriptors).some((descriptor) =>
+      !descriptor.enumerable || !("value" in descriptor) || descriptor.get !== undefined || descriptor.set !== undefined
+    )
+  ) {
+    throw new Error(`${label} must contain exactly its frozen fields`);
+  }
+  return value as Record<string, unknown>;
+}
+
+function copyResidentOwnData(value: unknown): unknown {
+  if (
+    value === null ||
+    typeof value === "string" ||
+    typeof value === "boolean" ||
+    typeof value === "undefined"
+  ) {
+    return value;
+  }
+  if (typeof value === "number") {
+    if (!Number.isFinite(value)) throw new Error("resident-loop input numbers must be finite");
+    return value;
+  }
+  if (typeof value !== "object" || isProxy(value)) {
+    throw new Error("resident-loop input must contain only plain own-data");
+  }
+  if (Array.isArray(value)) {
+    if (Object.getPrototypeOf(value) !== Array.prototype || Reflect.ownKeys(value).length !== value.length + 1) {
+      throw new Error("resident-loop input arrays must be dense and ordinary");
+    }
+    return Object.freeze(value.map((entry) => copyResidentOwnData(entry)));
+  }
+  if (
+    Object.getPrototypeOf(value) !== Object.prototype &&
+    Object.getPrototypeOf(value) !== null
+  ) {
+    throw new Error("resident-loop input objects must use a plain prototype");
+  }
+  const copy: Record<string, unknown> = {};
+  for (const key of Reflect.ownKeys(value)) {
+    if (typeof key !== "string") throw new Error("resident-loop input cannot contain symbol keys");
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    if (
+      descriptor === undefined ||
+      !descriptor.enumerable ||
+      !("value" in descriptor) ||
+      descriptor.get !== undefined ||
+      descriptor.set !== undefined
+    ) {
+      throw new Error("resident-loop input cannot contain accessors or hidden fields");
+    }
+    copy[key] = copyResidentOwnData(descriptor.value);
+  }
+  return Object.freeze(copy);
+}
+
+function canonicalResidentJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(canonicalResidentJson).join(",")}]`;
+  if (value !== null && typeof value === "object") {
+    return `{${Object.keys(value).sort().map((key) =>
+      `${JSON.stringify(key)}:${canonicalResidentJson(Reflect.get(value, key))}`
+    ).join(",")}}`;
+  }
+  return JSON.stringify(value) ?? "null";
+}
+
+function residentCanonicalHash(value: unknown): `sha256:${string}` {
+  return `sha256:${createHash("sha256")
+    .update(canonicalResidentJson(value))
+    .digest("hex")}`;
 }
 
 function lifecycleEvent(
@@ -1103,6 +3477,10 @@ function safeDiagnosticId(value: string): string {
 }
 
 function hasActiveResidentLock(events: readonly KnowledgeEvent[]): boolean {
+  return activeResidentLockIds(events).length > 0;
+}
+
+function activeResidentLockIds(events: readonly KnowledgeEvent[]): readonly string[] {
   const activeLocks = new Set<string>();
   for (const event of events) {
     if (event.type === "agent.lock.activated" && event.payload.residentAgentId === "agent_default") {
@@ -1110,5 +3488,5 @@ function hasActiveResidentLock(events: readonly KnowledgeEvent[]): boolean {
     }
     if (event.type === "agent.lock.cleared") activeLocks.delete(event.payload.lockId);
   }
-  return activeLocks.size > 0;
+  return Object.freeze([...activeLocks].sort());
 }
