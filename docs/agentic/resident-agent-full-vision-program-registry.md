@@ -15440,6 +15440,46 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   production-route, preview-branch, and unrelated actions remain
   unauthorized.
 
+## RV-1-E-1322 — Task136 strict-record candidate rebound without release
+
+- Recorded at: 2026-07-31T07:23:12Z
+- This event creates a direct clean **strict-record candidate** only from
+  exact E-1321 assurance-repair integration event
+  `0942f6d3fb24e139567b410c59bd6263eda8e940`. It supersedes rejected
+  non-release candidate `b355f3582df13159d56337f7ce466b244cd4d983`
+  without amending, deleting, reconstructing, or reusing that commit.
+- The existing E-1317 parser heading
+  `Task136 dispatch release v4: Task136` still occurs exactly once. No second
+  JSON object is added. Its unchanged canonical JSON SHA-256 is
+  `e3af726ee83ac08c5426d76b6901e31d9e674084828c9d89b6a3e5f9aea9083f`;
+  it retains exact reviewed product candidate
+  `21ac850894ff3e040069b4307c95e20148db96fc`, exact product integration
+  `4feb71d1042d8a0a537731ec9c2f7b3902dac0b6`, **ten** ordered
+  prerequisites, and **33** ordered owned path/blob entries.
+- The rebound candidate includes exact approved assurance integration
+  `5804d1a9f989c765848ad9fd59d6891ee9272381`, approval-first parent
+  `8ceac45d71a3b508afde28b1b7ab5ba7a6ead401`, candidate-second parent
+  `7b858513a2d2b489b7fe42dac5c1a4c3a753d21d`, and exact integrated blobs:
+  checker `2251dedcc0c4e10ae636f60be34d6b30e3bc9b4a`; test
+  `def2bacec8546622f99c6a3265d456b6528a176e`.
+- This event changes only the append-only registry. Product, package-test,
+  assurance, contract, mission, design, plan, claim, release graph, raw
+  command, raw record, Task138, and exact 33-path Task136 bytes remain frozen.
+- From the clean commit containing this event, Task18 Step 7 must freshly
+  reproduce exact contract markers **29 / 20 / 29 / 15**; repository prefix
+  and release closure at **29 records / 29 commands**; focused pre-calibration
+  V4 **20 = 17 passed + three failed** with only the exact `29 !== 28`
+  titles; typecheck; factory readiness; mission **20/20**; scope; ancestry;
+  freezes; strict Git integrity; and clean state. Any mismatch rejects this
+  candidate and requires another forward repair.
+- Task16 and Task136 product remain `integrated`; strict product frontier
+  remains **28 of 29**. This is not record-29 release, publication,
+  Wave 3 start, production readiness, or product release. Task19 remains
+  stopped until a separate released event follows a fully passing clean
+  committed-byte proof. `neo`, provider, credential, external-system,
+  pull-request, production-route, preview-branch, and unrelated actions
+  remain unauthorized.
+
 ## Task136 dispatch release v4: Task127
 
 ```json
