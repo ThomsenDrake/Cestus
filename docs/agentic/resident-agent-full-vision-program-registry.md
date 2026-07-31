@@ -53024,3 +53024,89 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   release. `neo`, provider, credential, external-system, pull-request,
   production-route, preview-branch, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-1298 — Three-source mounted-completion GREEN authorized; W diagnostic rejected
+
+- Recorded at: 2026-07-31T00:03:18Z
+- E-1297 is forward-merged and pushed into Task136 at exact head
+  `90526e9c3fcb8f9931f65d688d59e8fb73f103b9`. The integrated tests remain
+  exact blobs
+  `2fab1ab9f1a01b449bfd2b07d7b01bafdf840ada` and
+  `7edeec96b9d525c452f3d972354f61d6ac1b03df`. The sole working-tree
+  diagnostic remains mounted-W blob
+  `2aa4020ec747f5906b447c30df0f18e1efea9610`; it is unstaged,
+  uncommitted, and not a candidate.
+- Completely fresh independent read-only scope reviewer
+  `/root/task17_e1297_green_scope_review` rejects E-1294's one-source scope:
+  the approved real-mounted RED progressively proves exact C136-P
+  admission/catalog incompatibility and mutable T120 durable outputs after
+  W advances. Different independent read-only W reviewer
+  `/root/task17_w_diagnostic_code_audit` rejects exact held W blob
+  `2aa4020ec747f5906b447c30df0f18e1efea9610`: it invents an incomplete
+  invocation-hash preimage, admits jointly altered result causation, and
+  fails to account for extra same-bound domain events around an otherwise
+  valid catalog chain.
+- Supersede only E-1294's one-source ceiling. Authorize exactly three
+  existing Task136 sources, all already inside the exact 33-path ceiling:
+  `packages/local-runtime/src/mounted-wake-lifecycle-store.ts`, starting
+  committed blob `2d86fdcd570efbdee499d1ec807d2db1066f48bc`;
+  `packages/agent/src/resident-plan-candidate-provider.ts`, starting blob
+  `5bc39430d122bd6fbeedef788ffec6dc35638f0f`; and
+  `packages/agent/src/plan-observation-contracts.ts`, starting blob
+  `32754d92052c8f5d4cd98092a932bbb596a48e2f`.
+- In mounted W, retain the narrow authenticated historical claim anchor,
+  exact provider/H identity agreement, and exact eight-event structural
+  completed-H envelope without duplicating artifact, manifest, cursor, or
+  consuming-witness validation. Repair the held diagnostic forward:
+  (1) treat the receipt's typed SHA-256 invocation hash as an opaque
+  dispatcher attestation and bind that exact field into the independently
+  recomputed receipt-envelope hash; W cannot reconstruct the non-durable
+  `currentPreview`;
+  (2) account for the exact catalog-10 request/claim/assertion/receipt/
+  completion chain as one bounded causal unit and reject every unaccounted
+  same-bound domain event or duplicate receipt/completion; and
+  (3) admit only exact same-bound terminal results whose immediately prior
+  resident-stream event is the named final observation, with exact
+  causation, correlation, five-field identity, stream, readback, and
+  authority agreement. Preserve all unrelated currentness rejection.
+- In C136-P, use field-local validation only. Parse exact
+  `admission_generation_<N>` from provider posture and compare it with exact
+  H `admission:<N>`; retain independent mount-instance validation and never
+  equate mount instance with mount generation. Admit only the exact approved
+  catalog pair `legacy.staging.execute` / `0.1.0` in its tool fields. Do not
+  weaken or globally exempt DNS-, URL-, IP-, command-, secret-, or unsafe-text
+  classification.
+- In T120, preserve canonical parsing, sequence validation, stable-key
+  idempotency, concurrency, and durable reread before issuance. Return
+  deeply frozen plain own-data copies at every V2 output boundary:
+  idempotent append, newly appended reread, exact-ID read, and every event in
+  replay plus its category arrays. Fix the producer; keep R's frozen-output
+  trust check exact.
+- Freeze `packages/agent/src/bounded-agent-loop.ts` at blob
+  `215b324629534236321cc56fa9988d38096fb0c8`, every test at E-1297, every
+  other product source, design, plan, claim, contract, mission, assurance,
+  dependency, mounted storage, composition, portable H, gateway, dispatcher,
+  adapter, route, provider, activation, credential, preview branch, and
+  unrelated byte.
+- Required clean GREEN under `TMPDIR=/dev/shm`, one worker, and the
+  120-second focused timeout is focused **9/9**, producer **144/144**,
+  factory boundary **10/10**, wake boundary **140/140**, Task136 card
+  **383/383**, exact 37-file cross-card **1,042/1,042**, and Task138
+  **355/355**, plus passing typecheck, factory readiness, mission and V4
+  **20/20**, markers **29 / 20 / 29 / 15**, exact repository first-stop,
+  three-source scope, every freeze, ancestry, dependencies, 33-path hash,
+  diff hygiene, strict Git integrity, and clean committed state.
+- Commit only the three authorized sources with subject
+  `fix(agent): preserve exact mounted completion boundaries`. Obtain a
+  completely fresh independent read-only source review of exact immutable
+  bytes, record approval append-only, integrate approval-first/
+  candidate-second on the program branch, rerun the integration packet,
+  append integration, and forward-merge into Task136 before Task17 candidate
+  readmission. Changed bytes invalidate review.
+- Task16 remains `integrated`; Task136 remains `implementing`; strict product
+  frontier remains **28 of 29**. This is corrected product authority, not
+  source approval or integration, Task136 candidacy, strict record 29,
+  publication, Wave 3 start, repository closure, production readiness, or
+  release. `neo`, provider, credential, external-system, pull-request,
+  production-route, preview-branch, and unrelated actions remain
+  unauthorized.
