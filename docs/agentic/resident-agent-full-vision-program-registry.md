@@ -53978,3 +53978,47 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   start, repository closure, production readiness, or release. `neo`,
   provider, credential, external-system, pull-request, production-route,
   preview-branch, and unrelated actions remain unauthorized.
+
+## RV-1-E-1312 — Exact four-source mounted-completion GREEN integrated
+
+- Recorded at: 2026-07-31T03:03:17Z
+- History-preserving program integration merge
+  `0df7876e058ae4e08dda689d95553cdc0432840b`, tree
+  `126751cbec95779ffc1bf08f5ed30e764490b134`, has exact approval-first
+  parent `d268090028e215d97d92a711614699401c908e00` and exact approved
+  candidate-second parent
+  `320c801c16e487a4b0487fef7550c5fb702a2588`.
+- Relative to approval only the four approved sources advance to exact blobs
+  T120 `60e99de6b7fb147274f4f0989f288735ee88e81e`, C136-P
+  `4ede1f22a599e66e1316ceadac2ebd133938f7b8`, W
+  `a79ccac55f4b4b6693bc18c5c88eda54d080a97b`, and H
+  `8d4a1993732bbe7cf3057ef092d734c3932f3030`. Relative to the candidate
+  only the 65-line append-only E-1311 approval advances. Parent order,
+  candidate-byte identity, every test and other-source freeze, unmerged
+  index, and diff hygiene pass.
+- Fresh integration-tree execution under `TMPDIR=/dev/shm`, one worker, no
+  file parallelism, and the 120-second timeout passes H **37/37**, Task138
+  **355/355**, provider **25/25**, Task16 focused **9/9**, producer
+  **144/144**, factory boundary **10/10**, wake boundary **140/140**,
+  Task136 card **383/383**, and exact 37-file cross-card
+  **1,042/1,042** with zero test failure.
+- Typecheck and factory readiness pass. Mission and V4 each pass **20/20**;
+  markers remain **29 / 20 / 29 / 15**. Repository mode exits one and stops
+  first only at exact
+  `blob mismatch: Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`.
+  Exact four-source scope, every freeze, required Task136, Task138-H, and V4
+  ancestry, local non-symlink dependencies, TypeScript **5.9.3**, Vitest
+  **4.1.9**, canonical `33 = 15 / 17 / 1` path hash
+  `4cca816c5004bf922d47a44bc8e9216a7f4d1e00a030f20b34d59fb0cd1e442e`,
+  strict Git integrity, and clean detached integration state pass.
+- Advance exact E-1307 source candidate `approved -> integrated`. Authorize
+  only this record's forward history-preserving merge into Task136. After
+  that merge, Task17 may perform exact Task136 candidate admission and fresh
+  dual review strictly from the committed plan; no further product or test
+  edit is authorized.
+- Task16 remains `integrated`; Task136 remains `implementing`; strict product
+  frontier remains **28 of 29**. This is source integration and Task17
+  admission authority, not Task136 candidacy, strict record 29, publication,
+  Wave 3 start, repository closure, production readiness, or release. `neo`,
+  provider, credential, external-system, pull-request, production-route,
+  preview-branch, and unrelated actions remain unauthorized.
