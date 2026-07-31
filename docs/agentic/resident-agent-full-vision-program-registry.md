@@ -54261,3 +54261,88 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   assurance, or other repository edit is authorized during review. `neo`,
   provider, credential, external-system, pull-request, production-route,
   preview-branch, and unrelated actions remain unauthorized.
+
+## RV-1-E-1315 — Repaired exact Task136 33-path candidate independently approved
+
+- Recorded at: 2026-07-31T04:41:59Z
+- Completely fresh independent read-only architecture reviewer
+  `/root/task17_e1314_architecture_review` and different completely fresh
+  independent read-only executability reviewer
+  `/root/task17_e1314_executability_review` each return **APPROVED** with no
+  P0-P3 finding under exact true-EOF authority E-1314, program commit
+  `e29360dde78a68c299ddb2492e4a6b8a08582bed`. Both bind exact immutable
+  Task136 candidate `21ac850894ff3e040069b4307c95e20148db96fc`,
+  tree `e9a7251fae72fc8b169b38d4eb42853d2bbfce26`, and parents
+  `320c801c16e487a4b0487fef7550c5fb702a2588` and
+  `87b8931ec4eacaf3b3621a9a08e847da61b37628`. Neither reviewer was exposed
+  a stable UUID-form alias; preserve their exact canonical task identities
+  above and invent no identifier. Changed candidate bytes invalidate both
+  approvals.
+- Architecture independently confirms segmented replay, exact mounted
+  identity/currentness, claim-before-effect and at-most-once
+  permit/receipt/effect semantics, one composition owner and consuming bind,
+  private lexical issuer/registrar nonescape, generic-runtime ineligibility,
+  exact stop ownership/idempotency, full-H frozen readback, unchanged adapter
+  ABI, and no fallback, activation, route, provider, credential, global
+  authority, or external behavior addition.
+- Executability independently reproduces immutable historical Task9 RED
+  **255 = 228 passed + 27 causal failures** and historical Task12 binding RED
+  **79 = 76 passed + three causal failures**. It verifies all three exact
+  historical/current Task12 blob pairs from E-1314 and their preserved
+  approved/integrated forward lineage. E-1314's provenance correction is
+  therefore executable and no obsolete historical/current byte-equality
+  assertion is used.
+- Both reviews independently pass focused **9/9**, producer **144/144**,
+  factory boundary **10/10**, wake boundary **140/140**, H **37/37**,
+  provider **25/25**, Task138 **355/355**, Task136 card **383/383**, exact
+  37-file cross-card **1,042/1,042**, and all Task17 producer commands under
+  `TMPDIR=/dev/shm`, one worker, no file parallelism, and the 120-second
+  timeout.
+- Typecheck and factory readiness pass. Mission and V4 each pass **20/20**;
+  mission fingerprint remains
+  `sha256:799af83764d6c098f3b1a97d6d30fc3b9b13f32f7c57204d92383fab371179ac`,
+  immutable envelope remains
+  `sha256:82e666a86d2b3ccd0ceafd634975d0a7459d3fe7600d27cc8345dd0f531fbc1e`,
+  and markers remain **29 / 20 / 29 / 15**. Repository mode exits one and
+  stops first only at exact
+  `blob mismatch: Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`,
+  with no repository-prefix, closure, record-29, repository, or
+  product-release success marker.
+- Exact 33-owned-path, eleven-inherited-path, complete 44-path, binary packet,
+  and fifteen-source-union SHA-256 values remain respectively
+  `4cca816c5004bf922d47a44bc8e9216a7f4d1e00a030f20b34d59fb0cd1e442e`,
+  `1e15f9c9e5f637799567cc4e76fa3784a8dec16abde4accc92da824196a2ac88`,
+  `362485fbd2ae160db0e6d2f5d8e304afaa589dde587488f8d5b19da125f9f55e`,
+  `db26319a38b36f701580a1905c38475d8b8912b8d687cba4fb2d7ad3e5625278`,
+  and `aed1f0be55fe43594fc273c598e93c89eb961e0de3fcb6d464620d86bb16f80b`.
+  The binary packet remains **3,917,125 bytes**. All ten prerequisites, all
+  57 descendant repair/integration commits, Task138 blobs, exact source/test
+  freezes, dependencies, diff hygiene, strict Git integrity, and final clean
+  detached state pass.
+- Fresh full-differential rebinding preserves authority
+  **3,231 = 3,181 passed + 45 failed + 5 pending** and candidate
+  **3,372 = 3,322 passed + 45 failed + 5 pending**. Exact E-1007 comparison
+  passes `removed=8 mapped=14 addedPassed=135 retainedLaterRed=0
+  addedFiles=1`. Candidate artifact SHA-256 values remain Vitest JSON
+  `a1734b77a299e22a0b2cc11d7719b1219598b0b13e6f7732c022b7066a324bec`,
+  npm-test log
+  `8296e3deca8d4a84f0d4f7ee132e96902f4581bc36a661a3d570b9ede68afa39`,
+  verify log
+  `af991c2b29226db0df24d79be315b1e7159b68c53641b9854c5e2e96004a71a4`,
+  and comparator
+  `0a1b47f8b1d85ce5819bddc8a1051a27d58fd02abd4df187f44a10d38b19d0c6`.
+  Default verification retains exactly 45 semantic failures plus ten
+  timeout-only occurrences, all ten independently passing in serialized
+  120-second execution.
+- Advance exact Task136 `reviewing -> approved`. Authorize only the
+  history-preserving Task18 approval-first/candidate-second program merge of
+  exact `21ac8508`, followed by exact integrated-tree gates, immutable
+  candidate/integration equality, fresh full differential, and a separate
+  append-only integration event. Do not stage strict record 29 before that
+  integration event and every committed Task18 pre-record gate pass.
+- Task16 remains `integrated`; Task136 is `approved`; strict product frontier
+  remains **28 of 29**. This is candidate approval, not product integration,
+  strict record 29, repository closure, publication, Wave 3 start,
+  production readiness, or product release. `neo`, provider, credential,
+  external-system, pull-request, production-route, preview-branch, and
+  unrelated actions remain unauthorized.
