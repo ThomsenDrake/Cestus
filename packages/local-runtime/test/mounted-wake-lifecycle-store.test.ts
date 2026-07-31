@@ -510,4 +510,20 @@ describe("mounted wake lifecycle store", () => {
       causation: { causationId: "evt_wrong_type", correlationId: "corr_wrong_type" }
     })).rejects.toThrow(/wake lifecycle/i);
   });
+
+  it("keeps the exact authenticated store unavailable after identity invalidation without append", async () => {
+    const { ledger, store } = await fixture();
+    const durableBefore = await ledger.readAll();
+    store.invalidate();
+
+    await expect(store.readMountedFacts()).rejects.toThrow(/invalid|current|authority/i);
+    await expect(store.appendAndReadBack({
+      type: "agent.wake.supervisor.lease.claimed.v1",
+      causation: {
+        causationId: durableBefore[0]!.id,
+        correlationId: "corr_invalidated_mounted_store"
+      }
+    })).rejects.toThrow(/invalid|current|authority/i);
+    expect(await ledger.readAll()).toEqual(durableBefore);
+  });
 });

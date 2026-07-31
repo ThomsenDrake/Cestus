@@ -1,4 +1,10 @@
-import type { ActorRef, AppendableKnowledgeEvent, KnowledgeEvent, KnowledgeEventOf } from "../../ontology/src/contracts.js";
+import {
+  validateKnowledgeEvent,
+  type ActorRef,
+  type AppendableKnowledgeEvent,
+  type KnowledgeEvent,
+  type KnowledgeEventOf
+} from "../../ontology/src/contracts.js";
 import { isConcurrencyConflict, type EventLedger } from "../../ontology/src/event-ledger.js";
 import {
   buildTaskAttemptId,
@@ -596,6 +602,11 @@ async function handleCancellationRaces(
     if (active === undefined || isClaimReleased(attempt, active)) {
       continue;
     }
+    const residentSuspensionInterlock = residentSuspensionInterlockFor(attempt, active);
+    if (residentSuspensionInterlock !== undefined) {
+      summary.skipped.push(residentSuspensionInterlock);
+      return true;
+    }
 
     const latestCheckpoint = attempt.checkpoints.at(-1);
     if (
@@ -668,6 +679,11 @@ async function handleStaleClaims(
     if (active === undefined || isClaimReleased(attempt, active) || !claimExpired(active.event, tickedAt)) {
       continue;
     }
+    const residentSuspensionInterlock = residentSuspensionInterlockFor(attempt, active);
+    if (residentSuspensionInterlock !== undefined) {
+      summary.skipped.push(residentSuspensionInterlock);
+      return true;
+    }
     if (staleClaimSupersededByDurableState(attempt, active, snapshot.tasks.get(attempt.taskId))) {
       summary.skipped.push({ taskId: attempt.taskId, runType: attempt.runType, reason: "not-claimable" });
       continue;
@@ -720,6 +736,11 @@ async function handleActiveClaims(
     const active = activeClaimForAttempt(attempt, tickedAt);
     if (active === undefined) {
       continue;
+    }
+    const residentSuspensionInterlock = residentSuspensionInterlockFor(attempt, active);
+    if (residentSuspensionInterlock !== undefined) {
+      summary.skipped.push(residentSuspensionInterlock);
+      return true;
     }
     const task = snapshot.tasks.get(attempt.taskId);
     if (task?.latestStatus?.event.payload.status === "canceled") {
@@ -921,6 +942,18 @@ async function handleSuspendedApprovalWaits(
     if (checkpointClaim === undefined) {
       continue;
     }
+    const task = snapshot.tasks.get(attempt.taskId);
+    if (task?.latestStatus?.event.payload.status === "canceled") {
+      continue;
+    }
+    const owningClaim = activeClaimForAttempt(attempt, tickedAt, { includeExpired: true });
+    if (owningClaim !== undefined) {
+      const residentSuspensionInterlock = residentSuspensionInterlockFor(attempt, owningClaim);
+      if (residentSuspensionInterlock !== undefined) {
+        summary.skipped.push(residentSuspensionInterlock);
+        return true;
+      }
+    }
     const checkpointRelease = attempt.releases.findLast((release) =>
       release.event.payload.checkpointEventId === checkpoint.event.id
     );
@@ -945,10 +978,6 @@ async function handleSuspendedApprovalWaits(
     if (!checkpointMatchesProviderApprovalPolicy(checkpoint.event, providerPolicy, selected)) {
       summary.approvalWaiting.push(approvalSummary(checkpointClaim.event, providerPolicy));
       return true;
-    }
-    const task = snapshot.tasks.get(attempt.taskId);
-    if (task?.latestStatus?.event.payload.status === "canceled") {
-      continue;
     }
     const inspection = await approval.inspect({
       ledger: input.ledger,
@@ -1826,6 +1855,53 @@ function isClaimReleased(attempt: AttemptRecord, claim: OrderedEvent<ClaimEvent>
 
 function claimExpired(claim: ClaimEvent, tickedAt: string): boolean {
   return Date.parse(claim.payload.leaseExpiresAt) <= Date.parse(tickedAt);
+}
+
+function residentSuspensionInterlockFor(
+  attempt: AttemptRecord,
+  claim: OrderedEvent<ClaimEvent>
+): TaskOrchestratorSkipSummary | undefined {
+  const checkpoint = attempt.checkpoints.findLast((candidate) =>
+    isSameClaimResidentLoopSuspension(candidate, claim)
+  );
+  if (checkpoint === undefined) {
+    return undefined;
+  }
+  const residentSuspensionInterlock: TaskOrchestratorSkipSummary = {
+    taskId: checkpoint.event.payload.taskId,
+    runType: checkpoint.event.payload.runType,
+    reason: "not-claimable"
+  };
+  return Object.freeze(residentSuspensionInterlock);
+}
+
+function isSameClaimResidentLoopSuspension(
+  checkpoint: OrderedEvent<CheckpointEvent>,
+  claim: OrderedEvent<ClaimEvent>
+): boolean {
+  if (checkpoint.order <= claim.order) {
+    return false;
+  }
+  const parsed = validateKnowledgeEvent(checkpoint.event);
+  if (!parsed.success || parsed.data.type !== "agent.task.orchestration.checkpointed") {
+    return false;
+  }
+  const payload = parsed.data.payload;
+  const instruction = payload.residentLoopSuspension;
+  return payload.checkpointKind === "resident-loop-suspension" &&
+    instruction !== undefined &&
+    parsed.data.streamId === claim.event.streamId &&
+    payload.taskId === claim.event.payload.taskId &&
+    payload.runType === claim.event.payload.runType &&
+    payload.attemptId === claim.event.payload.attemptId &&
+    payload.retryGeneration === claim.event.payload.retryGeneration &&
+    payload.leaseClaimGeneration === claim.event.payload.leaseClaimGeneration &&
+    parsed.data.context.causationId === claim.event.id &&
+    payload.runId === instruction.runId &&
+    instruction.taskId === claim.event.payload.taskId &&
+    instruction.attemptId === claim.event.payload.attemptId &&
+    instruction.orchestrationClaimEventId === claim.event.id &&
+    instruction.leaseClaimGeneration === claim.event.payload.leaseClaimGeneration;
 }
 
 function ownsLatestClaim(stream: readonly KnowledgeEvent[], claim: ClaimEvent): boolean {

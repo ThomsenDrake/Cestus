@@ -66,6 +66,28 @@
         ]
       },
       {
+        "cardId": "T120-R",
+        "canonicalJsonSha256": "bb2e2bcdd90d1036f0e0ad16719dcc99405ec3170691f115641649dc59b56830",
+        "pathDispositions": [
+          {
+            "path": "packages/agent/src/plan-observation-contracts.ts",
+            "recordDisposition": "owned"
+          },
+          {
+            "path": "packages/agent/src/plan-observation-projection.ts",
+            "recordDisposition": "owned"
+          },
+          {
+            "path": "packages/agent/test/plan-observation-contracts.test.ts",
+            "recordDisposition": "owned"
+          },
+          {
+            "path": "packages/agent/test/plan-observation-projection.test.ts",
+            "recordDisposition": "owned"
+          }
+        ]
+      },
+      {
         "cardId": "Task137B-W",
         "canonicalJsonSha256": "833ca5cc5aa191fdf9f98c692255133afaaf73b541b36275cab7ed04ef601e29",
         "pathDispositions": [
@@ -83,6 +105,26 @@
           },
           {
             "path": "packages/local-runtime/test/support/task137-authority-boundary-policy.ts",
+            "recordDisposition": "owned"
+          },
+          {
+            "path": "packages/local-runtime/src/wake-supervisor-runtime.ts",
+            "recordDisposition": "owned"
+          },
+          {
+            "path": "packages/local-runtime/src/mounted-wake-lifecycle-store.ts",
+            "recordDisposition": "owned"
+          },
+          {
+            "path": "packages/local-runtime/test/wake-supervisor-runtime.test.ts",
+            "recordDisposition": "owned"
+          },
+          {
+            "path": "packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts",
+            "recordDisposition": "owned"
+          },
+          {
+            "path": "packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts",
             "recordDisposition": "owned"
           }
         ]
@@ -105,6 +147,92 @@
           },
           {
             "path": "packages/agent/test/specialist-handoff-authority.test.ts",
+            "recordDisposition": "owned"
+          },
+          {
+            "path": "packages/agent/src/specialist-handoff-projection.ts",
+            "recordDisposition": "owned"
+          },
+          {
+            "path": "packages/agent/test/specialist-handoff-projection.test.ts",
+            "recordDisposition": "owned"
+          },
+          {
+            "path": "packages/ontology/src/contracts.ts",
+            "recordDisposition": "owned"
+          },
+          {
+            "path": "packages/ontology/test/agent-resident-loop-contracts.test.ts",
+            "recordDisposition": "owned"
+          }
+        ]
+      },
+      {
+        "cardId": "Task136-FC-Core",
+        "canonicalJsonSha256": "ff24eb56771db9a1a7ea015783a9b83c17f246d5e0215364b7fecb547c92c0c1",
+        "pathDispositions": [
+          {
+            "path": "packages/local-runtime/src/resident-loop-factory-composition.ts",
+            "recordDisposition": "owned"
+          }
+        ]
+      },
+      {
+        "cardId": "Task136-FC-Ports",
+        "canonicalJsonSha256": "d860a7ea14900431a361e95604d49efa6dbf824d8ccc85a06f27fe277698bc0d",
+        "pathDispositions": [
+          {
+            "path": "packages/local-runtime/src/resident-loop-factory-ports.ts",
+            "recordDisposition": "owned"
+          },
+          {
+            "path": "packages/local-runtime/test/resident-loop-factory-ports.test.ts",
+            "recordDisposition": "owned"
+          },
+          {
+            "path": "packages/local-runtime/test/resident-loop-factory-ports-imports.test.ts",
+            "recordDisposition": "owned"
+          }
+        ]
+      },
+      {
+        "cardId": "G136-SC",
+        "canonicalJsonSha256": "b7ec22083b3b8be5140b3a40b09dfa4e34c2e86f01fe15c3cc3453d16c77d0b0",
+        "pathDispositions": [
+          {
+            "path": "packages/agent/test/domain-execution-dispatcher.test.ts",
+            "recordDisposition": "owned"
+          }
+        ]
+      },
+      {
+        "cardId": "G136-R",
+        "canonicalJsonSha256": "ba3fb8927ec24348f405db53cd6cf200481cb979ca6ce4cbe1216b5ce635d9b8",
+        "pathDispositions": [
+          {
+            "path": "packages/agent/src/resident-loop-tool-gateway.ts",
+            "recordDisposition": "owned"
+          },
+          {
+            "path": "packages/agent/test/resident-loop-tool-gateway.test.ts",
+            "recordDisposition": "owned"
+          },
+          {
+            "path": "packages/agent/test/resident-loop-scheduler-completion-imports.test.ts",
+            "recordDisposition": "owned"
+          }
+        ]
+      },
+      {
+        "cardId": "C136-P",
+        "canonicalJsonSha256": "2c8da3d4b61fb472232211be2bd8b994140e044b13fb1cc977e86a6171d4575a",
+        "pathDispositions": [
+          {
+            "path": "packages/agent/src/resident-plan-candidate-provider.ts",
+            "recordDisposition": "owned"
+          },
+          {
+            "path": "packages/agent/test/resident-plan-candidate-provider.test.ts",
             "recordDisposition": "owned"
           }
         ]
@@ -387,19 +515,19 @@
         "prerequisiteIds": [],
         "ownedPaths": [
           {
-            "disposition": "owned",
+            "disposition": "transferred",
             "path": "packages/agent/src/plan-observation-contracts.ts"
           },
           {
-            "disposition": "owned",
+            "disposition": "transferred",
             "path": "packages/agent/src/plan-observation-projection.ts"
           },
           {
-            "disposition": "owned",
+            "disposition": "transferred",
             "path": "packages/agent/test/plan-observation-contracts.test.ts"
           },
           {
-            "disposition": "owned",
+            "disposition": "transferred",
             "path": "packages/agent/test/plan-observation-projection.test.ts"
           },
           {
@@ -407,7 +535,9 @@
             "path": "docs/agentic/claims/task-120-resident-full-vision-plan-observation-contracts.md"
           }
         ],
-        "transferToIds": [],
+        "transferToIds": [
+          "Task136"
+        ],
         "command": "npm test -- packages/agent/test/plan-observation-contracts.test.ts packages/agent/test/plan-observation-projection.test.ts"
       },
       {
@@ -436,23 +566,23 @@
             "path": "packages/local-runtime/test/mounted-artifact-authority-operation.test.ts"
           },
           {
-            "disposition": "owned",
+            "disposition": "transferred",
             "path": "packages/local-runtime/src/wake-supervisor-runtime.ts"
           },
           {
-            "disposition": "owned",
+            "disposition": "transferred",
             "path": "packages/local-runtime/src/mounted-wake-lifecycle-store.ts"
           },
           {
-            "disposition": "owned",
+            "disposition": "transferred",
             "path": "packages/local-runtime/test/wake-supervisor-runtime.test.ts"
           },
           {
-            "disposition": "owned",
+            "disposition": "transferred",
             "path": "packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts"
           },
           {
-            "disposition": "owned",
+            "disposition": "transferred",
             "path": "packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts"
           },
           {
@@ -478,7 +608,8 @@
         ],
         "transferToIds": [
           "CF1-HR",
-          "Task139-PM"
+          "Task139-PM",
+          "Task136"
         ],
         "command": "npm test -- packages/local-runtime/test/portable-workspace-lifecycle.test.ts packages/local-runtime/test/mounted-artifact-authority-operation.test.ts packages/local-runtime/test/wake-supervisor-runtime.test.ts packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts packages/ontology/test/resident-wake-contracts.test.ts"
       },
@@ -545,11 +676,11 @@
             "path": "packages/agent/test/specialist-runner-kernel.test.ts"
           },
           {
-            "disposition": "owned",
+            "disposition": "transferred",
             "path": "packages/agent/src/specialist-handoff-projection.ts"
           },
           {
-            "disposition": "owned",
+            "disposition": "transferred",
             "path": "packages/agent/test/specialist-handoff-projection.test.ts"
           },
           {
@@ -577,7 +708,7 @@
             "path": "packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts"
           },
           {
-            "disposition": "owned",
+            "disposition": "transferred",
             "path": "packages/ontology/src/contracts.ts"
           },
           {
@@ -585,7 +716,7 @@
             "path": "packages/ontology/test/agent-contracts.test.ts"
           },
           {
-            "disposition": "owned",
+            "disposition": "transferred",
             "path": "packages/ontology/test/agent-resident-loop-contracts.test.ts"
           },
           {
@@ -595,7 +726,8 @@
         ],
         "transferToIds": [
           "Task122",
-          "W1-123-BOOTSTRAP-HANDOFF"
+          "W1-123-BOOTSTRAP-HANDOFF",
+          "Task136"
         ],
         "command": "npm test -- packages/agent/test/specialist-runner-kernel.test.ts packages/agent/test/specialist-handoff-projection.test.ts packages/agent/test/specialist-handoff-manifest.test.ts packages/agent/test/specialist-handoff-authority.test.ts packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts packages/ontology/test/agent-contracts.test.ts packages/ontology/test/agent-resident-loop-contracts.test.ts"
       },
@@ -732,7 +864,7 @@
         ],
         "ownedPaths": [
           {
-            "disposition": "owned",
+            "disposition": "transferred",
             "path": "packages/local-runtime/src/resident-loop-factory-composition.ts"
           },
           {
@@ -748,7 +880,9 @@
             "path": "docs/agentic/claims/task-136-factory-authority-composition.md"
           }
         ],
-        "transferToIds": [],
+        "transferToIds": [
+          "Task136"
+        ],
         "command": "npm test -- packages/local-runtime/test/resident-loop-factory-composition.test.ts packages/local-runtime/test/resident-loop-factory-composition-imports.test.ts"
       },
       {
@@ -784,15 +918,15 @@
         ],
         "ownedPaths": [
           {
-            "disposition": "owned",
+            "disposition": "transferred",
             "path": "packages/local-runtime/src/resident-loop-factory-ports.ts"
           },
           {
-            "disposition": "owned",
+            "disposition": "transferred",
             "path": "packages/local-runtime/test/resident-loop-factory-ports.test.ts"
           },
           {
-            "disposition": "owned",
+            "disposition": "transferred",
             "path": "packages/local-runtime/test/resident-loop-factory-ports-imports.test.ts"
           },
           {
@@ -804,7 +938,9 @@
             "path": "docs/agentic/claims/task-136-factory-ports-composition.md"
           }
         ],
-        "transferToIds": [],
+        "transferToIds": [
+          "Task136"
+        ],
         "command": "npm test -- packages/local-runtime/test/resident-loop-factory-ports.test.ts packages/local-runtime/test/resident-loop-factory-ports-imports.test.ts packages/local-runtime/test/runtime-handle-mounted-authority-imports.test.ts"
       },
       {
@@ -846,7 +982,7 @@
             "path": "packages/agent/test/execution-loop.test.ts"
           },
           {
-            "disposition": "owned",
+            "disposition": "transferred",
             "path": "packages/agent/test/domain-execution-dispatcher.test.ts"
           },
           {
@@ -859,7 +995,8 @@
           }
         ],
         "transferToIds": [
-          "G136-R"
+          "G136-R",
+          "Task136"
         ],
         "command": "npm test -- packages/agent/test/tool-gateway.test.ts packages/agent/test/scheduler.test.ts packages/agent/test/resident-loop-scheduler-completion.test.ts packages/agent/test/execution-loop.test.ts packages/agent/test/domain-execution-dispatcher.test.ts packages/agent/test/resident-loop-scheduler-completion-imports.test.ts"
       },
@@ -871,15 +1008,15 @@
         ],
         "ownedPaths": [
           {
-            "disposition": "owned",
+            "disposition": "transferred",
             "path": "packages/agent/src/resident-loop-tool-gateway.ts"
           },
           {
-            "disposition": "owned",
+            "disposition": "transferred",
             "path": "packages/agent/test/resident-loop-tool-gateway.test.ts"
           },
           {
-            "disposition": "owned",
+            "disposition": "transferred",
             "path": "packages/agent/test/resident-loop-scheduler-completion-imports.test.ts"
           },
           {
@@ -887,7 +1024,9 @@
             "path": "docs/agentic/claims/task-136-gateway-approval-readback.md"
           }
         ],
-        "transferToIds": [],
+        "transferToIds": [
+          "Task136"
+        ],
         "command": "npm test -- packages/agent/test/resident-loop-tool-gateway.test.ts packages/agent/test/resident-loop-scheduler-completion-imports.test.ts"
       },
       {
@@ -898,11 +1037,11 @@
         ],
         "ownedPaths": [
           {
-            "disposition": "owned",
+            "disposition": "transferred",
             "path": "packages/agent/src/resident-plan-candidate-provider.ts"
           },
           {
-            "disposition": "owned",
+            "disposition": "transferred",
             "path": "packages/agent/test/resident-plan-candidate-provider.test.ts"
           },
           {
@@ -910,7 +1049,9 @@
             "path": "docs/agentic/claims/resident-plan-candidate-producer.md"
           }
         ],
-        "transferToIds": [],
+        "transferToIds": [
+          "Task136"
+        ],
         "command": "npm test -- packages/agent/test/resident-plan-candidate-provider.test.ts"
       },
       {
@@ -1046,12 +1187,15 @@
         "id": "Task136",
         "prerequisiteIds": [
           "T120-R",
+          "Task136-FC-Core",
           "Task136-FC-Ports",
           "Task139-P2",
           "C136-P",
           "G136-R",
           "Task137B-W",
-          "Task138-H"
+          "Task138-H",
+          "CF1-HR",
+          "G136-SC"
         ],
         "ownedPaths": [
           {
@@ -1064,11 +1208,131 @@
           },
           {
             "disposition": "owned",
+            "path": "packages/agent/src/plan-observation-contracts.ts"
+          },
+          {
+            "disposition": "owned",
+            "path": "packages/agent/src/plan-observation-projection.ts"
+          },
+          {
+            "disposition": "owned",
+            "path": "packages/agent/test/plan-observation-contracts.test.ts"
+          },
+          {
+            "disposition": "owned",
+            "path": "packages/agent/test/plan-observation-projection.test.ts"
+          },
+          {
+            "disposition": "owned",
+            "path": "packages/agent/src/resident-plan-candidate-provider.ts"
+          },
+          {
+            "disposition": "owned",
+            "path": "packages/agent/test/resident-plan-candidate-provider.test.ts"
+          },
+          {
+            "disposition": "owned",
+            "path": "packages/agent/src/adapters/legacy-staging.ts"
+          },
+          {
+            "disposition": "owned",
+            "path": "packages/agent/test/legacy-staging-adapter.test.ts"
+          },
+          {
+            "disposition": "owned",
+            "path": "packages/agent/src/resident-loop-tool-gateway.ts"
+          },
+          {
+            "disposition": "owned",
+            "path": "packages/agent/test/resident-loop-tool-gateway.test.ts"
+          },
+          {
+            "disposition": "owned",
+            "path": "packages/agent/test/resident-loop-scheduler-completion-imports.test.ts"
+          },
+          {
+            "disposition": "owned",
+            "path": "packages/local-runtime/src/wake-supervisor-runtime.ts"
+          },
+          {
+            "disposition": "owned",
+            "path": "packages/local-runtime/src/mounted-wake-lifecycle-store.ts"
+          },
+          {
+            "disposition": "owned",
+            "path": "packages/local-runtime/test/wake-supervisor-runtime.test.ts"
+          },
+          {
+            "disposition": "owned",
+            "path": "packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts"
+          },
+          {
+            "disposition": "owned",
+            "path": "packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts"
+          },
+          {
+            "disposition": "owned",
+            "path": "packages/agent/src/specialist-handoff-projection.ts"
+          },
+          {
+            "disposition": "owned",
+            "path": "packages/agent/test/specialist-handoff-projection.test.ts"
+          },
+          {
+            "disposition": "owned",
+            "path": "packages/ontology/src/contracts.ts"
+          },
+          {
+            "disposition": "owned",
+            "path": "packages/ontology/test/agent-resident-loop-contracts.test.ts"
+          },
+          {
+            "disposition": "owned",
+            "path": "packages/local-runtime/src/resident-loop-factory-composition.ts"
+          },
+          {
+            "disposition": "owned",
+            "path": "packages/local-runtime/src/resident-loop-factory-ports.ts"
+          },
+          {
+            "disposition": "owned",
+            "path": "packages/local-runtime/test/resident-loop-factory-ports.test.ts"
+          },
+          {
+            "disposition": "owned",
+            "path": "packages/local-runtime/test/resident-loop-factory-ports-imports.test.ts"
+          },
+          {
+            "disposition": "owned",
+            "path": "packages/agent/src/domain-execution-dispatcher.ts"
+          },
+          {
+            "disposition": "owned",
+            "path": "packages/agent/test/domain-execution-dispatcher.test.ts"
+          },
+          {
+            "disposition": "owned",
+            "path": "packages/agent/src/task-orchestrator.ts"
+          },
+          {
+            "disposition": "owned",
+            "path": "packages/agent/test/task-orchestrator-claims.test.ts"
+          },
+          {
+            "disposition": "owned",
+            "path": "packages/agent/src/task-orchestrator-projection.ts"
+          },
+          {
+            "disposition": "owned",
+            "path": "packages/agent/test/task-orchestrator-projection.test.ts"
+          },
+          {
+            "disposition": "owned",
             "path": "docs/agentic/claims/task-136-resident-full-vision-bounded-loop.md"
           }
         ],
         "transferToIds": [],
-        "command": "npm test -- packages/agent/test/bounded-agent-loop.test.ts"
+        "command": "npm test -- packages/agent/test/bounded-agent-loop.test.ts packages/agent/test/plan-observation-contracts.test.ts packages/agent/test/plan-observation-projection.test.ts packages/agent/test/resident-plan-candidate-provider.test.ts packages/agent/test/legacy-staging-adapter.test.ts packages/agent/test/resident-loop-tool-gateway.test.ts packages/agent/test/resident-loop-scheduler-completion-imports.test.ts packages/local-runtime/test/wake-supervisor-runtime.test.ts packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts packages/agent/test/specialist-handoff-projection.test.ts packages/ontology/test/agent-resident-loop-contracts.test.ts packages/local-runtime/test/resident-loop-factory-ports.test.ts packages/local-runtime/test/resident-loop-factory-ports-imports.test.ts packages/agent/test/domain-execution-dispatcher.test.ts packages/agent/test/task-orchestrator-claims.test.ts packages/agent/test/task-orchestrator-projection.test.ts"
       }
     ]
   },
