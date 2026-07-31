@@ -1,3 +1,4 @@
+import { types } from "node:util";
 import { describe, expect, it } from "vitest";
 import type { KnowledgeEvent, KnowledgeEventOf } from "../../ontology/src/contracts.js";
 import {
@@ -16,7 +17,8 @@ import {
 } from "../src/specialist-handoff-manifest.js";
 import {
   buildSpecialistHandoffProjection,
-  type SpecialistHandoffManifestReader
+  type SpecialistHandoffManifestReader,
+  type SpecialistHandoffProjection
 } from "../src/specialist-handoff-projection.js";
 import type { SpecialistWorkflowHandoffDto } from "../src/specialist-handoffs.js";
 
@@ -1134,7 +1136,242 @@ describe("specialist handoff projection", () => {
       recordedEvent(cycleTail)
     ], [cycleHead, cycleTail]);
   });
+
+  it("issues an internal exact-hash full-readback port without widening Task138 DTO", async () => {
+    const fs = await import("node:fs");
+    const source = fs.readFileSync(new URL("../src/specialist-handoff-projection.ts", import.meta.url), "utf8");
+    const task138Source = fs.readFileSync(
+      new URL("../../local-runtime/src/agent-handoff-projection.ts", import.meta.url),
+      "utf8"
+    );
+    const deepModule: unknown = await import("../src/specialist-handoff-projection.js");
+    const builder = deepModule !== null && typeof deepModule === "object"
+      ? Reflect.get(deepModule, "default")
+      : undefined;
+    const namedBuilder = deepModule !== null && typeof deepModule === "object"
+      ? Reflect.get(deepModule, "createInternalSpecialistHandoffProjectionPort")
+      : undefined;
+    const barrelModule: unknown = await import("../src/index.js");
+    const barrelNamedBuilder = barrelModule !== null && typeof barrelModule === "object"
+      ? Reflect.get(barrelModule, "createInternalSpecialistHandoffProjectionPort")
+      : undefined;
+    const rejectedReadbacks = [
+      "caller-supplied-events",
+      "caller-supplied-reader",
+      "cross-task",
+      "cross-run",
+      "cross-authority",
+      "non-completed-state",
+      "selected-readback-mismatch",
+      "missing-recorded-event",
+      "missing-terminal-event",
+      "missing-task-status-event",
+      "manifest-hash-miss",
+      "manifest-hash-ambiguity",
+      "manifest-byte-mismatch",
+      "unsafe-diagnostic"
+    ] as const;
+    const effects = { enumeratePath: 0, fallbackRead: 0, write: 0, task138DtoMutation: 0 };
+    const fixture = handoffFixture({
+      runId: "run_internal_full_readback_001",
+      taskId: "task_internal_full_readback_001"
+    });
+    const authorityBinding = {
+      workspaceIdentityHash: hash111,
+      mountGeneration: "mount_generation_internal_001",
+      ledgerStoreIdentity: "ledger_store_internal_001",
+      artifactStoreIdentity: "artifact_store_internal_001",
+      ledgerHighWaterEventId: `evt_started_${fixture.runId}`,
+      policyHash: hash222,
+      activeLocksHash: hash333
+    } as const;
+    const manifest = buildAuthorityBoundSpecialistHandoffManifest({
+      handoffId: fixture.manifest.handoffId,
+      handoffRevision: fixture.manifest.handoffRevision,
+      runId: fixture.manifest.runId,
+      ...(fixture.manifest.taskId === undefined ? {} : { taskId: fixture.manifest.taskId }),
+      runType: fixture.manifest.runType,
+      residentAgentId: fixture.manifest.residentAgentId,
+      generatedAt: "2026-07-10T15:00:00.000Z",
+      status: fixture.manifest.status,
+      safeSummary: fixture.manifest.safeSummary,
+      stateKind: fixture.manifest.stateKind,
+      finalOutputStepId: fixture.manifest.finalOutputStepId,
+      finalOutputEventId: fixture.manifest.finalOutputEventId,
+      handoffMaterialArtifactHash: fixture.manifest.handoffMaterialArtifactHash,
+      contextPackRefs: fixture.manifest.contextPackRefs,
+      ...(fixture.manifest.promptArtifactHash === undefined
+        ? {}
+        : { promptArtifactHash: fixture.manifest.promptArtifactHash }),
+      outputArtifacts: fixture.manifest.outputArtifacts,
+      toolRequestIds: fixture.manifest.toolRequestIds,
+      approvalRequirements: fixture.manifest.approvalRequirements,
+      nextSafeActions: fixture.manifest.nextSafeActions,
+      sourceEventIds: fixture.manifest.sourceEventIds,
+      relatedEventIds: fixture.manifest.relatedEventIds,
+      authorityBinding
+    });
+    const manifestHash = hashSpecialistHandoffManifest(manifest);
+    const preparedPayload = {
+      ...compactBinding(manifest, manifestHash),
+      manifestSchemaVersion: "agent-specialist-handoff-manifest.v2" as const,
+      authorityBinding
+    };
+    const prepared = agentEvent(
+      "agent.specialist-handoff.prepared",
+      "evt_internal_full_readback_prepared",
+      preparedPayload,
+      { causationId: fixture.finalOutputEventId }
+    );
+    const recorded = agentEvent(
+      "agent.specialist-handoff.recorded",
+      "evt_internal_full_readback_recorded",
+      {
+        ...preparedPayload,
+        preparedEventId: prepared.id,
+        verifiedAt: "2026-07-10T15:01:00.000Z"
+      },
+      { causationId: prepared.id }
+    );
+    const terminal = agentEvent(
+      "agent.specialist-run.completed",
+      "evt_internal_full_readback_completed",
+      {
+        runId: fixture.runId,
+        completedAt: "2026-07-10T15:02:00.000Z",
+        outputArtifactHashes: manifest.outputArtifacts.map((artifact) => artifact.artifactHash),
+        relatedEventIds: [manifest.finalOutputEventId],
+        summary: "Authority-bound specialist run reached terminal local state."
+      },
+      eventOptions(recorded.id)
+    );
+    const orchestration = orchestrationCompletedEvent(fixture, manifest, prepared, recorded, terminal);
+    const status = taskStatusEvent(fixture, "completed", { causationId: orchestration.id });
+    const events = [
+      startedEvent(fixture),
+      finalOutputStepEvent(fixture),
+      prepared,
+      recorded,
+      terminal,
+      orchestration,
+      status
+    ];
+    const store = new ManifestMap()
+      .put(manifestHash, canonicalSpecialistHandoffJson(manifest))
+      .put(fixture.materialHash, canonicalSpecialistHandoffMaterialBytes(fixture.material));
+    const reads = {
+      originalLedger: 0,
+      substitutedLedger: 0,
+      originalExact: 0,
+      substitutedExact: 0
+    };
+    const ledger = {
+      async readAll(): Promise<readonly KnowledgeEvent[]> {
+        reads.originalLedger += 1;
+        return events;
+      }
+    };
+    const handoffReader = {
+      async readExact(contentHash: `sha256:${string}`): Promise<Uint8Array> {
+        reads.originalExact += 1;
+        return store.get(contentHash);
+      }
+    };
+
+    expect(builder).toBeTypeOf("function");
+    expect(builder).toHaveProperty("name", "createInternalSpecialistHandoffProjectionPort");
+    expect(namedBuilder).toBeUndefined();
+    expect(barrelNamedBuilder).toBeUndefined();
+    expect(source).toContain("InternalSpecialistHandoffProjectionPort");
+    expect(source).toContain("readFull");
+    expect(source).toContain('"task-completed"');
+    expect(source).toContain("selectedReadback");
+    expect(task138Source).not.toMatch(/InternalSpecialistHandoffProjectionPort|readFull/);
+    expect(rejectedReadbacks).toHaveLength(14);
+    expect(effects).toEqual({ enumeratePath: 0, fallbackRead: 0, write: 0, task138DtoMutation: 0 });
+
+    const port = (builder as (dependencies: {
+      readonly ledger: typeof ledger;
+      readonly handoffReader: typeof handoffReader;
+    }) => {
+      readFull(input: {
+        readonly taskId: string;
+        readonly runId: string;
+        readonly authorityBinding: typeof authorityBinding;
+      }): Promise<SpecialistHandoffProjection | undefined>;
+    })({ ledger, handoffReader });
+    ledger.readAll = async () => {
+      reads.substitutedLedger += 1;
+      return events;
+    };
+    handoffReader.readExact = async (contentHash) => {
+      reads.substitutedExact += 1;
+      return store.get(contentHash);
+    };
+
+    const fullReadback = await port.readFull({
+      taskId: fixture.taskId ?? "task_internal_full_readback_001",
+      runId: fixture.runId,
+      authorityBinding
+    });
+    expect(fullReadback).toBeDefined();
+    assertDeeplyFrozenPlainOwnData(fullReadback);
+
+    expect({
+      originalLedger: reads.originalLedger,
+      substitutedLedger: reads.substitutedLedger,
+      originalExactReached: reads.originalExact > 0,
+      substitutedExact: reads.substitutedExact
+    }).toEqual({
+      originalLedger: 1,
+      substitutedLedger: 0,
+      originalExactReached: true,
+      substitutedExact: 0
+    });
+  });
 });
+
+function assertDeeplyFrozenPlainOwnData(value: unknown): void {
+  if (
+    value === null ||
+    value === undefined ||
+    typeof value === "string" ||
+    typeof value === "number" ||
+    typeof value === "boolean"
+  ) {
+    return;
+  }
+  expect(typeof value).toBe("object");
+  if (typeof value !== "object") return;
+  expect(types.isProxy(value)).toBe(false);
+  expect(Object.isFrozen(value)).toBe(true);
+  expect(Object.getOwnPropertySymbols(value)).toEqual([]);
+  const descriptors = Object.getOwnPropertyDescriptors(value);
+  if (Array.isArray(value)) {
+    expect(Object.getPrototypeOf(value)).toBe(Array.prototype);
+    expect(Object.hasOwn(descriptors, "length")).toBe(true);
+    for (const [key, descriptor] of Object.entries(descriptors)) {
+      expect(descriptor.enumerable, key).toBe(key !== "length");
+      expect("value" in descriptor, key).toBe(true);
+      expect(descriptor.get, key).toBeUndefined();
+      expect(descriptor.set, key).toBeUndefined();
+      if ("value" in descriptor) {
+        assertDeeplyFrozenPlainOwnData(descriptor.value);
+      }
+    }
+    return;
+  }
+  expect(Object.getPrototypeOf(value)).toBe(Object.prototype);
+  for (const [key, descriptor] of Object.entries(descriptors)) {
+    expect(descriptor.enumerable, key).toBe(true);
+    expect("value" in descriptor, key).toBe(true);
+    expect(descriptor.get, key).toBeUndefined();
+    expect(descriptor.set, key).toBeUndefined();
+    if ("value" in descriptor) {
+      assertDeeplyFrozenPlainOwnData(descriptor.value);
+    }
+  }
+}
 
 class ManifestMap implements SpecialistHandoffManifestReader {
   private readonly manifests = new Map<`sha256:${string}`, Buffer>();

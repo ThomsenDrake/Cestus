@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { types } from "node:util";
 import type { KnowledgeEvent, KnowledgeEventOf } from "../../ontology/src/contracts.js";
 import {
   canonicalSpecialistHandoffMaterialBytes,
@@ -149,6 +150,67 @@ interface ProjectionContext {
 interface IndexedEvent<Event extends KnowledgeEvent> {
   readonly event: Event;
   readonly index: number;
+}
+
+interface ExactResidentLoopIdentityAndAuthority {
+  readonly taskId: string;
+  readonly runId: string;
+  readonly authorityBinding: HandoffAuthorityBinding;
+}
+
+interface InternalSpecialistHandoffProjectionPort {
+  readFull(
+    input: ExactResidentLoopIdentityAndAuthority
+  ): Promise<SpecialistHandoffProjection | undefined>;
+}
+
+interface InternalSpecialistHandoffProjectionDependencies {
+  readonly ledger: {
+    readAll(): Promise<readonly KnowledgeEvent[]>;
+  };
+  readonly handoffReader: {
+    readExact(contentHash: ContentHash): Promise<Uint8Array>;
+  };
+}
+
+export default function createInternalSpecialistHandoffProjectionPort(
+  dependencies: InternalSpecialistHandoffProjectionDependencies
+): InternalSpecialistHandoffProjectionPort {
+  const readAll = dependencies.ledger.readAll.bind(dependencies.ledger);
+  const readExact = dependencies.handoffReader.readExact.bind(dependencies.handoffReader);
+  return Object.freeze({
+    async readFull(
+      input: ExactResidentLoopIdentityAndAuthority
+    ): Promise<SpecialistHandoffProjection | undefined> {
+      const projection = await buildSpecialistHandoffProjection({
+        events: await readAll(),
+        manifestReader: {
+          async get(contentHash: ContentHash): Promise<Buffer> {
+            return Buffer.from(await readExact(contentHash));
+          }
+        },
+        taskId: input.taskId,
+        runId: input.runId
+      });
+      const readback = projection.selectedReadback;
+      if (
+        projection.state !== "task-completed" ||
+        projection.diagnostics.length !== 0 ||
+        readback === undefined ||
+        readback.diagnostics.length !== 0 ||
+        readback.taskId !== input.taskId ||
+        readback.runId !== input.runId ||
+        !sameCanonicalValue(readback.authorityBinding, input.authorityBinding) ||
+        readback.recordedEventId.length === 0 ||
+        readback.terminalRunEventId.length === 0 ||
+        readback.taskStatusEventId.length === 0 ||
+        readback.manifestHash.length === 0
+      ) {
+        return undefined;
+      }
+      return deeplyFrozenPlainOwnDataCopy(projection);
+    }
+  });
 }
 
 export async function buildSpecialistHandoffProjection(
@@ -1686,6 +1748,90 @@ function sameCanonicalValue(left: unknown, right: unknown): boolean {
     return left === right;
   }
   return canonicalSpecialistHandoffJson(left).equals(canonicalSpecialistHandoffJson(right));
+}
+
+function deeplyFrozenPlainOwnDataCopy<T>(value: T): T {
+  return copyPlainOwnDataValue(value) as T;
+}
+
+function copyPlainOwnDataValue(value: unknown): unknown {
+  if (
+    value === null ||
+    value === undefined ||
+    typeof value === "string" ||
+    typeof value === "number" ||
+    typeof value === "boolean"
+  ) {
+    return value;
+  }
+  if (typeof value !== "object" || types.isProxy(value)) {
+    return rejectNonPlainReadback();
+  }
+  if (Object.getOwnPropertySymbols(value).length !== 0) {
+    return rejectNonPlainReadback();
+  }
+
+  const descriptors = Object.getOwnPropertyDescriptors(value);
+  if (Array.isArray(value)) {
+    if (Object.getPrototypeOf(value) !== Array.prototype) {
+      return rejectNonPlainReadback();
+    }
+    const lengthDescriptor = descriptors.length;
+    if (
+      lengthDescriptor === undefined ||
+      !("value" in lengthDescriptor) ||
+      lengthDescriptor.enumerable ||
+      lengthDescriptor.get !== undefined ||
+      lengthDescriptor.set !== undefined ||
+      typeof lengthDescriptor.value !== "number" ||
+      !Number.isSafeInteger(lengthDescriptor.value) ||
+      lengthDescriptor.value < 0 ||
+      Object.keys(descriptors).length !== lengthDescriptor.value + 1
+    ) {
+      return rejectNonPlainReadback();
+    }
+    const copy: unknown[] = [];
+    for (let index = 0; index < lengthDescriptor.value; index += 1) {
+      const descriptor = descriptors[String(index)];
+      if (
+        descriptor === undefined ||
+        !descriptor.enumerable ||
+        !("value" in descriptor) ||
+        descriptor.get !== undefined ||
+        descriptor.set !== undefined
+      ) {
+        return rejectNonPlainReadback();
+      }
+      copy.push(copyPlainOwnDataValue(descriptor.value));
+    }
+    return Object.freeze(copy);
+  }
+
+  if (Object.getPrototypeOf(value) !== Object.prototype) {
+    return rejectNonPlainReadback();
+  }
+  const copy: Record<string, unknown> = {};
+  for (const [key, descriptor] of Object.entries(descriptors)) {
+    if (
+      !descriptor.enumerable ||
+      !("value" in descriptor) ||
+      descriptor.get !== undefined ||
+      descriptor.set !== undefined
+    ) {
+      return rejectNonPlainReadback();
+    }
+    Object.defineProperty(copy, key, {
+      value: copyPlainOwnDataValue(descriptor.value),
+      enumerable: true,
+      writable: true,
+      configurable: true
+    });
+  }
+  return Object.freeze(copy);
+}
+
+function rejectNonPlainReadback(): never {
+  throw new Error("specialist handoff readback must be plain own data");
 }
 
 function hashBuffer(bytes: Buffer): ContentHash {
