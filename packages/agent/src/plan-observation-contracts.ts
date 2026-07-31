@@ -376,7 +376,9 @@ async function appendResidentLoopV2<Type extends ResidentLoopEventTypeV2>(
     if (canonicalJson(prior.payload) !== canonicalJson(payload)) {
       throw new Error(`Resident V2 ${type} stable key already binds different canonical bytes.`);
     }
-    return prior as Extract<ResidentLoopEventV2, { type: Type }>;
+    return copyResidentLoopV2Event(
+      prior as Extract<ResidentLoopEventV2, { type: Type }>
+    );
   }
   if (type === "agent.resident-plan.recorded.v2") {
     assertGloballyUnusedToolRequestIds(
@@ -426,7 +428,9 @@ async function appendResidentLoopV2<Type extends ResidentLoopEventTypeV2>(
   if (!validated.success) {
     throw new Error(`Resident V2 durable prefix is invalid: ${validated.issues.join("; ")}`);
   }
-  return reread as Extract<ResidentLoopEventV2, { type: Type }>;
+  return copyResidentLoopV2Event(
+    reread as Extract<ResidentLoopEventV2, { type: Type }>
+  );
 }
 
 function parseResidentLoopV2Payload<Type extends ResidentLoopEventTypeV2>(
@@ -501,7 +505,9 @@ async function readResidentLoopV2Event<Type extends ResidentLoopEventTypeV2>(
   if (event.type !== type || !validateKnowledgeEvent(event).success) {
     throw new Error(`Resident V2 event ${eventId} does not match ${type}.`);
   }
-  return event as Extract<ResidentLoopEventV2, { type: Type }>;
+  return copyResidentLoopV2Event(
+    event as Extract<ResidentLoopEventV2, { type: Type }>
+  );
 }
 
 async function readResidentLoopV2Replay(
@@ -515,18 +521,21 @@ async function readResidentLoopV2Replay(
       throw new Error(`Resident V2 durable replay is invalid: ${validated.issues.join("; ")}`);
     }
   }
+  const frozenEvents = Object.freeze(
+    events.map((event) => copyResidentLoopV2Event(event))
+  );
   return Object.freeze({
     identity,
-    events: Object.freeze([...events]),
-    plans: Object.freeze(events.filter((event): event is ResidentPlanEventV2 =>
+    events: frozenEvents,
+    plans: Object.freeze(frozenEvents.filter((event): event is ResidentPlanEventV2 =>
       event.type === "agent.resident-plan.recorded.v2")),
-    observations: Object.freeze(events.filter((event): event is ResidentObservationEventV2 =>
+    observations: Object.freeze(frozenEvents.filter((event): event is ResidentObservationEventV2 =>
       event.type === "agent.resident-observation.recorded.v2")),
-    toolSteps: Object.freeze(events.filter((event): event is ResidentToolStepEventV2 =>
+    toolSteps: Object.freeze(frozenEvents.filter((event): event is ResidentToolStepEventV2 =>
       event.type === "agent.resident-tool-step.recorded.v2")),
-    suspensions: Object.freeze(events.filter((event): event is ResidentSuspensionEventV2 =>
+    suspensions: Object.freeze(frozenEvents.filter((event): event is ResidentSuspensionEventV2 =>
       event.type === "agent.resident-loop.suspended.v2")),
-    results: Object.freeze(events.filter((event): event is ResidentResultEventV2 =>
+    results: Object.freeze(frozenEvents.filter((event): event is ResidentResultEventV2 =>
       event.type === "agent.resident-loop.result.recorded.v2"))
   });
 }
@@ -604,6 +613,12 @@ function copyPlainOwnData(value: unknown): unknown {
     copy[key] = copyPlainOwnData(descriptor.value);
   }
   return Object.freeze(copy);
+}
+
+function copyResidentLoopV2Event<Type extends ResidentLoopEventTypeV2>(
+  event: Extract<ResidentLoopEventV2, { type: Type }>
+): Extract<ResidentLoopEventV2, { type: Type }> {
+  return copyPlainOwnData(event) as Extract<ResidentLoopEventV2, { type: Type }>;
 }
 
 function canonicalJson(value: unknown): string {

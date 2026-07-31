@@ -964,30 +964,368 @@ function isPermittedResidentLedgerAdvance(
   for (let index = 0; index < prior.length; index += 1) {
     if (!isDeepStrictEqual(prior[index], current[index])) return false;
   }
-  return current.slice(prior.length).every((event) => {
+  const appended = current.slice(prior.length);
+  const catalogMemberIds = exactAppendedResidentCatalogMemberIds(
+    appended,
+    current,
+    binding
+  );
+  if (catalogMemberIds === undefined) return false;
+  return appended.every((event) => {
+    if (catalogMemberIds.has(event.id)) return true;
     const payload = event.payload as Record<string, unknown>;
+    if (event.type === "agent.resident-loop.result.recorded.v2") {
+      return isExactBoundResidentResult(event, current, binding);
+    }
     if (event.type.startsWith("agent.resident-domain.")) {
+      if (catalogMemberIds.size > 0) return false;
       const locator = payload.logicalLocator as Record<string, unknown> | undefined;
-      return locator !== undefined &&
-        locator.workspaceId === binding.provider.workspaceId &&
-        locator.residentAgentId === "agent_default" &&
-        locator.taskId === binding.handoff.taskId &&
-        locator.attemptId === binding.handoff.attemptId &&
-        locator.runId === binding.handoff.runId;
+      return isExactResidentLocatorIdentity(locator, binding);
     }
     if (
       event.type === "agent.resident-plan.recorded.v2" ||
       event.type === "agent.resident-observation.recorded.v2" ||
       event.type === "agent.resident-tool-step.recorded.v2"
     ) {
-      return payload.workspaceId === binding.provider.workspaceId &&
-        payload.residentAgentId === "agent_default" &&
-        payload.taskId === binding.handoff.taskId &&
-        payload.attemptId === binding.handoff.attemptId &&
-        payload.runId === binding.handoff.runId;
+      return isExactResidentIdentity(payload, binding);
     }
     return false;
   });
+}
+
+function isExactResidentIdentity(
+  value: unknown,
+  binding: ResidentLoopFactoryBinding
+): boolean {
+  return isPlainRecord(value) &&
+    value.workspaceId === binding.provider.workspaceId &&
+    value.residentAgentId === "agent_default" &&
+    value.taskId === binding.handoff.taskId &&
+    value.attemptId === binding.handoff.attemptId &&
+    value.runId === binding.handoff.runId;
+}
+
+function isExactResidentLocatorIdentity(
+  value: unknown,
+  binding: ResidentLoopFactoryBinding
+): value is Record<string, unknown> {
+  return isPlainRecord(value) &&
+    hasExactKeys(value, [
+      "workspaceId",
+      "residentAgentId",
+      "taskId",
+      "attemptId",
+      "runId",
+      "planId",
+      "planRevision",
+      "stepOrdinal",
+      "toolRequestId",
+      "toolId",
+      "toolVersion",
+      "executionCapabilityHash"
+    ]) &&
+    isExactResidentIdentity(value, binding);
+}
+
+function isExactBoundResidentResult(
+  event: KnowledgeEventOf<"agent.resident-loop.result.recorded.v2">,
+  current: readonly KnowledgeEvent[],
+  binding: ResidentLoopFactoryBinding
+): boolean {
+  const streamId = residentLoopStreamId({
+    taskId: binding.handoff.taskId,
+    attemptId: binding.handoff.attemptId,
+    runId: binding.handoff.runId
+  });
+  const residentStream = current.filter((candidate) =>
+    candidate.streamId === streamId
+  );
+  const resultIndex = residentStream.findIndex(
+    (candidate) => candidate.id === event.id
+  );
+  const observation = resultIndex < 1
+    ? undefined
+    : residentStream[resultIndex - 1];
+  if (
+    event.streamId !== streamId ||
+    observation?.type !== "agent.resident-observation.recorded.v2"
+  ) {
+    return false;
+  }
+  const expectedObservationReadback = {
+    observationEventId: observation.id,
+    workspaceId: binding.provider.workspaceId,
+    residentAgentId: "agent_default",
+    taskId: binding.handoff.taskId,
+    attemptId: binding.handoff.attemptId,
+    runId: binding.handoff.runId,
+    planId: observation.payload.planId,
+    planRevision: observation.payload.planRevision
+  };
+  return (
+    event.payload.outcome === "completed" ||
+    event.payload.outcome === "failed"
+  ) &&
+    isExactResidentIdentity(event.payload, binding) &&
+    isExactResidentIdentity(observation.payload, binding) &&
+    event.payload.planId === observation.payload.planId &&
+    event.payload.planRevision === observation.payload.planRevision &&
+    event.context.causationId === observation.id &&
+    event.payload.causationId === observation.id &&
+    event.context.correlationId === observation.context.correlationId &&
+    event.payload.correlationId === observation.payload.correlationId &&
+    isDeepStrictEqual(
+      event.payload.finalObservationReadback,
+      expectedObservationReadback
+    ) &&
+    isDeepStrictEqual(
+      event.payload.authority,
+      binding.handoff.authorityBinding
+    );
+}
+
+function exactAppendedResidentCatalogMemberIds(
+  appended: readonly KnowledgeEvent[],
+  current: readonly KnowledgeEvent[],
+  binding: ResidentLoopFactoryBinding
+): ReadonlySet<string> | undefined {
+  const assertions = new Map<
+    string,
+    KnowledgeEventOf<"assertion.proposed">
+  >();
+  for (const event of appended) {
+    let assertion: KnowledgeEventOf<"assertion.proposed"> | undefined;
+    if (event.type === "assertion.proposed") {
+      assertion = event;
+    } else if (
+      event.type === "agent.resident-domain.outcome-observed.v1" &&
+      event.payload.catalogOrdinal === 10
+    ) {
+      const [assertionId] = event.payload.domainEventIds;
+      assertion = current.find(
+        (candidate): candidate is KnowledgeEventOf<"assertion.proposed"> =>
+          candidate.id === assertionId &&
+          candidate.type === "assertion.proposed"
+      );
+      if (assertion === undefined) return undefined;
+    } else if (event.type === "agent.resident-domain.completed.v1") {
+      const receipt = current.find(
+        (
+          candidate
+        ): candidate is KnowledgeEventOf<"agent.resident-domain.outcome-observed.v1"> =>
+          candidate.id === event.payload.outcomeReceiptEventId &&
+          candidate.type === "agent.resident-domain.outcome-observed.v1"
+      );
+      if (receipt?.payload.catalogOrdinal === 10) {
+        const [assertionId] = receipt.payload.domainEventIds;
+        assertion = current.find(
+          (
+            candidate
+          ): candidate is KnowledgeEventOf<"assertion.proposed"> =>
+            candidate.id === assertionId &&
+            candidate.type === "assertion.proposed"
+        );
+        if (assertion === undefined) return undefined;
+      }
+    }
+    if (assertion !== undefined) assertions.set(assertion.id, assertion);
+  }
+  if (assertions.size === 0) return new Set<string>();
+  if (assertions.size !== 1) return undefined;
+  const assertion = assertions.values().next().value;
+  if (assertion === undefined) return undefined;
+  const members = exactResidentCatalogChainMemberIds(
+    assertion,
+    current,
+    binding
+  );
+  return members === undefined ? undefined : new Set(members);
+}
+
+function exactResidentCatalogChainMemberIds(
+  assertion: KnowledgeEventOf<"assertion.proposed">,
+  current: readonly KnowledgeEvent[],
+  binding: ResidentLoopFactoryBinding
+): readonly string[] | undefined {
+  const assertionIndex = current.findIndex((event) => event.id === assertion.id);
+  if (assertionIndex < 2) return undefined;
+  const request = current[assertionIndex - 2];
+  const claim = current[assertionIndex - 1];
+  const receipt = current[assertionIndex + 1];
+  const completed = current[assertionIndex + 2];
+  if (
+    request?.type !== "agent.resident-domain.requested.v1" ||
+    claim?.type !== "agent.resident-domain.execution-claimed.v1" ||
+    receipt?.type !== "agent.resident-domain.outcome-observed.v1" ||
+    completed?.type !== "agent.resident-domain.completed.v1"
+  ) {
+    return undefined;
+  }
+  const locator = request.payload.logicalLocator;
+  if (
+    !isExactResidentLocatorIdentity(locator, binding) ||
+    locator.toolId !== "legacy.staging.execute" ||
+    locator.toolVersion !== "0.1.0"
+  ) {
+    return undefined;
+  }
+  const expectedStreamId = residentDomainStreamIdForCurrentness(locator);
+  const automaticAuthorization = { authorizationKind: "automatic-policy" };
+  const plans = current.filter(
+    (event): event is KnowledgeEventOf<"agent.resident-plan.recorded.v2"> =>
+      event.id === request.payload.planRecordEventId &&
+      event.type === "agent.resident-plan.recorded.v2"
+  );
+  const matchingReceipts = current.filter(
+    (
+      event
+    ): event is KnowledgeEventOf<"agent.resident-domain.outcome-observed.v1"> =>
+      event.type === "agent.resident-domain.outcome-observed.v1" &&
+      isDeepStrictEqual(event.payload.domainEventIds, [assertion.id])
+  );
+  const matchingCompletions = current.filter(
+    (
+      event
+    ): event is KnowledgeEventOf<"agent.resident-domain.completed.v1"> =>
+      event.type === "agent.resident-domain.completed.v1" &&
+      event.payload.outcomeReceiptEventId === receipt.id
+  );
+  if (
+    plans.length !== 1 ||
+    plans[0] === undefined ||
+    matchingReceipts.length !== 1 ||
+    matchingReceipts[0]?.id !== receipt.id ||
+    matchingCompletions.length !== 1 ||
+    matchingCompletions[0]?.id !== completed.id
+  ) {
+    return undefined;
+  }
+  const plan = plans[0];
+  const planStep = plan.payload.steps.find(
+    (step) => step.ordinal === locator.stepOrdinal
+  );
+  if (
+    plan.streamId !== residentLoopStreamId({
+      taskId: binding.handoff.taskId,
+      attemptId: binding.handoff.attemptId,
+      runId: binding.handoff.runId
+    }) ||
+    !isExactResidentIdentity(plan.payload, binding) ||
+    plan.payload.planId !== locator.planId ||
+    plan.payload.planRevision !== locator.planRevision ||
+    planStep === undefined ||
+    planStep.toolId !== locator.toolId ||
+    planStep.toolVersion !== locator.toolVersion ||
+    planStep.toolRequestId !== locator.toolRequestId ||
+    planStep.executionCapabilityHash !== locator.executionCapabilityHash ||
+    !isDeepStrictEqual(plan.payload.authority, binding.handoff.authorityBinding) ||
+    request.streamId !== expectedStreamId ||
+    claim.streamId !== expectedStreamId ||
+    receipt.streamId !== expectedStreamId ||
+    completed.streamId !== expectedStreamId ||
+    request.payload.executionCapabilityHash !== locator.executionCapabilityHash ||
+    request.payload.authorizationKind !== "automatic-policy" ||
+    request.payload.sideEffectClass !== "ledger-proposal" ||
+    request.payload.expectedSafeOutputClass !== "proposal" ||
+    request.payload.requiredApprovalClass !== "none" ||
+    !isDeepStrictEqual(request.payload.authority, binding.handoff.authorityBinding) ||
+    request.context.causationId !== plan.id ||
+    request.payload.causationId !== plan.id ||
+    request.context.correlationId !== request.payload.correlationId ||
+    claim.payload.requestEventId !== request.id ||
+    claim.payload.executionCapabilityHash !== locator.executionCapabilityHash ||
+    !isDeepStrictEqual(claim.payload.logicalLocator, locator) ||
+    !isDeepStrictEqual(claim.payload.authorization, automaticAuthorization) ||
+    claim.context.causationId !== request.id ||
+    claim.payload.causationId !== request.id ||
+    claim.context.correlationId !== request.context.correlationId ||
+    claim.payload.correlationId !== request.payload.correlationId ||
+    receipt.payload.requestEventId !== request.id ||
+    receipt.payload.executionClaimEventId !== claim.id ||
+    receipt.payload.executionCapabilityHash !== locator.executionCapabilityHash ||
+    !isDeepStrictEqual(receipt.payload.logicalLocator, locator) ||
+    !isDeepStrictEqual(receipt.payload.authorization, automaticAuthorization) ||
+    receipt.payload.catalogOrdinal !== 10 ||
+    receipt.payload.implementationRevision !==
+      "legacy-staging-execution.adapter.v1" ||
+    receipt.payload.evidenceMode !== "new-ledger-events" ||
+    receipt.payload.outcomeDisposition !== "completed" ||
+    !isDeepStrictEqual(receipt.payload.domainEventIds, [assertion.id]) ||
+    !isDeepStrictEqual(receipt.payload.artifactHashes, []) ||
+    !isDeepStrictEqual(receipt.payload.readModelChanges, ["legacy-staging"]) ||
+    receipt.payload.resultSummary !==
+      "Legacy ontology staging appended evidence-tied assertion proposals." ||
+    receipt.context.causationId !== claim.id ||
+    receipt.payload.causationId !== claim.id ||
+    receipt.context.correlationId !== request.context.correlationId ||
+    receipt.payload.correlationId !== request.payload.correlationId ||
+    completed.payload.requestEventId !== request.id ||
+    completed.payload.executionClaimEventId !== claim.id ||
+    completed.payload.outcomeReceiptEventId !== receipt.id ||
+    completed.payload.executionCapabilityHash !== locator.executionCapabilityHash ||
+    !isDeepStrictEqual(completed.payload.logicalLocator, locator) ||
+    !isDeepStrictEqual(completed.payload.authorization, automaticAuthorization) ||
+    completed.payload.resultHash !== receipt.payload.envelopeHash ||
+    !isDeepStrictEqual(
+      completed.payload.resultArtifactHashes,
+      receipt.payload.artifactHashes
+    ) ||
+    completed.context.causationId !== receipt.id ||
+    completed.payload.causationId !== receipt.id ||
+    completed.context.correlationId !== request.context.correlationId ||
+    completed.payload.correlationId !== request.payload.correlationId
+  ) {
+    return undefined;
+  }
+  const preInvocationLedgerFingerprint = residentCanonicalHash(
+    current.slice(0, assertionIndex)
+  );
+  const postInvocationLedgerFingerprint = residentCanonicalHash(
+    current.slice(0, assertionIndex + 1)
+  );
+  const expectedEnvelopeHash = residentCanonicalHash({
+    logicalLocator: locator,
+    executionCapabilityHash: locator.executionCapabilityHash,
+    requestEventId: request.id,
+    executionClaimEventId: claim.id,
+    authorization: automaticAuthorization,
+    catalogOrdinal: 10,
+    implementationRevision: "legacy-staging-execution.adapter.v1",
+    evidenceMode: "new-ledger-events",
+    residentInvocationInputHash: receipt.payload.residentInvocationInputHash,
+    outcomeDisposition: "completed",
+    preInvocationLedgerFingerprint,
+    postInvocationLedgerFingerprint,
+    domainEventIds: [assertion.id],
+    artifactHashes: [],
+    readModelChanges: ["legacy-staging"],
+    resultSummary:
+      "Legacy ontology staging appended evidence-tied assertion proposals."
+  });
+  return /^sha256:[a-f0-9]{64}$/.test(
+    receipt.payload.residentInvocationInputHash
+  ) &&
+    receipt.payload.preInvocationLedgerFingerprint ===
+      preInvocationLedgerFingerprint &&
+    receipt.payload.postInvocationLedgerFingerprint ===
+      postInvocationLedgerFingerprint &&
+    receipt.payload.envelopeHash === expectedEnvelopeHash
+    ? Object.freeze([
+        request.id,
+        claim.id,
+        assertion.id,
+        receipt.id,
+        completed.id
+      ])
+    : undefined;
+}
+
+function residentDomainStreamIdForCurrentness(
+  locator: Readonly<Record<string, unknown>>
+): string {
+  return `agent_resident_domain_${createHash("sha256")
+    .update(canonicalResidentJson(locator))
+    .digest("hex")}`;
 }
 
 function unavailableResidentLoop(owner: ResidentLoopBoundState): ResidentLoopUnavailableV1 {
@@ -1946,13 +2284,14 @@ function assertResidentFactoryBindingCurrent(
     facts.policyVersion !== binding.provider.policyVersion ||
     facts.policyDigest !== binding.provider.policyDigest ||
     facts.lockStateDigest !== binding.provider.lockStateDigest ||
-    facts.highWaterMark !== binding.provider.highWaterMark ||
-    facts.highWaterOrdinal !== binding.provider.highWaterOrdinal ||
     snapshot.events.length !== binding.provider.durableLedgerEventCount ||
     mounted.binding.workspaceId !== binding.provider.workspaceId
   ) {
     throw new Error("resident factory authority binding is stale or foreign");
   }
+  const anchor = binding.provider.highWaterOrdinal < 1
+    ? undefined
+    : snapshot.events[binding.provider.highWaterOrdinal - 1];
   const claims = snapshot.events.filter((event): event is KnowledgeEventOf<"agent.task.orchestration.claimed"> =>
     event.type === "agent.task.orchestration.claimed" &&
     event.payload.taskId === binding.handoff.taskId &&
@@ -1960,9 +2299,172 @@ function assertResidentFactoryBindingCurrent(
     event.payload.retryGeneration === binding.handoff.retryGeneration &&
     event.payload.runType === binding.handoff.runType
   );
-  if (claims.length !== 1) {
+  if (
+    anchor?.type !== "agent.task.orchestration.claimed" ||
+    anchor.id !== binding.provider.highWaterMark ||
+    claims.length !== 1 ||
+    claims[0]?.id !== anchor.id ||
+    anchor.streamId !== orchestrationStreamId(
+      binding.handoff.taskId,
+      binding.handoff.runType
+    ) ||
+    !hasExactResidentFactoryAuthorityAgreement(binding, snapshot) ||
+    !hasExactCompletedHandoffSourceEnvelope(
+      snapshot.events
+        .slice(binding.provider.highWaterOrdinal)
+        .filter((event) =>
+          !wakeLifecycleTypes.has(
+            event.type as MountedWakeLifecycleEventType
+          )
+        ),
+      anchor,
+      binding
+    )
+  ) {
     throw new Error("resident factory authority binding requires one exact mounted orchestration claim");
   }
+}
+
+function hasExactResidentFactoryAuthorityAgreement(
+  binding: ResidentLoopFactoryBinding,
+  snapshot: ResidentAuthoritySnapshot
+): boolean {
+  const authority = binding.handoff.authorityBinding;
+  const generation = /^admission_generation_([0-9]+)$/.exec(
+    binding.provider.admissionGenerationId
+  )?.[1];
+  return generation !== undefined &&
+    authority.workspaceIdentityHash === residentCanonicalHash({
+      schemaVersion: "mounted-handoff-workspace-identity.v1",
+      workspaceId: snapshot.facts.workspaceId,
+      workspaceIdentityEventId: snapshot.facts.workspaceIdentityEventId
+    }) &&
+    authority.mountGeneration === `admission:${generation}` &&
+    authority.ledgerStoreIdentity === snapshot.facts.ledgerStoreEvidenceId &&
+    authority.artifactStoreIdentity ===
+      snapshot.facts.artifactStoreEvidenceId &&
+    authority.ledgerHighWaterEventId === binding.provider.highWaterMark &&
+    authority.policyHash === binding.provider.policyDigest &&
+    authority.activeLocksHash === binding.provider.lockStateDigest;
+}
+
+function hasExactCompletedHandoffSourceEnvelope(
+  events: readonly KnowledgeEvent[],
+  claim: KnowledgeEventOf<"agent.task.orchestration.claimed">,
+  binding: ResidentLoopFactoryBinding
+): boolean {
+  if (events.length === 0) return true;
+  if (events.length !== 8) return false;
+  const [
+    checkpoint,
+    started,
+    finalOutput,
+    prepared,
+    recorded,
+    completed,
+    orchestrationCompleted,
+    taskStatus
+  ] = events;
+  if (
+    checkpoint?.type !== "agent.task.orchestration.checkpointed" ||
+    started?.type !== "agent.specialist-run.started" ||
+    finalOutput?.type !== "agent.specialist-run.step.recorded" ||
+    prepared?.type !== "agent.specialist-handoff.prepared" ||
+    recorded?.type !== "agent.specialist-handoff.recorded" ||
+    completed?.type !== "agent.specialist-run.completed" ||
+    orchestrationCompleted?.type !== "agent.task.orchestration.completed" ||
+    taskStatus?.type !== "agent.task.status.changed"
+  ) {
+    return false;
+  }
+  const checkpointPayload = checkpoint.payload;
+  const startedPayload = started.payload;
+  const finalOutputPayload = finalOutput.payload;
+  const preparedPayload = prepared.payload;
+  const recordedPayload = recorded.payload;
+  const completedPayload = completed.payload;
+  const orchestrationPayload = orchestrationCompleted.payload;
+  const statusPayload = taskStatus.payload;
+  const runStreamId = `agent_run_${binding.handoff.runId}`;
+  const correlationId = claim.context.correlationId;
+  if (
+    checkpoint.streamId !== claim.streamId ||
+    checkpoint.context.causationId !== claim.id ||
+    checkpointPayload.taskId !== binding.handoff.taskId ||
+    checkpointPayload.attemptId !== binding.handoff.attemptId ||
+    checkpointPayload.runId !== binding.handoff.runId ||
+    checkpointPayload.runType !== binding.handoff.runType ||
+    checkpointPayload.retryGeneration !== binding.handoff.retryGeneration ||
+    checkpointPayload.leaseClaimGeneration !==
+      claim.payload.leaseClaimGeneration ||
+    started.streamId !== runStreamId ||
+    started.context.causationId !== checkpoint.id ||
+    startedPayload.taskId !== binding.handoff.taskId ||
+    startedPayload.runId !== binding.handoff.runId ||
+    startedPayload.runType !== binding.handoff.runType ||
+    startedPayload.residentAgentId !== "agent_default" ||
+    startedPayload.startedBy !== "agent_default" ||
+    finalOutput.streamId !== runStreamId ||
+    finalOutput.context.causationId !== started.id ||
+    finalOutputPayload.runId !== binding.handoff.runId ||
+    finalOutputPayload.stepKind !== "final-output" ||
+    prepared.streamId !== runStreamId ||
+    prepared.context.causationId !== finalOutput.id ||
+    preparedPayload.taskId !== binding.handoff.taskId ||
+    preparedPayload.runId !== binding.handoff.runId ||
+    preparedPayload.runType !== binding.handoff.runType ||
+    preparedPayload.residentAgentId !== "agent_default" ||
+    preparedPayload.finalOutputEventId !== finalOutput.id ||
+    preparedPayload.finalOutputStepId !== finalOutputPayload.stepId ||
+    !("authorityBinding" in preparedPayload) ||
+    !isDeepStrictEqual(
+      preparedPayload.authorityBinding,
+      binding.handoff.authorityBinding
+    ) ||
+    recorded.streamId !== runStreamId ||
+    recorded.context.causationId !== prepared.id ||
+    recordedPayload.taskId !== binding.handoff.taskId ||
+    recordedPayload.runId !== binding.handoff.runId ||
+    recordedPayload.runType !== binding.handoff.runType ||
+    recordedPayload.residentAgentId !== "agent_default" ||
+    recordedPayload.finalOutputEventId !== finalOutput.id ||
+    recordedPayload.finalOutputStepId !== finalOutputPayload.stepId ||
+    recordedPayload.preparedEventId !== prepared.id ||
+    !("authorityBinding" in recordedPayload) ||
+    !isDeepStrictEqual(
+      recordedPayload.authorityBinding,
+      binding.handoff.authorityBinding
+    ) ||
+    completed.streamId !== runStreamId ||
+    completed.context.causationId !== recorded.id ||
+    completedPayload.runId !== binding.handoff.runId ||
+    !isDeepStrictEqual(
+      completedPayload.outputArtifactHashes,
+      recordedPayload.outputArtifactHashes
+    ) ||
+    orchestrationCompleted.streamId !== claim.streamId ||
+    orchestrationCompleted.context.causationId !== completed.id ||
+    orchestrationPayload.taskId !== binding.handoff.taskId ||
+    orchestrationPayload.attemptId !== binding.handoff.attemptId ||
+    orchestrationPayload.runId !== binding.handoff.runId ||
+    orchestrationPayload.runType !== binding.handoff.runType ||
+    orchestrationPayload.retryGeneration !== binding.handoff.retryGeneration ||
+    orchestrationPayload.specialistRunCompletedEventId !== completed.id ||
+    orchestrationPayload.finalOutputStepEventId !== finalOutput.id ||
+    orchestrationPayload.handoffPreparedEventId !== prepared.id ||
+    orchestrationPayload.handoffRecordedEventId !== recorded.id ||
+    taskStatus.streamId !== `agent_task_${binding.handoff.taskId}` ||
+    taskStatus.context.causationId !== orchestrationCompleted.id ||
+    statusPayload.taskId !== binding.handoff.taskId ||
+    statusPayload.runId !== binding.handoff.runId ||
+    statusPayload.status !== "completed" ||
+    statusPayload.changedBy !== "agent_default"
+  ) {
+    return false;
+  }
+  return events.every((event) =>
+    event.context.correlationId === correlationId
+  );
 }
 
 function completeResidentCheckpointClaimFields(
@@ -2432,6 +2934,12 @@ function canonicalResidentJson(value: unknown): string {
     ).join(",")}}`;
   }
   return JSON.stringify(value) ?? "null";
+}
+
+function residentCanonicalHash(value: unknown): `sha256:${string}` {
+  return `sha256:${createHash("sha256")
+    .update(canonicalResidentJson(value))
+    .digest("hex")}`;
 }
 
 function lifecycleEvent(
