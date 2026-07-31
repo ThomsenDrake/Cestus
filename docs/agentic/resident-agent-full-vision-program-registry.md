@@ -53864,3 +53864,52 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   release. `neo`, provider, credential, external-system, pull-request,
   production-route, preview-branch, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-1310 — Exact one-line preview-accounting RED integrated
+
+- Recorded at: 2026-07-31T02:28:09Z
+- History-preserving program integration merge
+  `00c3f3d83f1594455b636343bf1a4cca7173ebba`, tree
+  `e77f73cdbf6db91347b00f8b53cf78182c328c09`, has exact approval-first
+  parent `f194bf621382846606ddadb930e6ba773264eeed` and exact approved
+  candidate-second parent
+  `334ad7d5562a05a75786b6eeae68fbdaefa5f78c`.
+- Relative to approval only
+  `packages/local-runtime/test/resident-loop-factory-ports.test.ts` advances
+  by the exact approved one-literal count correction to blob
+  `20050ab80db05e71f76ab503e408bc4c1306dc95`. Relative to the candidate
+  only the 58-line append-only E-1309 approval advances. Parent order,
+  candidate-byte identity, every source and other-test freeze, unmerged
+  index, and diff hygiene pass.
+- Fresh integration-tree execution under `TMPDIR=/dev/shm`, one worker, no
+  file parallelism, and the 120-second timeout reproduces H focused
+  **37 = 36 passed + one causal failure**, Task138 boundary
+  **355 = 354 passed + one causal failure**, provider
+  **25 = zero passed + 25 causal failures**, Task16 focused
+  **9 = eight passed + one causal failure**, producer
+  **144 = 143 passed + one causal failure**, factory boundary
+  **10 = nine passed + one causal failure**, wake boundary
+  **140 = 139 passed + one causal failure**, Task136 card
+  **383 = 355 passed + 28 causal failures**, and exact 37-file cross-card
+  **1,042 = 1,014 passed + 28 causal failures**. The exact 28-title set is
+  unchanged and no new failure exists.
+- Typecheck and factory readiness pass. Mission and V4 each pass **20/20**;
+  markers remain **29 / 20 / 29 / 15**. Repository mode exits one and stops
+  first only at exact
+  `blob mismatch: Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`.
+  Exact scope, every freeze, required Task136, Task138-H, and V4 ancestry,
+  local non-symlink dependencies, TypeScript **5.9.3**, Vitest **4.1.9**,
+  canonical `33 = 15 / 17 / 1` path hash
+  `4cca816c5004bf922d47a44bc8e9216a7f4d1e00a030f20b34d59fb0cd1e442e`,
+  strict Git integrity, and clean detached state pass.
+- Advance exact accounting RED `approved -> integrated`. Authorize only this
+  record's forward history-preserving merge into Task136. After that merge,
+  resume exact E-1307 four-source GREEN from its preserved diagnostic blobs
+  and no other byte.
+- Task16 remains `integrated`; Task136 remains `implementing`; strict product
+  frontier remains **28 of 29**. This is test RED integration, not product
+  approval, source integration, Task136 candidacy, strict record 29,
+  publication, Wave 3 start, repository closure, production readiness, or
+  release. `neo`, provider, credential, external-system, pull-request,
+  production-route, preview-branch, and unrelated actions remain
+  unauthorized.
