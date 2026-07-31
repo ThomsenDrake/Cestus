@@ -176,6 +176,196 @@ function stableJson(value) {
   return JSON.stringify(value);
 }
 
+function fixtureGit(repository, args) {
+  return execFileSync("git", args, {
+    cwd: repository,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"]
+  }).trim();
+}
+
+function appendLifecycleEvent(repository, eventId, title, marker) {
+  const registryPath = join(
+    repository,
+    "docs/agentic/resident-agent-full-vision-program-registry.md"
+  );
+  const current = readFileSync(registryPath, "utf8");
+  writeFileSync(
+    registryPath,
+    `${current}${current.endsWith("\n") ? "\n" : "\n\n"}## ${eventId} — ${title}\n\n${marker}\n`
+  );
+  fixtureGit(repository, [
+    "add",
+    "--",
+    "docs/agentic/resident-agent-full-vision-program-registry.md"
+  ]);
+  fixtureGit(repository, ["commit", "-m", title]);
+  return fixtureGit(repository, ["rev-parse", "HEAD"]);
+}
+
+function controlReviewMarker(candidateSha, reviewEventId) {
+  return `<!-- resident-full-vision-control-plane-review-v1 ${stableJson({
+    candidateSha,
+    controlPlaneId: "successor-mission-control",
+    reviewEventId,
+    verdict: "APPROVED"
+  })} -->`;
+}
+
+function controlIntegrationMarker(evidence) {
+  return `<!-- resident-full-vision-control-plane-integration-v1 ${stableJson({
+    candidateSha: evidence.candidateSha,
+    controlPlaneId: "successor-mission-control",
+    integrationEventId: evidence.integrationEventId,
+    integrationSha: evidence.integrationSha,
+    reviewEventId: evidence.reviewEventId,
+    reviewRegistryCommitSha: evidence.reviewRegistryCommitSha
+  })} -->`;
+}
+
+function featureReviewMarker(featureId, candidateSha, reviewEventId) {
+  return `<!-- resident-full-vision-feature-review-v1 ${stableJson({
+    candidateSha,
+    featureId,
+    reviewEventId,
+    verdict: "APPROVED"
+  })} -->`;
+}
+
+function featureIntegrationMarker(featureId, evidence) {
+  return `<!-- resident-full-vision-feature-integration-v1 ${stableJson({
+    candidateSha: evidence.candidateSha,
+    featureId,
+    integrationEventId: evidence.integrationEventId,
+    integrationSha: evidence.integrationSha,
+    reviewEventId: evidence.reviewEventId,
+    reviewRegistryCommitSha: evidence.reviewRegistryCommitSha
+  })} -->`;
+}
+
+function writeProjectedMission(repository, name, controlEvidence, featureEvidence) {
+  const source = JSON.parse(
+    readFileSync(
+      join(
+        repository,
+        "docs/agentic/contracts/resident-agent-full-vision-mission-state.v1.json"
+      ),
+      "utf8"
+    )
+  );
+  source.mission.controlPlaneStatus = "integrated";
+  source.mission.acceptedIntegrationSha = controlEvidence.integrationSha;
+  source.controlPlaneIntegrationEvidence = controlEvidence;
+  if (featureEvidence !== undefined) {
+    const feature = source.features.find(({ featureId }) => featureId === featureEvidence.featureId);
+    assert.ok(feature, `fixture must contain ${featureEvidence.featureId}`);
+    feature.integrationState = "integrated";
+    feature.acceptedIntegrationSha = featureEvidence.integrationSha;
+    source.reviewedIntegrationEvidence[featureEvidence.featureId] = {
+      candidateSha: featureEvidence.candidateSha,
+      reviewEventId: featureEvidence.reviewEventId,
+      reviewRegistryCommitSha: featureEvidence.reviewRegistryCommitSha,
+      integrationEventId: featureEvidence.integrationEventId,
+      integrationSha: featureEvidence.integrationSha,
+      integrationRegistryCommitSha: featureEvidence.integrationRegistryCommitSha
+    };
+  }
+  const path = join(repository, "..", `${name}.json`);
+  writeFileSync(path, `${JSON.stringify(source, null, 2)}\n`);
+  return path;
+}
+
+function topologyOutcome(repository, projectedMissionPath) {
+  try {
+    execFileSync(
+      process.execPath,
+      ["scripts/check-software-factory-active-mission.mjs", "--mission", projectedMissionPath],
+      {
+        cwd: repository,
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"]
+      }
+    );
+    return "accepted";
+  } catch (error) {
+    const stderr = String(
+      error && typeof error === "object" && "stderr" in error ? error.stderr : error
+    );
+    if (/integration first parent must equal/.test(stderr)) {
+      return "first-parent-rejected";
+    }
+    if (/integration tree must equal/.test(stderr)) {
+      return "merge-tree-rejected";
+    }
+    if (/Task140P candidate changed path/.test(stderr)) {
+      return "scope-rejected";
+    }
+    return stderr.trim();
+  }
+}
+
+function createTopologyFixture() {
+  const fixtureDir = mkdtempSync(join(tmpdir(), "cestus-active-mission-topology-"));
+  const repository = join(fixtureDir, "repo");
+  execFileSync("git", ["clone", "--quiet", "--no-local", root, repository], {
+    stdio: "pipe"
+  });
+  fixtureGit(repository, ["config", "user.email", "mission-fixture@example.test"]);
+  fixtureGit(repository, ["config", "user.name", "Mission Fixture"]);
+  fixtureGit(repository, [
+    "switch",
+    "--detach",
+    "639ff359f67d7cd156bc1b6be5ac56a842dbb030"
+  ]);
+  fixtureGit(repository, ["switch", "-c", "fixture-candidate"]);
+  for (const path of candidateControlPaths) {
+    copyFileSync(join(root, path), join(repository, path));
+  }
+  fixtureGit(repository, ["add", "--", ...candidateControlPaths]);
+  fixtureGit(repository, ["commit", "-m", "fixture: successor mission candidate"]);
+  const candidateSha = fixtureGit(repository, ["rev-parse", "HEAD"]);
+
+  fixtureGit(repository, [
+    "switch",
+    "-c",
+    "fixture-review",
+    "639ff359f67d7cd156bc1b6be5ac56a842dbb030"
+  ]);
+  const reviewEventId = "RV-1-E-8800";
+  const reviewRegistryCommitSha = appendLifecycleEvent(
+    repository,
+    reviewEventId,
+    "fixture successor control approved",
+    controlReviewMarker(candidateSha, reviewEventId)
+  );
+  return {
+    candidateSha,
+    fixtureDir,
+    repository,
+    reviewEventId,
+    reviewRegistryCommitSha
+  };
+}
+
+function integrateControlFixture(fixture, integrationEventId, mergeMessage) {
+  fixtureGit(fixture.repository, ["merge", "--no-ff", fixture.candidateSha, "-m", mergeMessage]);
+  const integrationSha = fixtureGit(fixture.repository, ["rev-parse", "HEAD"]);
+  const evidence = {
+    candidateSha: fixture.candidateSha,
+    reviewEventId: fixture.reviewEventId,
+    reviewRegistryCommitSha: fixture.reviewRegistryCommitSha,
+    integrationEventId,
+    integrationSha
+  };
+  evidence.integrationRegistryCommitSha = appendLifecycleEvent(
+    fixture.repository,
+    integrationEventId,
+    `${mergeMessage} recorded`,
+    controlIntegrationMarker(evidence)
+  );
+  return evidence;
+}
+
 function renderRegistryFixture(source) {
   const events = [];
   if (source.controlPlaneIntegrationEvidence !== null) {
@@ -603,6 +793,171 @@ if (!existsSync(checkerPath)) {
         );
       }
     );
+  });
+
+  test("rejects non-exact integration topology and out-of-scope feature candidates", () => {
+    const fixture = createTopologyFixture();
+    try {
+      fixtureGit(fixture.repository, [
+        "switch",
+        "-c",
+        "fixture-intervening-parent",
+        fixture.reviewRegistryCommitSha
+      ]);
+      writeFileSync(
+        join(fixture.repository, "docs/agentic/topology-intervening.txt"),
+        "intervening bytes\n"
+      );
+      fixtureGit(fixture.repository, [
+        "add",
+        "--",
+        "docs/agentic/topology-intervening.txt"
+      ]);
+      fixtureGit(fixture.repository, ["commit", "-m", "fixture: add intervening bytes"]);
+      const interveningEvidence = integrateControlFixture(
+        fixture,
+        "RV-1-E-8801",
+        "fixture: merge after intervening bytes"
+      );
+      const interveningOutcome = topologyOutcome(
+        fixture.repository,
+        writeProjectedMission(
+          fixture.repository,
+          "intervening-parent-mission",
+          interveningEvidence
+        )
+      );
+
+      fixtureGit(fixture.repository, [
+        "switch",
+        "-c",
+        "fixture-nondeterministic-tree",
+        fixture.reviewRegistryCommitSha
+      ]);
+      fixtureGit(fixture.repository, [
+        "merge",
+        "--no-ff",
+        "--no-commit",
+        fixture.candidateSha
+      ]);
+      fixtureGit(fixture.repository, [
+        "restore",
+        "--source",
+        fixture.reviewRegistryCommitSha,
+        "--staged",
+        "--worktree",
+        "--",
+        "AGENTS.md"
+      ]);
+      fixtureGit(fixture.repository, [
+        "commit",
+        "-m",
+        "fixture: merge with substituted candidate bytes"
+      ]);
+      const substitutedIntegrationSha = fixtureGit(fixture.repository, ["rev-parse", "HEAD"]);
+      const substitutedEvidence = {
+        candidateSha: fixture.candidateSha,
+        reviewEventId: fixture.reviewEventId,
+        reviewRegistryCommitSha: fixture.reviewRegistryCommitSha,
+        integrationEventId: "RV-1-E-8802",
+        integrationSha: substitutedIntegrationSha
+      };
+      substitutedEvidence.integrationRegistryCommitSha = appendLifecycleEvent(
+        fixture.repository,
+        substitutedEvidence.integrationEventId,
+        "fixture substituted integration recorded",
+        controlIntegrationMarker(substitutedEvidence)
+      );
+      const substitutedOutcome = topologyOutcome(
+        fixture.repository,
+        writeProjectedMission(
+          fixture.repository,
+          "substituted-tree-mission",
+          substitutedEvidence
+        )
+      );
+
+      fixtureGit(fixture.repository, [
+        "switch",
+        "-c",
+        "fixture-feature-scope",
+        fixture.reviewRegistryCommitSha
+      ]);
+      const validControlEvidence = integrateControlFixture(
+        fixture,
+        "RV-1-E-8803",
+        "fixture: merge exact successor control"
+      );
+      const featureBase = fixtureGit(fixture.repository, ["rev-parse", "HEAD"]);
+      fixtureGit(fixture.repository, [
+        "switch",
+        "-c",
+        "fixture-feature-candidate",
+        featureBase
+      ]);
+      writeFileSync(
+        join(fixture.repository, "docs/agentic/task140p-out-of-scope.txt"),
+        "out-of-scope bytes\n"
+      );
+      fixtureGit(fixture.repository, [
+        "add",
+        "--",
+        "docs/agentic/task140p-out-of-scope.txt"
+      ]);
+      fixtureGit(fixture.repository, ["commit", "-m", "fixture: out-of-scope Task140P"]);
+      const featureCandidateSha = fixtureGit(fixture.repository, ["rev-parse", "HEAD"]);
+      fixtureGit(fixture.repository, [
+        "switch",
+        "-c",
+        "fixture-feature-program",
+        featureBase
+      ]);
+      const featureReviewEventId = "RV-1-E-8804";
+      const featureReviewRegistryCommitSha = appendLifecycleEvent(
+        fixture.repository,
+        featureReviewEventId,
+        "fixture Task140P approved",
+        featureReviewMarker("Task140P", featureCandidateSha, featureReviewEventId)
+      );
+      fixtureGit(fixture.repository, [
+        "merge",
+        "--no-ff",
+        featureCandidateSha,
+        "-m",
+        "fixture: merge out-of-scope Task140P"
+      ]);
+      const featureIntegrationSha = fixtureGit(fixture.repository, ["rev-parse", "HEAD"]);
+      const featureEvidence = {
+        featureId: "Task140P",
+        candidateSha: featureCandidateSha,
+        reviewEventId: featureReviewEventId,
+        reviewRegistryCommitSha: featureReviewRegistryCommitSha,
+        integrationEventId: "RV-1-E-8805",
+        integrationSha: featureIntegrationSha
+      };
+      featureEvidence.integrationRegistryCommitSha = appendLifecycleEvent(
+        fixture.repository,
+        featureEvidence.integrationEventId,
+        "fixture Task140P integration recorded",
+        featureIntegrationMarker("Task140P", featureEvidence)
+      );
+      const scopeOutcome = topologyOutcome(
+        fixture.repository,
+        writeProjectedMission(
+          fixture.repository,
+          "out-of-scope-feature-mission",
+          validControlEvidence,
+          featureEvidence
+        )
+      );
+
+      assert.deepEqual(
+        [interveningOutcome, substitutedOutcome, scopeOutcome],
+        ["first-parent-rejected", "merge-tree-rejected", "scope-rejected"]
+      );
+    } finally {
+      rmSync(fixture.fixtureDir, { recursive: true, force: true });
+    }
   });
 
   test("readiness rejects checker substitution and selector forgery", () => {
