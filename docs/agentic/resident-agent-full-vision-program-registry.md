@@ -15163,6 +15163,100 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 }
 ```
 
+## RV-1-E-1318 — Task136 strict-record candidate rejected; finite currentness repair authorized
+
+- Recorded at: 2026-07-31T06:02:45Z
+- Preserve exact committed non-release strict-record candidate
+  `b355f3582df13159d56337f7ce466b244cd4d983`, tree
+  `22a35694d9f02e1feeef7eb5f56d1bfa4497ba3f`, sole parent E-1316
+  integration event
+  `714d8796dbb0af684863bed946f4ed93fb3bbbfc`. Contract mode emits exact
+  markers **29 / 20 / 29 / 15**, but clean repository mode exits one before
+  any release command and stops exactly at
+  `blob mismatch: Task136-FC-Ports:packages/local-runtime/test/runtime-handle-mounted-authority-imports.test.ts`.
+  It emits no prefix, closure, repository-success, record-29, or release
+  marker. The candidate remains immutable and is rejected for release.
+- Two fresh independent read-only diagnoses reproduce the same P1 assurance
+  currentness defect. Raw `Task136-FC-Ports` release evidence remains
+  byte-for-byte immutable and pins the still-owned test at blob
+  `0d3bdc674ac08278453dcba67023da4a177cceb0`. E-1274 through E-1276 later
+  lawfully approved and history-preservingly integrated the exact
+  prerequisite-owned forward oracle correction: candidate
+  `e652ec2cae47fea30771f6d223f7af0f65852366`, integration
+  `f3cd6caaf5c4ad97501d173eaee4e4f4887ad3e5`, and current blob
+  `68aa54a4ed1af4cc531023b063e767286757f0ec`. E-1288 explicitly classifies
+  this path as inherited prerequisite-owned evidence, not a Task136-owned
+  path. It is the immutable Task136-FC-Ports raw-record path; no obsolete
+  record-19 ordinal is asserted.
+- The real checker still compares current HEAD to the raw FC-Ports blob. Its
+  synthetic adapter likewise seeds HEAD from the raw record and omits the
+  approved successor, so the existing assurance corpus cannot expose the
+  real repository failure. This is stale finite assurance currentness, not
+  product drift, oracle drift, a new transfer, or authority for a 34th
+  Task136 path.
+- Task18 Step 7 authorizes a forward repair and rebound candidate after an
+  exact committed candidate-gate failure. Authorize one Level-3 assurance
+  repair in exactly:
+  `scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs` and
+  `scripts/resident-agent/assurance/task136-bounded-assurance.mjs`.
+  Freeze the design, plan, claims, contracts, mission, release graph, all raw
+  records 1 through 28, registry except lifecycle events, every package
+  source and test, every product byte, and the exact 33-path
+  **15 sources / 17 tests / one claim** Task136 ceiling.
+- Proceed test-first without a permanent Level-3 RED commit. In the existing
+  finite Task136 graph, compatibility, baseline, raw-pin, and record-29
+  migration test, make the synthetic repository model the exact lawful
+  successor lineage while preserving exactly 20 top-level test titles.
+  Required causal RED is **20 = 14 passed + six failed**: the exact three
+  newly causal Git-evidence, repository-mutation, and finite-record-29 tests,
+  plus only the existing three pre-calibration `29 !== 28` titles. No
+  contract, registry, product, or package-test byte changes in RED.
+- GREEN may add one singular frozen **still-owned forward-currentness
+  successor** tuple only:
+
+  ```text
+  card                    Task136-FC-Ports
+  path                    packages/local-runtime/test/runtime-handle-mounted-authority-imports.test.ts
+  raw integration         365279fdd4e772c389188d05376ba87afe9782df
+  raw blob                0d3bdc674ac08278453dcba67023da4a177cceb0
+  successor candidate     e652ec2cae47fea30771f6d223f7af0f65852366
+  successor integration   f3cd6caaf5c4ad97501d173eaee4e4f4887ad3e5
+  successor/current blob  68aa54a4ed1af4cc531023b063e767286757f0ec
+  ```
+
+  Preserve raw candidate and integration blob checks. Before any command,
+  require exact source-integration-to-candidate, candidate-to-integration,
+  and integration-to-current-HEAD ancestry; require both successor commits;
+  and require exact blob object type and SHA at successor candidate,
+  successor integration, and current HEAD. Missing commits, substituted
+  ancestry, non-blob objects, stale or unrelated blobs, and every sibling
+  path fail closed with zero command calls. Do not add a generic exception,
+  ownership transfer, transitive mechanism, fallback, heuristic, timing
+  check, or path.
+- Required GREEN restores only the planned pre-Task19 state:
+  **20 = 17 passed + three failed**, with exactly the existing three
+  `29 !== 28` titles; repository mode must emit exact
+  `TASK136_REPOSITORY_PREFIX_OK records=29 commands=29` and
+  `TASK136_REPOSITORY_RELEASE_CLOSURE_OK records=29 commands=29`.
+  Contract markers, typecheck, factory readiness, scope, ancestry, raw pins,
+  product and Task138 freezes, strict Git integrity, and clean state must
+  pass.
+- Commit the exact two-file assurance GREEN as one candidate after causal RED
+  reproduction. Obtain a completely fresh independent architecture/scrutiny
+  reviewer and a different completely fresh black-box executability reviewer
+  on the same immutable candidate. Changed bytes invalidate both reviews.
+  Only after approval may the program branch record approval, integrate
+  approval-first/candidate-second, reproduce all gates, record integration,
+  and append a rebound strict-record-candidate event binding the unchanged
+  E-1317 JSON object to the new clean HEAD.
+- Task16 and Task136 remain `integrated`; strict product frontier remains
+  **28 of 29**. This is routine assurance-repair authority under the existing
+  Task18 failure branch, not record 29, release, repository closure,
+  publication, Wave 3 start, production readiness, or product release.
+  `neo`, provider, credential, external-system, pull-request,
+  production-route, preview-branch, and unrelated actions remain
+  unauthorized.
+
 ## Task136 dispatch release v4: Task127
 
 ```json
