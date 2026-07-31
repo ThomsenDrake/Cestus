@@ -988,3 +988,29 @@ start, or product release.
   create a second product release, publish to `neo`, start Wave 3, change
   provider or route behavior, or claim production readiness or Wave 5
   release.
+
+## RV-1-E-1324 record-29 minimal GREEN evidence
+
+- The three live registry-prefix groups now require exactly `29` records and
+  `expectedIds.slice(0, 29)`. The repository-admission fixture now completes
+  successfully, emits exact
+  `TASK136_REPOSITORY_PREFIX_OK records=29 commands=29` and
+  `TASK136_REPOSITORY_RELEASE_CLOSURE_OK records=29 commands=29`, returns
+  `29` records, and records exactly `29` command calls.
+- The historical pre-record-29 source-currentness fixture remains
+  `.slice(0, 28)`. The historical W1 activation corpus remains byte-identical:
+  its local `.slice(0, 26)`, length/order expectations at `26`, and synthetic
+  record-27 activation are unchanged. All 20 titles, raw pins and commands,
+  V1-V4 contracts, checker, mission, registry, products, packages, and prior
+  evidence remain unchanged.
+- From intended GREEN bytes,
+  `TMPDIR=/dev/shm node --test
+  scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs` exits
+  `0` with exactly `20` tests, `20` passed, and `0` failed. Contract mode
+  emits exact markers **29 / 20 / 29 / 15**; standalone typecheck and factory
+  readiness pass. Clean committed-byte repository, scope, ancestry, freeze,
+  integrity, and clean-state admission remains required before review.
+- This is the sole record-29 assurance calibration candidate path pair. It is
+  assurance-only and does not change strict product frontier **29 of 29**,
+  create another release record, publish `neo`, start Wave 3, or alter
+  provider, route, credential, or production behavior.
