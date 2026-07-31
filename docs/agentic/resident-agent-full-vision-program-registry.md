@@ -53913,3 +53913,68 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   release. `neo`, provider, credential, external-system, pull-request,
   production-route, preview-branch, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-1311 — Exact four-source mounted-completion GREEN approved
+
+- Recorded at: 2026-07-31T02:54:54Z
+- New context-isolated independent source reviewer
+  `/root/task17_lineage_packet/e1304_fresh_oracle_review/e1308_fresh_preview_review/e1310_fresh_green_review`
+  returns **APPROVED** with no P0-P3 defect, missing test, scope drift,
+  currentness weakening, or unsafe fallback for exact immutable candidate
+  commit `320c801c16e487a4b0487fef7550c5fb702a2588`, tree
+  `3d6a82b9830e5ce17e8ac3c5f8e2706e094af3b3`, sole parent
+  `5900a1f6ff20ab4c976c02367442d9ef1fabbbb8`, and subject
+  `fix(agent): preserve exact mounted completion boundaries`. Changed bytes
+  invalidate this approval.
+- Exact four-source transitions are:
+  T120 `packages/agent/src/plan-observation-contracts.ts`
+  `32754d92052c8f5d4cd98092a932bbb596a48e2f` to
+  `60e99de6b7fb147274f4f0989f288735ee88e81e`;
+  C136-P `packages/agent/src/resident-plan-candidate-provider.ts`
+  `5bc39430d122bd6fbeedef788ffec6dc35638f0f` to
+  `4ede1f22a599e66e1316ceadac2ebd133938f7b8`;
+  W `packages/local-runtime/src/mounted-wake-lifecycle-store.ts`
+  `2d86fdcd570efbdee499d1ec807d2db1066f48bc` to
+  `a79ccac55f4b4b6693bc18c5c88eda54d080a97b`; and
+  H `packages/agent/src/specialist-handoff-projection.ts`
+  `3d9d0ee4d38183fd9b1275b51738e7d48fb5e1d0` to
+  `8d4a1993732bbe7cf3057ef092d734c3932f3030`.
+- Reviewer confirms T120 returns exact deeply frozen plain-own-data V2 copies
+  at append, reread, exact-ID read, and replay boundaries while preserving
+  sequence/idempotency; C136-P parses field-local admission generation and
+  exact catalog identity without weakening mount-instance or unsafe-text
+  classification; W treats invocation hash as opaque dispatcher attestation,
+  validates the exact catalog-10 causal unit and receipt envelope, rejects
+  extra same-bound events, and requires exact terminal adjacency and
+  identity/currentness; H returns a newly allocated, recursively frozen plain
+  own-data graph only from the successful private full-readback port while
+  leaving public Task138 and global projection behavior frozen.
+- Exact scope is four regular source files, 681 insertions and 37 deletions.
+  Every test, other source, document, contract, script, route, provider,
+  credential, activation path, mounted storage, composition, and preview
+  branch remains frozen.
+- Fresh clean execution under `TMPDIR=/dev/shm`, one worker, no file
+  parallelism, and the 120-second timeout passes H **37/37**, Task138
+  **355/355**, provider **25/25**, Task16 focused **9/9**, producer
+  **144/144**, factory boundary **10/10**, wake boundary **140/140**,
+  Task136 card **383/383**, and exact 37-file cross-card
+  **1,042/1,042** with zero test failure.
+- Typecheck and factory readiness pass. Mission and V4 each pass **20/20**;
+  markers remain **29 / 20 / 29 / 15**. Repository mode exits one and stops
+  first only at exact
+  `blob mismatch: Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`.
+  Exact four-source scope, every freeze, required Task136, Task138-H, and V4
+  ancestry, local non-symlink dependencies, TypeScript **5.9.3**, Vitest
+  **4.1.9**, canonical `33 = 15 / 17 / 1` path hash
+  `4cca816c5004bf922d47a44bc8e9216a7f4d1e00a030f20b34d59fb0cd1e442e`,
+  diff hygiene, strict Git integrity, and clean detached state pass.
+- Advance exact E-1307 source candidate `reviewing -> approved`. Authorize
+  only its history-preserving approval-first/candidate-second program merge,
+  fresh integration-tree packet, append-only source integration record, and
+  forward Task136 merge before Task17 candidate admission.
+- Task16 remains `integrated`; Task136 remains `implementing`; strict product
+  frontier remains **28 of 29**. This is source approval, not source
+  integration, Task136 candidacy, strict record 29, publication, Wave 3
+  start, repository closure, production readiness, or release. `neo`,
+  provider, credential, external-system, pull-request, production-route,
+  preview-branch, and unrelated actions remain unauthorized.
