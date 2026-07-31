@@ -54022,3 +54022,153 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   Wave 3 start, repository closure, production readiness, or release. `neo`,
   provider, credential, external-system, pull-request, production-route,
   preview-branch, and unrelated actions remain unauthorized.
+
+## RV-1-E-1313 — Repaired exact Task136 33-path candidate admitted to fresh dual review
+
+- Recorded at: 2026-07-31T03:28:15Z
+- Exact clean, pushed Task136 candidate is
+  `21ac850894ff3e040069b4307c95e20148db96fc`, tree
+  `e9a7251fae72fc8b169b38d4eb42853d2bbfce26`, with exact first parent
+  approved four-source mounted-completion candidate
+  `320c801c16e487a4b0487fef7550c5fb702a2588` and exact second parent
+  E-1312 program record
+  `87b8931ec4eacaf3b3621a9a08e847da61b37628`. Local Task136, local
+  tracking, and remote-advertised refs agree at that SHA; the Task136
+  worktree and index are clean.
+- This candidate supersedes only rejected candidate
+  `97d45f1d0b9b9c598101f70099b5745d8c586004`. Preserve that candidate,
+  both E-1288 reviews, E-1289 rejection, and all later forward repair,
+  review, approval, integration, and authority history unchanged. All exact
+  **57** descendant commits from the rejected candidate through this
+  candidate remain connected and ancestral.
+- Unique original Task136 authority merge remains
+  `85b47c8ab2a1770da12a8bdaed589715ad4bcfb1`, tree
+  `a6a9f32c6606502350d78e3356694c06c8ceb1ac`; claim checkpoint remains
+  `5173887d6acd8a89cadb731f4a22a89782aac0b5`; permanent Task9 RED remains
+  `1b99822ec532fc51866008c2fc52986775341573`; and separate Task12 binding
+  RED remains `21935b2197a35c25b194ae57ec5365dd88351049`.
+- Exact Task136-owned scope is the contract's **33** ordered paths:
+  **15 sources, 17 tests, and one claim**, with the transferred composition
+  source at position 23. Canonical newline-delimited ordered-path SHA-256 is
+  `4cca816c5004bf922d47a44bc8e9216a7f4d1e00a030f20b34d59fb0cd1e442e`.
+  All 33 owned paths occur in the authority-to-candidate range with none
+  missing.
+- The complete authority-to-candidate range remains those 33 paths plus the
+  exact eleven inherited paths listed by E-1288. The inherited-only sorted
+  newline-delimited SHA-256 is
+  `1e15f9c9e5f637799567cc4e76fa3784a8dec16abde4accc92da824196a2ac88`;
+  the complete 44-path sorted newline-delimited SHA-256 is
+  `362485fbd2ae160db0e6d2f5d8e304afaa589dde587488f8d5b19da125f9f55e`.
+  Exact 44-path binary diff is **3,917,125 bytes**, SHA-256
+  `db26319a38b36f701580a1905c38475d8b8912b8d687cba4fb2d7ad3e5625278`.
+- The complete source-only proof uses exact commits
+  `9d1eb9abcb0f9445d074cb81b47a35b8f2d05c79`,
+  `f89c0e4cb3edf7587c387897296806906685b363`,
+  `32b7f7f062bd97678f8b430245aa7757fd6119fe`,
+  `23d9f05689940761abb82264968ae764f396c14d`,
+  `92078539b9c7f5060d973441623b66a8c0ba272f`,
+  `98966df0795ad2252e17adf9792acc64c5c597bd`,
+  `c4ecb400d3a5f29ae4c39a6d6dc1c381c017eb24`,
+  `fded47cc59ed24a82865384c80fbe9641e2ca849`,
+  `7ac09a1afccf7988ba3bf8e20bd256e73d779def`,
+  `a2bf9bd3684bc512cbb105f87de27d06628a5468`, and
+  `320c801c16e487a4b0487fef7550c5fb702a2588`.
+  Every direct delta is source-only and ancestral. Their sorted unique
+  direct-path union is exactly the fifteen current Task136 sources, SHA-256
+  `aed1f0be55fe43594fc273c598e93c89eb961e0de3fcb6d464620d86bb16f80b`.
+  Rejected intermediate source commits remain immutable provenance; later
+  exact approved candidates supply the current provider, W, H, T120, and R
+  bytes.
+- All ten prerequisites remain exact ancestors: T120-R
+  `0b5185f0d0dd276164ec70d5db150f5f6ccb3a79`, Task136-FC-Core
+  `7a7a650e7db97c1aad63447e3669e66ddf3dc7fe`, Task136-FC-Ports
+  `365279fdd4e772c389188d05376ba87afe9782df`, Task139-P2
+  `6472c92bce3b6cd23e3128666524e575d9f9d236`, C136-P
+  `b69ebd003ec1c3afd7cc849f076cb245e98c58f6`, G136-R
+  `4e7e4f8069ad494b865c4c134b21767be4d7f961`, Task137B-W
+  `9e680b44c4284456eebaad79c00fabda5c2bd4ea`, Task138-H
+  `12d23a69047d58e14dd04c4f89daf3f8a528e8aa`, CF1-HR
+  `32d4e3fdf8b4b79178d616daff91ecc5dd341548`, and G136-SC
+  `253150b2ab5f2271d2b04a5b8fc5b82b7bf757a5`.
+- Task138 source, test, and claim remain exact blobs
+  `bb85aabb05b150fbb38d9dd4a7fa85e9a4a9d404`,
+  `1a993ba0d14cb49e406f356568f09a00f17242f3`, and
+  `e04acf26ca6eecb27548dad7e946bce1e0c97358`. Agent barrel, scheduler
+  types, every adapter except exact `legacy-staging.ts`, runtime factory,
+  HTTP routes/handler, operator-status providers, server, provider,
+  credential, activation, and unrelated paths remain frozen. The private
+  registrar remains absent from product exports; generic wake construction,
+  the bounded binder, and the bounded factory retain only their approved
+  public boundaries.
+- Fresh candidate execution under `TMPDIR=/dev/shm`, one worker, no file
+  parallelism, and the 120-second import-policy timeout passes Task16 focused
+  **9/9**, producer **144/144**, factory boundary **10/10**, wake boundary
+  **140/140**, Task136 card **383/383**, exact 37-file cross-card
+  **1,042/1,042**, policy corpus **8 allowed / 20 rejected**, and Task138
+  **355/355**. All Task17 producer commands also pass.
+- Standalone typecheck and factory readiness pass. Mission and V4 each pass
+  **20/20**; mission fingerprint remains
+  `sha256:799af83764d6c098f3b1a97d6d30fc3b9b13f32f7c57204d92383fab371179ac`,
+  immutable envelope remains
+  `sha256:82e666a86d2b3ccd0ceafd634975d0a7459d3fe7600d27cc8345dd0f531fbc1e`,
+  and markers remain **29 / 20 / 29 / 15**. Clean repository mode exits one
+  and stops first only at exact
+  `blob mismatch: Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`.
+  It emits no repository-prefix, release-closure, record-29, repository, or
+  product-release success marker.
+- Fresh serialized full differential remains bound to original authority
+  `85b47c8ab2a1770da12a8bdaed589715ad4bcfb1` and exact candidate
+  `21ac850894ff3e040069b4307c95e20148db96fc`. Authority is
+  **3,231 = 3,181 passed + 45 failed + 5 pending**, **504 = 486 passed +
+  18 failed** suites, and 241 result files; candidate is
+  **3,372 = 3,322 passed + 45 failed + 5 pending**, **506 = 488 passed +
+  18 failed** suites, and 242 result files. Both test commands exit one.
+  Exact E-1007 occurrence calibration passes
+  `removed=8 mapped=14 addedPassed=135 retainedLaterRed=0 addedFiles=1`;
+  no baseline semantic failure, pending occurrence, or suite failure changes.
+- Exact fresh candidate artifact SHA-256 values are Vitest JSON
+  `a1734b77a299e22a0b2cc11d7719b1219598b0b13e6f7732c022b7066a324bec`,
+  npm-test log
+  `8296e3deca8d4a84f0d4f7ee132e96902f4581bc36a661a3d570b9ede68afa39`,
+  default verify log
+  `af991c2b29226db0df24d79be315b1e7159b68c53641b9854c5e2e96004a71a4`,
+  and comparator evidence
+  `0a1b47f8b1d85ce5819bddc8a1051a27d58fd02abd4df187f44a10d38b19d0c6`.
+  Each full log carries exactly one matching exit-status and tree marker.
+  Immutable authority artifact hashes remain exactly those recorded by
+  E-1288.
+- Default `npm run verify` passes typecheck and exits one only at the
+  inherited test cohort. It reports
+  **3,372 = 3,312 passed + 55 failed + 5 skipped**. All 45 serialized
+  semantic failures retain exact identity. The ten additional failures are
+  timeout-only: one scheduler-completion import-policy title, five
+  prerequisite-checker Git-fixture titles, one factory-ports import-policy
+  title, one runtime-handle mounted-authority import-policy title, and two
+  wake-supervisor import-policy titles. Every one passes in the mandated
+  serialized 120-second execution; the one-failure difference from E-1288's
+  prior default observation is calibrated environmental variance, not
+  product drift or an unassigned failure.
+- TypeScript is **5.9.3**, Vitest is **4.1.9**, dependencies are local and
+  non-symlinked, exact Task136/Task138-H/V4 ancestry passes, every Task12
+  binding-RED test remains byte-identical, diff hygiene and strict Git
+  connectivity pass, and both Task136 and program worktrees were clean
+  before this append.
+- Assign completely fresh independent read-only architecture reviewer
+  `/root/task17_e1313_architecture_review` and different completely fresh
+  independent read-only executability reviewer
+  `/root/task17_e1313_executability_review`. Both must bind exact
+  candidate/tree/parents, the 44-path binary packet and both path hashes, the
+  eleven-commit source union, all 57 descendant repair/integration commits,
+  complete ancestry and prerequisites, Task138 and no-activation freezes,
+  deterministic gates, artifact hashes, E-1007 comparator, and timeout
+  classification. The executability reviewer must additionally reproduce
+  original Task9 and Task12 binding-RED causality from their exact immutable
+  commits. Changed candidate bytes invalidate both reviews.
+- Advance exact Task136 `implementing -> candidate -> reviewing`. Task16
+  remains `integrated`; strict product frontier remains **28 of 29**. This
+  is candidate review admission, not approval, integration, strict record
+  29, repository closure, publication, Wave 3 start, production readiness,
+  or product release. No product or test edit is authorized during review.
+  `neo`, provider, credential, external-system, pull-request,
+  production-route, preview-branch, and unrelated actions remain
+  unauthorized.
