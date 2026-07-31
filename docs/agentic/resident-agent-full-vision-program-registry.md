@@ -53382,3 +53382,79 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   release. `neo`, provider, credential, external-system, pull-request,
   production-route, preview-branch, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-1303 — Frozen-readback RED halted; exact V2 fixture correction authorized
+
+- Recorded at: 2026-07-31T01:06:41Z
+- E-1302 authority is committed and pushed at exact program head
+  `bc1cfca07c65453e809743b5f73e9decfce0bb12`, then forward-merged and
+  pushed into Task136 at exact two-parent head
+  `6de84f376615c07da92d84a9de2e9c25dbf23336`. The three E-1298 source
+  diagnostics remain unstaged, uncommitted, and exact blobs
+  `60e99de6b7fb147274f4f0989f288735ee88e81e`,
+  `4ede1f22a599e66e1316ceadac2ebd133938f7b8`, and
+  `a79ccac55f4b4b6693bc18c5c88eda54d080a97b`. The H-test diagnostic
+  remains unstaged and uncommitted at exact blob
+  `cab70de3802af4d7635bab56efec46b9ddb30795`. None is a candidate.
+- Completely fresh independent read-only diagnostic
+  `/root/task17_e1302_h_fixture_diagnostic` rejects the current diagnostic
+  execution as a false RED. The existing title still supplies a V1 manifest
+  and only prepared/recorded handoff events, so the released full-readback
+  port correctly returns `undefined`; no lawful product change may admit
+  that stale, unbound lifecycle.
+- Preserve the current capture, exact deeply frozen plain-own-data assertion
+  helper, title, counters, abstract corpus, imports, and all other assertions.
+  Authorize only the smallest forward correction within that same title in
+  `packages/agent/test/specialist-handoff-projection.test.ts`, starting from
+  committed blob `67014dae42649e6370ed6a212cc468af81cfa24e`
+  plus the held diagnostic blob above.
+- Reconstruct only that title's already-released authority-bound V2 completed
+  lifecycle. Build the V2 manifest with its existing authority binding and
+  hash; prepare the exact compact binding plus V2 schema and authority
+  binding; record it; append the completed terminal caused by the recorded
+  event, orchestration-completed caused through that chain, and task-completed
+  caused by orchestration; order the ledger as started, final output,
+  prepared, recorded, terminal, orchestration, status; and store the exact V2
+  manifest at its hash plus the existing material bytes. Reuse only the
+  file's existing abstract helpers. Add no title, global fixture helper,
+  corpus value, import-policy exception, public DTO assertion, or unrelated
+  alias case.
+- Fresh diagnostic execution with that exact fixture reaches the intended H
+  boundary: the manifest, selected handoff, and references array are frozen,
+  while the first returned context-pack reference and its nested values are
+  not. H source remains frozen at
+  `3d9d0ee4d38183fd9b1275b51738e7d48fb5e1d0`; every product source and
+  every other test remain frozen. No product edit is authorized by this
+  event.
+- Required committed-tree RED under `TMPDIR=/dev/shm`, one worker, no file
+  parallelism, and the 120-second timeout remains H focused
+  **37 = 36 passed + one causal failure**, Task138 boundary
+  **355 = 354 passed + one causal failure**, provider
+  **25 = zero passed + 25 causal failures**, Task16 focused
+  **9 = eight passed + one causal failure**, producer
+  **144 = 143 passed + one causal failure**, factory boundary
+  **10 = nine passed + one causal failure**, wake boundary
+  **140 = 139 passed + one causal failure**, Task136 card
+  **383 = 355 passed + 28 causal failures**, and exact 37-file cross-card
+  **1,042 = 1,014 passed + 28 causal failures**. The only new causal failure
+  must be the exact mutable internal full-readback output on frozen H.
+- Also require passing typecheck, factory readiness, mission and V4
+  **20/20**, markers **29 / 20 / 29 / 15**, exact repository first-stop,
+  one-test scope, all source and other-test freezes, ancestry, local
+  dependencies, 33-path hash, diff hygiene, strict Git integrity, and clean
+  isolated candidate state.
+- Commit only the corrected H test with subject
+  `test(agent): require frozen full handoff readback`. Obtain a completely
+  fresh independent read-only review of exact immutable RED bytes, append
+  approval, integrate approval-first/candidate-second on the program branch,
+  rerun the integration packet, append integration, and forward-merge into
+  Task136. Changed bytes invalidate review.
+- Only after this corrected RED is approved, recorded, integrated, and
+  forward-merged may a separate GREEN authority extend E-1298 to the smallest
+  H-owned output repair. Task16 remains `integrated`; Task136 remains
+  `implementing`; strict product frontier remains **28 of 29**. This is
+  test-fixture correction authority, not product authority, Task136
+  candidacy, strict record 29, publication, Wave 3 start, repository closure,
+  production readiness, or release. `neo`, provider, credential,
+  external-system, pull-request, production-route, preview-branch, and
+  unrelated actions remain unauthorized.
