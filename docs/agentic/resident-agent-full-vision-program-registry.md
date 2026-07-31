@@ -15163,6 +15163,54 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 }
 ```
 
+## RV-1-E-1329 — Resident full-vision successor mission control authorized
+
+- Recorded at: 2026-07-31T12:29:58Z
+- Human Level 3 authority at RV-1-E-1328's exact clean checkpoint preserves
+  `software-factory-calibration` and its immutable envelope as the integrated
+  historical predecessor, then authorizes one isolated documentation/control-
+  plane successor-mission amendment for the remaining Resident Agent Full-
+  Vision program. The verified source refs are program
+  `0e5b0e7d4b8bfae3f577c23dc8083623b5a25880`, released Task136
+  `21ac850894ff3e040069b4307c95e20148db96fc`, and published `neo`
+  `baab662fb6ecd79de9a34f1c3801aa76d3428848`.
+- The exact nine candidate-owned paths are `AGENTS.md`,
+  `.agents/skills/cestus-software-factory/SKILL.md`,
+  `docs/agentic/software-factory.md`,
+  `docs/agentic/contracts/software-factory-active-mission.v1.json`,
+  `docs/agentic/contracts/resident-agent-full-vision-mission-state.v1.json`,
+  `scripts/check-software-factory-active-mission.mjs`,
+  `scripts/check-software-factory-active-mission.test.mjs`,
+  `scripts/check-agent-readiness.mjs`, and
+  `docs/agentic/claims/resident-agent-full-vision-successor-mission-control.md`.
+  The append-only registry remains coordinator-owned lifecycle state outside
+  that candidate ceiling. No package product source or product test is owned.
+- The successor selector must authenticate the unchanged calibration mission,
+  select one machine-readable active full-vision mission, and reference the
+  committed full-vision design, implementation plan, CF-1 freeze and terminal
+  amendments, acceptance matrix, and E1328 failure inventory. Its explicit
+  graph is Task140P -> Task140R0 -> Task140H -> Task140R1 -> Task131 -> Task141,
+  then parallel Tasks142–152, then A-01 through A-10, then sole release gate
+  Task153. Wave 3 remains closed until Wave 2 readiness integrates.
+- Eligibility is readiness for lifecycle preparation and must not fabricate a
+  `claimed` registry transition. Exactly Task140P must initially be eligible
+  under terminal CF-1R28.2's eleven-product-path ceiling; Task140R0 stays
+  blocked until reviewed/coordinator-integrated Task140P, with H and R1
+  serialized afterward. Repeated path ownership is lawful only across strict
+  prerequisite ancestry; incomparable ownership overlap fails closed.
+- The candidate must begin with a causal checker-level black-box eligibility
+  RED and end with exact selector output naming only Task140P, preserved
+  calibration mission tests and fingerprints, factory readiness, skill
+  validation, whitespace/scope/freeze/ancestry/clean-state proof, and fresh
+  independent architecture and executability reviews. E1328 verifier ownership
+  remains exact: Task140R0 owns 37 semantic failures, Task140R1 owns one,
+  Task142 owns seven, and eleven timeout-only occurrences remain runner
+  calibration. No product repair, provider, credential, live route, PR,
+  preview-branch action, `neo` action, or external action beyond configured
+  `origin` fetch/push is authorized. Status is `successor mission control
+  claimed`; Task140P implementation remains closed until this amendment is
+  approved and integrated and its separate bounded lifecycle authority exists.
+
 ## RV-1-E-1318 — Task136 strict-record candidate rejected; finite currentness repair authorized
 
 - Recorded at: 2026-07-31T06:02:45Z
