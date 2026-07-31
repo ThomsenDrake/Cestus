@@ -142,7 +142,7 @@ const initialPlan = deepFreeze({
   },
   authority: {
     workspaceIdentityHash: hash("3"),
-    mountGeneration: "mount_c136_p",
+    mountGeneration: "admission:1",
     ledgerStoreIdentity: "ledger_c136_p",
     artifactStoreIdentity: "artifact_c136_p",
     ledgerHighWaterEventId: "evt_source_002",
