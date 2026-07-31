@@ -15480,6 +15480,65 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   pull-request, production-route, preview-branch, and unrelated actions
   remain unauthorized.
 
+## RV-1-E-1323 — Task136 released as strict record 29
+
+- Recorded at: 2026-07-31T07:31:53Z
+- Lifecycle transition: Task136 moves `integrated -> released` as exact strict
+  `task136-dispatch-release.v4` record **29 of 29**. The strict product
+  frontier advances from **28 of 29** to **29 of 29**. This is the sole event
+  that performs that transition.
+- Exact clean strict-record candidate:
+  `73d4732a6562d2efeaa62702ea7d977aa2d0fa3f`, tree
+  `6861482710afea4b2b0672b473f83ae6bf81c723`, sole parent exact assurance
+  integration event `0942f6d3fb24e139567b410c59bd6263eda8e940`.
+  Its commit changes only the append-only E-1322 rebound event and preserves
+  rejected candidate `b355f3582df13159d56337f7ce466b244cd4d983`
+  without rewrite.
+- The parser heading `Task136 dispatch release v4: Task136` occurs exactly
+  once and no second JSON object exists. Unchanged canonical JSON SHA-256 is
+  `e3af726ee83ac08c5426d76b6901e31d9e674084828c9d89b6a3e5f9aea9083f`.
+  The released record binds exact reviewed product candidate
+  `21ac850894ff3e040069b4307c95e20148db96fc`, fresh product-review thread IDs
+  `019fb696-5a3a-7582-b7c7-2af3536bd056` and
+  `019fb696-a34b-7c13-8a2e-78cf9ce90c77`, exact history-preserving product
+  integration `4feb71d1042d8a0a537731ec9c2f7b3902dac0b6`, **ten** ordered
+  prerequisites, and **33** exact owned path/blob entries.
+- Exact assurance repair lineage is ancestral: approved candidate
+  `7b858513a2d2b489b7fe42dac5c1a4c3a753d21d`, architecture reviewer
+  `019fb6fb-68ea-7231-ae7e-b04d703d5603`, black-box reviewer
+  `019fb6fb-9a24-78e2-a336-f5bd1a5baa7a`, approval-first/candidate-second
+  integration `5804d1a9f989c765848ad9fd59d6891ee9272381`, and E-1321 integration
+  event `0942f6d3fb24e139567b410c59bd6263eda8e940`.
+- From exact clean committed candidate bytes, contract mode emits
+  **29 / 20 / 29 / 15**. Real repository mode executes all frozen cards and
+  emits exact `TASK136_REPOSITORY_PREFIX_OK records=29 commands=29` and
+  `TASK136_REPOSITORY_RELEASE_CLOSURE_OK records=29 commands=29`.
+  Task137B-W passes **140/140** and Task136 passes **383/383** under the
+  mandated deterministic import-policy execution controls.
+- The unchanged pre-calibration V4 corpus is exactly
+  **20 = 17 passed + three failed**. The only failures are:
+  `binds four historical source records and exact record-11 and record-14
+  current-head migrations`; `requires the finite Task137B-W to Task139-PM
+  transfer only at record 18`; and `requires the finite CF1-HR and Task122
+  direct-source transfers at records 26 and 27 only`. Each is exactly
+  `29 !== 28`; no semantic, product, repository, or release-command failure
+  remains.
+- Typecheck and factory readiness pass; mission is **20/20**. Candidate scope
+  is registry-only; assurance blobs remain
+  `2251dedcc0c4e10ae636f60be34d6b30e3bc9b4a` and
+  `def2bacec8546622f99c6a3265d456b6528a176e`; V4 contract blob remains
+  `5defc88bc6cd4bfe854b0b6107ed221a675953ff`. Product, package-test,
+  contract, graph, raw-command, raw-record, Task138, design, plan, claim, and
+  exact 33-path Task136 bytes remain frozen. Scope, ancestry,
+  `git diff --check`, strict Git integrity, and clean state pass.
+- Task19 assurance calibration is the next bounded task. This strict-record
+  release and repository closure do not publish to `neo`, start Wave 3,
+  activate providers or routes, claim production readiness, or claim the
+  Wave 5 product release. The parked preview branch remains untouched.
+  `neo`, provider, credential, external-system, pull-request,
+  production-route, preview-branch, and unrelated actions remain
+  unauthorized.
+
 ## Task136 dispatch release v4: Task127
 
 ```json
