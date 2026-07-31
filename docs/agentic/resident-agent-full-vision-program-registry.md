@@ -53110,3 +53110,94 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   release. `neo`, provider, credential, external-system, pull-request,
   production-route, preview-branch, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-1299 — Three-source GREEN halted; two-fixture oracle correction authorized
+
+- Recorded at: 2026-07-31T00:21:22Z
+- E-1298 is committed and pushed at exact program head
+  `12004d06e9a2fc50db1ebb23da7444f3934b1a58`, then forward-merged and
+  pushed into Task136 at exact head
+  `7bd32ab33900f282c03b74c72199afff3d8990fb`. Only the three E-1298
+  authorized sources are modified, unstaged, and uncommitted. Preserve their
+  exact diagnostic blobs:
+  `packages/agent/src/plan-observation-contracts.ts`
+  `60e99de6b7fb147274f4f0989f288735ee88e81e`,
+  `packages/agent/src/resident-plan-candidate-provider.ts`
+  `4ede1f22a599e66e1316ceadac2ebd133938f7b8`, and
+  `packages/local-runtime/src/mounted-wake-lifecycle-store.ts`
+  `a79ccac55f4b4b6693bc18c5c88eda54d080a97b`. They are not a candidate
+  and must remain unstaged and uncommitted while this test-only correction
+  advances. Standalone typecheck and diff hygiene pass.
+- Completely fresh independent read-only diagnostic
+  `/root/task17_e1298_oracle_diagnostic` proves two frozen test fixtures are
+  obsolete under E-1298. Provider-test blob
+  `2362e9a9b6414a6f54dc175f131ed4f3bb6726b5` retains independent
+  `mountInstanceId` and exact `admission_generation_1` posture but gives its
+  shared plan authority the mount-instance value as `mountGeneration`.
+  Against the exact C136-P diagnostic, every one of its **25** titles rejects
+  at that shared baseline before its intended assertion. No conforming
+  product workaround exists: accepting that value would restore the
+  forbidden mount-instance/generation equivalence or a dual heuristic.
+- The same reviewer proves only the existing factory title
+  `runs createResidentBoundedAgentLoopFactory against the real mounted
+  fixture` uses the abstract automatic legacy shim. Factory-test blob
+  `2fab1ab9f1a01b449bfd2b07d7b01bafdf840ada` appends its one proposal
+  with an arbitrary local assertion identifier. The exact dispatcher,
+  adapter, and recovery contract instead derives
+  `as_legacy_` plus lowercase hexadecimal SHA-256 over the ordered
+  source-collection, scan-batch, staging-batch, candidate-set-hash, and
+  candidate-ID fields. The real mounted execution therefore appends the
+  abstract assertion and then rejects its durable identity before receipt
+  and completion. Accepting or replacing that bad event in product code
+  would weaken exact selected-candidate identity or append-only exact-delta
+  semantics.
+- Halt E-1298 before any source commit or source review. Authorize only the
+  smallest forward test-only correction in exactly:
+  `packages/agent/test/resident-plan-candidate-provider.test.ts` and
+  `packages/local-runtime/test/resident-loop-factory-ports.test.ts`.
+  Change only the shared provider-plan authority literal to exact
+  `mountGeneration: "admission:1"` while preserving
+  `mountInstanceId: "mount_c136_p"`. Change only the abstract factory
+  shim's assertion-ID construction to the exact released
+  `as_legacy_<sha256>` derivation using its existing abstract local fields
+  and exact preview candidate-set hash. `createHash` is already imported.
+  Preserve every title, cardinality, abstract corpus, import-policy case, and
+  every other test byte.
+- Freeze every product source at the E-1298 committed tree for the corrected
+  RED candidate. In particular the three E-1298 committed starting blobs
+  remain
+  `32754d92052c8f5d4cd98092a932bbb596a48e2f`,
+  `5bc39430d122bd6fbeedef788ffec6dc35638f0f`, and
+  `2d86fdcd570b59d6d460e2916fd1886a1c43d399`. The held diagnostics may
+  remain in the Task136 working tree but must not enter the test-only commit.
+- Required corrected committed-tree RED under `TMPDIR=/dev/shm`, one worker,
+  and the 120-second timeout is provider focus
+  **25 = zero passed + 25 causal failures**, focused
+  **9 = eight passed + one causal failure**, producer
+  **144 = 143 passed + one causal failure**, factory boundary
+  **10 = nine passed + one causal failure**, wake boundary
+  **140 = 139 passed + one causal failure**, Task136 card
+  **383 = 356 passed + 27 causal failures**, exact 37-file cross-card
+  **1,042 = 1,015 passed + 27 causal failures**, and Task138 **355/355**.
+  Typecheck, factory readiness, mission and V4 **20/20**, markers
+  **29 / 20 / 29 / 15**, exact repository first-stop, two-test scope,
+  every source and other-test freeze, ancestry, dependencies, 33-path hash,
+  diff hygiene, strict Git integrity, and clean isolated candidate state
+  must pass. The 25 provider failures exercise only frozen C136-P's obsolete
+  identity equivalence; the other two remain frozen W's exact initial-H and
+  catalog-currentness failures.
+- Commit only the two corrected tests with subject
+  `test(agent): correct mounted completion identities`. Obtain a completely
+  fresh independent read-only review of exact immutable RED bytes, append
+  approval, integrate approval-first/candidate-second on the program branch,
+  rerun the integration packet, append integration, and forward-merge into
+  Task136. Changed bytes invalidate review.
+- Only after the corrected RED is approved, recorded, integrated, and
+  forward-merged may the preserved E-1298 three-source GREEN resume. Task16
+  remains `integrated`; Task136 remains `implementing`; strict product
+  frontier remains **28 of 29**. This is two-fixture oracle authority, not
+  product approval, source candidacy, Task136 candidacy, strict record 29,
+  publication, Wave 3 start, repository closure, production readiness, or
+  release. `neo`, provider, credential, external-system, pull-request,
+  production-route, preview-branch, and unrelated actions remain
+  unauthorized.
