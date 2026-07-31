@@ -945,3 +945,72 @@ package/product byte. It is review-ready only after final committed-byte
 validation. It is not approved, integrated, Task14 GREEN authority, a Task136
 product candidate, strict record 29, repository closure, publication, Wave 3
 start, or product release.
+
+## RV-1-E-1324 record-29 current-prefix causal RED checkpoint
+
+- Exact clean strict-record release
+  `79e7177829afef0ee5e786b5b27ed05a8dd53c69` and calibration authority
+  `bb40818d2e9885c00b15785eb16e6bd34b73be68` were history-preservingly
+  forward-merged into preserved V4 candidate
+  `91ad47489ce5506f91821dcf57b8fc0a2a1352a0` as
+  `45826f443af9ee159556231b572d2e0bea2b76cb`. The merge has exact parents
+  `91ad47489ce5506f91821dcf57b8fc0a2a1352a0` first and
+  `bb40818d2e9885c00b15785eb16e6bd34b73be68` second. Both the V4 candidate
+  and strict record-29 release remain ancestors without rewrite.
+- Causal command:
+  `TMPDIR=/dev/shm node --test --test-reporter=tap
+  scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs`.
+  Result: exit `1`; exactly `20` tests ran, `17` passed, and `3` failed. The
+  only failing titles are `binds four historical source records and exact
+  record-11 and record-14 current-head migrations`, `requires the finite
+  Task137B-W to Task139-PM transfer only at record 18`, and `requires the
+  finite CF1-HR and Task122 direct-source transfers at records 26 and 27
+  only`. Each reports only `29 !== 28`, with expected `28`, actual `29`, and
+  strict equality. No product, contract, checker, command, repository,
+  dependency, or unrelated assurance failure occurred.
+- This claim-only checkpoint leaves assurance-test blob
+  `def2bacec8546622f99c6a3265d456b6528a176e`, checker blob
+  `2251dedcc0c4e10ae636f60be34d6b30e3bc9b4a`, V4 contract blob
+  `5defc88bc6cd4bfe854b0b6107ed221a675953ff`, mission-state blob
+  `4e76de29d29adb7c594a3eecc0b4dcf3fb198ada`, and package tree
+  `24b924dd47d8c34f85a6f4c6961c34c57b784ecd` unchanged from the authority
+  merge.
+- The sole authorized GREEN scope is this claim plus
+  `scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs`. It
+  may advance only the three live current-prefix lengths and ordered-ID slices
+  from `28` to `29`, plus the coupled incomplete-found/complete-closure
+  expectation, exact `records=29 commands=29` marker, and 29-command call
+  count. The historical W1 local `.slice(0, 26)`, its 26 assertions,
+  synthetic record-27 activation, all 20 titles, raw pins and commands,
+  contracts, checker, mission, registry, products, packages, and Task136
+  33-path ceiling remain frozen.
+- The candidate ceiling is exactly these two paths. This calibration does not
+  create a second product release, publish to `neo`, start Wave 3, change
+  provider or route behavior, or claim production readiness or Wave 5
+  release.
+
+## RV-1-E-1324 record-29 minimal GREEN evidence
+
+- The three live registry-prefix groups now require exactly `29` records and
+  `expectedIds.slice(0, 29)`. The repository-admission fixture now completes
+  successfully, emits exact
+  `TASK136_REPOSITORY_PREFIX_OK records=29 commands=29` and
+  `TASK136_REPOSITORY_RELEASE_CLOSURE_OK records=29 commands=29`, returns
+  `29` records, and records exactly `29` command calls.
+- The historical pre-record-29 source-currentness fixture remains
+  `.slice(0, 28)`. The historical W1 activation corpus remains byte-identical:
+  its local `.slice(0, 26)`, length/order expectations at `26`, and synthetic
+  record-27 activation are unchanged. All 20 titles, raw pins and commands,
+  V1-V4 contracts, checker, mission, registry, products, packages, and prior
+  evidence remain unchanged.
+- From intended GREEN bytes,
+  `TMPDIR=/dev/shm node --test
+  scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs` exits
+  `0` with exactly `20` tests, `20` passed, and `0` failed. Contract mode
+  emits exact markers **29 / 20 / 29 / 15**; standalone typecheck and factory
+  readiness pass. Clean committed-byte repository, scope, ancestry, freeze,
+  integrity, and clean-state admission remains required before review.
+- This is the sole record-29 assurance calibration candidate path pair. It is
+  assurance-only and does not change strict product frontier **29 of 29**,
+  create another release record, publish `neo`, start Wave 3, or alter
+  provider, route, credential, or production behavior.
