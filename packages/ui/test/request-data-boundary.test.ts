@@ -1,24 +1,12 @@
-import { readdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { spawnSync } from "node:child_process";
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 describe("Requests data boundary", () => {
   const prrRuntimeImport = "../../prr/src/" + "runtime";
   const prrRuntimeImportWithExtension = "../../prr/src/" + "runtime.js";
-  const ledgerBackedSpecPath = "docs/superpowers/specs/2026-07-03-ledger-backed-prr-workspace-design.md";
-  const ledgerBackedPlanPath = "docs/superpowers/plans/2026-07-03-ledger-backed-prr-workspace-implementation.md";
-  const requestModalSpecPath = "docs/superpowers/specs/2026-07-04-requests-detail-modal-design.md";
-  const requestModalPlanPath = "docs/superpowers/plans/2026-07-04-requests-detail-modal-implementation.md";
-  const durableRuntimeSpecPath = "docs/superpowers/specs/2026-07-05-durable-local-prr-runtime-design.md";
-  const durableRuntimePlanPath = "docs/superpowers/plans/2026-07-05-durable-local-prr-runtime-implementation.md";
-  const portableWorkspaceSpecPath = "docs/superpowers/specs/2026-07-06-portable-workspace-mount-design.md";
-  const portableWorkspacePlanPath = "docs/superpowers/plans/2026-07-06-portable-workspace-mount-implementation.md";
-  const ingestionRuntimeSpecPath = "docs/superpowers/specs/2026-07-06-ingestion-runtime-wiring-design.md";
-  const ingestionRuntimePlanPath = "docs/superpowers/plans/2026-07-06-ingestion-runtime-wiring-implementation.md";
-  const operatorBridgeSpecPath = "docs/superpowers/specs/2026-07-06-operator-workspace-status-import-bridge-design.md";
-  const operatorBridgePlanPath = "docs/superpowers/plans/2026-07-06-operator-workspace-status-import-bridge-implementation.md";
-  const localWorkspaceSmokeSpecPath = "docs/superpowers/specs/2026-07-06-local-workspace-readiness-smoke-design.md";
-  const localWorkspaceSmokePlanPath = "docs/superpowers/plans/2026-07-06-local-workspace-readiness-smoke-implementation.md";
   const productUiBoundaryFiles = listSourceFiles("packages/ui/src");
   const forbiddenProductUiImportPatterns = [
     /(?:^|\/)request-fixtures(?:\.js)?$/,
@@ -157,17 +145,68 @@ describe("Requests data boundary", () => {
     }
   });
 
-  it("requires approved plan docs in factory readiness", () => {
-    const readinessScript = readFileSync("scripts/check-agent-readiness.mjs", "utf8");
-    const requiredFiles = stringArrayInitializer(readinessScript, "requiredFiles");
+  it("accepts thin factory readiness without historical plans", () => {
+    const fixtureRoot = mkdtempSync(join(tmpdir(), "cestus-factory-readiness-"));
+    const readinessScript = join(process.cwd(), "scripts/check-agent-readiness.mjs");
+    const files = new Map([
+      [
+        "AGENTS.md",
+        [
+          "docs/agentic/software-factory.md",
+          "docs/agentic/executable-spec-template.md",
+          "Development coordination is not part of the product ledger"
+        ].join("\n")
+      ],
+      ["CLAUDE.md", "Cestus agent instructions"],
+      [".opencode/AGENTS.md", "Cestus agent instructions"],
+      [
+        ".agents/skills/cestus-software-factory/SKILL.md",
+        ["## Assemble Bounded Context", "## Execute The Line", "at most two focused repair attempts"].join("\n")
+      ],
+      [
+        "docs/agentic/software-factory.md",
+        [
+          "Status: authoritative.",
+          "## Delivery Line",
+          "## Risk Lanes",
+          "## Mandatory Overhead Limits",
+          "Factory V1 and Factory V2 are preserved as history"
+        ].join("\n")
+      ],
+      [
+        "docs/agentic/executable-spec-template.md",
+        [
+          "## Desired Behavior",
+          "## Observable Acceptance Examples",
+          "## Allowed Scope",
+          "## Relevant Context Entry Points",
+          "## Risk Lane",
+          "## Targeted Verification",
+          "## Integration Verification",
+          "## Escalation Conditions"
+        ].join("\n")
+      ],
+      [".github/workflows/verify.yml", "on:\n  push:\n    branches:\n      - neo\n"]
+    ]);
 
-    expect(requiredFiles).toEqual(expect.arrayContaining([ledgerBackedSpecPath, ledgerBackedPlanPath]));
-    expect(requiredFiles).toEqual(expect.arrayContaining([requestModalSpecPath, requestModalPlanPath]));
-    expect(requiredFiles).toEqual(expect.arrayContaining([durableRuntimeSpecPath, durableRuntimePlanPath]));
-    expect(requiredFiles).toEqual(expect.arrayContaining([portableWorkspaceSpecPath, portableWorkspacePlanPath]));
-    expect(requiredFiles).toEqual(expect.arrayContaining([ingestionRuntimeSpecPath, ingestionRuntimePlanPath]));
-    expect(requiredFiles).toEqual(expect.arrayContaining([operatorBridgeSpecPath, operatorBridgePlanPath]));
-    expect(requiredFiles).toEqual(expect.arrayContaining([localWorkspaceSmokeSpecPath, localWorkspaceSmokePlanPath]));
+    try {
+      for (const [path, contents] of files) {
+        const target = join(fixtureRoot, path);
+        mkdirSync(dirname(target), { recursive: true });
+        writeFileSync(target, contents);
+      }
+
+      const result = spawnSync(process.execPath, [readinessScript], {
+        cwd: fixtureRoot,
+        encoding: "utf8"
+      });
+
+      expect(result.status, result.stderr).toBe(0);
+      expect(result.stdout).toBe("factory-readiness passed\n");
+      expect(result.stderr).toBe("");
+    } finally {
+      rmSync(fixtureRoot, { recursive: true, force: true });
+    }
   });
 });
 
@@ -191,15 +230,6 @@ function importedModuleSpecifiers(source: string): readonly string[] {
     ...matchesFor(source, /import\s*\(\s*["']([^"']+)["']\s*\)/g),
     ...matchesFor(source, /require\s*\(\s*["']([^"']+)["']\s*\)/g)
   ]);
-}
-
-function stringArrayInitializer(source: string, variableName: string): readonly string[] {
-  const match = source.match(new RegExp(`const\\s+${variableName}\\s*=\\s*\\[([\\s\\S]*?)\\];`));
-  if (match?.[1] === undefined) {
-    return Object.freeze([]);
-  }
-
-  return Object.freeze(matchesFor(match[1], /"([^"]+)"/g));
 }
 
 function matchesFor(source: string, pattern: RegExp): string[] {
