@@ -1,17 +1,7 @@
-# Task Work Order Template
+# Historical Task Work-Order Template
 
-## Task
+Status: historical and non-authoritative.
 
-Name the single task and link the plan section.
-
-## Files
-
-List every file to create, modify, and test.
-
-## Acceptance
-
-State the exact command and expected result.
-
-## Handoff
-
-Record changed files, verification output, commit hash, and reviewer notes.
+This pre-cutover template remains for repository history. New product slices
+use `docs/agentic/executable-spec-template.md`; no claim, lifecycle, or work
+order artifact is required in addition to that one approved specification.

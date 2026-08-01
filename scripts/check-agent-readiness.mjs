@@ -1,4 +1,4 @@
-import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 
 const requiredFiles = [
@@ -7,124 +7,83 @@ const requiredFiles = [
   ".opencode/AGENTS.md",
   ".agents/skills/cestus-software-factory/SKILL.md",
   "docs/agentic/software-factory.md",
-  "docs/agentic/task-template.md",
-  "docs/agentic/review-template.md",
-  "docs/superpowers/specs/2026-06-30-ontology-layer-design.md",
-  "docs/superpowers/plans/2026-06-30-ontology-layer-implementation.md",
-  "docs/superpowers/specs/2026-07-01-public-records-request-workflow-design.md",
-  "docs/superpowers/plans/2026-07-01-public-records-request-workflow-implementation.md",
-  "docs/superpowers/specs/2026-07-03-ledger-backed-prr-workspace-design.md",
-  "docs/superpowers/plans/2026-07-03-ledger-backed-prr-workspace-implementation.md",
-  "docs/superpowers/specs/2026-07-04-requests-detail-modal-design.md",
-  "docs/superpowers/plans/2026-07-04-requests-detail-modal-implementation.md",
-  "docs/superpowers/specs/2026-07-04-requests-detail-floating-modal-design.md",
-  "docs/superpowers/plans/2026-07-04-requests-detail-floating-modal-implementation.md",
-  "docs/superpowers/specs/2026-07-05-security-threat-model-data-governance-design.md",
-  "docs/superpowers/plans/2026-07-05-security-threat-model-data-governance-implementation.md",
-  "docs/superpowers/specs/2026-07-05-durable-local-prr-runtime-design.md",
-  "docs/superpowers/plans/2026-07-05-durable-local-prr-runtime-implementation.md",
-  "docs/superpowers/specs/2026-07-05-public-ingestion-pipeline-design.md",
-  "docs/superpowers/plans/2026-07-05-public-ingestion-pipeline-implementation.md",
-  "docs/superpowers/specs/2026-07-06-portable-workspace-mount-design.md",
-  "docs/superpowers/plans/2026-07-06-portable-workspace-mount-implementation.md",
-  "docs/superpowers/specs/2026-07-06-portable-workspace-ops-design.md",
-  "docs/superpowers/plans/2026-07-06-portable-workspace-ops-implementation.md",
-  "docs/superpowers/specs/2026-07-06-portable-workspace-attachment-ops-design.md",
-  "docs/superpowers/plans/2026-07-06-portable-workspace-attachment-ops-implementation.md",
-  "docs/superpowers/specs/2026-07-06-ingestion-runtime-wiring-design.md",
-  "docs/superpowers/plans/2026-07-06-ingestion-runtime-wiring-implementation.md",
-  "docs/superpowers/specs/2026-07-06-local-workspace-readiness-smoke-design.md",
-  "docs/superpowers/plans/2026-07-06-local-workspace-readiness-smoke-implementation.md",
-  "docs/superpowers/specs/2026-07-06-legacy-cestus-import-design.md",
-  "docs/superpowers/plans/2026-07-06-legacy-cestus-import-implementation.md",
-  "docs/superpowers/specs/2026-07-06-legacy-cestus-operator-cli-design.md",
-  "docs/superpowers/plans/2026-07-06-legacy-cestus-operator-cli-implementation.md",
-  "docs/superpowers/specs/2026-07-06-operator-workspace-status-import-bridge-design.md",
-  "docs/superpowers/plans/2026-07-06-operator-workspace-status-import-bridge-implementation.md",
-  "docs/superpowers/specs/2026-07-07-cestus-resident-agent-design.md",
-  "docs/superpowers/plans/2026-07-07-cestus-resident-agent-implementation.md",
-  "docs/superpowers/specs/2026-07-07-resident-agent-execution-approval-design.md",
-  "docs/superpowers/plans/2026-07-07-resident-agent-execution-approval-implementation.md",
-  "docs/superpowers/specs/2026-07-07-resident-agent-provider-auth-design.md",
-  "docs/superpowers/plans/2026-07-07-resident-agent-provider-auth-implementation.md",
-  "docs/superpowers/specs/2026-07-07-ontology-bootstrap-specialist-design.md",
-  "docs/superpowers/plans/2026-07-07-ontology-bootstrap-specialist-implementation.md",
-  "docs/superpowers/plans/2026-07-08-provider-readiness-health-ux-implementation.md",
-  "docs/superpowers/plans/2026-07-08-resident-agent-approval-cockpit-routes-ui-implementation.md",
-  "docs/superpowers/plans/2026-07-08-resident-agent-prompt-artifact-context-resolver-implementation.md",
-  "docs/superpowers/plans/2026-07-08-ontology-bootstrap-resident-agent-workflow-implementation.md",
-  "docs/superpowers/plans/2026-07-09-resident-agent-domain-execution-adapters-implementation.md",
-  "docs/agentic/claims/task-9-resident-agent-domain-adapter-registry.md",
-  "packages/agent/src/domain-execution-adapter-registry.ts",
-  "packages/agent/test/domain-execution-adapter-registry.test.ts",
-  "docs/superpowers/plans/2026-07-09-resident-agent-memory-context-surface-implementation.md",
-  "docs/superpowers/specs/2026-07-09-mvp-specialist-workflows-design.md",
-  "docs/superpowers/plans/2026-07-09-mvp-specialist-workflows-implementation.md",
-  "docs/superpowers/specs/2026-07-10-resident-lifecycle-bootstrap-design.md",
-  "docs/superpowers/plans/2026-07-10-resident-lifecycle-bootstrap-implementation.md",
-  "docs/superpowers/specs/2026-07-10-durable-specialist-handoff-production-design.md",
-  "docs/superpowers/plans/2026-07-10-durable-specialist-handoff-production-implementation.md",
-  "docs/superpowers/specs/2026-07-10-prr-jurisdiction-context-packs-design.md",
-  "docs/superpowers/plans/2026-07-10-prr-jurisdiction-context-packs-implementation.md",
-  "docs/superpowers/specs/2026-07-10-resident-task-orchestrator-design.md",
-  "docs/superpowers/plans/2026-07-10-resident-task-orchestrator-implementation.md"
-];
-const missionStateCheck = [
-  process.execPath,
-  "scripts/check-software-factory-mission-state.mjs"
-];
-const forbiddenSkillLocations = [
-  ".factory/skills/cestus-software-factory/SKILL.md",
-  ".codex/skills/cestus-software-factory/SKILL.md"
+  "docs/agentic/executable-spec-template.md",
+  "docs/agentic/references/software-factory-principles.md",
+  "docs/agentic/references/source-material/README.md",
+  "docs/agentic/references/source-material/software-factory-ladder-thread.txt",
+  "docs/agentic/references/source-material/software-factory-why-your-team-will-never-work-the-same-again.txt",
+  ".github/workflows/verify.yml"
 ];
 
-const allowToken = "agent-readiness-allow";
-const unfinishedMarkerPattern = new RegExp(
+const requiredText = new Map([
   [
-    `\\b${"TO" + "DO"}\\b`,
-    `\\b${"FIX" + "ME"}\\b`,
-    `\\b${"T" + "BD"}\\b`,
-    `${"implement"}\\s+${"later"}`,
-    `${"fill"}\\s+${"in"}\\s+${"details"}`,
-    `${"add"}\\s+${"appropriate"}`,
-    `${"similar"}\\s+${"to"}\\s+${"Task"}`
-  ].join("|"),
-  "i"
-);
-
-const excludedExactPaths = new Set(["package-lock.json"]);
-const excludedPrefixes = [
-  ".git/",
-  "coverage/",
-  "dist/",
-  "node_modules/"
-];
-const excludedExtensions = new Set([
-  ".7z",
-  ".avif",
-  ".bmp",
-  ".bz2",
-  ".db",
-  ".gif",
-  ".gz",
-  ".ico",
-  ".jpeg",
-  ".jpg",
-  ".pdf",
-  ".png",
-  ".rar",
-  ".sqlite",
-  ".svg",
-  ".tar",
-  ".tgz",
-  ".tif",
-  ".tiff",
-  ".webp",
-  ".xz",
-  ".zip"
+    "AGENTS.md",
+    [
+      "docs/agentic/software-factory.md",
+      "docs/agentic/executable-spec-template.md",
+      "Development coordination is not part of the product ledger"
+    ]
+  ],
+  [
+    ".agents/skills/cestus-software-factory/SKILL.md",
+    [
+      "## Assemble Bounded Context",
+      "## Execute The Line",
+      "at most two focused repair attempts"
+    ]
+  ],
+  [
+    "docs/agentic/software-factory.md",
+    [
+      "Status: authoritative.",
+      "## Delivery Line",
+      "## Risk Lanes",
+      "## Mandatory Overhead Limits",
+      "Factory V1 and Factory V2 are preserved as history"
+    ]
+  ],
+  [
+    "docs/agentic/executable-spec-template.md",
+    [
+      "## Desired Behavior",
+      "## Observable Acceptance Examples",
+      "## Allowed Scope",
+      "## Relevant Context Entry Points",
+      "## Risk Lane",
+      "## Targeted Verification",
+      "## Integration Verification",
+      "## Escalation Conditions"
+    ]
+  ],
+  [
+    "docs/agentic/references/software-factory-principles.md",
+    ["Status: non-authoritative reference material.", "## Preserved Sources"]
+  ],
+  [
+    "docs/agentic/references/source-material/README.md",
+    ["Status: non-authoritative reference material."]
+  ]
 ]);
+
+const expectedHashes = new Map([
+  [
+    "docs/agentic/references/source-material/software-factory-ladder-thread.txt",
+    "410f6df3e335f526cf84c92e4325e994119c52104e51adee4bece7db316950b8"
+  ],
+  [
+    "docs/agentic/references/source-material/software-factory-why-your-team-will-never-work-the-same-again.txt",
+    "3359d557c491f7ce1ee092084a60c4d740d563a447c3320a3358fa59ce8da223"
+  ]
+]);
+
+const maximumLines = new Map([
+  ["AGENTS.md", 80],
+  [".agents/skills/cestus-software-factory/SKILL.md", 160],
+  ["docs/agentic/software-factory.md", 350],
+  ["docs/agentic/executable-spec-template.md", 100]
+]);
+
 const failures = [];
-const utf8Decoder = new TextDecoder("utf-8", { fatal: true });
 
 for (const file of requiredFiles) {
   if (!existsSync(file)) {
@@ -132,34 +91,52 @@ for (const file of requiredFiles) {
   }
 }
 
-for (const file of forbiddenSkillLocations) {
-  if (existsSync(file)) {
-    failures.push(`move ${file} to .agents/skills/cestus-software-factory/SKILL.md`);
-  }
-}
-
-try {
-  execFileSync(missionStateCheck[0], missionStateCheck.slice(1), { stdio: "pipe" });
-} catch (error) {
-  const stderr = error && typeof error === "object" && "stderr" in error ? error.stderr : "";
-  failures.push(`software factory mission state failed${stderr ? `: ${String(stderr).trim()}` : ""}`);
-}
-
-for (const file of trackedTextFiles()) {
-  const text = readTrackedUtf8File(file);
-  if (text === undefined) {
+for (const [file, snippets] of requiredText) {
+  if (!existsSync(file)) {
     continue;
   }
+  const text = readFileSync(file, "utf8");
+  for (const snippet of snippets) {
+    if (!text.includes(snippet)) {
+      failures.push(`${file} is missing required text: ${snippet}`);
+    }
+  }
+}
 
-  const lines = text.split(/\r?\n/);
-  for (const [index, line] of lines.entries()) {
-    if (line.includes(allowToken)) {
-      continue;
-    }
-    const match = line.match(unfinishedMarkerPattern);
-    if (match) {
-      failures.push(`${file}:${index + 1} unfinished marker "${match[0]}"`);
-    }
+for (const [file, expected] of expectedHashes) {
+  if (!existsSync(file)) {
+    continue;
+  }
+  const actual = createHash("sha256").update(readFileSync(file)).digest("hex");
+  if (actual !== expected) {
+    failures.push(`${file} sha256 mismatch: expected ${expected}, received ${actual}`);
+  }
+}
+
+for (const [file, maximum] of maximumLines) {
+  if (!existsSync(file)) {
+    continue;
+  }
+  const lineCount = readFileSync(file, "utf8").split(/\r?\n/).length;
+  if (lineCount > maximum) {
+    failures.push(`${file} exceeds the ${maximum}-line thin-contract limit (${lineCount})`);
+  }
+}
+
+if (existsSync(".github/workflows/verify.yml")) {
+  const workflow = readFileSync(".github/workflows/verify.yml", "utf8");
+  if (!/^\s*-\s+neo\s*$/mu.test(workflow)) {
+    failures.push(".github/workflows/verify.yml does not observe integration branch neo");
+  }
+}
+
+if (existsSync("package.json")) {
+  const packageJson = JSON.parse(readFileSync("package.json", "utf8"));
+  if (packageJson.scripts?.["factory:check"] !== "node scripts/check-agent-readiness.mjs") {
+    failures.push("package.json factory:check does not use the thin readiness check");
+  }
+  if (!packageJson.scripts?.verify?.includes("npm run factory:check")) {
+    failures.push("package.json verify does not include thin factory readiness");
   }
 }
 
@@ -169,33 +146,3 @@ if (failures.length > 0) {
 }
 
 console.log("factory-readiness passed");
-
-function trackedTextFiles() {
-  return execFileSync("git", ["ls-files"], { encoding: "utf8" })
-    .split(/\r?\n/)
-    .filter(Boolean)
-    .filter((file) => !isExcludedPath(file));
-}
-
-function isExcludedPath(file) {
-  if (excludedExactPaths.has(file)) {
-    return true;
-  }
-  if (excludedPrefixes.some((prefix) => file.startsWith(prefix))) {
-    return true;
-  }
-  const lowerFile = file.toLowerCase();
-  return [...excludedExtensions].some((extension) => lowerFile.endsWith(extension));
-}
-
-function readTrackedUtf8File(file) {
-  try {
-    const bytes = readFileSync(file);
-    if (bytes.includes(0)) {
-      return undefined;
-    }
-    return utf8Decoder.decode(bytes);
-  } catch {
-    return undefined;
-  }
-}
