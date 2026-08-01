@@ -50,6 +50,13 @@ not become a lifecycle database. It has no claim, registry, projection,
 heartbeat, retry, event, selector, amendment, or embedded executable-JavaScript
 fields. One approved specification is enough to start.
 
+Approval of that specification also supplies design authority. Generic
+brainstorming, design-reapproval, implementation-plan, program-management, or
+swarm workflows are not prerequisites and must not be layered onto this line.
+Invoke one only when the specification exposes a genuinely new product choice
+that meets an escalation condition. This Cestus contract governs when a
+generic workflow skill would otherwise add such a prerequisite.
+
 ## Roles
 
 ### Builder

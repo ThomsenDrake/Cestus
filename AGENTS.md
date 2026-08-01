@@ -21,6 +21,13 @@ acceptance matrices, readiness logs, and Factory V2 branches are historical
 records. They are not task inputs, approval gates, ownership authorities, or
 default verification requirements.
 
+An approved Cestus executable specification already carries product and design
+authority. Do not add generic brainstorming, design-reapproval,
+implementation-plan, program-management, or swarm workflows before executing
+it. Use such a workflow only when the specification cannot be completed
+without a genuinely new product decision covered by the escalation rules
+below. This repository contract takes precedence over generic workflow skills.
+
 ## Work Rules
 
 - Start from one approved executable specification. Use
