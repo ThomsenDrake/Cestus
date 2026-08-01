@@ -19,6 +19,13 @@ user authority or existing product contracts; ask only when the missing choice
 would change product scope, safety, irreversible behavior, credentials, data
 loss, or an external effect.
 
+An approved specification already supplies product and design authority. Do
+not precede execution with a generic brainstorming, design-reapproval,
+implementation-plan, program-management, or swarm workflow. Invoke one only
+when a genuine escalation condition requires a new product decision; this
+Cestus playbook takes precedence over generic workflow skills for an approved
+slice.
+
 ## Assemble Bounded Context
 
 Read:
