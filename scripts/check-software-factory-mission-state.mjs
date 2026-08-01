@@ -1,3 +1,5 @@
+// Historical Factory V1 diagnostic only. The active verification path does not
+// call this checker; see docs/agentic/software-factory.md.
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";

@@ -1,5 +1,8 @@
 # Cestus Software Factory Calibration Implementation Plan
 
+Status: historical Factory V1 plan. Do not execute its mission, claim, or gate
+sequence. Use `docs/agentic/software-factory.md`.
+
 > **For agentic workers:** Use the approved task-scoped workflow and preserve the two-commit history described below.
 
 **Goal:** Establish one compact, machine-validated authority for calibrated Cestus software-factory mission mechanics.

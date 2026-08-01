@@ -1,5 +1,8 @@
 # Review Template
 
+Status: optional checklist. `docs/agentic/software-factory.md` is the sole
+workflow authority.
+
 ## Findings
 
 List bugs, spec drift, missing tests, unsafe migrations, and verification gaps first.

@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 
 const requiredFiles = [
@@ -8,10 +7,6 @@ const requiredFiles = [
   ".agents/skills/cestus-software-factory/SKILL.md",
   "docs/agentic/software-factory.md",
   "docs/agentic/executable-spec-template.md",
-  "docs/agentic/references/software-factory-principles.md",
-  "docs/agentic/references/source-material/README.md",
-  "docs/agentic/references/source-material/software-factory-ladder-thread.txt",
-  "docs/agentic/references/source-material/software-factory-why-your-team-will-never-work-the-same-again.txt",
   ".github/workflows/verify.yml"
 ];
 
@@ -54,25 +49,6 @@ const requiredText = new Map([
       "## Integration Verification",
       "## Escalation Conditions"
     ]
-  ],
-  [
-    "docs/agentic/references/software-factory-principles.md",
-    ["Status: non-authoritative reference material.", "## Preserved Sources"]
-  ],
-  [
-    "docs/agentic/references/source-material/README.md",
-    ["Status: non-authoritative reference material."]
-  ]
-]);
-
-const expectedHashes = new Map([
-  [
-    "docs/agentic/references/source-material/software-factory-ladder-thread.txt",
-    "410f6df3e335f526cf84c92e4325e994119c52104e51adee4bece7db316950b8"
-  ],
-  [
-    "docs/agentic/references/source-material/software-factory-why-your-team-will-never-work-the-same-again.txt",
-    "3359d557c491f7ce1ee092084a60c4d740d563a447c3320a3358fa59ce8da223"
   ]
 ]);
 
@@ -100,16 +76,6 @@ for (const [file, snippets] of requiredText) {
     if (!text.includes(snippet)) {
       failures.push(`${file} is missing required text: ${snippet}`);
     }
-  }
-}
-
-for (const [file, expected] of expectedHashes) {
-  if (!existsSync(file)) {
-    continue;
-  }
-  const actual = createHash("sha256").update(readFileSync(file)).digest("hex");
-  if (actual !== expected) {
-    failures.push(`${file} sha256 mismatch: expected ${expected}, received ${actual}`);
   }
 }
 
