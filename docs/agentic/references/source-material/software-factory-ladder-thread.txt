@@ -1,0 +1,98 @@
+To view keyboard shortcuts, press question mark
+View keyboard shortcuts
+
+
+What the hell is a Software Factory?
+Alex Lieberman
+@businessbarista
+·
+Jun 1
+
+A non-technical leader's guide to The Software Factory, how it works, why it's in vogue, and how to get your company to operate one.
+In 2023, everyone was hype about ChatGPT. In 2024, it was GenAI. 2025 was the year of Agents. And 2026 started with OpenClaw in vogue, but now attention has turned to The Software Factory.
+Unless you're an engineer or take residence in the depths of X, you may not know what a Software Factory is or why you should care.
+But when some companies are attributing 90% of their production software to AI (read: @AnthropicAI) and best-in-class ICs are matching the output of a 20-person pre-AI engineering org, you need to care.
+Reality is, most companies are nowhere close to having a true Software Factory.
+I run a company (@tenex_labs) where one of the things we now do is help enterprises build these. We set up the infrastructure and tooling, then run the assessment, training, and change management to get an engineering org ready for an entirely new way of building software. So I look at a lot of these orgs. And the gap between what CEOs think they have and what they actually have is enormous.
+So let me break the whole thing down. What a software factory actually is, why it's suddenly everywhere, and a simple way to figure out exactly how close your org is. Even if you've never written a line of code in your life.
+What is a Software Factory?
+Strip the jargon and it's simple: a software factory is an engineering org where building software works less like craft and more like a production line.
+In the craft model, a human sits down and writes the code by hand. Think of it like hand-building custom cars one at a time: flexible, but slow and inconsistent. Output scales with how many skilled people you can hire and how fast they can type. It's bespoke, slow, and most context lives in people's heads.
+In the factory model, the work is industrialized. It's like a modern auto manufacturing plant: faster, more reliable, and scalable, but requires upfront investment in processes and tools. There's a repeatable line (write, review, test, deploy, monitor) and software moves through it with standardized steps, automated quality checks, and as little manual labor as possible. Humans design the line and handle exceptions. The machines do the reps.
+The most extreme version I've seen comes from a system @simonw wrote about, built by a company called StrongDM. Two guiding principles:
+"Code must not be written by humans." "Code must not be reviewed by humans."
+(Simon Willison on X.)
+That sounds insane. It's also the whole point. A factory isn't "humans coding faster with AI." It's a system where the humans move up a level, from doing the work to directing it.
+Why is the term suddenly everywhere?
+Three things hit at once.
+1) The proof points got undeniable. @ryancarson now runs what he calls a "Code Factory." Agents write the code, review it, run the tests, triage the errors, and watch production, while he sets the guardrails. He's shipped over a thousand pull requests this way. Basically a one-person software company. Meanwhile Anthropic says 90%+ of its code is AI-written, Google says 75% of new code is AI-generated (up from 25% a year ago), and at OpenAI, 95% of engineers use their internal agent. The ones who lean in open 70% more pull requests than their peers (Lenny Rachitsky on X).
+2) Big names are giving it oxygen. Microsoft is now pitching an "Agent Factory" as the new way software gets built. When the giants adopt the language, it goes mainstream fast. @chamath talks frequently about the Software Factory his team at 8090 is building. @garrytan hits on this factory concept with GStack, GBrain, and his newest article titled "Stop building Foxconn factories for your agents."
+3) The metric became a flex. "X% of our code is written by AI" became the way CEOs signal they're ahead. Not the right metric to flex, but it earned agentic engineering attention nonetheless.
+The framework: The Software Factory Ladder
+In order to build a Software Factory, you need to be able to observe & orient yourself to where your engineering org is on the factory ladder.
+Five levels, 0 through 4. You should be able to place your org in under a minute.
+To make it concrete, I'll run the same scenario through every level: a customer hits a bug. The "Place Order" button stops working. Watch what shifts from human to AI as you climb.
+Level 0. Artisan. A customer emails support. Eventually an engineer hears about it, reproduces it, writes the fix by hand, another engineer reads the code to review it, someone manually tests it, and a human deploys it. AI is nowhere. Everything is a human.
+Level 1. Assisted. Same exact steps, same humans, except the engineer uses an AI copilot to write the fix a little faster. Output ticks up. But the process is identical: a human still does, and gates, every step. This is where most companies actually are.
+Level 2. Delegated. The engineer hands the bug to an agent. The agent writes the fix and opens a pull request on its own. But a human still reads and approves every PR before it merges. Real leverage now, but the human is still the gate on everything. This is where most "AI-forward" companies are stuck, and it feels advanced because output is way up.
+Level 3. Supervised Factory. An agent monitors production, catches the error, and triages it. A coding agent writes the fix. A second agent reviews it. Tests run automatically. If it's low-risk and everything passes, it ships, with no human in the loop for that bug. The humans set the guardrails ("auto-merge low-risk fixes that pass tests and review; escalate anything touching payments") and only get pulled in on the risky stuff. This is Carson's Code Factory. This is StrongDM. Very few orgs are truly here.
+Level 4. Autonomous Factory. That bug gets caught, fixed, reviewed, tested, and shipped before anyone on the team even knows it happened. The humans aren't watching the line. They're deciding what the product should become next. Almost nobody is genuinely at Level 4. But it's the direction the whole industry is pointed.
+Find your spot on the ladder
+Questions to ask to observe & orient where your engineering org sits:
+What percentage of our pull requests ship without a human reviewing them? If it's zero, you're Level 1. 
+When we fix a bug or build a small feature, who writes the first version: a person, or a person directing an agent? (A person = Level 0 or 1. A person directing an agent = Level 2 and up.)
+Can an agent open a pull request on its own, or does a human write every change by hand? (This is the line between Level 1 and Level 2.)
+Do we have rules that let low-risk changes ship automatically while escalating the risky ones, and who set those rules? (This is the heart of Level 3.)
+When something breaks in production, what notices first: a person or a system? And what triages it? (Humans noticing = early. A system catching and triaging it = Level 3.)
+Do our tests run automatically on every change, and can the system block a bad one without a human stepping in? (Tells you if the quality gate is real or just a person clicking approve.)
+If an agent ships something wrong, how fast can we catch it and undo it? (Your safety net decides how far up the ladder you can safely climb.)
+Can our AI tools securely see our own codebase, docs, and systems, or just generic public knowledge? (Generic = you're capped until you fix it.)
+Do we have an internal platform our agents plug into, or is every engineer wiring up their own tools? (Per DORA, this is the single biggest differentiator.)
+If I took every engineer's AI tools away tomorrow, would our process change, or just our speed? (Only speed = Level 1 with better autocomplete. The process would break = you've actually industrialized.)
+Where's our bottleneck right now: writing the code, or reviewing and shipping it? (Still writing = early. Moved downstream = mature. That shift is the whole point.)
+How to climb the ladder
+Level 0 → 1: put AI in every engineer's hands. This jump is mostly organizational, not technical. Give every engineer a coding assistant, make it explicit which tools are blessed and that experimenting on real work is encouraged, and clear the security and legal friction that quietly stalls adoption. It's the easiest rung, and the one most companies think they've climbed. But a license nobody opens is still Level 0. Prerequisite: a clear AI stance and tools your team is actually allowed to use on the real codebase.
+Level 1 → 2: let an agent own a whole ticket. Right now your engineers use AI to type faster, and that's the ceiling. The move is to hand an agent a complete unit of work. Take your best-tested, lowest-risk part of the codebase and assign an agent an entire bug ticket: it writes the fix and opens the PR, a human reviews. Do it with your next ten bugs. The blocker here is rarely the technology, it's getting your team to stop writing every line themselves. Prerequisite: clear, well-scoped tickets and enough test coverage that a human can trust-but-verify quickly.
+Level 2 → 3: kill the review bottleneck. Now the constraint is you, a human approving every single PR. The move is to let low-risk changes ship without a person in the loop. Concretely: write down what "low-risk" means for you (e.g., nothing touching payments, auth, or data migrations), stand up a second agent to review the first agent's work, require the automated test suite to pass, and auto-merge anything that clears all three. Everything else escalates to a human. This is the hardest jump and the one that demands real infrastructure. Per DORA, a quality internal platform is the single biggest differentiator between teams that win with AI and teams that get buried by it. Prerequisite: automated tests you'd actually bet on, and an internal platform agents plug into.
+Level 3 → 4: remove the last human trigger. At Level 3 a person still kicks off the work. At Level 4 an agent watches production, catches the bug, opens its own ticket, and runs the whole line, while humans decide what to build next. Closing that loop is mostly about monitoring and trust, not better models. Honestly, most companies shouldn't sprint here. Anything touching trust, money, or safety probably deserves a human in the loop for a long time. But you should know it's the direction the frontier is moving. Prerequisite: production monitoring agents can act on, and guardrails you trust unattended.
+Which function in your company is the next factory?
+This is the question I'm most obsessed with right now.
+Because Ryan Carson's right, engineering is just the first factory. As he put it: "Get your Code Factory set up because the next step is the Company Factory." (@ryancarson.)
+But not every function is equally ready. So what actually decides it? After a lot of digging, it comes down to one dominant criterion and a few supporting ones.
+The big one is verifiability.
+@karpathy framed it best: traditional software automates what you can specify; AI automates what you can verify. If a task has an automatic success signal, the machine can practice it and you can trust the output. That's the entire reason engineering went first. A test either passes or it doesn't. There's ground truth. When you ask an agent to fix a bug, you can prove it worked. When you ask it for architectural advice, there's no signal. It might be brilliant or quietly wrong in a way you won't discover for months.
+A function is factory-ready to the degree it has:
+Verifiable output. Can you automatically check if the work is right? (The single biggest factor.)
+Digital inputs and outputs. The work happens in software, not a handshake or a physical room.
+Volume and repeatability. Enough recurring reps to be worth building a line for.
+Reversibility. When the machine gets it wrong, can you catch and undo it cheaply?
+Run your functions through that and they sort onto a spectrum:
+Most factory-ready (build here first): Software engineering, QA, data pipelines and analytics, DevOps. All have ground-truth checks. Tests pass, schemas validate, dashboards reconcile.
+Increasingly ready: Parts of finance and accounting (reconciliation has a right answer), customer support (resolved or not, CSAT measurable), and the operational guts of sales and marketing (did it send, did it convert).
+Least factory-ready (for now): Strategy, design taste, novel architecture, executive judgment, relationship and trust-building. Anything where "right" is subjective or only reveals itself far down the road.
+Who to follow if you want to go deeper
+The short list I'd actually watch:
+Ryan Carson (@ryancarson). The clearest real-world example of a working Code Factory. He publishes his actual setup, not theory.
+Simon Willison (@simonw). The most credible, hype-free voice on what agentic coding can and can't do.
+Peter Steinberger (@steipete). Creator of @openclaw. Constantly pushing the boundaries of what's possible with agentic coding. 
+Lenny Rachitsky (@lennysan). Best at translating what frontier orgs (OpenAI, Anthropic) are doing into business language.
+Santiago (@svpino). Your designated skeptic. He'll call BS on the "90% of code" claims and keep you honest.
+Andrej Karpathy (@karpathy). For the deep "why," which work AI can and can't absorb, and why.
+The DORA report (dora.dev). Not a person, but the best evidence-based read on what separates teams that win with AI.
+If you remember nothing else
+A software factory isn't "engineers using AI." It's a production line where agents write, review, test, and ship, while humans design the line instead of working it.
+Stop flexing "% of code written by AI." Ask the real question: how much of your line runs without a human in it?
+5 levels of the Software Factory Ladder: Artisan (Everything is a human), Assisted (glorified autocorrect),  Assisted (agent drives execution), Supervised Factory (human absracted other than direction/guardrails & exceptional handling), Autonomous Factory (agentic nirvana) 
+You climb the ladder by removing the human from one more step at a time, and only as fast as your safety net (tests, version control, an internal platform) can back it up.
+Engineering is only the first factory. The next one is whichever function has verifiable, digital, repeatable, reversible work. Go find it before your competitors do.
+Alex Lieberman
+@businessbarista
+Family first (husband & girl dad) Founder second (
+@tenex_labs
+, 
+@morningbrew
+, 
+@storyarb
+, 
+@youdistro
+) AI engineering & transformation 👇
