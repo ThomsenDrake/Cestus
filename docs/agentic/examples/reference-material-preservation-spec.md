@@ -42,11 +42,17 @@ match the acceptance examples.
 
 ## Integration Verification
 
-Verify `f06735b3` remains a descendant of its stated parent. Run
-`git diff --check f06735b3^ f06735b3 -- .` while excluding only the two
-verbatim `.txt` snapshots, whose exact hashes are authoritative for preserved
-whitespace. Then run `npm run factory:check` after the current factory contract
-is present.
+Verify `f06735b3` remains a descendant of its stated parent. Run:
+
+```bash
+git diff --check f06735b3^ f06735b3 -- . \
+  ':(exclude)docs/agentic/references/source-material/software-factory-ladder-thread.txt' \
+  ':(exclude)docs/agentic/references/source-material/software-factory-why-your-team-will-never-work-the-same-again.txt'
+```
+
+This excludes only the two verbatim snapshots, whose exact hashes are
+authoritative for preserved whitespace. Then run `npm run factory:check` after
+the current factory contract is present.
 
 ## Escalation Conditions
 

@@ -63,10 +63,10 @@ review, repair, or merge decisions again.
 
 The coordinator is deterministic glue, not a governance layer. It verifies the
 current integration tip and configured remote, assembles only relevant
-context, creates isolation, chooses the risk lane and exact commands, routes
-one candidate to one reviewer, serializes integration, and returns genuine
-exceptions. It does not author product repair commits when an implementation
-agent can repair its own bounded candidate.
+context, creates isolation, validates and executes the specification's risk
+lane and exact commands, routes one candidate to one reviewer, serializes
+integration, and returns genuine exceptions. It does not author product repair
+commits when an implementation agent can repair its own bounded candidate.
 
 ### Implementation agent
 

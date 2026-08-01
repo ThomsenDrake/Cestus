@@ -1,5 +1,9 @@
 # Ontology Layer Implementation Plan
 
+Status: completed historical product plan. Its software-factory operating
+model is retired; current work uses `docs/agentic/software-factory.md`. Its
+implemented product invariants remain protected by current source and tests.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Build the first event-sourced, AI-legible Cestus ontology foundation with validated event contracts, a SQLite-backed ledger, rebuildable projections, domain packs, provenance-first assertions, and autonomous software-factory guardrails.

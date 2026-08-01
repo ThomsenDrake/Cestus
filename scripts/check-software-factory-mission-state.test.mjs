@@ -1,3 +1,5 @@
+// Historical Factory V1 diagnostic coverage. These tests are optional and are
+// not part of the active thin-factory gate.
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
