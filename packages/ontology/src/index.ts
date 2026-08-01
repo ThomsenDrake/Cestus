@@ -7,6 +7,7 @@ export * from "./domain-packs.js";
 export * from "./evidence-service.js";
 export * from "./assertion-service.js";
 export * from "./graph-projection.js";
+export * from "./ontology-workspace-read.js";
 export * from "./diagnostics.js";
 export * from "./jsonld-export.js";
 export * from "./governance-policy.js";

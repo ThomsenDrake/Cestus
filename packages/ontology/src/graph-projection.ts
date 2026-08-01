@@ -20,6 +20,16 @@ export interface ProjectedEntity {
   assertionIds: string[];
 }
 
+export interface ProjectedRelationship {
+  relationshipId: string;
+  fromEntityId: string;
+  toEntityId: string;
+  relationshipType: string;
+  assertionIds: string[];
+  reviewState: "accepted";
+  acceptedByEventId: string;
+}
+
 export interface AssertionProvenance {
   assertionId: string;
   evidenceId: string;
@@ -30,6 +40,7 @@ export interface AssertionProvenance {
 export interface GraphProjection {
   assertions: Map<string, ProjectedAssertion>;
   entities: Map<string, ProjectedEntity>;
+  relationships: Map<string, ProjectedRelationship>;
   provenanceForAssertion(assertionId: string): AssertionProvenance | undefined;
 }
 
@@ -37,7 +48,9 @@ export function buildGraphProjection(events: readonly KnowledgeEvent[]): GraphPr
   const proposedAssertions = new Map<string, ProjectedAssertion>();
   const assertions = new Map<string, ProjectedAssertion>();
   const entities = new Map<string, ProjectedEntity>();
+  const relationships = new Map<string, ProjectedRelationship>();
   const entityCandidates: ProjectedEntity[] = [];
+  const relationshipCandidates: ProjectedRelationship[] = [];
 
   for (const event of events) {
     switch (event.type) {
@@ -74,6 +87,18 @@ export function buildGraphProjection(events: readonly KnowledgeEvent[]): GraphPr
         });
         break;
 
+      case "relationship.accepted":
+        relationshipCandidates.push({
+          relationshipId: event.payload.relationshipId,
+          fromEntityId: event.payload.fromEntityId,
+          toEntityId: event.payload.toEntityId,
+          relationshipType: event.payload.relationshipType,
+          assertionIds: [...event.payload.assertionIds],
+          reviewState: "accepted",
+          acceptedByEventId: event.id
+        });
+        break;
+
       default:
         break;
     }
@@ -88,9 +113,21 @@ export function buildGraphProjection(events: readonly KnowledgeEvent[]): GraphPr
     }
   }
 
+  for (const relationship of relationshipCandidates) {
+    const endpointsAreResolved =
+      entities.has(relationship.fromEntityId) && entities.has(relationship.toEntityId);
+    const supportedByAcceptedAssertions = relationship.assertionIds.every(
+      (assertionId) => assertions.get(assertionId)?.reviewState === "accepted"
+    );
+    if (endpointsAreResolved && supportedByAcceptedAssertions) {
+      relationships.set(relationship.relationshipId, relationship);
+    }
+  }
+
   return {
     assertions,
     entities,
+    relationships,
     provenanceForAssertion(assertionId) {
       const assertion = assertions.get(assertionId);
       if (!assertion) {

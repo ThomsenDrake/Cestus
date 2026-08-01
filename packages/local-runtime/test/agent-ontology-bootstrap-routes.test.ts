@@ -1,6 +1,7 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createAgentRuntime } from "../../agent/src/index.js";
 import { buildTaskAttemptId } from "../../agent/src/task-orchestrator-events.js";
@@ -8,6 +9,8 @@ import { createWakeSupervisorRuntime } from "../src/wake-supervisor-runtime.js";
 import { issueMountedArtifactAuthorityOperationForFactory } from "../src/mounted-artifact-authority-operation.js";
 import { createPortableMountedAgentArtifactStoreProducer } from "../src/portable-mounted-agent-artifact-stores.js";
 import { SQLiteEventLedger } from "../../ontology/src/sqlite-event-ledger.js";
+import type { AppendableKnowledgeEvent, KnowledgeEvent } from "../../ontology/src/contracts.js";
+import { goldenOntologyWorkspaceEvents } from "../../ontology/test/fixtures/golden-ontology-workspace.js";
 import { createPortableWorkspace } from "../../workspace/src/index.js";
 import { writeLegacyCestusFixture } from "../../ingestion/test/fixtures/legacy-cestus-fixtures.js";
 import { resolveLocalRuntimeConfig, type ResolvedLocalRuntimeConfig } from "../src/config.js";
@@ -172,6 +175,127 @@ afterEach(() => {
 });
 
 describe("ontology-bootstrap agent routes", () => {
+  it("reads deterministic ontology relationship provenance from the mounted ledger", async () => {
+    await appendFixtureEvents(config, goldenOntologyWorkspaceEvents);
+    handler = createLocalRuntimeHttpHandler({
+      config,
+      actor: { id: "actor_route_owner", kind: "human", label: "Route Owner" },
+      now: () => "2026-07-08T16:00:00.000Z"
+    });
+    await handler({ method: "GET", url: "/api/agent/status" });
+
+    const first = await handler({ method: "GET", url: "/api/ontology/workspace" });
+    const replayed = await handler({ method: "GET", url: "/api/ontology/workspace" });
+    const body = JSON.parse(first.body);
+
+    expect(first.status).toBe(200);
+    expect(JSON.parse(replayed.body)).toEqual(body);
+    expect(body).toMatchObject({
+      schemaVersion: "ontology-workspace.v1",
+      status: "ready",
+      relationships: [{
+        relationshipId: "rel_agency_signed_contract",
+        relationshipType: "signed",
+        reviewState: "accepted",
+        supportingAssertionIds: ["as_contract_party"],
+        contradictingAssertionIds: ["as_contract_dispute"],
+        evidenceIds: ["ev_contract_pdf"],
+        packVersions: [
+          { name: "core", version: "0.1.0" },
+          { name: "public-records", version: "1.2.0" }
+        ]
+      }]
+    });
+    expect(body.assertions).toContainEqual(expect.objectContaining({
+      assertionId: "as_contract_dispute",
+      reviewState: "proposed"
+    }));
+    expect(body.relationships.map((relationship: { readonly relationshipId: string }) => relationship.relationshipId))
+      .not.toContain("as_contract_dispute");
+    expect(first.body).not.toContain("file:///fixtures");
+    expect(first.body).not.toContain("contentHash");
+  });
+
+  it("returns a repairable fail-closed DTO while the ontology projection is lagging", async () => {
+    const laggingCheckpoint: KnowledgeEvent = {
+      id: "evt_route_ontology_checkpoint",
+      type: "projection.checkpointed",
+      version: 1,
+      streamId: "projection_ontology_graph",
+      sequence: 1,
+      context: {
+        actor: { id: "actor_system", kind: "system", label: "Projection worker" },
+        occurredAt: "2026-07-08T16:00:00.000Z",
+        correlationId: "corr_route_ontology_checkpoint",
+        coreVersion: "0.1.0",
+        packVersions: { core: "0.1.0" }
+      },
+      payload: {
+        projectionName: "ontology-graph",
+        highWaterMark: 0,
+        status: "rebuilding"
+      }
+    };
+    await appendFixtureEvents(config, [...goldenOntologyWorkspaceEvents, laggingCheckpoint]);
+    handler = createLocalRuntimeHttpHandler({
+      config,
+      actor: { id: "actor_route_owner", kind: "human", label: "Route Owner" }
+    });
+
+    const response = await handler({ method: "GET", url: "/api/ontology/workspace" });
+    const body = JSON.parse(response.body);
+
+    expect(response.status).toBe(200);
+    expect(body.status).toBe("degraded");
+    expect(body.relationships).toEqual([]);
+    expect(body.diagnostics).toContainEqual(expect.objectContaining({
+      code: "projection-lag",
+      repairActions: expect.arrayContaining([expect.stringMatching(/rebuild/i)])
+    }));
+  });
+
+  it("reports an unknown stored event without exposing or inventing graph state", async () => {
+    const ledger = new SQLiteEventLedger(config.storage.sqlitePath);
+    ledger.close();
+    const database = new DatabaseSync(config.storage.sqlitePath);
+    try {
+      database.prepare(`
+        INSERT INTO ontology_events (id, type, version, stream_id, stream_sequence, context_json, payload_json)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        "evt_unknown_ontology_route",
+        "ontology.unknown",
+        1,
+        "ontology_unknown_route",
+        1,
+        JSON.stringify({
+          actor: { id: "actor_system", kind: "system", label: "Projection worker" },
+          occurredAt: "2026-07-08T16:00:00.000Z",
+          correlationId: "corr_unknown_ontology_route",
+          coreVersion: "0.1.0",
+          packVersions: { core: "0.1.0" }
+        }),
+        JSON.stringify({ privateRawValue: "must not cross the route" })
+      );
+    } finally {
+      database.close();
+    }
+    handler = createLocalRuntimeHttpHandler({
+      config,
+      actor: { id: "actor_route_owner", kind: "human", label: "Route Owner" }
+    });
+
+    const response = await handler({ method: "GET", url: "/api/ontology/workspace" });
+    const body = JSON.parse(response.body);
+
+    expect(response.status).toBe(503);
+    expect(body.status).toBe("degraded");
+    expect(body.entities).toEqual([]);
+    expect(body.relationships).toEqual([]);
+    expect(body.diagnostics).toContainEqual(expect.objectContaining({ code: "unknown-event" }));
+    expect(response.body).not.toContain("privateRawValue");
+  });
+
   it("launches and reads a resident ontology-bootstrap run without approval decisions", async () => {
     handler = createLocalRuntimeHttpHandler({
       config,
@@ -458,6 +582,35 @@ async function eventTypes(runtimeConfig: ResolvedLocalRuntimeConfig): Promise<re
   const ledger = new SQLiteEventLedger(runtimeConfig.storage.sqlitePath);
   try {
     return (await ledger.readAll()).map((event) => event.type);
+  } finally {
+    ledger.close();
+  }
+}
+
+async function appendFixtureEvents(
+  runtimeConfig: ResolvedLocalRuntimeConfig,
+  events: readonly KnowledgeEvent[]
+): Promise<void> {
+  const ledger = new SQLiteEventLedger(runtimeConfig.storage.sqlitePath);
+  const remappedEventIds = new Map<string, string>();
+  try {
+    for (const event of events) {
+      const causationId = event.context.causationId === undefined
+        ? undefined
+        : remappedEventIds.get(event.context.causationId);
+      const appendable = {
+        type: event.type,
+        version: event.version,
+        streamId: event.streamId,
+        context: {
+          ...event.context,
+          ...(causationId === undefined ? { causationId: undefined } : { causationId })
+        },
+        payload: event.payload
+      } as AppendableKnowledgeEvent;
+      const appended = await ledger.append(appendable);
+      remappedEventIds.set(event.id, appended.id);
+    }
   } finally {
     ledger.close();
   }
