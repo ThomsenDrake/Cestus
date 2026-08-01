@@ -1,37 +1,53 @@
 # Cestus Agent Contract
 
-This repository is designed for autonomous AI coding agents. Treat repo files as durable shared state.
+This repository is built by autonomous coding agents. Treat the approved
+product specification, the current Git branch, and verification output as the
+durable task state.
 
-## Project Skill
+## Current Factory Authority
 
-Use the project-local Codex skill at `.agents/skills/cestus-software-factory/SKILL.md` for Cestus brainstorming, planning, implementation, review, child-thread dispatch, and branch finishing work. Codex discovers repo skills from `.agents/skills`; agents that do not auto-discover project skills must read that file manually before planning or editing.
+Read these before changing Cestus:
 
-## Required Reading
+1. The approved executable specification for the product slice.
+2. `docs/agentic/software-factory.md`, the sole operating contract for moving
+   that specification through implementation, review, and integration.
+3. `.agents/skills/cestus-software-factory/SKILL.md`, the concise execution
+   playbook.
+4. Only the repository instructions and source files relevant to the allowed
+   scope in the specification.
 
-Before editing, read:
-
-1. `docs/superpowers/specs/2026-06-30-ontology-layer-design.md`
-2. `docs/superpowers/plans/2026-06-30-ontology-layer-implementation.md`
-3. `docs/agentic/software-factory.md`
+The pre-cutover mission selectors, claims, amendments, freezes, registries,
+acceptance matrices, readiness logs, and Factory V2 branches are historical
+records. They are not task inputs, approval gates, ownership authorities, or
+default verification requirements.
 
 ## Work Rules
 
-- Select Level 1, 2, or 3 from `docs/agentic/contracts/software-factory-mission-state.v1.json`; it is the sole current authority for mission mechanics, ownership, status, and gates.
-- Use a task-scoped branch or worktree.
-- Change only files listed by the current task unless a verifier requires a small supporting edit.
-- Use a failing test or exact reproduction before behavior edits; Level 1 documentation and behavior-neutral work use focused validation.
-- Run the source-mandated targeted validation and the risk-proportionate gates before committing.
-- Use atomic commits; permanent RED commits are reserved for the source-defined Level 2 cases.
-- Record registry events only for `claimed`, `implementing`, `candidate`, `reviewing`, `approved`, `integrated`, and `released` transitions.
-- Do not weaken append-only ledger semantics, provenance requirements, or projection rebuildability.
-- Stop child-task execution and escalate to the assigned coordinator on data-loss
-  risk, schema conflict, unavailable dependency, or repeated verifier failure.
-  Repeated failure is a coordinator recovery checkpoint, not automatically a
-  user prompt. The coordinator changes tactics, replaces stale agents, and
-  continues within the approved contract; human escalation is reserved for a
-  required product, scope, safety, data-loss, credential, or external-behavior
-  decision.
+- Start from one approved executable specification. Use
+  `docs/agentic/executable-spec-template.md` for new product slices.
+- Work in one task-scoped branch or worktree. The branch owns the candidate;
+  the diff is the handoff.
+- Use one implementation agent and, when required by the risk lane, one fresh
+  independent reviewer. Do not create a swarm for an ordinary slice.
+- Write a failing test or exact reproduction before product behavior changes.
+  Documentation and behavior-neutral maintenance use focused validation.
+- Run targeted checks while implementing and broader verification once at the
+  integration boundary, unless the specification identifies a higher-risk
+  check.
+- Make no more than two focused repair attempts before returning an exception
+  to the coordinator.
+- Green and yellow work already bounded by an approved specification needs no
+  further human approval. Escalate only the exact red-lane action or a genuine
+  new product, scope, safety, credential, irreversible, data-loss, or external
+  behavior decision.
 
-## Review Rules
+## Product Safety Invariants
 
-Reviewer agents lead with defects, missing tests, and spec drift. Use one fresh review for Level 2, the source-defined dual-review cases, and the Level 3 fresh scrutiny plus black-box milestone gates. Preserve human PRR-send and legal gates, fail-closed authority, secret safety, and no fallback writes.
+Never weaken Cestus's append-only product ledger, evidence provenance,
+projection rebuildability, consume-time approval validation, secret safety,
+human PRR-send gates, legal escalation locks, destructive-operation
+safeguards, fail-closed boundaries, or no-fallback-write behavior.
+
+Development coordination is not part of the product ledger. Ordinary product
+work creates no factory claims, amendments, registry entries, or lifecycle
+events.
