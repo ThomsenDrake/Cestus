@@ -32,7 +32,15 @@ export function exportGraphToJsonLd(graph: GraphProjection): JsonLdDocument {
           "cestus:object": assertion.object,
           "cestus:evidence": assertion.evidenceId,
           "cestus:reviewState": assertion.reviewState
-        }))
+        })),
+      ...[...graph.relationships.values()].map((relationship) => ({
+        "@id": relationship.relationshipId,
+        "@type": relationship.relationshipType,
+        "cestus:from": relationship.fromEntityId,
+        "cestus:to": relationship.toEntityId,
+        "cestus:supportedBy": [...relationship.assertionIds],
+        "cestus:reviewState": relationship.reviewState
+      }))
     ]
   };
 }

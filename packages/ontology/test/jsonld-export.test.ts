@@ -46,6 +46,7 @@ describe("exportGraphToJsonLd", () => {
         ]
       ]),
       entities: new Map(),
+      relationships: new Map(),
       provenanceForAssertion: () => undefined
     };
 

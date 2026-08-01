@@ -13,6 +13,7 @@ import type { ResolvedLocalRuntimeConfig } from "./config.js";
 import { handleIngestionHttpRoute } from "./ingestion-http-routes.js";
 import type { LocalIngestionRuntimeFactory } from "./ingestion-runtime-factory.js";
 import { createDefaultOperatorStatusProviders } from "./operator-status-providers.js";
+import { handleOntologyHttpRoute } from "./ontology-http-routes.js";
 import { handleOperatorStatusRoute } from "./operator-status-routes.js";
 import type { OperatorStatusProviderSet } from "./operator-status.js";
 import {
@@ -143,6 +144,13 @@ export function createLocalRuntimeHttpHandler(
           ? {}
           : { ingestionRuntimeFactory: input.ingestionRuntimeFactory })
       });
+      if (response !== undefined) {
+        return response;
+      }
+    }
+
+    if (path.startsWith("/api/ontology/")) {
+      const response = await handleOntologyHttpRoute({ request, ledger: handle.ledger });
       if (response !== undefined) {
         return response;
       }
