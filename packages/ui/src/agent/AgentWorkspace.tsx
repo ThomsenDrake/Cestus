@@ -33,6 +33,10 @@ interface AgentWorkspaceProps {
   readonly loadError?: string | undefined;
   readonly onRefresh?: (() => void) | undefined;
   readonly onCreateTask?: ((input: CreateAgentTaskInput) => Promise<unknown>) | undefined;
+  readonly onPauseResidentWork?: (() => void) | undefined;
+  readonly onResumeResidentWork?: (() => void) | undefined;
+  readonly onRetryTask?: ((taskId: string) => void) | undefined;
+  readonly onCancelTask?: ((taskId: string) => void) | undefined;
   readonly onMemoryFilterChange?: ((filters: AgentMemoryFiltersDto) => void) | undefined;
   readonly onSelectMemory?: ((memoryId: string) => void) | undefined;
   readonly onRecordMemory?: ((input: RecordMemoryInput) => void) | undefined;
@@ -53,6 +57,10 @@ export function AgentWorkspace({
   loadState,
   onRefresh,
   onCreateTask,
+  onPauseResidentWork,
+  onResumeResidentWork,
+  onRetryTask,
+  onCancelTask,
   onMemoryFilterChange,
   onSelectMemory,
   onRecordMemory,
@@ -126,7 +134,15 @@ export function AgentWorkspace({
             />
           )}
 
-          {cockpit === undefined ? null : <AgentRunCockpit cockpit={cockpit} />}
+          {cockpit === undefined ? null : (
+            <AgentRunCockpit
+              cockpit={cockpit}
+              onPauseResidentWork={onPauseResidentWork}
+              onResumeResidentWork={onResumeResidentWork}
+              onRetryTask={onRetryTask}
+              onCancelTask={onCancelTask}
+            />
+          )}
 
           <div className="grid gap-3 md:grid-cols-5">
             <SummaryMetric label="Pending" value={countLabel(status.pendingApprovalCount, "pending approval")} />

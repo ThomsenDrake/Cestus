@@ -11,7 +11,9 @@ import {
   type KnowledgeEventOf
 } from "../../ontology/src/contracts.js";
 import { isConcurrencyConflict } from "../../ontology/src/event-ledger.js";
+import { hasPrecommitGuardedAppend } from "../../ontology/src/sqlite-event-ledger.js";
 import { FileBlobStore } from "../../ontology/src/blob-store.js";
+import { mountPortableWorkspace } from "../../workspace/src/index.js";
 import dispatcherDefault from "../../agent/src/domain-execution-dispatcher.js";
 import { createResidentLoopToolGateway } from "../../agent/src/resident-loop-tool-gateway.js";
 import type {
@@ -453,9 +455,15 @@ export function createMountedWakeLifecycleStore(rawInput: MountedWakeLifecycleSt
     const event = lifecycleEvent(append, facts, input, snapshot.events, occurrence);
     const expectedSequence = snapshot.events.filter((candidate) => candidate.streamId === event.streamId).length + 1;
 
-    await ledger.append(event, {
+    if (!hasPrecommitGuardedAppend(ledger)) {
+      throw new Error("mounted wake lifecycle ledger lacks a synchronous precommit guard");
+    }
+    await ledger.appendWithPrecommitGuard(event, {
       expectedGlobalEventCount: snapshot.events.length,
       expectedNextSequence: expectedSequence
+    }, () => {
+      requireCurrent(expectedRevision);
+      validateMountedWorkspaceStorage(storeAuthority, ledger, mountedWorkspace, mountedBinding);
     });
     requireCurrent(expectedRevision);
     const postAppend = await ledger.readAll();
@@ -487,22 +495,43 @@ export function createMountedWakeLifecycleStore(rawInput: MountedWakeLifecycleSt
     requireCurrent(expectedRevision);
     if (leaseInput !== undefined) validateLeaseAdmissionInput(leaseInput, snapshot.facts);
     const claimedAt = normalizedWakeInstant(input.now(), "wake lease acquisition");
-    const foreign = snapshot.events.toReversed().find((event): event is KnowledgeEventOf<"agent.wake.supervisor.lease.claimed.v1"> =>
+    const liveLeases = snapshot.events.toReversed().filter((event): event is KnowledgeEventOf<"agent.wake.supervisor.lease.claimed.v1"> =>
       event.type === "agent.wake.supervisor.lease.claimed.v1" &&
       event.payload.workspaceId === workspaceId &&
+      !leaseWasDurablyPaused(snapshot.events, event) &&
       normalizedWakeInstant(event.payload.leaseExpiresAt, "durable wake lease expiry").milliseconds > claimedAt.milliseconds
     );
-    if (foreign !== undefined) {
+    const foreign = liveLeases.find((event) =>
+      event.payload.supervisorEpoch !== input.supervisorEpoch
+    );
+    const owned = liveLeases.find((event) =>
+      event.payload.supervisorEpoch === input.supervisorEpoch
+    );
+    if (foreign === undefined && owned !== undefined && reusableOwnedLease(owned, snapshot.facts, input, leaseInput)) {
+      const causation = Object.freeze({ ...owned.payload.causation });
+      leaseAdmission = Object.freeze({ facts: snapshot.facts, causation });
+      activeLeaseEventId = owned.id;
+      activeLeaseExpiresAt = normalizedWakeInstant(
+        owned.payload.leaseExpiresAt,
+        "durable wake lease expiry"
+      ).iso;
+      return Object.freeze({
+        outcome: "acquired-and-read-back" as const,
+        readback: leaseReadback(owned, snapshot.facts, input, causation)
+      });
+    }
+    const holder = foreign ?? owned;
+    if (holder !== undefined) {
       return Object.freeze({
         outcome: "supervisor-lease-held" as const,
         readback: Object.freeze({
           schemaVersion: "resident-supervisor-lease-held.v1" as const,
           workspaceId,
           residentId: "agent_default" as const,
-          holderEpoch: foreign.payload.supervisorEpoch,
-          leaseEventId: foreign.id,
-          readbackEventId: foreign.id,
-          expiresAt: foreign.payload.leaseExpiresAt
+          holderEpoch: holder.payload.supervisorEpoch,
+          leaseEventId: holder.id,
+          readbackEventId: holder.id,
+          expiresAt: holder.payload.leaseExpiresAt
         })
       });
     }
@@ -3052,6 +3081,40 @@ function leaseReadback(
   });
 }
 
+function leaseWasDurablyPaused(
+  events: readonly KnowledgeEvent[],
+  lease: KnowledgeEventOf<"agent.wake.supervisor.lease.claimed.v1">
+): boolean {
+  const leaseIndex = events.findIndex((event) => event.id === lease.id);
+  return leaseIndex >= 0 && events.slice(leaseIndex + 1).some((event) =>
+    event.type === "agent.wake.supervisor.paused.v1" &&
+    event.payload.workspaceId === lease.payload.workspaceId &&
+    event.payload.supervisorEpoch === lease.payload.supervisorEpoch
+  );
+}
+
+function reusableOwnedLease(
+  lease: KnowledgeEventOf<"agent.wake.supervisor.lease.claimed.v1">,
+  facts: PortableWorkspaceMountedFacts,
+  input: MountedWakeLifecycleStoreInput,
+  admission: SupervisorLeaseAdmissionInput | undefined
+): boolean {
+  return lease.payload.workspaceId === facts.workspaceId &&
+    lease.payload.residentId === "agent_default" &&
+    lease.payload.supervisorEpoch === input.supervisorEpoch &&
+    lease.payload.workspaceIdentityEventId === facts.workspaceIdentityEventId &&
+    lease.payload.mountEvidenceId === facts.mountEvidenceId &&
+    lease.payload.authorityEvidenceId === facts.authorityEvidenceId &&
+    lease.payload.policyVersion === facts.policyVersion &&
+    lease.payload.policyDigest === facts.policyDigest &&
+    lease.payload.lockStateDigest === facts.lockStateDigest &&
+    lease.payload.highWaterMark === facts.highWaterMark &&
+    (admission === undefined || (
+      lease.payload.causation.causationId === admission.causationId &&
+      lease.payload.causation.correlationId === admission.correlationId
+    ));
+}
+
 function lifecycleEvidence(
   lifecycleEventId: string,
   facts: PortableWorkspaceMountedFacts,
@@ -3244,9 +3307,25 @@ function validateMountedWorkspaceStorage(
 ): void {
   authority.revalidate();
   const currentBinding = structuralMountedWorkspaceBinding(authority.workspace);
+  const remounted = mountPortableWorkspace({
+    rootDir: binding.rootDir,
+    expectedWorkspaceId: binding.workspaceId
+  });
   if (
     authority.ledger !== ledger || authority.mountedWorkspace !== mountedWorkspace ||
     !isDeepStrictEqual(currentBinding, binding) ||
+    !remounted.ok || !isDeepStrictEqual({
+      workspaceId: remounted.workspace.workspaceId,
+      rootDir: remounted.workspace.rootDir,
+      manifestPath: remounted.workspace.manifestPath,
+      ledgerPath: remounted.workspace.paths.ledgerPath,
+      blobRoot: remounted.workspace.paths.blobRoot,
+      derivativeRoot: remounted.workspace.paths.derivativeRoot,
+      jobRoot: remounted.workspace.paths.jobRoot,
+      projectionRoot: remounted.workspace.paths.projectionRoot,
+      cacheRoot: remounted.workspace.paths.cacheRoot,
+      configRoot: remounted.workspace.paths.configRoot
+    }, binding) ||
     ![
       binding.rootDir,
       binding.manifestPath,

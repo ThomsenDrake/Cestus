@@ -3,6 +3,7 @@ import type { AgentApprovalCockpitDto } from "./approval-cockpit.js";
 import { providerReadinessDtoSchema, type ProviderReadinessDto } from "./provider-readiness.js";
 import { assertAgentSecretSafeText } from "./secret-safety.js";
 import type { AgentStatusDto } from "./runtime-types.js";
+import type { WakeStatusDto } from "./wake-supervisor.js";
 import {
   agentSpecialistWorkflowReadinessDtoSchema,
   parseSpecialistWorkflowReadinessDto,
@@ -242,12 +243,47 @@ export const agentCockpitRunCardDtoSchema = z.object({
   blockedReasonCount: z.number().int().nonnegative()
 }).strict();
 
+export const agentCockpitResidentPlanDtoSchema = z.object({
+  eventId: eventIdSchema,
+  runId: runIdSchema,
+  taskId: taskIdSchema,
+  attemptId: secretSafeIdentifierSchema("resident attemptId", /^attempt_[a-f0-9]{64}$/),
+  planId: secretSafeIdentifierSchema("resident planId", /^plan_[a-zA-Z0-9_-]+$/),
+  planRevision: z.number().int().nonnegative(),
+  recordedAt: z.string().datetime(),
+  steps: z.array(z.object({
+    ordinal: z.number().int().positive(),
+    purpose: secretSafeStringSchema("resident plan step purpose"),
+    toolId: secretSafeStringSchema("resident plan step toolId"),
+    expectedSafeOutputClass: z.enum(["observation", "derivative", "proposal", "approval-request"])
+  }).strict()).min(1)
+}).strict();
+
+export const agentCockpitResidentObservationDtoSchema = z.object({
+  eventId: eventIdSchema,
+  runId: runIdSchema,
+  taskId: taskIdSchema,
+  attemptId: secretSafeIdentifierSchema("resident observation attemptId", /^attempt_[a-f0-9]{64}$/),
+  observationId: secretSafeIdentifierSchema("resident observationId", /^observation_[a-zA-Z0-9_-]+$/),
+  planId: secretSafeIdentifierSchema("resident observation planId", /^plan_[a-zA-Z0-9_-]+$/),
+  planRevision: z.number().int().nonnegative(),
+  stepOrdinal: z.number().int().positive(),
+  kind: z.enum(["context-verified", "tool-result", "provider-result", "budget", "approval", "recovery", "failure"]),
+  safeSummary: secretSafeStringSchema("resident observation summary"),
+  artifactHashes: z.array(contentHashSchema),
+  toolRequestId: toolRequestIdSchema.optional(),
+  modelInvocationEventId: eventIdSchema.optional(),
+  recordedAt: z.string().datetime()
+}).strict();
+
 export const agentCockpitSelectedRunDtoSchema = agentCockpitRunCardDtoSchema.extend({
   stepIds: z.array(secretSafeStringSchema("stepId")),
   pendingApprovalIds: z.array(toolRequestIdSchema),
   blockedReasons: z.array(secretSafeStringSchema("blocked reason")),
   modelInvocations: z.array(agentCockpitModelAuditDtoSchema),
   contextPacks: z.array(agentCockpitContextPackDtoSchema),
+  planHistory: z.array(agentCockpitResidentPlanDtoSchema).default([]),
+  observationHistory: z.array(agentCockpitResidentObservationDtoSchema).default([]),
   handoff: agentCockpitHandoffDtoSchema.optional()
 }).strict();
 
@@ -259,6 +295,61 @@ export const agentCockpitMemorySnippetDtoSchema = z.object({
   sourceEventIds: z.array(eventIdSchema),
   artifactHashes: z.array(contentHashSchema),
   confidence: z.number().min(0).max(1)
+}).strict();
+
+export const agentSupervisionControlDtoSchema = z.object({
+  action: z.enum(["pause", "resume", "retry", "cancel"]),
+  label: secretSafeStringSchema("supervision control label"),
+  enabled: z.boolean(),
+  taskId: taskIdSchema.optional()
+}).strict().superRefine((control, ctx) => {
+  const taskScoped = control.action === "retry" || control.action === "cancel";
+  if (taskScoped !== (control.taskId !== undefined)) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["taskId"],
+      message: taskScoped
+        ? "task-scoped supervision controls require taskId"
+        : "supervisor controls must not carry taskId"
+    });
+  }
+});
+
+export const agentSupervisionDiagnosticDtoSchema = z.object({
+  category: secretSafeIdentifierSchema("supervision diagnostic category", /^[a-z][a-z-]*$/),
+  safeMessage: secretSafeStringSchema("supervision diagnostic message"),
+  allowedRepairActions: z.array(secretSafeStringSchema("supervision repair action"))
+}).strict();
+
+export const agentSupervisionCockpitDtoSchema = z.object({
+  schemaVersion: z.literal("agent-supervision-cockpit.v1"),
+  observedAt: z.string().datetime(),
+  supervisorState: z.enum([
+    "initializing",
+    "running",
+    "pause-pending",
+    "paused",
+    "recovering",
+    "workspace-unavailable",
+    "degraded",
+    "unrecoverable"
+  ]),
+  workspaceState: z.enum([
+    "verifying",
+    "available",
+    "unavailable",
+    "identity-mismatch",
+    "stale",
+    "lock-blocked",
+    "unrecoverable"
+  ]),
+  workspaceId: secretSafeIdentifierSchema("supervision workspaceId", /^ws_[a-zA-Z0-9_-]+$/).optional(),
+  nextWakeAt: z.string().datetime().optional(),
+  safeMessage: secretSafeStringSchema("supervision safe message"),
+  activeCycle: z.boolean(),
+  provenanceEventIds: z.array(eventIdSchema),
+  diagnostics: z.array(agentSupervisionDiagnosticDtoSchema),
+  controls: z.array(agentSupervisionControlDtoSchema)
 }).strict();
 
 export const agentCockpitDtoSchema = z.object({
@@ -276,6 +367,7 @@ export const agentCockpitDtoSchema = z.object({
   selectedRun: agentCockpitSelectedRunDtoSchema.optional(),
   needsNext: z.array(agentCockpitNeedDtoSchema),
   memorySnippets: z.array(agentCockpitMemorySnippetDtoSchema),
+  supervision: agentSupervisionCockpitDtoSchema.optional(),
   specialists: agentCockpitSpecialistsDtoSchema,
   forbiddenDirectEffects: z.array(secretSafeStringSchema("forbidden direct effect")),
   providerReadiness: providerReadinessDtoSchema.optional()
@@ -287,8 +379,12 @@ export type AgentCockpitModelAuditDto = z.infer<typeof agentCockpitModelAuditDto
 export type AgentCockpitContextPackDto = z.infer<typeof agentCockpitContextPackDtoSchema>;
 export type AgentCockpitHandoffDto = z.infer<typeof agentCockpitHandoffDtoSchema>;
 export type AgentCockpitRunCardDto = z.infer<typeof agentCockpitRunCardDtoSchema>;
+export type AgentCockpitResidentPlanDto = z.infer<typeof agentCockpitResidentPlanDtoSchema>;
+export type AgentCockpitResidentObservationDto = z.infer<typeof agentCockpitResidentObservationDtoSchema>;
 export type AgentCockpitSelectedRunDto = z.infer<typeof agentCockpitSelectedRunDtoSchema>;
 export type AgentCockpitMemorySnippetDto = z.infer<typeof agentCockpitMemorySnippetDtoSchema>;
+export type AgentSupervisionControlDto = z.infer<typeof agentSupervisionControlDtoSchema>;
+export type AgentSupervisionCockpitDto = z.infer<typeof agentSupervisionCockpitDtoSchema>;
 export type AgentCockpitSpecialistsDto = z.infer<typeof agentCockpitSpecialistsDtoSchema>;
 export type AgentCockpitDto = z.infer<typeof agentCockpitDtoSchema>;
 
@@ -300,8 +396,11 @@ export interface BuildAgentCockpitInput {
   readonly mergeAfterScheduler?: boolean;
   readonly specialistReadiness?: readonly SpecialistWorkflowReadinessDto[];
   readonly specialistHandoffs?: readonly SpecialistWorkflowHandoffDto[];
+  readonly residentPlans?: readonly AgentCockpitResidentPlanDto[];
+  readonly residentObservations?: readonly AgentCockpitResidentObservationDto[];
   readonly availableSpecialistContracts?: readonly string[];
   readonly availableDomainAdapterFamilies?: readonly AgentDomainToolFamily[];
+  readonly supervision?: AgentSupervisionCockpitDto | undefined;
 }
 
 export function buildAgentCockpit(input: BuildAgentCockpitInput): AgentCockpitDto {
@@ -340,7 +439,16 @@ export function buildAgentCockpit(input: BuildAgentCockpitInput): AgentCockpitDt
   const selectedRunRecord = selectRun(input.status, input.selectedRunId);
   const selectedRun = selectedRunRecord === undefined
     ? undefined
-    : projectSelectedRun(selectedRunRecord, input.status.tasks, modelInvocations, toolRequests, activeLocks, specialistHandoffs);
+    : projectSelectedRun(
+        selectedRunRecord,
+        input.status.tasks,
+        modelInvocations,
+        toolRequests,
+        activeLocks,
+        specialistHandoffs,
+        input.residentPlans ?? [],
+        input.residentObservations ?? []
+      );
 
   const needsNext = deriveNeedsNext({
     status: input.status,
@@ -380,12 +488,123 @@ export function buildAgentCockpit(input: BuildAgentCockpitInput): AgentCockpitDt
         artifactHashes: [...memory.artifactHashes],
         confidence: memory.confidence
       })),
+    ...(input.supervision === undefined ? {} : { supervision: input.supervision }),
     specialists,
     forbiddenDirectEffects: [...forbiddenDirectEffects],
     ...(input.status.providerReadiness === undefined ? {} : { providerReadiness: input.status.providerReadiness })
   });
 
   return deepFreeze(dto);
+}
+
+export interface BuildAgentSupervisionCockpitInput {
+  readonly status: AgentStatusDto;
+  readonly observedAt: string;
+  readonly wakeStatus?: WakeStatusDto | undefined;
+  readonly supervisorState?: AgentSupervisionCockpitDto["supervisorState"] | undefined;
+  readonly workspaceState?: AgentSupervisionCockpitDto["workspaceState"] | undefined;
+  readonly workspaceId?: string | undefined;
+  readonly nextWakeAt?: string | undefined;
+  readonly safeMessage?: string | undefined;
+  readonly activeCycle?: boolean | undefined;
+  readonly provenanceEventIds?: readonly string[] | undefined;
+  readonly retryableTaskIds?: readonly string[] | undefined;
+  readonly diagnostics?: AgentSupervisionCockpitDto["diagnostics"] | undefined;
+}
+
+export function buildAgentSupervisionCockpit(
+  input: BuildAgentSupervisionCockpitInput
+): AgentSupervisionCockpitDto {
+  const workspaceState = input.workspaceState ?? input.wakeStatus?.workspaceState ?? "unavailable";
+  const supervisorState = input.supervisorState ?? input.wakeStatus?.supervisorState ?? "workspace-unavailable";
+  const workspaceId = input.workspaceId ?? input.wakeStatus?.workspaceId ?? input.status.identity?.workspaceId;
+  const taskControls: AgentSupervisionControlDto[] = [];
+  const retryableTaskIds = new Set(input.retryableTaskIds ?? []);
+  const runsById = new Map(input.status.runs.map((run) => [run.runId, run]));
+  for (const task of input.status.tasks) {
+    const run = task.runId === undefined ? undefined : runsById.get(task.runId);
+    const retryEnabled = workspaceState === "available" &&
+      (task.status === "failed" || task.status === "blocked") &&
+      (run?.retryable === true || retryableTaskIds.has(task.taskId));
+    if (task.status === "failed" || task.status === "blocked") {
+      taskControls.push({
+        action: "retry",
+        label: "Retry task",
+        enabled: retryEnabled,
+        taskId: task.taskId
+      });
+    }
+    if (
+      task.status === "queued" ||
+      task.status === "running" ||
+      task.status === "waiting-for-approval" ||
+      task.status === "blocked"
+    ) {
+      taskControls.push({
+        action: "cancel",
+        label: "Cancel task",
+        enabled: workspaceState === "available",
+        taskId: task.taskId
+      });
+    }
+  }
+  const wakeDiagnostics = input.wakeStatus?.diagnostics.map((diagnostic) => ({
+    category: diagnostic.category,
+    safeMessage: supervisionDiagnosticMessage(diagnostic.category),
+    allowedRepairActions: [...diagnostic.allowedCommandIds]
+  })) ?? [];
+  const supervision = agentSupervisionCockpitDtoSchema.parse({
+    schemaVersion: "agent-supervision-cockpit.v1",
+    observedAt: input.observedAt,
+    supervisorState,
+    workspaceState,
+    ...(workspaceId === undefined ? {} : { workspaceId }),
+    ...(input.nextWakeAt === undefined || supervisorState !== "running" || workspaceState !== "available"
+      ? {}
+      : { nextWakeAt: input.nextWakeAt }),
+    safeMessage: input.safeMessage ?? supervisionSafeMessage(supervisorState, workspaceState),
+    activeCycle: input.activeCycle ?? input.wakeStatus?.activeCycle ?? false,
+    provenanceEventIds: input.provenanceEventIds ??
+      input.wakeStatus?.lifecycleEvidence.map((evidence) => evidence.lifecycleEventId) ?? [],
+    diagnostics: input.diagnostics ?? wakeDiagnostics,
+    controls: [
+      {
+        action: "pause",
+        label: "Pause resident work",
+        enabled: workspaceState === "available" && supervisorState === "running"
+      },
+      {
+        action: "resume",
+        label: "Resume resident work",
+        enabled: workspaceState === "available" && (
+          supervisorState === "paused" ||
+          supervisorState === "workspace-unavailable" ||
+          supervisorState === "degraded"
+        )
+      },
+      ...taskControls
+    ]
+  });
+  return deepFreeze(supervision);
+}
+
+function supervisionSafeMessage(
+  supervisorState: AgentSupervisionCockpitDto["supervisorState"],
+  workspaceState: AgentSupervisionCockpitDto["workspaceState"]
+): string {
+  if (workspaceState === "identity-mismatch") return "A different portable workspace identity is connected; resident work remains blocked.";
+  if (workspaceState !== "available") return "The portable workspace is unavailable; resident work and writes remain stopped.";
+  if (supervisorState === "paused") return "Resident work is paused by the supervised local runtime.";
+  if (supervisorState === "running") return "Resident work is supervised by the local runtime.";
+  return "Resident supervision requires inspection before more work can start.";
+}
+
+function supervisionDiagnosticMessage(category: string): string {
+  if (category === "workspace-identity-mismatch") return "The connected portable workspace identity does not match the admitted workspace.";
+  if (category === "workspace-unavailable") return "The portable workspace is unavailable.";
+  if (category === "active-lock") return "An active workspace lock blocks resident work.";
+  if (category === "supervisor-lease-held") return "Another admitted local supervisor currently owns the resident wake lease.";
+  return "Resident supervision requires a safe retry or inspection.";
 }
 
 function projectRunCard(
@@ -418,7 +637,9 @@ function projectSelectedRun(
   modelInvocations: readonly NonNullable<AgentStatusDto["modelInvocations"]>[number][],
   toolRequests: AgentStatusDto["toolRequests"],
   activeLocks: readonly AgentStatusDto["locks"][number][],
-  specialistHandoffs: readonly SpecialistWorkflowHandoffDto[]
+  specialistHandoffs: readonly SpecialistWorkflowHandoffDto[],
+  residentPlans: readonly AgentCockpitResidentPlanDto[],
+  residentObservations: readonly AgentCockpitResidentObservationDto[]
 ): AgentCockpitSelectedRunDto {
   const runInvocations = modelInvocationsForRun(run, modelInvocations);
   const runToolRequests = toolRequestsForRun(run, toolRequests);
@@ -450,6 +671,12 @@ function projectSelectedRun(
         ...(invocation.retryable === undefined ? {} : { retryable: invocation.retryable })
       })),
     contextPacks,
+    planHistory: residentPlans
+      .filter((plan) => plan.runId === run.runId && plan.taskId === run.taskId)
+      .toSorted((left, right) => left.planRevision - right.planRevision || left.recordedAt.localeCompare(right.recordedAt)),
+    observationHistory: residentObservations
+      .filter((observation) => observation.runId === run.runId && observation.taskId === run.taskId)
+      .toSorted((left, right) => left.recordedAt.localeCompare(right.recordedAt) || left.stepOrdinal - right.stepOrdinal),
     ...(handoff === undefined ? {} : { handoff })
   };
 }

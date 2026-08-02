@@ -1,10 +1,11 @@
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ActiveClaimReconciliationPort } from "../../agent/src/wake-supervisor.js";
 import type { EventLedger } from "../../ontology/src/event-ledger.js";
 import type { KnowledgeEventOf } from "../../ontology/src/contracts.js";
+import type { PrecommitGuardedEventLedger } from "../../ontology/src/sqlite-event-ledger.js";
 import { createPortableWorkspace } from "../../workspace/src/index.js";
 import { registerMountedArtifactAuthorityIssuerForWakeRuntime } from "../src/mounted-artifact-authority-operation.js";
 import { resolveLocalRuntimeConfig } from "../src/config.js";
@@ -384,7 +385,7 @@ describe("mounted wake lifecycle store", () => {
     await expect(restarted.readMountedFacts()).resolves.toEqual(before);
   });
 
-  it("keeps an active foreign lease distinct from workspace unavailability", async () => {
+  it("reuses an active owner lease and keeps a foreign lease distinct from workspace unavailability", async () => {
     const active = await fixture();
     await expect(active.store.readOrAcquireSupervisorLease()).resolves.toMatchObject({ outcome: "acquired-and-read-back" });
     const sameEpoch = createMountedWakeLifecycleStore({
@@ -392,8 +393,8 @@ describe("mounted wake lifecycle store", () => {
       capability: authenticate(active.handle)
     });
     await expect(sameEpoch.readOrAcquireSupervisorLease()).resolves.toMatchObject({
-      outcome: "supervisor-lease-held",
-      readback: { holderEpoch: active.input.supervisorEpoch }
+      outcome: "acquired-and-read-back",
+      readback: { supervisorEpoch: active.input.supervisorEpoch }
     });
     expect((await active.ledger.readAll()).filter((event) =>
       event.type === "agent.wake.supervisor.lease.claimed.v1" &&
@@ -446,6 +447,50 @@ describe("mounted wake lifecycle store", () => {
       causation: { causationId: "evt_swapped_identity", correlationId: "corr_swapped_identity" },
       workspaceIdentityEventId: "evt_swapped_identity"
     })).rejects.toThrow(/mounted|current|identity/i);
+  });
+
+  it("rolls back a lifecycle append when the mounted workspace disconnects at precommit", async () => {
+    const { handle, ledger, store } = await fixture();
+    const manifestPath = handle.mountedWorkspace?.manifestPath;
+    if (manifestPath === undefined) throw new Error("mounted manifest is required");
+    const disconnectedPath = `${manifestPath}.disconnected`;
+    installLedgerPrecommitMutation(ledger, () => {
+      renameSync(manifestPath, disconnectedPath);
+      return () => renameSync(disconnectedPath, manifestPath);
+    });
+    const before = await ledger.readAll();
+
+    await expect(appendLease(store)).rejects.toThrow(/mounted|current|workspace|precommit/i);
+    expect(await ledger.readAll()).toEqual(before);
+  });
+
+  it("rolls back a lifecycle append when mounted identity changes at precommit", async () => {
+    const { handle, ledger, store } = await fixture();
+    const manifestPath = handle.mountedWorkspace?.manifestPath;
+    if (manifestPath === undefined) throw new Error("mounted manifest is required");
+    const originalManifest = readFileSync(manifestPath, "utf8");
+    installLedgerPrecommitMutation(ledger, () => {
+      const changed = JSON.parse(originalManifest) as Record<string, unknown>;
+      changed.workspaceId = "ws_precommit_identity_changed";
+      writeFileSync(manifestPath, `${JSON.stringify(changed, null, 2)}\n`, "utf8");
+      return () => writeFileSync(manifestPath, originalManifest, "utf8");
+    });
+    const before = await ledger.readAll();
+
+    await expect(appendLease(store)).rejects.toThrow(/mounted|current|identity|workspace/i);
+    expect(await ledger.readAll()).toEqual(before);
+  });
+
+  it("fails closed when the mounted ledger cannot guard lifecycle precommit", async () => {
+    const { ledger, store } = await fixture();
+    Object.defineProperty(ledger, "appendWithPrecommitGuard", {
+      configurable: true,
+      value: undefined
+    });
+    const before = await ledger.readAll();
+
+    await expect(appendLease(store)).rejects.toThrow(/guard|precommit|mounted/i);
+    expect(await ledger.readAll()).toEqual(before);
   });
 
   it("blocks a regressed ledger readback before a later append", async () => {
@@ -527,3 +572,38 @@ describe("mounted wake lifecycle store", () => {
     expect(await ledger.readAll()).toEqual(durableBefore);
   });
 });
+
+function installLedgerPrecommitMutation(
+  ledger: EventLedger,
+  mutate: () => () => void
+): void {
+  const guarded = ledger as PrecommitGuardedEventLedger;
+  const originalAppend = ledger.append.bind(ledger);
+  const originalGuardedAppend = guarded.appendWithPrecommitGuard.bind(guarded);
+  Object.defineProperty(ledger, "append", {
+    configurable: true,
+    value: async (...args: Parameters<EventLedger["append"]>) => {
+      const restore = mutate();
+      try {
+        return await originalAppend(...args);
+      } finally {
+        restore();
+      }
+    }
+  });
+  Object.defineProperty(ledger, "appendWithPrecommitGuard", {
+    configurable: true,
+    value: async (
+      event: Parameters<PrecommitGuardedEventLedger["appendWithPrecommitGuard"]>[0],
+      options: Parameters<PrecommitGuardedEventLedger["appendWithPrecommitGuard"]>[1],
+      guard: Parameters<PrecommitGuardedEventLedger["appendWithPrecommitGuard"]>[2]
+    ) => originalGuardedAppend(event, options, () => {
+      const restore = mutate();
+      try {
+        guard();
+      } finally {
+        restore();
+      }
+    })
+  });
+}

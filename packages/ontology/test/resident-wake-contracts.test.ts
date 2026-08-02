@@ -141,6 +141,49 @@ function wakeEvent(type: KnowledgeEventType, payload: Record<string, unknown>) {
 }
 
 describe("resident wake lifecycle contracts", () => {
+  it("accepts a compact mounted task admission reference and rejects manifest drift or nested inputs", () => {
+    const admissionManifestHash = `sha256:${"a".repeat(64)}`;
+    const payload = {
+      admissionId: `admission_${"a".repeat(64)}`,
+      admissionManifestHash,
+      workspaceId: "ws_wake_contracts",
+      workspaceManifestHash: `sha256:${"b".repeat(64)}`,
+      residentAgentId: "agent_default",
+      taskId: "task_wake_contracts",
+      runId: "run_wake_contracts",
+      runType: "evidence-triage",
+      providerMode: "local-fake",
+      sourceEventIds: ["evt_evidence_wake_contracts", "evt_link_wake_contracts"],
+      policyEventId: "evt_policy_wake_contracts",
+      policyId: "agent_policy_wake_contracts",
+      policyVersion: "policy.v1",
+      policyHash: `sha256:${"d".repeat(64)}`,
+      activeLocksHash: `sha256:${"e".repeat(64)}`,
+      admittedAt: "2026-07-16T00:00:00.000Z",
+      admittedBy: "agent_default"
+    } as const;
+    const event = {
+      id: "evt_mounted_admission",
+      type: "agent.mounted-task.execution.admitted.v1",
+      version: 1,
+      streamId: "agent_mounted_task_execution_task_wake_contracts_run_wake_contracts",
+      sequence: 1,
+      context,
+      payload
+    };
+
+    expect(validateKnowledgeEvent(event).success).toBe(true);
+    expect(validateKnowledgeEvent({
+      ...event,
+      payload: { ...payload, admissionManifestHash: `sha256:${"f".repeat(64)}` }
+    }).success).toBe(false);
+    expect(validateKnowledgeEvent({
+      ...event,
+      payload: { ...payload, evidenceBindings: [{ evidenceId: "ev_nested_input_forbidden" }] }
+    }).success).toBe(false);
+    expect(eventContracts["agent.mounted-task.execution.admitted.v1"]).toMatchObject({ version: 1 });
+  });
+
   it("accepts a claimed supervisor lease with complete durable bindings", () => {
     expect(validateKnowledgeEvent(wakeEvent("agent.wake.supervisor.lease.claimed.v1", {
       ...binding, leaseId: "lease_wake_contracts", leaseExpiresAt: "2026-07-16T01:00:00.000Z"

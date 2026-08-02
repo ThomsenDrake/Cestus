@@ -26,9 +26,9 @@ const fixedNow = () => "2026-07-06T21:00:00.000Z";
 const tempDirs: string[] = [];
 const handlers: LocalRuntimeHttpHandler[] = [];
 
-afterEach(() => {
+afterEach(async () => {
   for (const handler of handlers.splice(0)) {
-    handler.close();
+    await handler.close();
   }
 
   for (const dir of tempDirs.splice(0)) {
