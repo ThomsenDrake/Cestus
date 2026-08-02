@@ -462,6 +462,41 @@ describe("governance event contracts", () => {
     expect(nonHumanReview.success).toBe(false);
   });
 
+  it("requires a supersedes reference for supersede while preserving optional provenance on other actions", () => {
+    const reviewWith = (id: string, decision: Record<string, unknown>) => validateKnowledgeEvent({
+      id,
+      type: "evidence.governance.reviewed",
+      version: 1,
+      streamId: "evidence_ev_source_001",
+      sequence: 3,
+      context: baseContext,
+      payload: {
+        evidenceId: "ev_source_001",
+        reviewedBy: "actor_editor",
+        policy,
+        decisions: [decision]
+      }
+    });
+
+    expect(reviewWith("evt_governance_review_supersede_missing", {
+      tag: "public_safe",
+      action: "supersede",
+      rationale: "Supersede without provenance must fail closed."
+    }).success).toBe(false);
+    expect(reviewWith("evt_governance_review_supersede_valid", {
+      tag: "public_safe",
+      action: "supersede",
+      rationale: "Supersede retains its earlier governance reference.",
+      supersedesEventId: "evt_governance_classified_001"
+    }).success).toBe(true);
+    expect(reviewWith("evt_governance_review_affirm_provenance", {
+      tag: "public_safe",
+      action: "affirm",
+      rationale: "Affirm may retain optional provenance.",
+      supersedesEventId: "evt_governance_classified_001"
+    }).success).toBe(true);
+  });
+
   it("rejects secret-looking governance payload text", () => {
     const result = validateKnowledgeEvent({
       id: "evt_governance_secret_001",

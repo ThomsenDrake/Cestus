@@ -247,25 +247,35 @@ export class GovernanceService {
     }
 
     const streamEvents = await this.dependencies.ledger.readStream(this.evidenceStreamId(input.evidenceId));
-    const causation = streamEvents.findLast(
+    const governanceEvents = streamEvents.filter(
       (event) => event.type === "evidence.governance.classified" || event.type === "evidence.governance.reviewed"
     );
+    const causation = governanceEvents.at(-1);
 
     if (causation === undefined) {
       throw new Error(`Cannot review evidence ${input.evidenceId} without governance classification`);
     }
 
-    const governanceEventIds = new Set(
-      streamEvents
-        .filter((event) => event.type === "evidence.governance.classified" || event.type === "evidence.governance.reviewed")
-        .map((event) => event.id)
-    );
-    if (
-      input.decisions.some(
-        (decision) => decision.supersedesEventId !== undefined && !governanceEventIds.has(decision.supersedesEventId)
-      )
-    ) {
-      throw new Error("Governance supersedesEventId must reference an earlier governance event in the evidence stream");
+    if (input.decisions.some(
+      (decision) => decision.action === "supersede" && decision.supersedesEventId === undefined
+    )) {
+      throw new Error("Governance supersede requires an earlier governance event reference");
+    }
+
+    const governanceEventsById = new Map(governanceEvents.map((event) => [event.id, event]));
+    for (const decision of input.decisions) {
+      if (decision.supersedesEventId === undefined) {
+        continue;
+      }
+
+      const supersededEvent = governanceEventsById.get(decision.supersedesEventId);
+      if (supersededEvent === undefined) {
+        throw new Error("Governance supersedesEventId must reference an earlier governance event in the evidence stream");
+      }
+
+      if (decision.action === "supersede" && !governanceEventContainsTag(supersededEvent, decision.tag)) {
+        throw new Error("Governance supersede target must contain the same governance tag");
+      }
     }
 
     const event: AppendableKnowledgeEvent<"evidence.governance.reviewed"> = {
@@ -851,6 +861,18 @@ export class GovernanceService {
       packVersions: { core: "0.1.0" }
     };
   }
+}
+
+type GovernanceClassificationOrReviewEvent =
+  | KnowledgeEventOf<"evidence.governance.classified">
+  | KnowledgeEventOf<"evidence.governance.reviewed">;
+
+function governanceEventContainsTag(event: GovernanceClassificationOrReviewEvent, tag: GovernanceTag): boolean {
+  if (event.type === "evidence.governance.classified") {
+    return event.payload.tags.some((proposedTag) => proposedTag.tag === tag);
+  }
+
+  return event.payload.decisions.some((decision) => decision.tag === tag);
 }
 
 function sameSortedValues(left: readonly string[], right: readonly string[]): boolean {

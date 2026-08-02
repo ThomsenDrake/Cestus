@@ -104,6 +104,66 @@ describe("ExportPreview", () => {
       /Authorization|Bearer|abc123/
     );
   });
+
+  it("rejects contradictory preview membership, provenance, diagnostics, and approval mappings", () => {
+    const base = previewDto();
+    const invalidPreviews: unknown[] = [
+      {
+        ...base,
+        includedEvidence: [base.includedEvidence[0]!, base.includedEvidence[0]!]
+      },
+      {
+        ...base,
+        excludedEvidence: [base.excludedEvidence[0]!, base.excludedEvidence[0]!]
+      },
+      {
+        ...base,
+        excludedEvidence: [{
+          ...base.excludedEvidence[0]!,
+          evidenceRef: "ev_source_public"
+        }, ...base.excludedEvidence.slice(1)]
+      },
+      {
+        ...base,
+        includedEvidence: [{
+          ...base.includedEvidence[0]!,
+          governanceEventRefs: []
+        }]
+      },
+      {
+        ...base,
+        diagnostics: [{
+          code: "classification-missing",
+          evidenceRef: "ev_source_public",
+          repairHint: "record-governance-classification"
+        }]
+      }
+    ];
+    const invalidApprovals = [
+      { category: "private", approvalId: "human-approve-source-identity-inclusion", optInAvailableInPreview: true },
+      { category: "source-identity", approvalId: "human-approve-private-evidence-inclusion", optInAvailableInPreview: true },
+      { category: "credential-risk", approvalId: "human-approve-private-evidence-inclusion", optInAvailableInPreview: true },
+      { category: "export-restricted", approvalId: "human-approve-private-evidence-inclusion", optInAvailableInPreview: true },
+      { category: "other-unsafe", approvalId: "human-approve-private-evidence-inclusion", optInAvailableInPreview: true },
+      { category: "quarantine", approvalId: "quarantine-release-unavailable-in-preview", optInAvailableInPreview: true },
+      { category: "tombstoned", approvalId: "tombstone-reversal-unavailable-in-preview", optInAvailableInPreview: true }
+    ];
+    for (const requiredApproval of invalidApprovals) {
+      invalidPreviews.push({
+        ...base,
+        excludedEvidence: [{
+          ...base.excludedEvidence[0]!,
+          requiredApprovals: [requiredApproval]
+        }, ...base.excludedEvidence.slice(1)]
+      });
+    }
+
+    for (const preview of invalidPreviews) {
+      expect(() => governanceExportPreviewDtoFromJson(preview)).toThrow(
+        "Governance export preview DTO could not be parsed safely."
+      );
+    }
+  });
 });
 
 function captureParserError(parse: () => unknown): string {

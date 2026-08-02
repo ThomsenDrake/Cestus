@@ -1,7 +1,7 @@
 import type { KnowledgeEvent } from "./contracts.js";
 import type { EvidenceGovernanceState } from "./governance-projection.js";
 import { buildGovernanceProjection } from "./governance-projection.js";
-import { restrictedExportTags, type GovernanceTag } from "./governance-policy.js";
+import { assertSecretSafeText, restrictedExportTags, type GovernanceTag } from "./governance-policy.js";
 
 export const governanceExportApprovalIds = [
   "human-approve-private-evidence-inclusion",
@@ -59,7 +59,13 @@ export function buildGovernanceExportPreview(
   requestedEvidenceIds?: readonly string[]
 ): GovernanceExportPreviewDto {
   const projection = buildGovernanceProjection(events);
-  const governanceEventRefs = governanceEventRefsByEvidence(events);
+  const validGovernanceEventIds = new Set(
+    [...projection.evidenceGovernance.values()].flatMap((state) => [
+      ...state.classifiedEventIds,
+      ...state.reviewedEventIds
+    ])
+  );
+  const governanceEventRefs = governanceEventRefsByEvidence(events, validGovernanceEventIds);
   const evidenceRefs = [...new Set(requestedEvidenceIds ?? projection.evidenceGovernance.keys())]
     .map((evidenceRef) => assertSafeGovernanceRef(evidenceRef, /^ev_[a-zA-Z0-9_-]+$/))
     .sort();
@@ -182,7 +188,10 @@ function deduplicateApprovals(
     .sort((left, right) => left.category.localeCompare(right.category));
 }
 
-function governanceEventRefsByEvidence(events: readonly KnowledgeEvent[]): ReadonlyMap<string, readonly string[]> {
+function governanceEventRefsByEvidence(
+  events: readonly KnowledgeEvent[],
+  validGovernanceEventIds: ReadonlySet<string>
+): ReadonlyMap<string, readonly string[]> {
   const refs = new Map<string, string[]>();
   for (const event of events) {
     if (
@@ -196,6 +205,13 @@ function governanceEventRefsByEvidence(events: readonly KnowledgeEvent[]): Reado
 
     const evidenceRef = assertSafeGovernanceRef(event.payload.evidenceId, /^ev_[a-zA-Z0-9_-]+$/);
     const eventRef = assertSafeGovernanceRef(event.id, /^evt_[a-zA-Z0-9_-]+$/);
+    if (
+      (event.type === "evidence.governance.classified" || event.type === "evidence.governance.reviewed") &&
+      !validGovernanceEventIds.has(event.id)
+    ) {
+      continue;
+    }
+
     const evidenceRefs = refs.get(evidenceRef) ?? [];
     evidenceRefs.push(eventRef);
     refs.set(evidenceRef, evidenceRefs);
@@ -207,7 +223,19 @@ const unsafeGovernanceRefPattern = /(?:^|[_-])(?:sk[_-](?:live|test|proj)|gh[pou
 const awsAccessKeyRefPattern = /(?:^|[_-])(?:AKIA|ASIA)[a-z0-9]{16}/i;
 
 function assertSafeGovernanceRef(value: string, pattern: RegExp): string {
-  if (!pattern.test(value) || unsafeGovernanceRefPattern.test(value) || awsAccessKeyRefPattern.test(value)) {
+  let secretSafe = true;
+  try {
+    assertSecretSafeText(value);
+  } catch {
+    secretSafe = false;
+  }
+
+  if (
+    !pattern.test(value) ||
+    !secretSafe ||
+    unsafeGovernanceRefPattern.test(value) ||
+    awsAccessKeyRefPattern.test(value)
+  ) {
     throw new Error("Governance export preview requires safe evidence and event references");
   }
   return value;

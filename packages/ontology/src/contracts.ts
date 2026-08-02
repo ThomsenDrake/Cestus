@@ -2810,7 +2810,15 @@ const evidenceGovernanceReviewedPayloadSchema = z.object({
     action: z.enum(["affirm", "add", "remove", "supersede"]),
     rationale: secretSafeTextSchema,
     supersedesEventId: z.string().regex(/^evt_[a-zA-Z0-9_-]+$/).optional()
-  }).strict()).min(1)
+  }).strict().superRefine((decision, context) => {
+    if (decision.action === "supersede" && decision.supersedesEventId === undefined) {
+      context.addIssue({
+        code: "custom",
+        path: ["supersedesEventId"],
+        message: "supersede requires an earlier governance event reference"
+      });
+    }
+  })).min(1)
 }).strict();
 
 const evidenceRedactionAppliedPayloadSchema = z.object({

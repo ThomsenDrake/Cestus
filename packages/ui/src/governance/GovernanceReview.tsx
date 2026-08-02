@@ -22,9 +22,14 @@ export function GovernanceReview({ review, onAppendReview }: GovernanceReviewPro
     [review.humanDecisions, review.proposedTags, tag]
   );
   const supersedeMissingEventRef = action === "supersede" && supersedesEventRef === undefined;
+  const classificationLocked = review.classificationStatus !== "succeeded";
 
   async function appendReview(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (classificationLocked) {
+      return;
+    }
+
     setSubmitting(true);
     setAppended(false);
     try {
@@ -50,6 +55,20 @@ export function GovernanceReview({ review, onAppendReview }: GovernanceReviewPro
           Human decisions append to the ledger; original classifier proposals remain visible.
         </p>
       </header>
+
+      {classificationLocked ? (
+        <section aria-label="Locked governance diagnostic" className="border border-[var(--signal-red)] p-3">
+          <h3 className="font-mono text-base text-[var(--signal-red)] sm:text-sm">Classification locked</h3>
+          <ul role="list" className="mt-2 space-y-2">
+            {review.diagnostics.map((diagnostic) => (
+              <li key={`${diagnostic.code}:${diagnostic.evidenceRef}`} className="font-mono text-base sm:text-sm">
+                <p className="text-[var(--signal-red)]">{diagnostic.code}</p>
+                <p className="mt-1 break-all text-[var(--signal-amber)]">{diagnostic.repairHint}</p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       <section aria-label="Proposed governance tags">
         <h3 className="font-mono text-base text-[var(--signal-amber)] sm:text-sm">Independent classifier proposals</h3>
@@ -109,7 +128,11 @@ export function GovernanceReview({ review, onAppendReview }: GovernanceReviewPro
         {supersedeMissingEventRef ? (
           <p role="alert" className="text-base text-[var(--signal-red)] sm:text-sm">Supersede requires a prior governance event for this tag.</p>
         ) : null}
-        <button type="submit" disabled={submitting || rationale.trim().length === 0 || supersedeMissingEventRef} className={actionButtonClass}>
+        <button
+          type="submit"
+          disabled={classificationLocked || submitting || rationale.trim().length === 0 || supersedeMissingEventRef}
+          className={actionButtonClass}
+        >
           {submitting ? "Appending governance review" : "Append governance review"}
         </button>
         {appended ? <p role="status" className="text-base text-[var(--signal-cyan)] sm:text-sm">Governance review appended without replacing the original event.</p> : null}
