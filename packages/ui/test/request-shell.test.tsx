@@ -23,7 +23,7 @@ describe("requests workspace shell", () => {
     render(<App requestsAdapter={createTestRequestsAdapter()} />);
 
     fireEvent.click(screen.getByRole("link", { name: "Requests" }));
-    fireEvent.click(screen.getByRole("link", { name: "Evidence" }));
+    fireEvent.click(screen.getByRole("link", { name: "Settings" }));
 
     expect(screen.getByRole("link", { name: "Requests" })).toHaveAttribute("aria-current", "page");
     expect(await screen.findByRole("heading", { name: "Requests" })).toBeInTheDocument();
