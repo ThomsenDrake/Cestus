@@ -841,6 +841,12 @@ function renderPayloadWithMaterial(
       throw new Error(`Production renderer material is missing field rule ${pathRule.fieldRule}`);
     }
     return resolveRendererCollectionPath(payload, pathRule.path, limits).flatMap(({ value, indexes }) => {
+      if (Array.isArray(value) && value.length === 0) {
+        return [limits.fieldLineFormat
+          .replace("{label}", rendererPathLabel(pathRule.label, indexes))
+          .replace("{field}", "items")
+          .replace("{value}", "[]")];
+      }
       const records = Array.isArray(value)
         ? value.slice(0, limits.maximumPayloadArrayItems).map((item, index) => ({ value: item, indexes: [...indexes, index] }))
         : [{ value, indexes }];

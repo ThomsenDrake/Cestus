@@ -32,7 +32,11 @@ export type LocalAgentRuntimeFactory = (
 
 export const defaultLocalAgentRuntimeFactory: LocalAgentRuntimeFactory = (input) => {
   const contextRegistry = createContextPackRegistry();
-  const verifyFactoryHeldContextBindings = createFactoryHeldContextBindingVerifier(contextRegistry);
+  let capturedContextBindingVerifier: (() => void) | undefined;
+  const verifyFactoryHeldContextBindings = (): void => {
+    capturedContextBindingVerifier ??= createFactoryHeldContextBindingVerifier(contextRegistry);
+    capturedContextBindingVerifier();
+  };
   const configuredProviders = createLocalAgentProviderConfiguration({
     cwd: input.handle.config.cwd,
     now: input.now
@@ -46,7 +50,12 @@ export const defaultLocalAgentRuntimeFactory: LocalAgentRuntimeFactory = (input)
     identityLifecycleReady: () => input.handle.residentIdentity.ready(),
     providers: configuredProviders.providers,
     approvedToolExecutors: input.approvedToolExecutors ?? [],
-    taskOrchestratorCapabilities: createLocalTaskOrchestratorCapabilities(configuredProviders, contextRegistry, input.handle)
+    taskOrchestratorCapabilities: createLocalTaskOrchestratorCapabilities(
+      configuredProviders,
+      contextRegistry,
+      input.handle,
+      verifyFactoryHeldContextBindings
+    )
   });
 };
 
@@ -110,7 +119,8 @@ function packageOwnedRegistrarEvidence(
 function createLocalTaskOrchestratorCapabilities(
   configuredProviders: ReturnType<typeof createLocalAgentProviderConfiguration>,
   contextRegistry: ReturnType<typeof createContextPackRegistry>,
-  handle: LocalRuntimeHandle
+  handle: LocalRuntimeHandle,
+  verifyFactoryHeldContextBindings: () => void
 ): AgentTaskOrchestratorRuntimeCapabilities {
   let mountedStore: ReturnType<typeof createMountedPromptArtifactStore> | undefined;
   const storeForRender = (): ReturnType<typeof createMountedPromptArtifactStore> => {
@@ -130,6 +140,7 @@ function createLocalTaskOrchestratorCapabilities(
     contextRegistry,
     promptRendererRegistry: {
       async render(input: Parameters<AgentTaskOrchestratorRuntimeCapabilities["promptRendererRegistry"]["render"]>[0]) {
+        verifyFactoryHeldContextBindings();
         if (input.runType === "ontology-bootstrap") {
           throw new Error("Local task orchestrator production prompt rendering does not support ontology-bootstrap.");
         }

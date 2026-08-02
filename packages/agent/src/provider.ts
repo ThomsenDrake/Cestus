@@ -104,6 +104,7 @@ export interface FakeModelProviderOptions {
   readonly providerId: string;
   readonly modelFamilies: readonly string[];
   readonly responseText: string;
+  readonly responseTextForRequest?: (request: Readonly<ModelInvocationRequest>) => string;
   readonly label?: string;
   readonly adapterVersion?: string;
   readonly supportsStructuredOutput?: boolean;
@@ -114,9 +115,11 @@ export interface FakeModelProviderOptions {
 export class FakeModelProvider implements ModelProviderAdapter {
   private readonly descriptor: ProviderDescriptor;
   private readonly responseText: string;
+  private readonly responseTextForRequest: ((request: Readonly<ModelInvocationRequest>) => string) | undefined;
 
   constructor(options: FakeModelProviderOptions) {
     this.responseText = options.responseText;
+    this.responseTextForRequest = options.responseTextForRequest;
     this.descriptor = freezeProviderDescriptor(providerDescriptorSchema.parse({
       providerId: options.providerId,
       label: options.label ?? "Fake Local Model Provider",
@@ -150,17 +153,26 @@ export class FakeModelProvider implements ModelProviderAdapter {
       throw new Error(`Model family ${parsed.modelFamily} is not supported by ${this.descriptor.providerId}`);
     }
 
+    const callbackRequest: ModelInvocationRequest = Object.freeze({
+      invocationId: parsed.invocationId,
+      runId: parsed.runId,
+      modelFamily: parsed.modelFamily,
+      inputArtifactHash: parsed.inputArtifactHash,
+      ...(parsed.inputText === undefined ? {} : { inputText: parsed.inputText }),
+      credentialRef: Object.freeze({ ...parsed.credentialRef })
+    });
+    const responseText = this.responseTextForRequest?.(callbackRequest) ?? this.responseText;
     return Object.freeze({
-      outputText: this.responseText,
+      outputText: responseText,
       outputArtifactHash: hashInvocationOutput({
         invocationId: parsed.invocationId,
         runId: parsed.runId,
         inputArtifactHash: parsed.inputArtifactHash,
-        responseText: this.responseText
+        responseText
       }),
       usage: Object.freeze({
         inputUnits: parsed.inputArtifactHash.length + parsed.modelFamily.length,
-        outputUnits: this.responseText.length
+        outputUnits: responseText.length
       })
     });
   }
