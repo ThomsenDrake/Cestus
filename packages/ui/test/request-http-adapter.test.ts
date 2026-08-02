@@ -78,6 +78,136 @@ describe("createHttpRequestsAdapter", () => {
     );
   });
 
+  it.each([
+    ["a missing send check", (checks: readonly unknown[]) => checks.slice(1)],
+    ["a duplicate send check", (checks: readonly unknown[]) => [...checks.slice(0, -1), checks[0]]],
+    [
+      "an unknown send check",
+      (checks: readonly unknown[]) => [
+        ...checks.slice(0, -1),
+        { ...(checks.at(-1) as object), id: "provider-ready-unknown" }
+      ]
+    ],
+    [
+      "a ready-but-locked send check",
+      (checks: readonly unknown[]) => [
+        { ...(checks[0] as object), ready: true, locked: true },
+        ...checks.slice(1)
+      ]
+    ]
+  ])("rejects request details with %s", async (_label, mutateChecks) => {
+    const detail = workspace.requestDetails[0]!;
+    const malformedWorkspace = {
+      ...workspace,
+      requestDetails: workspace.requestDetails.map((candidate) =>
+        candidate.prrRequestId === detail.prrRequestId
+          ? { ...candidate, sendGate: mutateChecks(candidate.sendGate) }
+          : candidate
+      )
+    };
+    const adapter = createHttpRequestsAdapter({
+      fetcher: vi.fn(async () => jsonResponse(200, malformedWorkspace))
+    });
+
+    await expect(adapter.loadRequestsWorkspace()).rejects.toThrow(
+      "Requests runtime returned invalid workspace payload."
+    );
+  });
+
+  it.each([
+    ["a missing per-request summary", workspace.gates.slice(1)],
+    [
+      "a duplicate per-request summary",
+      [...workspace.gates.slice(0, -1), workspace.gates[0]]
+    ],
+    [
+      "an unknown summary check",
+      workspace.gates.map((gate, index) =>
+        index === 0
+          ? {
+              ...gate,
+              checks: [...gate.checks.slice(0, -1), { ...gate.checks.at(-1), id: "provider-ready-unknown" }]
+            }
+          : gate
+      )
+    ],
+    [
+      "a summary that contradicts its checks",
+      workspace.gates.map((gate, index) =>
+        index === 0 ? { ...gate, ready: true, locked: false } : gate
+      )
+    ]
+  ])("rejects gate summaries with %s", async (_label, gates) => {
+    const adapter = createHttpRequestsAdapter({
+      fetcher: vi.fn(async () => jsonResponse(200, { ...workspace, gates }))
+    });
+
+    await expect(adapter.loadRequestsWorkspace()).rejects.toThrow(
+      "Requests runtime returned invalid workspace payload."
+    );
+  });
+
+  it("rejects request-detail gates that contradict their matching summary", async () => {
+    const target = workspace.requestDetails[0]!;
+    const requestDetails = workspace.requestDetails.map((detail) =>
+      detail.prrRequestId === target.prrRequestId
+        ? {
+            ...detail,
+            sendGate: detail.sendGate.map((check, index) =>
+              index === 0 ? { ...check, ready: true, locked: false } : check
+            )
+          }
+        : detail
+    );
+    const adapter = createHttpRequestsAdapter({
+      fetcher: vi.fn(async () => jsonResponse(200, { ...workspace, requestDetails }))
+    });
+
+    await expect(adapter.loadRequestsWorkspace()).rejects.toThrow(
+      "Requests runtime returned invalid workspace payload."
+    );
+  });
+
+  it("rejects malformed fee currency without exposing the raw value", async () => {
+    const requestDetails = workspace.requestDetails.map((detail) =>
+      detail.feeEstimate === undefined
+        ? detail
+        : {
+            ...detail,
+            feeEstimate: { ...detail.feeEstimate, currency: "Bearer raw-token" }
+          }
+    );
+    const adapter = createHttpRequestsAdapter({
+      fetcher: vi.fn(async () => jsonResponse(200, { ...workspace, requestDetails }))
+    });
+
+    await expect(adapter.loadRequestsWorkspace()).rejects.toThrow(
+      "Requests runtime returned invalid workspace payload."
+    );
+    await expect(adapter.loadRequestsWorkspace()).rejects.not.toThrow("raw-token");
+  });
+
+  it.each([
+    ["negative amount", -1],
+    ["fractional amount", 10.5]
+  ])("rejects a fee estimate with %s", async (_label, amountCents) => {
+    const requestDetails = workspace.requestDetails.map((detail) =>
+      detail.feeEstimate === undefined
+        ? detail
+        : {
+            ...detail,
+            feeEstimate: { ...detail.feeEstimate, amountCents }
+          }
+    );
+    const adapter = createHttpRequestsAdapter({
+      fetcher: vi.fn(async () => jsonResponse(200, { ...workspace, requestDetails }))
+    });
+
+    await expect(adapter.loadRequestsWorkspace()).rejects.toThrow(
+      "Requests runtime returned invalid workspace payload."
+    );
+  });
+
   it("turns invalid workspace JSON into a safe load error", async () => {
     const fetcher = vi.fn(async () => textResponse(200, "Bearer raw-token"));
     const adapter = createHttpRequestsAdapter({ fetcher });

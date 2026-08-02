@@ -13,7 +13,9 @@ import {
 import { buildPrrProjection } from "../../../prr/src/projection.js";
 import {
   buildPrrWorkspaceDto,
+  prrWorkspaceDtoLegalEscalationGateCheckIds,
   prrWorkspaceDtoLaneOrder,
+  prrWorkspaceDtoSendGateCheckIds,
   type PrrWorkspaceDto
 } from "../../../prr/src/read-api.js";
 import { prrWorkspaceSeedEvents } from "../../../prr/src/workspace-seed.js";
@@ -495,6 +497,7 @@ function workspaceDtoFromJson(value: unknown): PrrWorkspaceDto | undefined {
     !arrayOf(value.cards, isCard) ||
     !arrayOf(value.requestDetails, isRequestDetail) ||
     !arrayOf(value.gates, isGateSummary) ||
+    !hasConsistentWorkspaceGates(value.requestDetails, value.gates) ||
     !arrayOf(value.actionPackets, isActionPacket) ||
     !arrayOf(value.evidencePackets, isEvidencePacket) ||
     !arrayOf(value.diagnostics, isWorkspaceDiagnostic) ||
@@ -573,8 +576,8 @@ function isRequestDetail(value: unknown): boolean {
     isSeverity(value.severity) &&
     arrayOf(value.actionPackets, isActionPacket) &&
     arrayOf(value.evidencePackets, isEvidencePacket) &&
-    arrayOf(value.sendGate, isGateCheck) &&
-    arrayOf(value.escalationGate, isGateCheck) &&
+    isExactGateCheckArray(value.sendGate, prrWorkspaceDtoSendGateCheckIds) &&
+    isExactGateCheckArray(value.escalationGate, prrWorkspaceDtoLegalEscalationGateCheckIds) &&
     arrayOf(value.diagnostics, isWorkspaceDiagnostic) &&
     arrayOf(value.timeline, isTimelineEntry) &&
     arrayOf(value.stallingSignals, isStallingSignal) &&
@@ -613,14 +616,31 @@ function isFollowUpDraft(value: unknown): boolean {
 }
 
 function isGateSummary(value: unknown): boolean {
-  return (
-    isJsonObject(value) &&
-    isNonEmptyString(value.prrRequestId) &&
-    (value.kind === "send" || value.kind === "legal-escalation") &&
-    typeof value.ready === "boolean" &&
-    typeof value.locked === "boolean" &&
-    arrayOf(value.checks, isGateCheck)
+  if (
+    !isJsonObject(value) ||
+    !isNonEmptyString(value.prrRequestId) ||
+    (value.kind !== "send" && value.kind !== "legal-escalation") ||
+    typeof value.ready !== "boolean" ||
+    typeof value.locked !== "boolean"
+  ) {
+    return false;
+  }
+
+  const expectedIds =
+    value.kind === "send"
+      ? prrWorkspaceDtoSendGateCheckIds
+      : prrWorkspaceDtoLegalEscalationGateCheckIds;
+  if (!isExactGateCheckArray(value.checks, expectedIds)) {
+    return false;
+  }
+
+  if (!Array.isArray(value.checks)) {
+    return false;
+  }
+  const checksReady = value.checks.every(
+    (check) => isJsonObject(check) && check.ready === true && check.locked === false
   );
+  return value.ready === checksReady && value.locked === !checksReady;
 }
 
 function isGateCheck(value: unknown): boolean {
@@ -630,8 +650,123 @@ function isGateCheck(value: unknown): boolean {
     isNonEmptyString(value.label) &&
     typeof value.ready === "boolean" &&
     typeof value.locked === "boolean" &&
+    value.locked === !value.ready &&
     isNonEmptyString(value.detail) &&
     (value.evidenceIds === undefined || isStringArray(value.evidenceIds))
+  );
+}
+
+function isExactGateCheckArray(value: unknown, expectedIds: readonly string[]): boolean {
+  if (!Array.isArray(value) || value.length !== expectedIds.length) {
+    return false;
+  }
+
+  const expected = new Set(expectedIds);
+  const seen = new Set<string>();
+  for (const check of value) {
+    if (!isGateCheck(check) || !isJsonObject(check) || !isNonEmptyString(check.id)) {
+      return false;
+    }
+    if (!expected.has(check.id) || seen.has(check.id)) {
+      return false;
+    }
+    seen.add(check.id);
+  }
+
+  return seen.size === expectedIds.length;
+}
+
+function hasConsistentWorkspaceGates(requestDetails: unknown, gates: unknown): boolean {
+  if (!Array.isArray(requestDetails) || !Array.isArray(gates)) {
+    return false;
+  }
+
+  const detailsById = new Map<string, Record<string, unknown>>();
+  for (const detail of requestDetails) {
+    if (!isJsonObject(detail) || !isNonEmptyString(detail.prrRequestId) || detailsById.has(detail.prrRequestId)) {
+      return false;
+    }
+    detailsById.set(detail.prrRequestId, detail);
+  }
+
+  if (gates.length !== detailsById.size * 2) {
+    return false;
+  }
+
+  const seenSummaries = new Set<string>();
+  for (const gate of gates) {
+    if (
+      !isJsonObject(gate) ||
+      !isNonEmptyString(gate.prrRequestId) ||
+      (gate.kind !== "send" && gate.kind !== "legal-escalation")
+    ) {
+      return false;
+    }
+
+    const detail = detailsById.get(gate.prrRequestId);
+    const summaryKey = `${gate.prrRequestId}:${gate.kind}`;
+    if (detail === undefined || seenSummaries.has(summaryKey)) {
+      return false;
+    }
+
+    const expectedIds =
+      gate.kind === "send"
+        ? prrWorkspaceDtoSendGateCheckIds
+        : prrWorkspaceDtoLegalEscalationGateCheckIds;
+    const detailChecks = gate.kind === "send" ? detail.sendGate : detail.escalationGate;
+    if (!gateChecksMatch(gate.checks, detailChecks, expectedIds)) {
+      return false;
+    }
+    seenSummaries.add(summaryKey);
+  }
+
+  return seenSummaries.size === detailsById.size * 2;
+}
+
+function gateChecksMatch(
+  summaryChecks: unknown,
+  detailChecks: unknown,
+  expectedIds: readonly string[]
+): boolean {
+  if (
+    !isExactGateCheckArray(summaryChecks, expectedIds) ||
+    !isExactGateCheckArray(detailChecks, expectedIds) ||
+    !Array.isArray(summaryChecks) ||
+    !Array.isArray(detailChecks)
+  ) {
+    return false;
+  }
+
+  const detailById = new Map(
+    detailChecks
+      .filter(isJsonObject)
+      .map((check) => [check.id, check] as const)
+  );
+  return summaryChecks.every((summaryCheck) => {
+    if (!isJsonObject(summaryCheck) || !isNonEmptyString(summaryCheck.id)) {
+      return false;
+    }
+    const detailCheck = detailById.get(summaryCheck.id);
+    return (
+      detailCheck !== undefined &&
+      summaryCheck.label === detailCheck.label &&
+      summaryCheck.ready === detailCheck.ready &&
+      summaryCheck.locked === detailCheck.locked &&
+      summaryCheck.detail === detailCheck.detail &&
+      optionalStringArraysMatch(summaryCheck.evidenceIds, detailCheck.evidenceIds)
+    );
+  });
+}
+
+function optionalStringArraysMatch(left: unknown, right: unknown): boolean {
+  if (left === undefined || right === undefined) {
+    return left === right;
+  }
+  return (
+    Array.isArray(left) &&
+    Array.isArray(right) &&
+    left.length === right.length &&
+    left.every((value, index) => value === right[index])
   );
 }
 
@@ -832,16 +967,24 @@ function isDeadline(value: unknown): boolean {
 function isFeeEstimate(value: unknown): boolean {
   return (
     isJsonObject(value) &&
-    typeof value.amountCents === "number" &&
-    isNonEmptyString(value.currency) &&
+    isFiniteNonNegativeInteger(value.amountCents) &&
+    isCurrencyCode(value.currency) &&
     isOptionalString(value.sourceEvidenceId) &&
     typeof value.challenged === "boolean" &&
     isOptionalString(value.challengeId) &&
-    (value.challengeAmountCents === undefined || typeof value.challengeAmountCents === "number") &&
+    (value.challengeAmountCents === undefined || isFiniteNonNegativeInteger(value.challengeAmountCents)) &&
     isOptionalString(value.rationale) &&
     isOptionalString(value.approvedBy) &&
     arrayOf(value.citedRules, isCitedRule)
   );
+}
+
+function isFiniteNonNegativeInteger(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value) && Number.isInteger(value) && value >= 0;
+}
+
+function isCurrencyCode(value: unknown): value is string {
+  return typeof value === "string" && /^[A-Z]{3}$/.test(value);
 }
 
 function isScopeNarrowing(value: unknown): boolean {

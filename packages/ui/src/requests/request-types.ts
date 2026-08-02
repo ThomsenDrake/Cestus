@@ -76,6 +76,7 @@ export interface PrrGateCheck {
   readonly id: string;
   readonly label: string;
   readonly complete: boolean;
+  readonly locked: boolean;
   readonly detail: string;
 }
 

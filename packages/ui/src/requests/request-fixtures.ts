@@ -4,10 +4,10 @@ const federalFoia = "US Federal FOIA";
 const floridaPublicRecords = "Florida Public Records";
 
 const incompleteEscalationGate = Object.freeze([
-  Object.freeze({ id: "basis", label: "Deadline or stalling basis", complete: false, detail: "No escalation basis confirmed." }),
-  Object.freeze({ id: "citation", label: "Cited rule", complete: false, detail: "No jurisdiction guidance selected." }),
-  Object.freeze({ id: "evidence", label: "Correspondence evidence", complete: false, detail: "No correspondence evidence linked." }),
-  Object.freeze({ id: "confirmation", label: "User confirmation", complete: false, detail: "Not confirmed." })
+  Object.freeze({ id: "basis", label: "Deadline or stalling basis", complete: false, locked: true, detail: "No escalation basis confirmed." }),
+  Object.freeze({ id: "citation", label: "Cited rule", complete: false, locked: true, detail: "No jurisdiction guidance selected." }),
+  Object.freeze({ id: "evidence", label: "Correspondence evidence", complete: false, locked: true, detail: "No correspondence evidence linked." }),
+  Object.freeze({ id: "confirmation", label: "User confirmation", complete: false, locked: true, detail: "Not confirmed." })
 ]);
 
 export const prrWorkspaceFixture = Object.freeze({
@@ -179,11 +179,11 @@ export const prrWorkspaceFixture = Object.freeze({
         ])
       }),
       sendGate: Object.freeze([
-        Object.freeze({ id: "draft", label: "Draft body", complete: true, detail: "Template rendered." }),
-        Object.freeze({ id: "recipients", label: "Recipients", complete: true, detail: "FOIA inbox verified." }),
-        Object.freeze({ id: "citations", label: "Citations", complete: true, detail: "5 U.S.C. 552 clause attached." }),
-        Object.freeze({ id: "attachments", label: "Attachments", complete: true, detail: "No attachments required." }),
-        Object.freeze({ id: "risk", label: "Risk flags", complete: false, detail: "Human review required." })
+        Object.freeze({ id: "draft", label: "Draft body", complete: true, locked: false, detail: "Template rendered." }),
+        Object.freeze({ id: "recipients", label: "Recipients", complete: true, locked: false, detail: "FOIA inbox verified." }),
+        Object.freeze({ id: "citations", label: "Citations", complete: true, locked: false, detail: "5 U.S.C. 552 clause attached." }),
+        Object.freeze({ id: "attachments", label: "Attachments", complete: true, locked: false, detail: "No attachments required." }),
+        Object.freeze({ id: "risk", label: "Risk flags", complete: false, locked: true, detail: "Human review required." })
       ]),
       escalationGate: incompleteEscalationGate,
       deadlinePosture: "Estimated Jul 30 from Federal FOIA 20-working-day guidance.",
@@ -214,17 +214,17 @@ export const prrWorkspaceFixture = Object.freeze({
         ])
       }),
       sendGate: Object.freeze([
-        Object.freeze({ id: "draft", label: "Draft body", complete: false, detail: "Follow-up language needs review." }),
-        Object.freeze({ id: "recipients", label: "Recipients", complete: true, detail: "Records inbox matched." }),
-        Object.freeze({ id: "citations", label: "Citations", complete: true, detail: "Florida Public Records clause attached." }),
-        Object.freeze({ id: "attachments", label: "Attachments", complete: true, detail: "Original request linked." }),
-        Object.freeze({ id: "risk", label: "Risk flags", complete: false, detail: "Diagnostic review required." })
+        Object.freeze({ id: "draft", label: "Draft body", complete: false, locked: true, detail: "Follow-up language needs review." }),
+        Object.freeze({ id: "recipients", label: "Recipients", complete: true, locked: false, detail: "Records inbox matched." }),
+        Object.freeze({ id: "citations", label: "Citations", complete: true, locked: false, detail: "Florida Public Records clause attached." }),
+        Object.freeze({ id: "attachments", label: "Attachments", complete: true, locked: false, detail: "Original request linked." }),
+        Object.freeze({ id: "risk", label: "Risk flags", complete: false, locked: true, detail: "Diagnostic review required." })
       ]),
       escalationGate: Object.freeze([
-        Object.freeze({ id: "basis", label: "Deadline or stalling basis", complete: true, detail: "Deadline passed." }),
-        Object.freeze({ id: "citation", label: "Cited rule", complete: true, detail: "Florida guidance attached." }),
-        Object.freeze({ id: "evidence", label: "Correspondence evidence", complete: false, detail: "Thread needs review." }),
-        Object.freeze({ id: "confirmation", label: "User confirmation", complete: false, detail: "Not confirmed." })
+        Object.freeze({ id: "basis", label: "Deadline or stalling basis", complete: true, locked: false, detail: "Deadline passed." }),
+        Object.freeze({ id: "citation", label: "Cited rule", complete: true, locked: false, detail: "Florida guidance attached." }),
+        Object.freeze({ id: "evidence", label: "Correspondence evidence", complete: false, locked: true, detail: "Thread needs review." }),
+        Object.freeze({ id: "confirmation", label: "User confirmation", complete: false, locked: true, detail: "Not confirmed." })
       ]),
       deadlinePosture: "Confirmed deadline passed on Jul 19; possible stalling remains a human-review signal.",
       correspondence: Object.freeze({
@@ -264,11 +264,11 @@ export const prrWorkspaceFixture = Object.freeze({
         ])
       }),
       sendGate: Object.freeze([
-        Object.freeze({ id: "draft", label: "Draft body", complete: false, detail: "Fee challenge draft not reviewed." }),
-        Object.freeze({ id: "recipients", label: "Recipients", complete: true, detail: "Agency records contact matched." }),
-        Object.freeze({ id: "citations", label: "Citations", complete: true, detail: "Florida fee guidance attached." }),
-        Object.freeze({ id: "attachments", label: "Attachments", complete: true, detail: "Fee estimate linked." }),
-        Object.freeze({ id: "risk", label: "Risk flags", complete: false, detail: "Cost posture requires human decision." })
+        Object.freeze({ id: "draft", label: "Draft body", complete: false, locked: true, detail: "Fee challenge draft not reviewed." }),
+        Object.freeze({ id: "recipients", label: "Recipients", complete: true, locked: false, detail: "Agency records contact matched." }),
+        Object.freeze({ id: "citations", label: "Citations", complete: true, locked: false, detail: "Florida fee guidance attached." }),
+        Object.freeze({ id: "attachments", label: "Attachments", complete: true, locked: false, detail: "Fee estimate linked." }),
+        Object.freeze({ id: "risk", label: "Risk flags", complete: false, locked: true, detail: "Cost posture requires human decision." })
       ]),
       escalationGate: incompleteEscalationGate,
       deadlinePosture: "No fixed deadline; fee/scope negotiation controls the next action.",
@@ -309,11 +309,11 @@ export const prrWorkspaceFixture = Object.freeze({
         ])
       }),
       sendGate: Object.freeze([
-        Object.freeze({ id: "draft", label: "Draft body", complete: false, detail: "No outbound draft needed." }),
-        Object.freeze({ id: "recipients", label: "Recipients", complete: true, detail: "Provider thread remains linked." }),
-        Object.freeze({ id: "citations", label: "Citations", complete: true, detail: "Original request citation preserved." }),
-        Object.freeze({ id: "attachments", label: "Attachments", complete: true, detail: "Production attachments verified." }),
-        Object.freeze({ id: "risk", label: "Risk flags", complete: true, detail: "No send risk active." })
+        Object.freeze({ id: "draft", label: "Draft body", complete: false, locked: true, detail: "No outbound draft needed." }),
+        Object.freeze({ id: "recipients", label: "Recipients", complete: true, locked: false, detail: "Provider thread remains linked." }),
+        Object.freeze({ id: "citations", label: "Citations", complete: true, locked: false, detail: "Original request citation preserved." }),
+        Object.freeze({ id: "attachments", label: "Attachments", complete: true, locked: false, detail: "Production attachments verified." }),
+        Object.freeze({ id: "risk", label: "Risk flags", complete: true, locked: false, detail: "No send risk active." })
       ]),
       escalationGate: incompleteEscalationGate,
       deadlinePosture: "Production arrived on Jul 02; evidence intake is the active posture.",
@@ -354,17 +354,17 @@ export const prrWorkspaceFixture = Object.freeze({
         ])
       }),
       sendGate: Object.freeze([
-        Object.freeze({ id: "draft", label: "Draft body", complete: true, detail: "Appeal draft available." }),
-        Object.freeze({ id: "recipients", label: "Recipients", complete: true, detail: "Appeals inbox verified." }),
-        Object.freeze({ id: "citations", label: "Citations", complete: true, detail: "Pack citation attached." }),
-        Object.freeze({ id: "attachments", label: "Attachments", complete: true, detail: "Denial evidence linked." }),
-        Object.freeze({ id: "risk", label: "Risk flags", complete: false, detail: "Escalation confirmation required." })
+        Object.freeze({ id: "draft", label: "Draft body", complete: true, locked: false, detail: "Appeal draft available." }),
+        Object.freeze({ id: "recipients", label: "Recipients", complete: true, locked: false, detail: "Appeals inbox verified." }),
+        Object.freeze({ id: "citations", label: "Citations", complete: true, locked: false, detail: "Pack citation attached." }),
+        Object.freeze({ id: "attachments", label: "Attachments", complete: true, locked: false, detail: "Denial evidence linked." }),
+        Object.freeze({ id: "risk", label: "Risk flags", complete: false, locked: true, detail: "Escalation confirmation required." })
       ]),
       escalationGate: Object.freeze([
-        Object.freeze({ id: "basis", label: "Deadline or stalling basis", complete: true, detail: "Confirmed stalling." }),
-        Object.freeze({ id: "citation", label: "Cited rule", complete: true, detail: "Appeal guidance attached." }),
-        Object.freeze({ id: "evidence", label: "Correspondence evidence", complete: true, detail: "Denial thread linked." }),
-        Object.freeze({ id: "confirmation", label: "User confirmation", complete: false, detail: "Not confirmed." })
+        Object.freeze({ id: "basis", label: "Deadline or stalling basis", complete: true, locked: false, detail: "Confirmed stalling." }),
+        Object.freeze({ id: "citation", label: "Cited rule", complete: true, locked: false, detail: "Appeal guidance attached." }),
+        Object.freeze({ id: "evidence", label: "Correspondence evidence", complete: true, locked: false, detail: "Denial thread linked." }),
+        Object.freeze({ id: "confirmation", label: "User confirmation", complete: false, locked: true, detail: "Not confirmed." })
       ]),
       deadlinePosture: "Confirmed deadline passed on Jun 24; stalling confirmed by user.",
       correspondence: Object.freeze({
