@@ -41,6 +41,7 @@ export interface EvidenceAssertionCandidateInput {
 export interface EvidenceProposalEligibility {
   readonly evidence?: KnowledgeEventOf<"evidence.ingested">;
   readonly provenanceEventIds: readonly string[];
+  readonly reconciledOccurrenceIds: readonly string[];
   readonly provenanceComplete: boolean;
   readonly selectable: boolean;
   readonly blockingReasons: readonly string[];
@@ -104,6 +105,18 @@ export class EvidenceReviewService {
   async prepareAssertionCandidate(
     input: EvidenceAssertionCandidateInput
   ): Promise<PreparedEvidenceAssertionCandidate> {
+    if ([
+      input.assertionId,
+      input.evidenceId,
+      input.subjectRef,
+      input.predicate,
+      typeof input.object === "string" ? input.object : undefined,
+      input.actor.id,
+      input.actor.label
+    ]
+      .some((value) => value !== undefined && containsCredentialShapedEvidenceText(value))) {
+      throw new Error("Assertion candidate contains credential-shaped material.");
+    }
     const actor = actorRefSchema.parse(input.actor);
     const events = await this.dependencies.ledger.readAll();
     const eligibility = evaluateEvidenceProposalEligibility(events, input.evidenceId);
@@ -118,14 +131,6 @@ export class EvidenceReviewService {
         event.type === "assertion.proposed" && event.payload.assertionId === input.assertionId
     );
     if (existing !== undefined) {
-      const accepted = events.some((event) =>
-        event.type === "assertion.accepted" &&
-        event.payload.assertionId === input.assertionId &&
-        event.context.causationId === existing.id
-      );
-      if (accepted) {
-        throw new Error("Assertion candidate has already completed human review.");
-      }
       if (!sameAssertionProposal(existing, input)) {
         throw new Error("Assertion candidate ID already exists with different proposal content.");
       }
@@ -180,6 +185,7 @@ export function evaluateEvidenceProposalEligibility(
   );
   const reasons = new Set<string>();
   const provenanceEventIds = new Set<string>();
+  const reconciledOccurrenceIds = new Set<string>();
 
   if (evidence === undefined) {
     reasons.add("Evidence ingestion provenance is missing.");
@@ -207,20 +213,6 @@ export function evaluateEvidenceProposalEligibility(
       provenanceEventIds.add(source.id);
     }
 
-    const approval = events.find(
-      (event): event is KnowledgeEventOf<"ingestion.import.approved"> =>
-        event.type === "ingestion.import.approved" &&
-        event.payload.importBatchId === link.payload.importBatchId &&
-        event.payload.sourceCollectionId === link.payload.sourceCollectionId &&
-        event.context.actor.kind === "human" &&
-        event.payload.approvedBy === event.context.actor.id
-    );
-    if (approval === undefined) {
-      reasons.add("Human import approval provenance is missing.");
-    } else {
-      provenanceEventIds.add(approval.id);
-    }
-
     const completion = events.find(
       (event): event is KnowledgeEventOf<"ingestion.import.completed"> =>
         event.type === "ingestion.import.completed" &&
@@ -231,6 +223,54 @@ export function evaluateEvidenceProposalEligibility(
       reasons.add("Evidence import completion provenance is missing.");
     } else {
       provenanceEventIds.add(completion.id);
+    }
+
+    const approval = events.find(
+      (event): event is KnowledgeEventOf<"ingestion.import.approved"> =>
+        event.type === "ingestion.import.approved" &&
+        event.payload.importBatchId === link.payload.importBatchId &&
+        event.payload.sourceCollectionId === link.payload.sourceCollectionId &&
+        completion !== undefined &&
+        event.payload.scanBatchId === completion.payload.scanBatchId &&
+        event.context.actor.kind === "human" &&
+        event.payload.approvedBy === event.context.actor.id
+    );
+    if (approval === undefined) {
+      reasons.add("Human import approval provenance is missing.");
+    } else {
+      provenanceEventIds.add(approval.id);
+    }
+
+    const batchContentHashes = new Set(events
+      .filter((event): event is KnowledgeEventOf<"ingestion.evidence.linked"> =>
+        event.type === "ingestion.evidence.linked" &&
+        event.payload.importBatchId === link.payload.importBatchId &&
+        event.payload.sourceCollectionId === link.payload.sourceCollectionId
+      )
+      .map((event) => event.payload.contentHash));
+    const observedBatchOccurrences = completion === undefined
+      ? []
+      : events.filter((event): event is KnowledgeEventOf<"ingestion.occurrence.observed"> =>
+        event.type === "ingestion.occurrence.observed" &&
+        event.payload.sourceCollectionId === link.payload.sourceCollectionId &&
+        event.payload.scanBatchId === completion.payload.scanBatchId &&
+        batchContentHashes.has(event.payload.contentHash)
+      );
+    if (
+      completion !== undefined &&
+      new Set(observedBatchOccurrences.map((event) => event.payload.occurrenceId)).size !==
+        completion.payload.totals.occurrencesLinked
+    ) {
+      reasons.add("Import completion totals do not match observed occurrence lineage.");
+    }
+
+    const matchingOccurrences = observedBatchOccurrences.filter(
+      (event) => event.payload.contentHash === link.payload.contentHash
+    );
+    const matchingOccurrenceIds = new Set(matchingOccurrences.map((event) => event.payload.occurrenceId));
+    for (const occurrence of matchingOccurrences) {
+      reconciledOccurrenceIds.add(occurrence.payload.occurrenceId);
+      provenanceEventIds.add(occurrence.id);
     }
 
     for (const occurrenceId of link.payload.occurrenceIds) {
@@ -244,6 +284,7 @@ export function evaluateEvidenceProposalEligibility(
       }
       provenanceEventIds.add(occurrence.id);
       if (
+        !matchingOccurrenceIds.has(occurrenceId) ||
         occurrence.payload.sourceCollectionId !== link.payload.sourceCollectionId ||
         occurrence.payload.contentHash !== link.payload.contentHash ||
         (completion !== undefined && occurrence.payload.scanBatchId !== completion.payload.scanBatchId)
@@ -265,10 +306,18 @@ export function evaluateEvidenceProposalEligibility(
   return Object.freeze({
     ...(evidence === undefined ? {} : { evidence }),
     provenanceEventIds: Object.freeze([...provenanceEventIds].sort(compareCodeUnits)),
+    reconciledOccurrenceIds: Object.freeze([...reconciledOccurrenceIds].sort(compareCodeUnits)),
     provenanceComplete,
     selectable: reasons.size === 0,
     blockingReasons: Object.freeze([...reasons])
   });
+}
+
+const canonicalCredentialShapedPattern = /api[\s._-]*key|authorization|bearer|token|secret|password|oauth|credential|(?:^|[\s;])(?:(?:(?:x|set)-)?cookie\s*:|session\s*=\s*\S+)/i;
+const commonSecretValuePattern = /(?:^|[^a-z0-9])(?:sk[_-](?:live|test|proj)[_-]?|gh[pousr]_|github[_-]?pat[_-]|glpat[_-]|xox[baprs]?[_-]|AKIA|ASIA|AIza|ya29|eyJ|hf[_-]|rk[_-]live|pk[_-]live|sg[._-])[a-z0-9._-]{3,}/i;
+
+export function containsCredentialShapedEvidenceText(value: string): boolean {
+  return canonicalCredentialShapedPattern.test(value) || commonSecretValuePattern.test(value);
 }
 
 function compareCodeUnits(left: string, right: string): number {

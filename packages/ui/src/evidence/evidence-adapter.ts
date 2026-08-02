@@ -6,27 +6,36 @@ import type {
 } from "./evidence-types.js";
 
 const safeTextSchema = z.string().min(1).refine(
-  (value) => !/api[_ -]?key|authorization|bearer|password|secret|oauth|credential|cookie\s*:|session\s*=/i.test(value),
+  (value) => !containsCredentialShapedText(value),
   { message: "text must not contain credential-shaped material" }
 );
-const evidenceIdSchema = z.string().regex(/^ev_[a-zA-Z0-9_-]+$/);
-const assertionIdSchema = z.string().regex(/^as_[a-zA-Z0-9_-]+$/);
-const eventIdSchema = z.string().regex(/^evt_[a-zA-Z0-9_-]+$/);
+const evidenceIdSchema = z.string().regex(/^ev_[a-zA-Z0-9_-]+$/).refine(
+  (value) => !containsCredentialShapedText(value),
+  { message: "ID must not contain credential-shaped material" }
+);
+const assertionIdSchema = z.string().regex(/^as_[a-zA-Z0-9_-]+$/).refine(
+  (value) => !containsCredentialShapedText(value),
+  { message: "ID must not contain credential-shaped material" }
+);
+const eventIdSchema = z.string().regex(/^evt_[a-zA-Z0-9_-]+$/).refine(
+  (value) => !containsCredentialShapedText(value),
+  { message: "ID must not contain credential-shaped material" }
+);
 const contentHashSchema = z.string().regex(/^sha256:[a-f0-9]{64}$/);
-const adapterRefSchema = z.object({ name: z.string().min(1), version: z.string().min(1) }).strict();
+const adapterRefSchema = z.object({ name: safeTextSchema, version: safeTextSchema }).strict();
 const occurrenceSchema = z.object({
   occurrenceId: z.string().regex(/^occ_[a-zA-Z0-9_-]+$/),
   sourceCollectionId: z.string().regex(/^src_[a-zA-Z0-9_-]+$/),
   scanBatchId: z.string().regex(/^scan_[a-zA-Z0-9_-]+$/),
-  sourcePath: z.string().min(1),
+  sourcePath: safeTextSchema,
   contentHash: contentHashSchema,
   sizeBytes: z.number().int().nonnegative(),
   status: z.enum(["new", "duplicate", "changed", "missing", "skipped"]),
   adapter: adapterRefSchema.optional(),
   archive: z.object({
-    containerPath: z.string().min(1),
+    containerPath: safeTextSchema,
     containerHash: contentHashSchema,
-    internalPath: z.string().min(1),
+    internalPath: safeTextSchema,
     adapter: adapterRefSchema
   }).strict().optional()
 }).strict();
@@ -37,10 +46,10 @@ const parseJobSchema = z.object({
   lane: z.enum(["local", "provider"]),
   parser: adapterRefSchema,
   state: z.enum(["queued", "running", "succeeded", "failed"]),
-  derivative: z.object({ contentHash: contentHashSchema, mediaType: z.string().min(1) }).strict().optional()
+  derivative: z.object({ contentHash: contentHashSchema, mediaType: safeTextSchema }).strict().optional()
 }).strict();
 const governanceTagSchema = z.object({
-  tag: z.string().min(1),
+  tag: safeTextSchema,
   confidence: z.number().min(0).max(1),
   rationale: safeTextSchema,
   source: z.enum(["ai", "human"]),
@@ -49,7 +58,7 @@ const governanceTagSchema = z.object({
 }).strict();
 const linkedReferenceSchema = z.object({
   kind: z.enum(["prr", "investigation"]),
-  id: z.string().min(1),
+  id: safeTextSchema,
   eventIds: z.array(eventIdSchema)
 }).strict();
 const evidenceReferenceSchema = z.object({
@@ -60,7 +69,7 @@ const evidenceReferenceSchema = z.object({
 const assertionCandidateSchema = z.object({
   assertionId: assertionIdSchema,
   evidenceReferences: z.array(evidenceReferenceSchema).min(1),
-  predicate: z.string().min(1),
+  predicate: safeTextSchema,
   confidence: z.number().min(0).max(1),
   reviewState: z.literal("proposed"),
   reviewRequired: z.literal(true),
@@ -69,18 +78,19 @@ const assertionCandidateSchema = z.object({
 const evidenceItemSchema = z.object({
   evidenceId: evidenceIdSchema,
   contentHash: contentHashSchema.optional(),
-  mediaType: z.string().min(1).optional(),
+  mediaType: safeTextSchema.optional(),
   sizeBytes: z.number().int().nonnegative().optional(),
-  source: z.object({ kind: z.string().min(1), label: z.string().min(1) }).strict().optional(),
+  source: z.object({ kind: safeTextSchema, label: safeTextSchema }).strict().optional(),
   sourceCollections: z.array(z.object({
     sourceCollectionId: z.string().regex(/^src_[a-zA-Z0-9_-]+$/),
-    label: z.string().min(1)
+    label: safeTextSchema
   }).strict()),
   importBatchIds: z.array(z.string().regex(/^imp_[a-zA-Z0-9_-]+$/)),
   occurrences: z.array(occurrenceSchema),
   parseJobs: z.array(parseJobSchema),
   governanceTags: z.array(governanceTagSchema),
   quarantined: z.boolean(),
+  quarantineLockLevels: z.array(z.enum(["workflow", "export", "all"])),
   tombstoned: z.boolean(),
   linkedReferences: z.array(linkedReferenceSchema),
   provenanceComplete: z.boolean(),
@@ -88,7 +98,7 @@ const evidenceItemSchema = z.object({
   blockingReasons: z.array(safeTextSchema)
 }).strict();
 const diagnosticSchema = z.object({
-  code: z.enum(["projection-error", "missing-provenance"]),
+  code: z.enum(["projection-error", "missing-provenance", "secret-safety"]),
   severity: z.enum(["warning", "error"]),
   message: safeTextSchema,
   repairActions: z.array(safeTextSchema).min(1)
@@ -189,4 +199,11 @@ function deepFreeze<T>(value: T): T {
     }
   }
   return value;
+}
+
+const canonicalCredentialShapedPattern = /api[\s._-]*key|authorization|bearer|token|secret|password|oauth|credential|(?:^|[\s;])(?:(?:(?:x|set)-)?cookie\s*:|session\s*=\s*\S+)/i;
+const commonSecretValuePattern = /(?:^|[^a-z0-9])(?:sk[_-](?:live|test|proj)[_-]?|gh[pousr]_|github[_-]?pat[_-]|glpat[_-]|xox[baprs]?[_-]|AKIA|ASIA|AIza|ya29|eyJ|hf[_-]|rk[_-]live|pk[_-]live|sg[._-])[a-z0-9._-]{3,}/i;
+
+function containsCredentialShapedText(value: string): boolean {
+  return canonicalCredentialShapedPattern.test(value) || commonSecretValuePattern.test(value);
 }

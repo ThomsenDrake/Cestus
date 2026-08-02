@@ -57,6 +57,7 @@ export function workspaceDto(): EvidenceWorkspaceDto {
           eventId: "evt_governance_public_record"
         }],
         quarantined: false,
+        quarantineLockLevels: [],
         tombstoned: false,
         linkedReferences: [{
           kind: "prr",
@@ -93,6 +94,7 @@ export function workspaceDto(): EvidenceWorkspaceDto {
           eventId: "evt_governance_blocked"
         }],
         quarantined: true,
+        quarantineLockLevels: ["workflow"],
         tombstoned: false,
         linkedReferences: [],
         provenanceComplete: true,
