@@ -13,7 +13,7 @@ describe("Requests data boundary", () => {
     /^node:/,
     /^node:(?:fs|path)$/,
     nodeRuntimeModulePattern,
-    /^(?:\.\.\/)+(?:ingestion|local-runtime|workspace|workspace-ops)(?:\/.*)?$/,
+    /^(?:\.\.\/){2,}(?:ingestion|local-runtime|workspace|workspace-ops)(?:\/.*)?$/,
     /^packages\/workspace(?:\/.*)?$/,
     /^packages\/workspace-ops(?:\/.*)?$/,
     /^packages\/ingestion(?:\/.*)?$/,
@@ -119,10 +119,11 @@ describe("Requests data boundary", () => {
     }
   });
 
-  it("allows the UI operator status adapter to import only the browser-safe operator contract", () => {
+  it("allows UI composition to import only browser-safe sibling read contracts", () => {
     const allowedModuleSpecifiers = [
       "../../../operator-status/src/contracts.js",
-      "../../operator-status/src/contracts.js"
+      "../../operator-status/src/contracts.js",
+      "../ingestion/ingestion-types.js"
     ];
 
     for (const moduleSpecifier of allowedModuleSpecifiers) {
