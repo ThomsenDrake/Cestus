@@ -7,6 +7,7 @@ const uiTsxFiles = [
   "packages/ui/src/workspace/CommandBand.tsx",
   "packages/ui/src/workspace/ModuleRail.tsx",
   "packages/ui/src/workspace/CommandDashboard.tsx",
+  "packages/ui/src/workspace/RuntimeSourceStatus.tsx",
   "packages/ui/src/workspace/SignalStrip.tsx",
   "packages/ui/src/workspace/QueueFilters.tsx",
   "packages/ui/src/workspace/PriorityQueue.tsx",
@@ -91,6 +92,26 @@ describe("visual system contract", () => {
     expect(joined).toContain("var(--signal-cyan)");
     expect(joined).toContain("var(--signal-green)");
     expect(joined).toContain("var(--signal-red)");
+  });
+
+  it("keeps the live Command surface runtime-only, multi-signal, and hard-edged", () => {
+    const appSource = readFileSync("packages/ui/src/App.tsx", "utf8");
+    const runtimeModelSource = readFileSync("packages/ui/src/workspace/command-runtime.ts", "utf8");
+    const runtimeStatusSource = readFileSync("packages/ui/src/workspace/RuntimeSourceStatus.tsx", "utf8");
+    const navigationSource = readFileSync("packages/ui/src/workspace/workspace-nav.ts", "utf8");
+    const commandSource = [appSource, runtimeModelSource, runtimeStatusSource].join("\n");
+
+    expect(appSource).not.toContain("commandWorkspaceFixture");
+    expect(commandSource).not.toMatch(/Florida Department of Corrections|Miami-Dade Aviation Department/i);
+    expect(runtimeStatusSource).toContain("sm:grid-cols-2");
+    expect(runtimeStatusSource).toContain("xl:grid-cols-3");
+    expect(runtimeStatusSource).toContain("min-h-10");
+    expect(runtimeStatusSource).toContain("focus-visible:outline");
+    expect(runtimeStatusSource).toContain("var(--signal-green)");
+    expect(runtimeStatusSource).toContain("var(--signal-amber)");
+    expect(runtimeStatusSource).toContain("var(--signal-red)");
+    expect(runtimeStatusSource).not.toMatch(/rounded-|bg-gradient|shadow-(?:sm|md|lg|xl|2xl)/);
+    expect(navigationSource).toContain('{ id: "settings", label: "Settings", href: "#settings", preview: true }');
   });
 
   it("keeps final Requests workspace contracts dimensioned, sparse, and multi-signal", () => {
