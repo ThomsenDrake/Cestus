@@ -17,6 +17,7 @@ import type { ActorRef, KnowledgeEvent } from "../../ontology/src/contracts.js";
 import type { LocalRuntimeRequest, LocalRuntimeResponse } from "./http-handler.js";
 import {
   defaultLocalAgentRuntimeFactory,
+  mountedResidentTaskLocalAgentRuntimeFactory,
   type LocalAgentRuntimeFactory
 } from "./agent-runtime-factory.js";
 import { buildLocalAgentProviderReadiness } from "./agent-provider-readiness.js";
@@ -74,16 +75,16 @@ export async function handleAgentHttpRoute(
     const mountedEvidenceTriageRoute = matchMountedEvidenceTriageRoute(path);
     if (mountedEvidenceTriageRoute !== undefined) {
       try {
+        const mountedRuntime = mountedResidentTaskLocalAgentRuntimeFactory({
+          handle: input.handle,
+          actor: localMountedResidentActor,
+          now: input.now
+        });
         if (input.request.method === "POST" && mountedEvidenceTriageRoute.kind === "execute") {
           const payload = parseJsonObjectBody(input.request.body, invalidMountedEvidenceTriageBodyDiagnostic);
           if (!payload.ok) return json(400, payload.body);
           const command = mountedEvidenceTriageInputFromBody(payload.value);
           if (command === undefined) return json(400, invalidMountedEvidenceTriageBodyDiagnostic());
-          const mountedRuntime = runtimeFactory({
-            handle: input.handle,
-            actor: localMountedResidentActor,
-            now: input.now
-          });
           return json(200, await runMountedEvidenceTriageTask({
             handle: input.handle,
             runtime: mountedRuntime,
@@ -95,6 +96,7 @@ export async function handleAgentHttpRoute(
         if (input.request.method === "GET" && mountedEvidenceTriageRoute.kind === "readback") {
           return json(200, await reconstructMountedEvidenceTriageTask({
             handle: input.handle,
+            runtime: mountedRuntime,
             taskId: mountedEvidenceTriageRoute.taskId,
             runId: mountedEvidenceTriageRoute.runId
           }));

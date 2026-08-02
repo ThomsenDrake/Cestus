@@ -4,7 +4,6 @@ import { join } from "node:path";
 import {
   buildAgentProjection,
   buildSpecialistHandoffProjection,
-  buildTaskAttemptId,
   buildSelectionManifestHash,
   createAgentToolGateway,
   createContextPackRegistry,
@@ -57,16 +56,14 @@ import type { AppendOptions, EventLedger } from "../../ontology/src/event-ledger
 import { mountPortableWorkspace, type MountedPortableWorkspace } from "../../workspace/src/index.js";
 import { createMountedPromptArtifactStore } from "./mounted-prompt-artifact-store.js";
 import {
-  captureFactoryIssuedMountedRuntime,
-  inspectFactoryIssuedMountedRuntimeCapture,
-  type LocalRuntimeHandle
-} from "./runtime-factory.js";
-import type { LocalAgentRuntimeFactory } from "./agent-runtime-factory.js";
+  assertMountedResidentTaskRuntimeBinding,
+  bindMountedEvidenceTriageHandoffForLocalAgentRuntimeFactory,
+  type LocalAgentRuntimeFactory,
+  type LocalAgentRuntimeFactoryInput
+} from "./agent-runtime-factory.js";
 import { createWakeSupervisorRuntime, type WakeSupervisorRuntime } from "./wake-supervisor-runtime.js";
-import { issueMountedArtifactAuthorityOperationForFactory } from "./mounted-artifact-authority-operation.js";
 import {
   consumeMountedHandoffAuthorityController,
-  createPortableMountedAgentArtifactStoreProducer,
   type FactoryPortableMountedAgentHandoffProducerResultV1
 } from "./portable-mounted-agent-artifact-stores.js";
 
@@ -78,6 +75,7 @@ const remoteProviderId = "provider_remote_gated" as const;
 const remoteModelFamily = "remote-model" as const;
 
 type LocalAgentRuntime = ReturnType<LocalAgentRuntimeFactory>;
+type LocalRuntimeHandle = LocalAgentRuntimeFactoryInput["handle"];
 type ContentHash = `sha256:${string}`;
 
 export type MountedEvidenceTriageProviderMode = "local-fake" | "remote-gated";
@@ -94,6 +92,7 @@ export interface RunMountedEvidenceTriageTaskInput {
 
 export interface ReconstructMountedEvidenceTriageTaskInput {
   readonly handle: LocalRuntimeHandle;
+  readonly runtime: LocalAgentRuntime;
   readonly taskId: string;
   readonly runId: string;
 }
@@ -197,9 +196,10 @@ interface MountedTaskHandoffAuthority {
 export async function runMountedEvidenceTriageTask(
   input: RunMountedEvidenceTriageTaskInput
 ): Promise<AgentMountedTaskResultDto> {
+  assertMountedResidentTaskRuntimeBinding({ handle: input.handle, runtime: input.runtime });
   const operationTimestamp = input.now();
   const operationNow = () => operationTimestamp;
-  const authority = await captureMountedTaskAuthority(input.handle);
+  const authority = await captureMountedTaskAuthority(input.handle, input.runtime);
   await authority.revalidate();
   const eventsBeforeRun = await input.handle.ledger.readAll();
   const projectionBeforeRun = buildAgentProjection(eventsBeforeRun);
@@ -221,6 +221,7 @@ export async function runMountedEvidenceTriageTask(
       sameOrderedStrings(existingRun.sourceEventIds, sourceEventIdsFor(evidence))) {
       return await reconstructMountedEvidenceTriageTask({
         handle: input.handle,
+        runtime: input.runtime,
         taskId: input.taskId,
         runId: input.runId
       });
@@ -230,6 +231,7 @@ export async function runMountedEvidenceTriageTask(
       sameOrderedStrings(existingRun.sourceEventIds, sourceEventIdsFor(evidence))) {
       return await reconstructMountedWaitingEvidenceTriageTask({
         handle: input.handle,
+        runtime: input.runtime,
         taskId: input.taskId,
         runId: input.runId
       });
@@ -400,6 +402,7 @@ export async function runMountedEvidenceTriageTask(
     }
     return await reconstructMountedEvidenceTriageTask({
       handle: input.handle,
+      runtime: input.runtime,
       taskId: input.taskId,
       runId: input.runId
     });
@@ -435,17 +438,10 @@ async function acquireMountedTaskHandoffAuthority(input: {
     if (started.outcome !== "accepted") {
       throw new Error("mounted wake authority was not accepted");
     }
-    const operation = issueMountedArtifactAuthorityOperationForFactory(wakeRuntime);
-    const prepared = await createPortableMountedAgentArtifactStoreProducer(operation).bind({
+    const prepared = await bindMountedEvidenceTriageHandoffForLocalAgentRuntimeFactory({
+      wakeRuntime,
       taskId: input.taskId,
-      attemptId: buildTaskAttemptId({
-        taskId: input.taskId,
-        runType: "evidence-triage",
-        retryGeneration: 0
-      }),
-      approvedRunId: input.runId,
-      runType: "evidence-triage",
-      retryGeneration: 0
+      runId: input.runId
     });
     await input.authority.revalidate();
     const issuedWakeRuntime = wakeRuntime;
@@ -506,7 +502,7 @@ async function verifyMountedEvidenceSourceBytes(
 export async function reconstructMountedEvidenceTriageTask(
   input: ReconstructMountedEvidenceTriageTaskInput
 ): Promise<AgentMountedTaskResultDto> {
-  const authority = await captureMountedTaskAuthority(input.handle);
+  const authority = await captureMountedTaskAuthority(input.handle, input.runtime);
   await authority.revalidate();
   const events = await input.handle.ledger.readAll();
   const projection = buildAgentProjection(events);
@@ -639,7 +635,7 @@ export async function reconstructMountedEvidenceTriageTask(
 async function reconstructMountedWaitingEvidenceTriageTask(
   input: ReconstructMountedEvidenceTriageTaskInput
 ): Promise<AgentMountedTaskResultDto> {
-  const authority = await captureMountedTaskAuthority(input.handle);
+  const authority = await captureMountedTaskAuthority(input.handle, input.runtime);
   await authority.revalidate();
   const events = await input.handle.ledger.readAll();
   const projection = buildAgentProjection(events);
@@ -896,19 +892,30 @@ async function suspendMountedTaskForRemoteApproval(input: RunMountedEvidenceTria
   });
 }
 
-async function captureMountedTaskAuthority(handle: LocalRuntimeHandle): Promise<MountedTaskAuthority> {
-  let inspected: ReturnType<typeof inspectFactoryIssuedMountedRuntimeCapture>;
+async function captureMountedTaskAuthority(
+  handle: LocalRuntimeHandle,
+  runtime: LocalAgentRuntime
+): Promise<MountedTaskAuthority> {
+  let capturedWorkspace: MountedPortableWorkspace;
   let capturedManifestBytes: Buffer;
   let capturedManifestHash: ContentHash;
   let capturedActiveLocksHash: ContentHash;
   let capturedPolicy: MountedResidentPolicySnapshot;
   try {
-    inspected = inspectFactoryIssuedMountedRuntimeCapture(captureFactoryIssuedMountedRuntime(handle));
-    capturedManifestBytes = await readFile(inspected.mountedWorkspace.manifestPath);
+    assertMountedResidentTaskRuntimeBinding({ handle, runtime });
+    if (handle.config.storage.strategy !== "portable-workspace" || handle.mountedWorkspace === undefined ||
+      handle.config.storage.workspaceRoot !== handle.mountedWorkspace.rootDir ||
+      handle.config.storage.sqlitePath !== handle.mountedWorkspace.paths.ledgerPath ||
+      handle.config.storage.expectedWorkspaceId !== undefined &&
+        handle.config.storage.expectedWorkspaceId !== handle.mountedWorkspace.workspaceId) {
+      throw new Error("portable-runtime-binding-mismatch");
+    }
+    capturedWorkspace = handle.mountedWorkspace;
+    capturedManifestBytes = await readFile(capturedWorkspace.manifestPath);
     capturedManifestHash = hashBytes(capturedManifestBytes);
-    const events = await inspected.ledger.readAll();
+    const events = await handle.ledger.readAll();
     const projection = buildAgentProjection(events);
-    capturedPolicy = mountedResidentPolicySnapshot(events, inspected.mountedWorkspace.workspaceId);
+    capturedPolicy = mountedResidentPolicySnapshot(events, capturedWorkspace.workspaceId);
     capturedActiveLocksHash = activeLocksHash(projection);
     if (!capturedPolicy.allowedRunTypes.includes("evidence-triage")) {
       throw new Error("policy-excludes-evidence-triage");
@@ -919,8 +926,15 @@ async function captureMountedTaskAuthority(handle: LocalRuntimeHandle): Promise<
   } catch {
     throw mountedConflict("A current authenticated portable workspace mount is required.");
   }
-  const capturedWorkspace = inspected.mountedWorkspace;
   const revalidate = async (): Promise<void> => {
+    try {
+      assertMountedResidentTaskRuntimeBinding({ handle, runtime });
+    } catch {
+      throw mountedConflict("The factory-bound mounted resident runtime is no longer current.");
+    }
+    if (handle.mountedWorkspace !== capturedWorkspace) {
+      throw mountedConflict("The authenticated portable workspace mount is unavailable or changed.");
+    }
     const mounted = mountPortableWorkspace({
       rootDir: capturedWorkspace.rootDir,
       expectedWorkspaceId: capturedWorkspace.workspaceId
@@ -937,7 +951,7 @@ async function captureMountedTaskAuthority(handle: LocalRuntimeHandle): Promise<
     if (currentManifestHash !== capturedManifestHash) {
       throw mountedConflict("The authenticated portable workspace mount is stale.");
     }
-    const events = await inspected.ledger.readAll();
+    const events = await handle.ledger.readAll();
     const projection = buildAgentProjection(events);
     const currentPolicy = mountedResidentPolicySnapshot(events, capturedWorkspace.workspaceId);
     if (currentPolicy.eventId !== capturedPolicy.eventId ||
