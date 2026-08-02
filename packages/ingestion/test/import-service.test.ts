@@ -11,7 +11,8 @@ import { IngestionImportService } from "../src/import-service.js";
 
 let dir: string;
 
-const actor = { id: "actor_system", kind: "system" as const, label: "Importer" };
+const actor = { id: "actor_import_approver", kind: "human" as const, label: "Import Approver" };
+const systemActor = { id: "actor_import_executor", kind: "system" as const, label: "Import Executor" };
 
 function contentHashFor(content: string): `sha256:${string}` {
   return `sha256:${createHash("sha256").update(content).digest("hex")}`;
@@ -30,6 +31,45 @@ afterEach(() => {
 });
 
 describe("IngestionImportService", () => {
+  it("requires a matching human approver while still allowing system import execution", async () => {
+    const ledger = new InMemoryEventLedger();
+    const blobStore = new FileBlobStore(dir);
+    const humanService = new IngestionImportService({ ledger, blobStore, actor });
+    const systemService = new IngestionImportService({ ledger, blobStore, actor: systemActor });
+
+    await expect(humanService.approveImport({
+      sourceCollectionId: "src_drive_001",
+      scanBatchId: "scan_001",
+      importBatchId: "imp_mismatched_human",
+      approvedBy: "actor_other_human"
+    })).rejects.toThrow("Raw import approval requires the configured human service actor.");
+    await expect(systemService.approveImport({
+      sourceCollectionId: "src_drive_001",
+      scanBatchId: "scan_001",
+      importBatchId: "imp_configured_system",
+      approvedBy: systemActor.id
+    })).rejects.toThrow("Raw import approval requires the configured human service actor.");
+    expect(await ledger.readAll()).toEqual([]);
+
+    await humanService.approveImport({
+      sourceCollectionId: "src_drive_001",
+      scanBatchId: "scan_001",
+      importBatchId: "imp_system_execution",
+      approvedBy: actor.id
+    });
+    await expect(systemService.importApprovedOccurrences({
+      sourceCollectionId: "src_drive_001",
+      scanBatchId: "scan_001",
+      importBatchId: "imp_system_execution",
+      occurrences: [{
+        occurrenceId: "occ_system_execution",
+        content: Buffer.from("system execution"),
+        sourcePath: "/source/system.txt",
+        mediaType: "text/plain"
+      }]
+    })).resolves.toMatchObject({ totals: { evidenceCreated: 1, occurrencesLinked: 1 } });
+  });
+
   it("requires raw import approval before evidence creation", async () => {
     const ledger = new InMemoryEventLedger();
     const service = new IngestionImportService({
@@ -57,6 +97,48 @@ describe("IngestionImportService", () => {
     expect(await ledger.readAll()).toHaveLength(0);
   });
 
+  it("rejects a stored raw approval whose actor does not match approvedBy at consume time", async () => {
+    const ledger = new InMemoryEventLedger();
+    const service = new IngestionImportService({
+      ledger,
+      blobStore: new FileBlobStore(dir),
+      actor: systemActor
+    });
+    await ledger.append({
+      type: "ingestion.import.approved",
+      version: 1,
+      streamId: "ingestion_import_src_drive_001_scan_001_imp_forged_actor",
+      context: {
+        actor: systemActor,
+        occurredAt: "2026-08-01T12:00:00.000Z",
+        correlationId: "corr_imp_forged_actor",
+        coreVersion: "0.1.0",
+        packVersions: { core: "0.1.0", ingestion: "0.1.0" }
+      },
+      payload: {
+        importBatchId: "imp_forged_actor",
+        scanBatchId: "scan_001",
+        sourceCollectionId: "src_drive_001",
+        approvedBy: "actor_other_human",
+        approvedAt: "2026-08-01T12:00:00.000Z"
+      }
+    });
+    const eventsBeforeImport = await ledger.readAll();
+
+    await expect(service.importApprovedOccurrences({
+      sourceCollectionId: "src_drive_001",
+      scanBatchId: "scan_001",
+      importBatchId: "imp_forged_actor",
+      occurrences: [{
+        occurrenceId: "occ_forged_actor",
+        content: Buffer.from("must not import"),
+        sourcePath: "/source/forged.txt",
+        mediaType: "text/plain"
+      }]
+    })).rejects.toThrow(/approval is required/i);
+    expect(await ledger.readAll()).toEqual(eventsBeforeImport);
+  });
+
   it("creates one evidence item for duplicate content with multiple occurrences", async () => {
     const ledger = new InMemoryEventLedger();
     const service = new IngestionImportService({
@@ -69,7 +151,7 @@ describe("IngestionImportService", () => {
       sourceCollectionId: "src_drive_001",
       scanBatchId: "scan_001",
       importBatchId: "imp_001",
-      approvedBy: "actor_investigator"
+      approvedBy: actor.id
     });
 
     const contentHash = `sha256:${createHash("sha256").update("same").digest("hex")}`;
@@ -164,7 +246,7 @@ describe("IngestionImportService", () => {
       sourceCollectionId: input.sourceCollectionId,
       scanBatchId: input.scanBatchId,
       importBatchId: input.importBatchId,
-      approvedBy: "actor_investigator"
+      approvedBy: actor.id
     });
     const firstResult = await service.importApprovedOccurrences(input);
     const eventsAfterFirstImport = await ledger.readAll();
@@ -191,7 +273,7 @@ describe("IngestionImportService", () => {
       sourceCollectionId: "src_drive_001",
       scanBatchId: "scan_001",
       importBatchId: "imp_001",
-      approvedBy: "actor_investigator"
+      approvedBy: actor.id
     });
     await service.importApprovedOccurrences({
       sourceCollectionId: "src_drive_001",
@@ -211,7 +293,7 @@ describe("IngestionImportService", () => {
       sourceCollectionId: "src_drive_001",
       scanBatchId: "scan_002",
       importBatchId: "imp_002",
-      approvedBy: "actor_investigator"
+      approvedBy: actor.id
     });
     const result = await service.importApprovedOccurrences({
       sourceCollectionId: "src_drive_001",
@@ -251,7 +333,7 @@ describe("IngestionImportService", () => {
       sourceCollectionId: "src_drive_001",
       scanBatchId: "scan_001",
       importBatchId: "imp_001",
-      approvedBy: "actor_investigator"
+      approvedBy: actor.id
     });
 
     await expect(
@@ -285,7 +367,7 @@ describe("IngestionImportService", () => {
       sourceCollectionId: "src_drive_001",
       scanBatchId: "scan_001",
       importBatchId: "imp_001",
-      approvedBy: "actor_investigator"
+      approvedBy: actor.id
     });
     await evidenceService.ingest({
       evidenceId: alphaEvidenceId,
@@ -363,7 +445,7 @@ describe("IngestionImportService", () => {
       sourceCollectionId: "src_drive_001",
       scanBatchId: "scan_001",
       importBatchId: "imp_001",
-      approvedBy: "actor_investigator"
+      approvedBy: actor.id
     });
     const contentHash = contentHashFor("same");
     await service.importApprovedOccurrences({

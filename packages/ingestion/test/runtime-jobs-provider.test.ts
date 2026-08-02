@@ -21,7 +21,7 @@ describe("IngestionRuntime jobs, retry, provider approval, and diagnostics", () 
       sourceCollectionId: "src_drive_001",
       scanBatchId: "scan_001",
       importBatchId: "imp_001",
-      approvedBy: "actor_investigator"
+      approvedBy: actor.id
     });
     await runtime.importApproved({
       sourceCollectionId: "src_drive_001",
@@ -77,7 +77,7 @@ describe("IngestionRuntime jobs, retry, provider approval, and diagnostics", () 
       sourceCollectionId: "src_drive_001",
       importBatchId: "imp_001",
       provider: { name: "mistral-document-ai", version: "0.1.0" },
-      approvedBy: "actor_investigator",
+      approvedBy: actor.id,
       eligibleMediaTypes: ["application/pdf"],
       maxBytesPerFile: 50000000
     });
@@ -90,6 +90,53 @@ describe("IngestionRuntime jobs, retry, provider approval, and diagnostics", () 
     expect(providerParse).not.toHaveBeenCalled();
   });
 
+  it("rejects provider approval from a mismatched human or configured system actor without provider use", async () => {
+    const { runtime, workspace, providerParse } = await preparedImportedRuntime();
+    const eventsBeforeApproval = await workspace.ledger.readAll();
+
+    const mismatchedHuman = await runtime.approveProviderParsing({
+      providerJobId: "provider_actor_mismatch",
+      sourceCollectionId: "src_drive_001",
+      importBatchId: "imp_001",
+      provider: { name: "mistral-document-ai", version: "0.1.0" },
+      approvedBy: "actor_other_human",
+      eligibleMediaTypes: ["application/pdf"],
+      maxBytesPerFile: 50000000
+    });
+    const systemActor = { id: "actor_provider_system", kind: "system" as const, label: "Provider System" };
+    const systemRuntime = createIngestionRuntime({
+      mountedWorkspace: workspace,
+      actor: systemActor,
+      providerRegistry: { "mistral-document-ai": { parse: providerParse } }
+    });
+    const configuredSystem = await systemRuntime.approveProviderParsing({
+      providerJobId: "provider_actor_system",
+      sourceCollectionId: "src_drive_001",
+      importBatchId: "imp_001",
+      provider: { name: "mistral-document-ai", version: "0.1.0" },
+      approvedBy: systemActor.id,
+      eligibleMediaTypes: ["application/pdf"],
+      maxBytesPerFile: 50000000
+    });
+
+    const expectedError = {
+      ok: false,
+      error: {
+        code: "INGESTION_PROVIDER_APPROVAL_REQUIRED",
+        message: "Provider parsing approval requires the configured human runtime actor.",
+        allowedRepairActions: ["retry provider approval as the configured human runtime actor"],
+        diagnostics: []
+      }
+    };
+    expect(mismatchedHuman).toEqual(expectedError);
+    expect(configuredSystem).toEqual(expectedError);
+    expect(await workspace.ledger.readAll()).toEqual(eventsBeforeApproval);
+    expect(providerParse).not.toHaveBeenCalled();
+    expect(JSON.stringify([mismatchedHuman, configuredSystem])).not.toMatch(
+      /actor_other_human|actor_provider_system|cestus-ingestion-runtime-/i
+    );
+  });
+
   it("rejects provider approval before the target import completes", async () => {
     const { runtime, workspace, providerParse } = await preparedRuntime();
 
@@ -98,7 +145,7 @@ describe("IngestionRuntime jobs, retry, provider approval, and diagnostics", () 
       sourceCollectionId: "src_drive_001",
       importBatchId: "imp_001",
       provider: { name: "mistral-document-ai", version: "0.1.0" },
-      approvedBy: "actor_investigator",
+      approvedBy: actor.id,
       eligibleMediaTypes: ["application/pdf"],
       maxBytesPerFile: 50000000
     });
@@ -200,7 +247,7 @@ async function preparedImportedRuntime() {
     sourceCollectionId: "src_drive_001",
     scanBatchId: "scan_001",
     importBatchId: "imp_001",
-    approvedBy: "actor_investigator"
+    approvedBy: actor.id
   });
   await prepared.runtime.importApproved({
     sourceCollectionId: "src_drive_001",

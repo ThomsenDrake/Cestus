@@ -8,7 +8,7 @@ import { LegacyRawImportService } from "../src/legacy-import-service.js";
 
 let dir: string;
 
-const actor = { id: "actor_system", kind: "system" as const, label: "Legacy importer" };
+const actor = { id: "actor_legacy_importer", kind: "human" as const, label: "Legacy importer" };
 const metadataFile = {
   occurrenceId: "occ_legacy_claims",
   sourcePath: "ontology/claims.json",
@@ -57,7 +57,7 @@ describe("LegacyRawImportService", () => {
       sourceCollectionId: "src_old_cestus",
       scanBatchId: "scan_old_cestus_001",
       importBatchId: "imp_old_cestus_001",
-      approvedBy: "actor_investigator"
+      approvedBy: actor.id
     });
     await service.importReportFiles({
       sourceCollectionId: "src_old_cestus",

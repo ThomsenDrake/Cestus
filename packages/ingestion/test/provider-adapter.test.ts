@@ -11,6 +11,32 @@ afterEach(() => {
 });
 
 describe("provider parser approval gate", () => {
+  it("rejects mismatched human and configured system approval actors without appending", async () => {
+    const ledger = new InMemoryEventLedger();
+    const humanApprovals = new ProviderParseApprovalService({ ledger, actor });
+    const systemActor = { id: "actor_provider_service_system", kind: "system" as const, label: "Provider System" };
+    const systemApprovals = new ProviderParseApprovalService({ ledger, actor: systemActor });
+    const input = {
+      sourceCollectionId: "src_drive_001",
+      importBatchId: "imp_001",
+      provider: { name: "mistral-document-ai", version: "0.1.0" },
+      eligibleMediaTypes: ["application/pdf"],
+      maxBytesPerFile: 50000000
+    };
+
+    await expect(humanApprovals.approveProviderBatch({
+      ...input,
+      providerJobId: "provider_mismatched_human",
+      approvedBy: "actor_other_human"
+    })).rejects.toThrow("Provider parsing approval requires the configured human service actor.");
+    await expect(systemApprovals.approveProviderBatch({
+      ...input,
+      providerJobId: "provider_configured_system",
+      approvedBy: systemActor.id
+    })).rejects.toThrow("Provider parsing approval requires the configured human service actor.");
+    expect(await ledger.readAll()).toEqual([]);
+  });
+
   it("records batch approval before provider parsing is allowed without persisting secret-shaped fields", async () => {
     const ledger = new InMemoryEventLedger();
     const approvals = new ProviderParseApprovalService({

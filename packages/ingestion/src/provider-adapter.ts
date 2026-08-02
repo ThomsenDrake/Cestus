@@ -91,6 +91,7 @@ export class ProviderParseApprovalService {
     input: ApproveProviderBatchInput
   ): Promise<KnowledgeEventOf<"ingestion.provider.approved">> {
     const parsed = this.parseInput(approveProviderBatchInputSchema, input, "provider approval");
+    this.assertHumanApprovalActor(parsed.approvedBy);
     const streamId = this.providerStreamId(parsed);
     const existingEvents = await this.dependencies.ledger.readStream(streamId);
     const existingApproval = existingEvents.find(
@@ -133,6 +134,12 @@ export class ProviderParseApprovalService {
     }
 
     return appended;
+  }
+
+  private assertHumanApprovalActor(approvedBy: string): void {
+    if (this.dependencies.actor.kind !== "human" || approvedBy !== this.dependencies.actor.id) {
+      throw new Error("Provider parsing approval requires the configured human service actor.");
+    }
   }
 
   private parseInput<Schema extends z.ZodType>(schema: Schema, input: unknown, label: string): z.infer<Schema> {

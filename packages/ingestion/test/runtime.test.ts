@@ -81,6 +81,57 @@ describe("IngestionRuntime core workflows", () => {
     expect(scanned.eventIds).not.toContain((await workspace.ledger.readStream("ingestion_source_src_drive_001"))[0]?.id);
   });
 
+  it("rejects raw import approval from a mismatched human or configured system actor", async () => {
+    const workspace = createFakeMountedWorkspace();
+    roots.push(workspace.rootDir);
+    const sourceRoot = join(workspace.rootDir, "source");
+    mkdirSync(sourceRoot, { recursive: true });
+    writeFileSync(join(sourceRoot, "a.txt"), "alpha");
+    const humanRuntime = createIngestionRuntime({ mountedWorkspace: workspace, actor });
+    await humanRuntime.registerSource({
+      sourceCollectionId: "src_approval_actor_001",
+      label: "Approval actor fixture",
+      rootUri: `file://${sourceRoot}`,
+      sourceRoot
+    });
+    await humanRuntime.dryRunScan({
+      sourceCollectionId: "src_approval_actor_001",
+      scanBatchId: "scan_approval_actor_001"
+    });
+    const eventsBeforeApproval = await workspace.ledger.readAll();
+
+    const mismatchedHuman = await humanRuntime.approveRawImport({
+      sourceCollectionId: "src_approval_actor_001",
+      scanBatchId: "scan_approval_actor_001",
+      importBatchId: "imp_approval_actor_mismatch",
+      approvedBy: "actor_other_human"
+    });
+    const systemActor = { id: "actor_approval_system", kind: "system" as const, label: "Approval System" };
+    const systemRuntime = createIngestionRuntime({ mountedWorkspace: workspace, actor: systemActor });
+    const configuredSystem = await systemRuntime.approveRawImport({
+      sourceCollectionId: "src_approval_actor_001",
+      scanBatchId: "scan_approval_actor_001",
+      importBatchId: "imp_approval_actor_system",
+      approvedBy: systemActor.id
+    });
+
+    const expectedError = {
+      ok: false,
+      error: {
+        code: "INGESTION_IMPORT_APPROVAL_REQUIRED",
+        message: "Raw import approval requires the configured human runtime actor.",
+        allowedRepairActions: ["retry raw import approval as the configured human runtime actor"],
+        diagnostics: []
+      }
+    };
+    expect(mismatchedHuman).toEqual(expectedError);
+    expect(configuredSystem).toEqual(expectedError);
+    expect(await workspace.ledger.readAll()).toEqual(eventsBeforeApproval);
+    expect(JSON.stringify([mismatchedHuman, configuredSystem])).not.toMatch(
+      /actor_other_human|actor_approval_system|cestus-ingestion-runtime-/i
+    );
+  });
+
   it("builds a deduplicated evidence corpus without changing the read-only fixture or invoking a provider", async () => {
     const workspace = createFakeMountedWorkspace();
     roots.push(workspace.rootDir);
@@ -148,7 +199,7 @@ describe("IngestionRuntime core workflows", () => {
       sourceCollectionId: "src_corpus_001",
       scanBatchId: "scan_corpus_001",
       importBatchId: "imp_corpus_001",
-      approvedBy: "actor_investigator"
+      approvedBy: actor.id
     });
     await expect(workspace.blobStore.get(contentHash)).rejects.toThrow();
     expectReadOnlyFixture();
@@ -198,7 +249,7 @@ describe("IngestionRuntime core workflows", () => {
       sourceCollectionId: "src_corpus_001",
       importBatchId: "imp_corpus_missing",
       provider: { name: "fixture-provider", version: "0.1.0" },
-      approvedBy: "actor_investigator",
+      approvedBy: actor.id,
       eligibleMediaTypes: ["text/plain"],
       maxBytesPerFile: 1024
     });
@@ -212,7 +263,7 @@ describe("IngestionRuntime core workflows", () => {
       sourceCollectionId: "src_corpus_001",
       importBatchId: "imp_corpus_001",
       provider: { name: "fixture-provider", version: "0.1.0" },
-      approvedBy: "actor_investigator",
+      approvedBy: actor.id,
       eligibleMediaTypes: ["text/plain"],
       maxBytesPerFile: 1024
     });
@@ -243,7 +294,7 @@ describe("IngestionRuntime core workflows", () => {
       sourceCollectionId: "src_refresh_001",
       scanBatchId: "scan_refresh_001",
       importBatchId: "imp_refresh_001",
-      approvedBy: "actor_investigator"
+      approvedBy: actor.id
     });
     await runtime.importApproved({
       sourceCollectionId: "src_refresh_001",
@@ -258,7 +309,7 @@ describe("IngestionRuntime core workflows", () => {
       sourceCollectionId: "src_refresh_001",
       scanBatchId: "scan_refresh_002",
       importBatchId: "imp_refresh_002",
-      approvedBy: "actor_investigator"
+      approvedBy: actor.id
     });
     await runtime.importApproved({
       sourceCollectionId: "src_refresh_001",

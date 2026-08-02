@@ -3,6 +3,7 @@ import { mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { strToU8, zipSync } from "fflate";
 import { afterEach, describe, expect, it } from "vitest";
+import { InMemoryEventLedger } from "../../ontology/src/event-ledger.js";
 import { stableLocalFilesystemOccurrenceId } from "../src/local-filesystem.js";
 import { buildIngestionProjection } from "../src/projection.js";
 import { buildIngestionReviewDto } from "../src/read-api.js";
@@ -26,7 +27,7 @@ describe("IngestionRuntime stale-source import verification", () => {
       sourceCollectionId: "src_drive_001",
       scanBatchId: "scan_001",
       importBatchId: "imp_001",
-      approvedBy: "actor_investigator"
+      approvedBy: actor.id
     });
 
     expect(approved).toMatchObject({ ok: true, review: { latestImportBatchId: "imp_001" } });
@@ -98,6 +99,123 @@ describe("IngestionRuntime stale-source import verification", () => {
       "ingestion.import.approved",
       "ingestion.import.completed"
     ]);
+  });
+
+  it.each(["changed", "removed"] as const)(
+    "replays a completed import without source access when approved bytes are %s",
+    async (sourceState) => {
+      const { workspace, runtime, sourceRoot } = await preparedRuntime({ "a.txt": "alpha" });
+      await approve(runtime);
+      const first = await runtime.importApproved({
+        sourceCollectionId: "src_drive_001",
+        scanBatchId: "scan_001",
+        importBatchId: "imp_001"
+      });
+      expect(first.ok).toBe(true);
+      if (!first.ok) {
+        throw new Error("Expected the first approved import to complete");
+      }
+      const eventsAfterFirstImport = await workspace.ledger.readAll();
+      const blobsAfterFirstImport = readdirSync(join(workspace.rootDir, "blobs"), { recursive: true });
+
+      if (sourceState === "changed") {
+        writeFileSync(join(sourceRoot, "a.txt"), "changed");
+      } else {
+        rmSync(join(sourceRoot, "a.txt"));
+      }
+
+      const replay = await runtime.importApproved({
+        sourceCollectionId: "src_drive_001",
+        scanBatchId: "scan_001",
+        importBatchId: "imp_001"
+      });
+
+      expect(replay).toMatchObject({
+        ok: true,
+        importBatchId: "imp_001",
+        totals: first.totals,
+        eventIds: []
+      });
+      expect(await workspace.ledger.readAll()).toEqual(eventsAfterFirstImport);
+      expect(readdirSync(join(workspace.rootDir, "blobs"), { recursive: true })).toEqual(blobsAfterFirstImport);
+    }
+  );
+
+  it("still requires the exact raw approval before replaying a completed import", async () => {
+    const { workspace, runtime, sourceRoot } = await preparedRuntime({ "a.txt": "alpha" });
+    await approve(runtime);
+    const first = await runtime.importApproved({
+      sourceCollectionId: "src_drive_001",
+      scanBatchId: "scan_001",
+      importBatchId: "imp_001"
+    });
+    expect(first.ok).toBe(true);
+    const replayLedger = new InMemoryEventLedger();
+    for (const event of await workspace.ledger.readAll()) {
+      if (event.type !== "ingestion.import.approved") {
+        await replayLedger.append(event);
+      }
+    }
+    const eventsWithoutApproval = await replayLedger.readAll();
+    rmSync(join(sourceRoot, "a.txt"));
+    const replayRuntime = createIngestionRuntime({
+      mountedWorkspace: { ...workspace, ledger: replayLedger },
+      actor
+    });
+
+    const replay = await replayRuntime.importApproved({
+      sourceCollectionId: "src_drive_001",
+      scanBatchId: "scan_001",
+      importBatchId: "imp_001"
+    });
+
+    expect(replay).toMatchObject({
+      ok: false,
+      error: { code: "INGESTION_IMPORT_APPROVAL_REQUIRED" }
+    });
+    expect(await replayLedger.readAll()).toEqual(eventsWithoutApproval);
+  });
+
+  it("rejects a completed replay when the stored raw approval has forged actor identity", async () => {
+    const { workspace, runtime, sourceRoot } = await preparedRuntime({ "a.txt": "alpha" });
+    await approve(runtime);
+    const first = await runtime.importApproved({
+      sourceCollectionId: "src_drive_001",
+      scanBatchId: "scan_001",
+      importBatchId: "imp_001"
+    });
+    expect(first.ok).toBe(true);
+    const replayLedger = new InMemoryEventLedger();
+    const forgedActor = { id: "actor_forged_system", kind: "system" as const, label: "Forged System" };
+    for (const event of await workspace.ledger.readAll()) {
+      if (event.type === "ingestion.import.approved") {
+        await replayLedger.append({
+          ...event,
+          context: { ...event.context, actor: forgedActor },
+          payload: { ...event.payload, approvedBy: "actor_other_human" }
+        });
+      } else {
+        await replayLedger.append(event);
+      }
+    }
+    const eventsWithForgedApproval = await replayLedger.readAll();
+    rmSync(join(sourceRoot, "a.txt"));
+    const replayRuntime = createIngestionRuntime({
+      mountedWorkspace: { ...workspace, ledger: replayLedger },
+      actor
+    });
+
+    const replay = await replayRuntime.importApproved({
+      sourceCollectionId: "src_drive_001",
+      scanBatchId: "scan_001",
+      importBatchId: "imp_001"
+    });
+
+    expect(replay).toMatchObject({
+      ok: false,
+      error: { code: "INGESTION_IMPORT_APPROVAL_REQUIRED" }
+    });
+    expect(await replayLedger.readAll()).toEqual(eventsWithForgedApproval);
   });
 
   it("rejects missing regular files before blob writes", async () => {
@@ -427,7 +545,7 @@ async function approve(runtime: ReturnType<typeof createIngestionRuntime>) {
     sourceCollectionId: "src_drive_001",
     scanBatchId: "scan_001",
     importBatchId: "imp_001",
-    approvedBy: "actor_investigator"
+    approvedBy: actor.id
   });
 }
 
