@@ -1644,7 +1644,7 @@ function buildAcceptedGraphResolvedPack(input: {
     version: 1,
     generatedAt: input.now(),
     payload: input.payload,
-    safeSummary: "Provider-safe accepted graph projection",
+    safeSummary: "Provider-safe read-only graph projection",
     provenanceRefs: input.provenanceRefs,
     ...(input.manifest.sourceProjectionHighWaterMarks.graph === undefined
       ? {}

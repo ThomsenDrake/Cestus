@@ -84,7 +84,30 @@ function createFakeLocalProvider(): ModelProviderAdapter {
   return new FakeModelProvider({
     providerId: "provider_fake_local",
     modelFamilies: ["fake-local"],
-    responseText: "Fake local provider ready."
+    responseText: "Fake local provider ready.",
+    supportsStructuredOutput: true,
+    responseTextForRequest: deterministicLocalSpecialistResponse
+  });
+}
+
+function deterministicLocalSpecialistResponse(request: {
+  readonly invocationId: string;
+  readonly inputText?: string;
+}): string {
+  if (!request.invocationId.endsWith("_evidence_triage")) {
+    return "Fake local provider ready.";
+  }
+  return JSON.stringify({
+    dossierSummary: "Mounted evidence metadata was triaged into review-only local derivative artifacts.",
+    safeSummaries: [],
+    governanceFlags: [],
+    duplicateGroups: [],
+    evidenceGaps: [],
+    assertionCandidates: [],
+    requestProviderParseApproval: false,
+    requestGovernanceReview: false,
+    requestQuarantineReview: false,
+    requestAssertionProposalReview: false
   });
 }
 

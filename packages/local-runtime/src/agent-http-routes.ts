@@ -21,6 +21,12 @@ import {
 } from "./agent-runtime-factory.js";
 import { buildLocalAgentProviderReadiness } from "./agent-provider-readiness.js";
 import { handleAgentOntologyBootstrapRoute } from "./agent-ontology-bootstrap-routes.js";
+import {
+  MountedResidentTaskError,
+  reconstructMountedEvidenceTriageTask,
+  runMountedEvidenceTriageTask,
+  type MountedEvidenceTriageProviderMode
+} from "./agent-runtime-mounted-task.js";
 import type { LocalRuntimeHandle } from "./runtime-factory.js";
 
 const approvalDetailSchemaVersion = "agent-approval-detail.v1" as const;
@@ -33,6 +39,11 @@ const localApprovalGatewayActor: ActorRef = Object.freeze({
   id: "actor_local_runtime_approval_gateway",
   kind: "system",
   label: "Local Runtime Approval Gateway"
+});
+const localMountedResidentActor: ActorRef = Object.freeze({
+  id: "agent_default",
+  kind: "agent",
+  label: "Resident Cestus Agent"
 });
 
 export interface HandleAgentHttpRouteInput {
@@ -60,6 +71,42 @@ export async function handleAgentHttpRoute(
     }
 
     const runtimeFactory = input.agentRuntimeFactory ?? defaultLocalAgentRuntimeFactory;
+    const mountedEvidenceTriageRoute = matchMountedEvidenceTriageRoute(path);
+    if (mountedEvidenceTriageRoute !== undefined) {
+      try {
+        if (input.request.method === "POST" && mountedEvidenceTriageRoute.kind === "execute") {
+          const payload = parseJsonObjectBody(input.request.body, invalidMountedEvidenceTriageBodyDiagnostic);
+          if (!payload.ok) return json(400, payload.body);
+          const command = mountedEvidenceTriageInputFromBody(payload.value);
+          if (command === undefined) return json(400, invalidMountedEvidenceTriageBodyDiagnostic());
+          const mountedRuntime = runtimeFactory({
+            handle: input.handle,
+            actor: localMountedResidentActor,
+            now: input.now
+          });
+          return json(200, await runMountedEvidenceTriageTask({
+            handle: input.handle,
+            runtime: mountedRuntime,
+            now: input.now,
+            taskId: mountedEvidenceTriageRoute.taskId,
+            ...command
+          }));
+        }
+        if (input.request.method === "GET" && mountedEvidenceTriageRoute.kind === "readback") {
+          return json(200, await reconstructMountedEvidenceTriageTask({
+            handle: input.handle,
+            taskId: mountedEvidenceTriageRoute.taskId,
+            runId: mountedEvidenceTriageRoute.runId
+          }));
+        }
+      } catch (error) {
+        if (error instanceof MountedResidentTaskError) {
+          return json(error.status, diagnostic(error.safeMessage, error.allowedRepairActions));
+        }
+        throw error;
+      }
+    }
+
     const runtime = runtimeFactory({
       handle: input.handle,
       actor: input.actor,
@@ -361,13 +408,18 @@ export async function handleAgentHttpRoute(
         return json(409, residentIdentityNotReadyDiagnostic());
       }
 
-      const status = await runtime.status();
+      const taskRuntime = runtimeFactory({
+        handle: input.handle,
+        actor: localMountedResidentActor,
+        now: input.now
+      });
+      const status = await taskRuntime.status();
       if (status.tasks.some((task) => task.taskId === taskInput.taskId)) {
         return json(409, duplicateTaskDiagnostic());
       }
 
       try {
-        return json(200, await runtime.createTask({
+        return json(200, await taskRuntime.createTask({
           ...taskInput,
           requestedBy: input.actor.id
         }));
@@ -453,6 +505,43 @@ function taskInputFromBody(value: Record<string, unknown>): {
     priority,
     ...(value.description === undefined ? {} : { description: value.description })
   };
+}
+
+function mountedEvidenceTriageInputFromBody(value: Record<string, unknown>): {
+  readonly runId: string;
+  readonly evidenceIds: readonly string[];
+  readonly providerMode: MountedEvidenceTriageProviderMode;
+} | undefined {
+  if (!hasOnlyKeys(value, ["runId", "evidenceIds", "providerMode"]) ||
+    typeof value.runId !== "string" || !/^run_[a-zA-Z0-9_-]+$/.test(value.runId) ||
+    !Array.isArray(value.evidenceIds) || value.evidenceIds.length === 0 ||
+    value.evidenceIds.some((evidenceId) => typeof evidenceId !== "string" || !/^ev_[a-zA-Z0-9_-]+$/.test(evidenceId)) ||
+    new Set(value.evidenceIds).size !== value.evidenceIds.length ||
+    (value.providerMode !== "local-fake" && value.providerMode !== "remote-gated")) {
+    return undefined;
+  }
+  return Object.freeze({
+    runId: value.runId,
+    evidenceIds: Object.freeze([...value.evidenceIds] as string[]),
+    providerMode: value.providerMode
+  });
+}
+
+function matchMountedEvidenceTriageRoute(path: string):
+  | { readonly kind: "execute"; readonly taskId: string }
+  | { readonly kind: "readback"; readonly taskId: string; readonly runId: string }
+  | undefined {
+  const segments = path.split("/").filter(Boolean);
+  if (segments.length === 5 && segments[0] === "api" && segments[1] === "agent" &&
+    segments[2] === "tasks" && segments[4] === "evidence-triage" && isAgentTaskId(segments[3])) {
+    return Object.freeze({ kind: "execute" as const, taskId: segments[3] });
+  }
+  if (segments.length === 6 && segments[0] === "api" && segments[1] === "agent" &&
+    segments[2] === "tasks" && segments[4] === "evidence-triage" && isAgentTaskId(segments[3]) &&
+    typeof segments[5] === "string" && /^run_[a-zA-Z0-9_-]+$/.test(segments[5])) {
+    return Object.freeze({ kind: "readback" as const, taskId: segments[3], runId: segments[5] });
+  }
+  return undefined;
 }
 
 function memoryRecordInputFromBody(value: Record<string, unknown>) {
@@ -589,6 +678,18 @@ function invalidTaskBodyDiagnostic(): {
 } {
   return diagnostic("Agent task body is invalid.", [
     "send taskId, title, and optional priority as a JSON object"
+  ]);
+}
+
+function invalidMountedEvidenceTriageBodyDiagnostic(): {
+  readonly ok: false;
+  readonly diagnostic: {
+    readonly message: string;
+    readonly allowedRepairActions: readonly string[];
+  };
+} {
+  return diagnostic("Mounted evidence triage body is invalid.", [
+    "send runId, unique evidenceIds, and providerMode as a JSON object"
   ]);
 }
 

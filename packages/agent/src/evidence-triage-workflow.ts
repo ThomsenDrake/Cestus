@@ -23,12 +23,15 @@ import {
   invokeSpecialistModel,
   normalizeSpecialistJsonValue,
   prepareSpecialistRun,
+  recordAuthorityBoundSpecialistHandoff,
   recordSpecialistHandoff,
   writeSpecialistDerivativeArtifact,
   type SpecialistDerivativeArtifactStore,
   type SpecialistHandoffManifestStore,
   type SpecialistRunnerBaseInput
 } from "./specialist-runner-kernel.js";
+import type { MountedSpecialistHandoffAuthorityWitness } from "./specialist-handoff-authority.js";
+import type { SpecialistHandoffReadback } from "./specialist-handoff-projection.js";
 import type { AgentToolPreview } from "./tool-gateway.js";
 
 const evidenceIdSchema = z.string().regex(/^ev_[a-zA-Z0-9_-]+$/);
@@ -37,11 +40,18 @@ type EvidenceTriageModelOutput = EvidenceTriageClassifyOutput;
 export interface RunEvidenceTriageWorkflowInput extends SpecialistRunnerBaseInput {
   readonly evidenceIds: readonly string[];
   readonly providerParseApprovalPreview?: AgentToolPreview;
+  /** Mounted store used only for canonical final-output material. */
+  readonly handoffMaterialStore?: SpecialistHandoffManifestStore;
+  /** Mounted store used for dependency, derivative, and V2 manifest readback. */
+  readonly handoffManifestStore?: SpecialistHandoffManifestStore;
+  /** Factory-issued one-shot authority for the exact mounted task/run lifecycle. */
+  readonly handoffAuthorityWitness?: MountedSpecialistHandoffAuthorityWitness;
 }
 
 export interface RunEvidenceTriageWorkflowResult {
   readonly handoff: LegacySpecialistWorkflowHandoffDto;
   readonly eventIds: readonly string[];
+  readonly readback?: SpecialistHandoffReadback;
 }
 
 interface NormalizedEvidenceTriagePreviews {
@@ -104,17 +114,19 @@ export async function runEvidenceTriageWorkflow(
   } catch {
     return await failedDerivativeArtifactResult(input, prepared, invocation.eventIds);
   }
-  const step = await appendSpecialistDerivativeStep({
-    ledger: input.ledger,
-    actor: input.actor,
-    now: input.now,
-    runId: input.runId,
-    stepId: "step_evidence_triage_local_artifacts",
-    invocationId,
-    summary: "Created local evidence triage dossier, summaries, governance flags, duplicate groups, gaps, and candidate bundle hashes for review.",
-    inputArtifactHashes: [prepared.promptArtifact.manifest.inputArtifactHash, invocation.outputArtifactHash],
-    outputArtifactHashes: Object.values(artifactHashes)
-  });
+  const step = input.handoffAuthorityWitness === undefined
+    ? await appendSpecialistDerivativeStep({
+        ledger: input.ledger,
+        actor: input.actor,
+        now: input.now,
+        runId: input.runId,
+        stepId: "step_evidence_triage_local_artifacts",
+        invocationId,
+        summary: "Created local evidence triage dossier, summaries, governance flags, duplicate groups, gaps, and candidate bundle hashes for review.",
+        inputArtifactHashes: [prepared.promptArtifact.manifest.inputArtifactHash, invocation.outputArtifactHash],
+        outputArtifactHashes: Object.values(artifactHashes)
+      })
+    : undefined;
   const nextSafeActions = localReviewNextActions(input, output);
   const handoff = parseLegacySpecialistWorkflowHandoff({
     schemaVersion: "agent-specialist-handoff.v1",
@@ -143,18 +155,24 @@ export async function runEvidenceTriageWorkflow(
   });
   const publication = await publishEvidenceTriageDurableHandoff(input, prepared, handoff, {
     sourceEventIds: previews.sourceBindings.relatedEventIds,
-    relatedEventIds: [...invocation.eventIds, step.id, ...previews.sourceBindings.relatedEventIds]
+    relatedEventIds: [
+      ...invocation.eventIds,
+      ...(step === undefined ? [] : [step.id]),
+      ...previews.sourceBindings.relatedEventIds
+    ]
   });
   return Object.freeze({
     handoff,
     eventIds: Object.freeze([
       ...invocation.eventIds,
-      step.id,
+      ...(step === undefined ? [] : [step.id]),
       publication.finalOutput.id,
       publication.recorded.prepared.id,
       publication.recorded.recorded.id,
-      publication.finalized.terminal.id
-    ])
+      publication.terminal.id,
+      ...(publication.taskStatus === undefined ? [] : [publication.taskStatus.id])
+    ]),
+    ...(publication.readback === undefined ? {} : { readback: publication.readback })
   });
 }
 
@@ -167,8 +185,18 @@ async function publishEvidenceTriageDurableHandoff(
     readonly relatedEventIds: readonly string[];
   }
 ) {
-  const handoffStore = evidenceTriageHandoffStore(input.derivativeStore);
-  await seedEvidenceTriageHandoffReferences(handoffStore, prepared, handoff.outputArtifacts);
+  const legacyStore = evidenceTriageHandoffStore(input.derivativeStore);
+  const materialStore = input.handoffMaterialStore ?? legacyStore;
+  const manifestStore = input.handoffManifestStore ?? legacyStore;
+  const authorityInputs = [
+    input.handoffMaterialStore,
+    input.handoffManifestStore,
+    input.handoffAuthorityWitness
+  ];
+  if (authorityInputs.some((value) => value !== undefined) && authorityInputs.some((value) => value === undefined)) {
+    throw new Error("Evidence triage mounted handoff requires complete material, manifest, and authority inputs.");
+  }
+  await seedEvidenceTriageHandoffReferences(manifestStore, prepared, handoff.outputArtifacts);
   const handoffMaterial = buildSpecialistHandoffMaterial({
     status: handoff.status,
     safeSummary: handoff.safeSummary,
@@ -184,16 +212,34 @@ async function publishEvidenceTriageDurableHandoff(
   });
   const finalOutput = await appendSpecialistFinalOutputStep({
     ledger: input.ledger,
-    materialStore: handoffStore,
+    materialStore,
     actor: input.actor,
     now: input.now,
     runId: input.runId,
     taskId: input.taskId,
     handoffMaterial
   });
+  if (input.handoffAuthorityWitness !== undefined) {
+    const recorded = await recordAuthorityBoundSpecialistHandoff({
+      ledger: input.ledger,
+      manifestStore,
+      actor: input.actor,
+      now: input.now,
+      runId: input.runId,
+      taskId: input.taskId,
+      handoffAuthorityWitness: input.handoffAuthorityWitness
+    });
+    return Object.freeze({
+      finalOutput,
+      recorded,
+      terminal: recorded.terminal,
+      taskStatus: recorded.taskStatus,
+      readback: recorded.readback
+    });
+  }
   const recorded = await recordSpecialistHandoff({
     ledger: input.ledger,
-    manifestStore: handoffStore,
+    manifestStore,
     actor: input.actor,
     now: input.now,
     runId: input.runId,
@@ -205,7 +251,13 @@ async function publishEvidenceTriageDurableHandoff(
     now: input.now,
     recorded
   });
-  return Object.freeze({ finalOutput, recorded, finalized });
+  return Object.freeze({
+    finalOutput,
+    recorded,
+    terminal: finalized.terminal,
+    taskStatus: undefined,
+    readback: undefined
+  });
 }
 
 function parseModelOutput(outputText: string) {
@@ -870,8 +922,10 @@ async function failedModelOutputResult(
       publication.finalOutput.id,
       publication.recorded.prepared.id,
       publication.recorded.recorded.id,
-      publication.finalized.terminal.id
-    ])
+      publication.terminal.id,
+      ...(publication.taskStatus === undefined ? [] : [publication.taskStatus.id])
+    ]),
+    ...(publication.readback === undefined ? {} : { readback: publication.readback })
   });
 }
 
@@ -918,8 +972,10 @@ async function failedDerivativeArtifactResult(
       publication.finalOutput.id,
       publication.recorded.prepared.id,
       publication.recorded.recorded.id,
-      publication.finalized.terminal.id
-    ])
+      publication.terminal.id,
+      ...(publication.taskStatus === undefined ? [] : [publication.taskStatus.id])
+    ]),
+    ...(publication.readback === undefined ? {} : { readback: publication.readback })
   });
 }
 
