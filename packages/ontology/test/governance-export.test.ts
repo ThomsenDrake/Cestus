@@ -238,6 +238,29 @@ describe("governed exports and reports", () => {
     }
   });
 
+  it("rejects AWS access-key-shaped evidence and event references without echoing them", () => {
+    const awsAccessKeyShape = "AKIA1234567890ABCDEF";
+    const classified = classifiedEvidence("ev_aws_event_ref", ["public_safe"]);
+    const ingestion = classified[0]!;
+    const classification = classified[1]!;
+    const attempts = [
+      () => buildGovernanceExportPreview(goldenGovernanceLedgerEvents, [`ev_${awsAccessKeyShape}`]),
+      () => buildGovernanceExportPreview(
+        [ingestion, { ...classification, id: `evt_${awsAccessKeyShape}` }],
+        ["ev_aws_event_ref"]
+      )
+    ];
+
+    for (const attempt of attempts) {
+      expect(attempt).toThrow("Governance export preview requires safe evidence and event references");
+      try {
+        attempt();
+      } catch (error) {
+        expect(String(error)).not.toContain(awsAccessKeyShape);
+      }
+    }
+  });
+
   it("excludes human-reviewed public-safe state when its classification event is missing", () => {
     const evidence = ingestedEvidence("ev_reviewed_without_classification");
     const review = reviewedEvidenceWithoutClassification(evidence);
