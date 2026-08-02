@@ -142,6 +142,55 @@ describe("local runtime auth and explicit seed", () => {
     });
   });
 
+  it("keeps governance review append behind the existing local runtime auth boundary", async () => {
+    const handler = testHandler({
+      config: resolveLocalRuntimeConfig({
+        cwd: tempDir(),
+        env: {
+          CESTUS_LOCAL_BIND: "tailnet",
+          CESTUS_LOCAL_HOST: "100.126.143.105",
+          CESTUS_LOCAL_AUTH_TOKEN: "secret-local-token"
+        }
+      }),
+      actor,
+      now: fixedNow
+    });
+    const body = JSON.stringify({
+      evidenceRef: "ev_auth_governance_review",
+      tag: "public_safe",
+      action: "add",
+      rationale: "Human review confirmed preview eligibility."
+    });
+
+    const rejected = await handler({
+      method: "POST",
+      url: "/api/evidence/governance-reviews",
+      body
+    });
+    expect(rejected.status).toBe(401);
+
+    const wrongToken = await handler({
+      method: "POST",
+      url: "/api/evidence/governance-reviews",
+      headers: { authorization: "Bearer wrong-token" },
+      body
+    });
+    expect(wrongToken.status).toBe(401);
+
+    const acceptedAtBoundary = await handler({
+      method: "POST",
+      url: "/api/evidence/governance-reviews",
+      headers: { authorization: "Bearer secret-local-token" },
+      body
+    });
+    expect(acceptedAtBoundary.status).toBe(409);
+    expect(JSON.parse(acceptedAtBoundary.body)).toMatchObject({
+      ok: false,
+      diagnostic: { code: "EVIDENCE_GOVERNANCE_REVIEW_BLOCKED" }
+    });
+    expect(acceptedAtBoundary.body).not.toContain("secret-local-token");
+  });
+
   it("keeps the seed endpoint disabled until explicitly configured", async () => {
     const config = resolveLocalRuntimeConfig({ cwd: tempDir(), env: {} });
     const handler = testHandler({

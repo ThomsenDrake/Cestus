@@ -16,6 +16,7 @@ export function GovernanceReview({ review, onAppendReview }: GovernanceReviewPro
   const [rationale, setRationale] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [appended, setAppended] = useState(false);
+  const [appendDiagnostic, setAppendDiagnostic] = useState<string | undefined>();
   const supersedesEventRef = useMemo(
     () => review.humanDecisions.findLast((decision) => decision.tag === tag)?.eventRef
       ?? review.proposedTags.findLast((proposal) => proposal.tag === tag)?.eventRef,
@@ -33,6 +34,7 @@ export function GovernanceReview({ review, onAppendReview }: GovernanceReviewPro
 
     setSubmitting(true);
     setAppended(false);
+    setAppendDiagnostic(undefined);
     try {
       await onAppendReview({
         evidenceRef: review.evidenceRef,
@@ -42,6 +44,10 @@ export function GovernanceReview({ review, onAppendReview }: GovernanceReviewPro
         ...(supersedesEventRef === undefined ? {} : { supersedesEventRef })
       });
       setAppended(true);
+    } catch {
+      setAppendDiagnostic(
+        "Governance review could not be appended safely. Reload the evidence workspace and try again."
+      );
     } finally {
       setSubmitting(false);
     }
@@ -136,6 +142,9 @@ export function GovernanceReview({ review, onAppendReview }: GovernanceReviewPro
         >
           {submitting ? "Appending governance review" : "Append governance review"}
         </button>
+        {appendDiagnostic === undefined ? null : (
+          <p role="alert" className="text-base text-[var(--signal-red)] sm:text-sm">{appendDiagnostic}</p>
+        )}
         {appended ? <p role="status" className="text-base text-[var(--signal-cyan)] sm:text-sm">Governance review appended without replacing the original event.</p> : null}
       </form>
     </section>

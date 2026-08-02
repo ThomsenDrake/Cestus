@@ -1,4 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
+import { ExportPreview } from "../governance/ExportPreview.js";
+import { GovernanceReview } from "../governance/GovernanceReview.js";
+import type { AppendGovernanceReviewInput } from "../governance/governance-types.js";
 import type {
   EvidenceAssertionCandidateDto,
   EvidenceItemDto,
@@ -14,6 +17,7 @@ interface EvidenceWorkspaceProps {
   readonly onPrepareAssertionCandidate: (
     input: PrepareEvidenceAssertionCandidateInput
   ) => Promise<EvidenceAssertionCandidateDto>;
+  readonly onAppendGovernanceReview: (input: AppendGovernanceReviewInput) => Promise<void> | void;
 }
 
 export function EvidenceWorkspace({
@@ -21,7 +25,8 @@ export function EvidenceWorkspace({
   loadState,
   loadError,
   onRetry,
-  onPrepareAssertionCandidate
+  onPrepareAssertionCandidate,
+  onAppendGovernanceReview
 }: EvidenceWorkspaceProps) {
   const [query, setQuery] = useState("");
   const [governanceTag, setGovernanceTag] = useState("all");
@@ -37,6 +42,9 @@ export function EvidenceWorkspace({
   const [actionDiagnostic, setActionDiagnostic] = useState<string | undefined>();
   const selectedItem = workspace?.items.find((item) => item.evidenceId === selectedEvidenceId)
     ?? workspace?.items[0];
+  const selectedGovernanceReview = workspace?.governance.reviews.find(
+    (review) => review.evidenceRef === selectedItem?.evidenceId
+  );
   const governanceTags = useMemo(
     () => [...new Set(workspace?.items.flatMap((item) => item.governanceTags.map((tag) => tag.tag)) ?? [])].sort(),
     [workspace]
@@ -314,6 +322,15 @@ export function EvidenceWorkspace({
           </section>
         )}
       </div>
+
+      {selectedGovernanceReview === undefined ? null : (
+        <GovernanceReview
+          key={selectedGovernanceReview.evidenceRef}
+          review={selectedGovernanceReview}
+          onAppendReview={onAppendGovernanceReview}
+        />
+      )}
+      <ExportPreview preview={workspace.governance.exportPreview} />
     </section>
   );
 }

@@ -14,6 +14,7 @@ const reviewDto = (): GovernanceReviewDto => ({
     {
       tag: "public_safe",
       confidence: 0.97,
+      confidenceThreshold: 0.9,
       rationale: "Public filing appears suitable after review.",
       eventRef: "evt_classify_governance_public_restricted",
       workflowAccess: "ordinary-internal-only"
@@ -21,6 +22,7 @@ const reviewDto = (): GovernanceReviewDto => ({
     {
       tag: "contains_pii",
       confidence: 0.62,
+      confidenceThreshold: 0.9,
       rationale: "Addresses may require human verification.",
       eventRef: "evt_classify_governance_public_restricted",
       workflowAccess: "locked",
@@ -29,6 +31,7 @@ const reviewDto = (): GovernanceReviewDto => ({
     {
       tag: "public_record",
       confidence: 0.95,
+      confidenceThreshold: 0.9,
       rationale: "Classifier proposed public-record handling.",
       eventRef: "evt_classify_governance_public_record",
       workflowAccess: "ordinary-internal-only"
@@ -121,6 +124,31 @@ describe("GovernanceReview", () => {
     }));
   });
 
+  it("renders a fixed fail-closed diagnostic when append rejects without replacing prior review state", async () => {
+    const providerMaterial = "Authorization: Bearer runtime-secret-value";
+    const rationale = "Human review requested public-safe handling.";
+    const onAppendReview = vi.fn(async () => {
+      throw new Error(`Provider rejected review: ${providerMaterial}`);
+    });
+    render(<GovernanceReview review={reviewDto()} onAppendReview={onAppendReview} />);
+
+    fireEvent.change(screen.getByLabelText("Review tag"), { target: { value: "public_safe" } });
+    fireEvent.change(screen.getByLabelText("Review action"), { target: { value: "add" } });
+    fireEvent.change(screen.getByLabelText("Review rationale"), { target: { value: rationale } });
+    fireEvent.click(screen.getByRole("button", { name: "Append governance review" }));
+
+    const diagnostic = await screen.findByRole("alert");
+    expect(diagnostic).toHaveTextContent(
+      "Governance review could not be appended safely. Reload the evidence workspace and try again."
+    );
+    expect(diagnostic).not.toHaveTextContent(rationale);
+    expect(document.body).not.toHaveTextContent(providerMaterial);
+    expect(screen.getByRole("region", { name: "Proposed governance tags" })).toHaveTextContent(
+      "Public filing appears suitable after review."
+    );
+    expect(screen.queryByText("Governance review appended without replacing the original event.")).not.toBeInTheDocument();
+  });
+
   it("renders missing, failed, and unknown-tag classification states as locked safe diagnostics", () => {
     const cases = [
       {
@@ -194,6 +222,33 @@ describe("GovernanceReview", () => {
     fireEvent.change(screen.getByLabelText("Review rationale"), { target: { value: "Attempted failed projection review." } });
     expect(screen.getByRole("button", { name: "Append governance review" })).toBeDisabled();
     expect(onAppendReview).not.toHaveBeenCalled();
+  });
+
+  it("derives proposal access from event-time thresholds in both policy directions", () => {
+    expect(() => governanceReviewDtoFromJson({
+      ...reviewDto(),
+      confidenceThreshold: 0.9,
+      proposedTags: [{
+        ...reviewDto().proposedTags[0],
+        confidence: 0.85,
+        confidenceThreshold: 0.8,
+        workflowAccess: "locked",
+        repairHint: "request-human-governance-review"
+      }],
+      humanDecisions: []
+    })).toThrow("Governance review DTO could not be parsed safely.");
+
+    expect(() => governanceReviewDtoFromJson({
+      ...reviewDto(),
+      confidenceThreshold: 0.8,
+      proposedTags: [{
+        ...reviewDto().proposedTags[0],
+        confidence: 0.85,
+        confidenceThreshold: 0.9,
+        workflowAccess: "ordinary-internal-only"
+      }],
+      humanDecisions: []
+    })).toThrow("Governance review DTO could not be parsed safely.");
   });
 
   it("strictly accepts safe references and rejects private, identity, credential, and provider-error fields", () => {
@@ -311,6 +366,24 @@ describe("GovernanceReview", () => {
         workflowAccess: "ordinary-internal-only"
       }]
     })).toThrow("Governance review DTO could not be parsed safely.");
+    expect(() => governanceReviewDtoFromJson({
+      ...reviewDto(),
+      humanDecisions: [],
+      proposedTags: [{
+        ...reviewDto().proposedTags[1],
+        confidence: 0.99,
+        workflowAccess: "locked",
+        repairHint: "request-human-governance-review"
+      }]
+    })).toThrow("Governance review DTO could not be parsed safely.");
+    expect(() => governanceReviewDtoFromJson({
+      ...reviewDto(),
+      humanDecisions: [],
+      proposedTags: [{
+        ...reviewDto().proposedTags[1],
+        repairHint: "retry-or-review-classification"
+      }]
+    })).toThrow("Governance review DTO could not be parsed safely.");
     for (const classificationStatus of ["missing", "failed", "unknown-tag"] as const) {
       expect(() => governanceReviewDtoFromJson({
         ...reviewDto(),
@@ -347,6 +420,15 @@ describe("GovernanceReview", () => {
       })),
       diagnostics: [projectionFailure]
     })).not.toThrow();
+    expect(() => governanceReviewDtoFromJson({
+      ...reviewDto(),
+      proposedTags: reviewDto().proposedTags.map((proposal) => ({
+        ...proposal,
+        workflowAccess: "locked",
+        repairHint: "retry-or-review-classification"
+      })),
+      diagnostics: [projectionFailure]
+    })).toThrow("Governance review DTO could not be parsed safely.");
   });
 });
 

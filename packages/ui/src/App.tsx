@@ -44,6 +44,7 @@ import type {
   EvidenceWorkspaceDto,
   PrepareEvidenceAssertionCandidateInput
 } from "./evidence/evidence-types.js";
+import type { AppendGovernanceReviewInput } from "./governance/governance-types.js";
 import { OntologyWorkspace } from "./ontology/OntologyWorkspace.js";
 import {
   httpOntologyWorkspaceAdapter,
@@ -570,6 +571,7 @@ export function App({
         setEvidenceReloadKey((current) => current + 1);
       }}
       onPrepareAssertionCandidate={handlePrepareEvidenceAssertionCandidate}
+      onAppendGovernanceReview={handleAppendGovernanceReview}
     />
   );
   const ontologyMain = (
@@ -781,6 +783,14 @@ export function App({
     setEvidenceLoadState("loaded");
     setEvidenceLoadError(undefined);
     return result.candidate;
+  }
+
+  async function handleAppendGovernanceReview(input: AppendGovernanceReviewInput) {
+    const result = await evidenceAdapter.appendGovernanceReview(input);
+    setEvidenceWorkspace(result.workspace);
+    setLoadedEvidenceAdapter(evidenceAdapter);
+    setEvidenceLoadState("loaded");
+    setEvidenceLoadError(undefined);
   }
 
   async function refreshAgentStateAfterMutation(preferredMemoryId?: string) {

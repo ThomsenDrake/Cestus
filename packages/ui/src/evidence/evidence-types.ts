@@ -1,3 +1,6 @@
+import type { EvidenceGovernanceWorkspaceDto } from "../../../ontology/src/governance-read-model.js";
+import type { GovernanceTag } from "../../../ontology/src/governance-policy.js";
+
 export interface EvidenceWorkspaceDto {
   readonly schemaVersion: "evidence-workspace.v1";
   readonly status: "ready" | "degraded";
@@ -5,6 +8,7 @@ export interface EvidenceWorkspaceDto {
   readonly items: readonly EvidenceItemDto[];
   readonly assertionCandidates: readonly EvidenceAssertionCandidateDto[];
   readonly diagnostics: readonly EvidenceWorkspaceDiagnosticDto[];
+  readonly governance: EvidenceGovernanceWorkspaceDto;
 }
 
 export interface EvidenceItemDto {
@@ -58,7 +62,7 @@ export interface EvidenceParseJobDto {
 }
 
 export interface EvidenceGovernanceTagDto {
-  readonly tag: string;
+  readonly tag: GovernanceTag;
   readonly confidence: number;
   readonly rationale: string;
   readonly source: "ai" | "human";
@@ -104,5 +108,9 @@ export interface PrepareEvidenceAssertionCandidateInput {
 
 export interface PrepareEvidenceAssertionCandidateResult {
   readonly candidate: EvidenceAssertionCandidateDto;
+  readonly workspace: EvidenceWorkspaceDto;
+}
+
+export interface AppendEvidenceGovernanceReviewResult {
   readonly workspace: EvidenceWorkspaceDto;
 }
