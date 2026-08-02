@@ -99,6 +99,13 @@ interface MutableEvidenceGovernanceState {
   tombstoned: boolean;
 }
 
+interface ValidGovernanceEvent {
+  readonly evidenceId: string;
+  readonly streamId: string;
+  readonly sequence: number;
+  readonly tags: ReadonlySet<GovernanceTag>;
+}
+
 type ActiveNetworkExposure = NonNullable<NetworkExposureState["activeExposure"]>;
 
 interface MutableDeviceSessionState {
@@ -125,6 +132,8 @@ interface MutableGovernanceIncidentState {
 
 export function buildGovernanceProjection(events: readonly KnowledgeEvent[]): GovernanceProjection {
   const mutableStates = new Map<string, MutableEvidenceGovernanceState>();
+  const priorIngestions = new Map<string, KnowledgeEventOf<"evidence.ingested">>();
+  const validGovernanceEvents = new Map<string, ValidGovernanceEvent>();
   const mutableDeviceSessions = new Map<string, MutableDeviceSessionState>();
   const mutableIncidents = new Map<string, MutableGovernanceIncidentState>();
   let activeConfidenceThreshold = defaultGovernancePolicy.confidenceThreshold;
@@ -140,15 +149,51 @@ export function buildGovernanceProjection(events: readonly KnowledgeEvent[]): Go
           activeConfidenceThreshold = defaultGovernancePolicy.confidenceThreshold;
         }
         break;
-      case "evidence.ingested":
+      case "evidence.ingested": {
+        if (event.streamId !== evidenceStreamId(event.payload.evidenceId)) {
+          break;
+        }
+
         ensureState(mutableStates, event.payload.evidenceId);
+        priorIngestions.set(event.id, event);
         break;
-      case "evidence.governance.classified":
+      }
+      case "evidence.governance.classified": {
+        if (
+          validGovernanceEvents.has(event.id) ||
+          !hasValidClassificationLineage(event, priorIngestions, validGovernanceEvents)
+        ) {
+          break;
+        }
+
         applyClassification(ensureState(mutableStates, event.payload.evidenceId), event, activeConfidenceThreshold);
+        validGovernanceEvents.set(event.id, {
+          evidenceId: event.payload.evidenceId,
+          streamId: event.streamId,
+          sequence: event.sequence,
+          tags: new Set(event.payload.tags.map((tag) => tag.tag))
+        });
         break;
-      case "evidence.governance.reviewed":
-        applyReview(ensureState(mutableStates, event.payload.evidenceId), event);
+      }
+      case "evidence.governance.reviewed": {
+        const state = mutableStates.get(event.payload.evidenceId);
+        if (
+          state === undefined ||
+          validGovernanceEvents.has(event.id) ||
+          !hasValidReviewLineage(event, validGovernanceEvents)
+        ) {
+          break;
+        }
+
+        applyReview(state, event);
+        validGovernanceEvents.set(event.id, {
+          evidenceId: event.payload.evidenceId,
+          streamId: event.streamId,
+          sequence: event.sequence,
+          tags: new Set(event.payload.decisions.map((decision) => decision.tag))
+        });
         break;
+      }
       case "evidence.quarantined":
         ensureState(mutableStates, event.payload.evidenceId).quarantined = true;
         break;
@@ -333,6 +378,81 @@ function ensureState(states: Map<string, MutableEvidenceGovernanceState>, eviden
   states.set(evidenceId, created);
 
   return created;
+}
+
+function hasValidClassificationLineage(
+  event: KnowledgeEventOf<"evidence.governance.classified">,
+  priorIngestions: ReadonlyMap<string, KnowledgeEventOf<"evidence.ingested">>,
+  priorGovernanceEvents: ReadonlyMap<string, ValidGovernanceEvent>
+): boolean {
+  const ingestion = priorIngestions.get(event.payload.evidenceEventId);
+  if (
+    ingestion === undefined ||
+    event.streamId !== evidenceStreamId(event.payload.evidenceId) ||
+    ingestion.streamId !== event.streamId ||
+    ingestion.payload.evidenceId !== event.payload.evidenceId ||
+    ingestion.payload.contentHash !== event.payload.contentHash ||
+    event.sequence <= ingestion.sequence
+  ) {
+    return false;
+  }
+
+  if (event.context.causationId === event.payload.evidenceEventId) {
+    return true;
+  }
+
+  const causalGovernanceEvent = event.context.causationId === undefined
+    ? undefined
+    : priorGovernanceEvents.get(event.context.causationId);
+  return causalGovernanceEvent !== undefined &&
+    causalGovernanceEvent.evidenceId === event.payload.evidenceId &&
+    causalGovernanceEvent.streamId === event.streamId &&
+    causalGovernanceEvent.sequence < event.sequence;
+}
+
+function hasValidReviewLineage(
+  event: KnowledgeEventOf<"evidence.governance.reviewed">,
+  priorGovernanceEvents: ReadonlyMap<string, ValidGovernanceEvent>
+): boolean {
+  if (
+    event.streamId !== evidenceStreamId(event.payload.evidenceId) ||
+    event.payload.decisions.length === 0
+  ) {
+    return false;
+  }
+
+  const causationId = event.context.causationId;
+  const causalGovernanceEvent = causationId === undefined ? undefined : priorGovernanceEvents.get(causationId);
+  const hasValidCausation =
+    causalGovernanceEvent !== undefined &&
+    causalGovernanceEvent.evidenceId === event.payload.evidenceId &&
+    causalGovernanceEvent.streamId === event.streamId &&
+    causalGovernanceEvent.sequence < event.sequence;
+  if (!hasValidCausation) {
+    return false;
+  }
+
+  return event.payload.decisions.every((decision) => {
+    if (decision.supersedesEventId === undefined) {
+      return decision.action !== "supersede";
+    }
+
+    const target = priorGovernanceEvents.get(decision.supersedesEventId);
+    if (
+      target === undefined ||
+      target.evidenceId !== event.payload.evidenceId ||
+      target.streamId !== event.streamId ||
+      target.sequence >= event.sequence
+    ) {
+      return false;
+    }
+
+    return decision.action !== "supersede" || target.tags.has(decision.tag);
+  });
+}
+
+function evidenceStreamId(evidenceId: string): string {
+  return `evidence_${evidenceId}`;
 }
 
 function applyClassification(

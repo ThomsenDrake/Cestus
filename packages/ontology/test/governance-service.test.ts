@@ -26,20 +26,20 @@ class RecordingLedger implements EventLedger {
   }
 }
 
-async function appendEvidence(ledger: EventLedger) {
+async function appendEvidence(ledger: EventLedger, evidenceId = "ev_source_001") {
   const event = {
     type: "evidence.ingested",
     version: 1,
-    streamId: "evidence_ev_source_001",
+    streamId: `evidence_${evidenceId}`,
     context: {
       actor,
       occurredAt: "2026-07-05T12:00:00.000Z",
-      correlationId: "corr_ev_source_001",
+      correlationId: `corr_${evidenceId}`,
       coreVersion: "0.1.0",
       packVersions: { core: "0.1.0" }
     },
     payload: {
-      evidenceId: "ev_source_001",
+      evidenceId,
       source: { kind: "file", label: "source.pdf" },
       contentHash,
       mediaType: "application/pdf",
@@ -347,6 +347,92 @@ describe("GovernanceService", () => {
     ).rejects.toThrow("Governance reviewedBy must match the service actor");
 
     expect(await ledger.readStream("evidence_ev_source_001")).toHaveLength(2);
+  });
+
+  it("requires supersede to reference an earlier governance event for the same tag", async () => {
+    const ledger = new InMemoryEventLedger();
+    await appendEvidence(ledger);
+    const classificationService = new GovernanceService({ ledger, actor: classifier });
+    const classified = await classificationService.classifyEvidence({
+      evidenceId: "ev_source_001",
+      policy: { policyId: "gov_policy_default", version: "0.1.0" },
+      classifier: { actorId: "actor_classifier", kind: "ai", label: "Classifier" },
+      tags: [{ tag: "public_record", confidence: 0.96, rationale: "Public agency source." }]
+    });
+    const reviewService = new GovernanceService({ ledger, actor });
+
+    await expect(reviewService.reviewEvidenceGovernance({
+      evidenceId: "ev_source_001",
+      reviewedBy: "actor_investigator",
+      policy: { policyId: "gov_policy_default", version: "0.1.0" },
+      decisions: [{
+        tag: "public_record",
+        action: "supersede",
+        rationale: "Missing provenance must fail closed."
+      }]
+    })).rejects.toThrow("Governance supersede requires an earlier governance event reference");
+
+    await expect(reviewService.reviewEvidenceGovernance({
+      evidenceId: "ev_source_001",
+      reviewedBy: "actor_investigator",
+      policy: { policyId: "gov_policy_default", version: "0.1.0" },
+      decisions: [{
+        tag: "public_safe",
+        action: "supersede",
+        rationale: "Wrong-tag provenance must fail closed.",
+        supersedesEventId: classified.id
+      }]
+    })).rejects.toThrow("Governance supersede target must contain the same governance tag");
+
+    const reviewed = await reviewService.reviewEvidenceGovernance({
+      evidenceId: "ev_source_001",
+      reviewedBy: "actor_investigator",
+      policy: { policyId: "gov_policy_default", version: "0.1.0" },
+      decisions: [{
+        tag: "public_record",
+        action: "supersede",
+        rationale: "Same-tag provenance is traceable.",
+        supersedesEventId: classified.id
+      }]
+    });
+
+    expect(reviewed.payload.decisions[0]).toMatchObject({
+      tag: "public_record",
+      action: "supersede",
+      supersedesEventId: classified.id
+    });
+  });
+
+  it("rejects a supersede target from another evidence stream", async () => {
+    const ledger = new InMemoryEventLedger();
+    await appendEvidence(ledger);
+    await appendEvidence(ledger, "ev_other_source");
+    const classificationService = new GovernanceService({ ledger, actor: classifier });
+    await classificationService.classifyEvidence({
+      evidenceId: "ev_source_001",
+      policy: { policyId: "gov_policy_default", version: "0.1.0" },
+      classifier: { actorId: "actor_classifier", kind: "ai", label: "Classifier" },
+      tags: [{ tag: "public_record", confidence: 0.96, rationale: "Public agency source." }]
+    });
+    const otherClassification = await classificationService.classifyEvidence({
+      evidenceId: "ev_other_source",
+      policy: { policyId: "gov_policy_default", version: "0.1.0" },
+      classifier: { actorId: "actor_classifier", kind: "ai", label: "Classifier" },
+      tags: [{ tag: "public_record", confidence: 0.96, rationale: "Other public agency source." }]
+    });
+    const reviewService = new GovernanceService({ ledger, actor });
+
+    await expect(reviewService.reviewEvidenceGovernance({
+      evidenceId: "ev_source_001",
+      reviewedBy: "actor_investigator",
+      policy: { policyId: "gov_policy_default", version: "0.1.0" },
+      decisions: [{
+        tag: "public_record",
+        action: "supersede",
+        rationale: "Cross-evidence provenance must fail closed.",
+        supersedesEventId: otherClassification.id
+      }]
+    })).rejects.toThrow("Governance supersedesEventId must reference an earlier governance event in the evidence stream");
   });
 
   it("rejects supersedes references that are unknown in the evidence stream before append", async () => {

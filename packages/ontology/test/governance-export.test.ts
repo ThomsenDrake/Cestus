@@ -238,25 +238,31 @@ describe("governed exports and reports", () => {
     }
   });
 
-  it("rejects AWS access-key-shaped evidence and event references without echoing them", () => {
-    const awsAccessKeyShape = "AKIA1234567890ABCDEF";
-    const classified = classifiedEvidence("ev_aws_event_ref", ["public_safe"]);
+  it("rejects concatenated AWS, Google API key, and JWT-shaped references without echoing them", () => {
+    const credentialShapes = [
+      "AKIA1234567890ABCDEF",
+      "AIzaSyA1234567890abcdefghijklmnopqrstuv",
+      "eyJhbGciOiJIUzI1NiJ9"
+    ];
+    const classified = classifiedEvidence("ev_secret_event_ref", ["public_safe"]);
     const ingestion = classified[0]!;
     const classification = classified[1]!;
-    const attempts = [
-      () => buildGovernanceExportPreview(goldenGovernanceLedgerEvents, [`ev_${awsAccessKeyShape}`]),
-      () => buildGovernanceExportPreview(
-        [ingestion, { ...classification, id: `evt_${awsAccessKeyShape}` }],
-        ["ev_aws_event_ref"]
-      )
-    ];
 
-    for (const attempt of attempts) {
-      expect(attempt).toThrow("Governance export preview requires safe evidence and event references");
-      try {
-        attempt();
-      } catch (error) {
-        expect(String(error)).not.toContain(awsAccessKeyShape);
+    for (const credentialShape of credentialShapes) {
+      const attempts = [
+        () => buildGovernanceExportPreview(goldenGovernanceLedgerEvents, [`ev_${credentialShape}`]),
+        () => buildGovernanceExportPreview(
+          [ingestion, { ...classification, id: `evt_${credentialShape}` }],
+          ["ev_secret_event_ref"]
+        )
+      ];
+      for (const attempt of attempts) {
+        expect(attempt).toThrow("Governance export preview requires safe evidence and event references");
+        try {
+          attempt();
+        } catch (error) {
+          expect(String(error)).not.toContain(credentialShape);
+        }
       }
     }
   });
@@ -272,12 +278,19 @@ describe("governed exports and reports", () => {
     expect(preview.includedEvidence).toEqual([]);
     expect(preview.excludedEvidence).toEqual([{
       evidenceRef: "ev_reviewed_without_classification",
-      governanceEventRefs: ["evt_review_ev_reviewed_without_classification"],
-      requiredApprovals: [{
-        category: "other-unsafe",
-        approvalId: "governance-classification-required-before-preview",
-        optInAvailableInPreview: false
-      }]
+      governanceEventRefs: [],
+      requiredApprovals: [
+        {
+          category: "other-unsafe",
+          approvalId: "governance-classification-required-before-preview",
+          optInAvailableInPreview: false
+        },
+        {
+          category: "other-unsafe",
+          approvalId: "human-affirm-public-safe-eligibility",
+          optInAvailableInPreview: false
+        }
+      ]
     }]);
     expect(preview.diagnostics).toEqual([{
       code: "classification-missing",

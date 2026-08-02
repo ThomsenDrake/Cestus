@@ -3,7 +3,11 @@ import {
   governanceExportApprovalIds,
   type GovernanceExportPreviewDto
 } from "../../../ontology/src/governance-export-preview.js";
-import { assertSecretSafeText, governanceTags } from "../../../ontology/src/governance-policy.js";
+import {
+  assertSecretSafeText,
+  governanceTags,
+  type GovernanceTag
+} from "../../../ontology/src/governance-policy.js";
 import type { GovernanceReviewDto } from "./governance-types.js";
 
 const safeRefSchema = (prefix: "ev" | "evt") => z.string()
@@ -49,6 +53,9 @@ const humanDecisionSchema = z.object({
   if (value.action === "supersede" && value.supersedesEventRef === undefined) {
     context.addIssue({ code: "custom", message: "supersede requires a valid earlier governance event reference" });
   }
+  if (value.supersedesEventRef === value.eventRef) {
+    context.addIssue({ code: "custom", message: "governance decisions cannot supersede themselves" });
+  }
 });
 const governanceReviewDiagnosticSchema = z.object({
   code: z.enum(["classification-missing", "classification-failed", "unknown-tag", "projection-failed"]),
@@ -89,6 +96,69 @@ const governanceReviewSchema = z.object({
     }
   }
 
+  const proposalTagsByEventRef = new Map<string, Set<GovernanceTag>>();
+  for (const proposal of value.proposedTags) {
+    const tags = proposalTagsByEventRef.get(proposal.eventRef) ?? new Set<GovernanceTag>();
+    tags.add(proposal.tag);
+    proposalTagsByEventRef.set(proposal.eventRef, tags);
+  }
+  const reviewEvents = new Map<string, {
+    firstIndex: number;
+    lastIndex: number;
+    tags: Set<GovernanceTag>;
+  }>();
+  for (const [index, decision] of value.humanDecisions.entries()) {
+    const reviewEvent = reviewEvents.get(decision.eventRef);
+    if (reviewEvent === undefined) {
+      reviewEvents.set(decision.eventRef, {
+        firstIndex: index,
+        lastIndex: index,
+        tags: new Set([decision.tag])
+      });
+    } else {
+      reviewEvent.lastIndex = index;
+      reviewEvent.tags.add(decision.tag);
+    }
+
+    if (proposalTagsByEventRef.has(decision.eventRef)) {
+      context.addIssue({
+        code: "custom",
+        path: ["humanDecisions", index, "eventRef"],
+        message: "classifier and review events require distinct references"
+      });
+    }
+  }
+  for (const [index, decision] of value.humanDecisions.entries()) {
+    if (decision.supersedesEventRef === undefined) {
+      continue;
+    }
+
+    const currentReviewEvent = reviewEvents.get(decision.eventRef)!;
+    const proposedTargetTags = proposalTagsByEventRef.get(decision.supersedesEventRef);
+    const reviewTarget = reviewEvents.get(decision.supersedesEventRef);
+    const priorReviewTargetTags = reviewTarget !== undefined &&
+      reviewTarget.lastIndex < currentReviewEvent.firstIndex
+      ? reviewTarget.tags
+      : undefined;
+    const targetTags = proposedTargetTags ?? priorReviewTargetTags;
+    if (targetTags === undefined) {
+      context.addIssue({
+        code: "custom",
+        path: ["humanDecisions", index, "supersedesEventRef"],
+        message: "governance provenance must resolve to a visible earlier event"
+      });
+      continue;
+    }
+
+    if (decision.action === "supersede" && !targetTags.has(decision.tag)) {
+      context.addIssue({
+        code: "custom",
+        path: ["humanDecisions", index, "supersedesEventRef"],
+        message: "supersede provenance must contain the same governance tag"
+      });
+    }
+  }
+
   const statusDiagnostic = {
     missing: "classification-missing",
     failed: "classification-failed",
@@ -118,6 +188,19 @@ const governanceReviewSchema = z.object({
   }
 });
 
+const allowedPreviewApprovals = {
+  private: [["human-approve-private-evidence-inclusion", true]],
+  "source-identity": [["human-approve-source-identity-inclusion", true]],
+  "credential-risk": [["human-approve-credential-risk-inclusion", true]],
+  "export-restricted": [["human-approve-export-restricted-inclusion", true]],
+  "other-unsafe": [
+    ["human-approve-other-unsafe-evidence-inclusion", true],
+    ["human-affirm-public-safe-eligibility", false],
+    ["governance-classification-required-before-preview", false]
+  ],
+  quarantine: [["quarantine-release-unavailable-in-preview", false]],
+  tombstoned: [["tombstone-reversal-unavailable-in-preview", false]]
+} as const;
 const governanceExportApprovalSchema = z.object({
   category: z.enum([
     "private",
@@ -130,10 +213,31 @@ const governanceExportApprovalSchema = z.object({
   ]),
   approvalId: z.enum(governanceExportApprovalIds),
   optInAvailableInPreview: z.boolean()
-}).strict();
+}).strict().superRefine((value, context) => {
+  const matchesCategory = allowedPreviewApprovals[value.category].some(
+    ([approvalId, optInAvailable]) =>
+      value.approvalId === approvalId && value.optInAvailableInPreview === optInAvailable
+  );
+  if (!matchesCategory) {
+    context.addIssue({ code: "custom", message: "approval category, identifier, and availability must match" });
+  }
+});
+const uniqueGovernanceEventRefsSchema = z.array(eventRefSchema).superRefine((refs, context) => {
+  if (new Set(refs).size !== refs.length) {
+    context.addIssue({ code: "custom", message: "governance event references must be unique" });
+  }
+});
 const governanceEvidenceRefSchema = z.object({
   evidenceRef: evidenceRefSchema,
-  governanceEventRefs: z.array(eventRefSchema)
+  governanceEventRefs: uniqueGovernanceEventRefsSchema
+}).strict();
+const governanceIncludedEvidenceSchema = z.object({
+  evidenceRef: evidenceRefSchema,
+  governanceEventRefs: z.array(eventRefSchema).min(1).superRefine((refs, context) => {
+    if (new Set(refs).size !== refs.length) {
+      context.addIssue({ code: "custom", message: "governance event references must be unique" });
+    }
+  })
 }).strict();
 const governanceExcludedEvidenceSchema = governanceEvidenceRefSchema.extend({
   requiredApprovals: z.array(governanceExportApprovalSchema).min(1)
@@ -142,14 +246,55 @@ const governanceExportDiagnosticSchema = z.object({
   code: z.enum(["classification-missing", "evidence-state-missing"]),
   evidenceRef: evidenceRefSchema,
   repairHint: z.enum(["record-governance-classification", "verify-evidence-reference"])
-}).strict();
+}).strict().superRefine((value, context) => {
+  const expectedRepairHint = value.code === "classification-missing"
+    ? "record-governance-classification"
+    : "verify-evidence-reference";
+  if (value.repairHint !== expectedRepairHint) {
+    context.addIssue({ code: "custom", message: "export diagnostic repair hint must match its code" });
+  }
+});
 const governanceExportPreviewSchema = z.object({
   schemaVersion: z.literal("governance-export-preview.v1"),
   mode: z.literal("preview-only"),
-  includedEvidence: z.array(governanceEvidenceRefSchema),
+  includedEvidence: z.array(governanceIncludedEvidenceSchema),
   excludedEvidence: z.array(governanceExcludedEvidenceSchema),
   diagnostics: z.array(governanceExportDiagnosticSchema)
-}).strict();
+}).strict().superRefine((value, context) => {
+  const includedRefs = value.includedEvidence.map((item) => item.evidenceRef);
+  const excludedRefs = value.excludedEvidence.map((item) => item.evidenceRef);
+  const includedRefSet = new Set(includedRefs);
+  const excludedRefSet = new Set(excludedRefs);
+
+  if (includedRefSet.size !== includedRefs.length) {
+    context.addIssue({ code: "custom", path: ["includedEvidence"], message: "included evidence must be unique" });
+  }
+  if (excludedRefSet.size !== excludedRefs.length) {
+    context.addIssue({ code: "custom", path: ["excludedEvidence"], message: "excluded evidence must be unique" });
+  }
+  if (includedRefs.some((evidenceRef) => excludedRefSet.has(evidenceRef))) {
+    context.addIssue({ code: "custom", message: "included and excluded evidence must be disjoint" });
+  }
+
+  for (const [index, excluded] of value.excludedEvidence.entries()) {
+    const approvalIds = excluded.requiredApprovals.map((approval) => approval.approvalId);
+    if (new Set(approvalIds).size !== approvalIds.length) {
+      context.addIssue({
+        code: "custom",
+        path: ["excludedEvidence", index, "requiredApprovals"],
+        message: "required approvals must be unique"
+      });
+    }
+  }
+
+  if (value.diagnostics.some((diagnostic) => !excludedRefSet.has(diagnostic.evidenceRef))) {
+    context.addIssue({
+      code: "custom",
+      path: ["diagnostics"],
+      message: "diagnostics must reference excluded evidence"
+    });
+  }
+});
 
 export function governanceReviewDtoFromJson(value: unknown): GovernanceReviewDto {
   const parsed = governanceReviewSchema.safeParse(value);

@@ -121,10 +121,68 @@ describe("GovernanceReview", () => {
     }));
   });
 
+  it("renders missing, failed, and unknown-tag classification states as locked safe diagnostics", () => {
+    const cases = [
+      {
+        classificationStatus: "missing" as const,
+        code: "classification-missing" as const,
+        repairHint: "record-governance-classification" as const
+      },
+      {
+        classificationStatus: "failed" as const,
+        code: "classification-failed" as const,
+        repairHint: "retry-or-review-classification" as const
+      },
+      {
+        classificationStatus: "unknown-tag" as const,
+        code: "unknown-tag" as const,
+        repairHint: "replace-unknown-governance-tag" as const
+      }
+    ];
+
+    for (const testCase of cases) {
+      const { unmount } = render(
+        <GovernanceReview
+          review={{
+            ...reviewDto(),
+            classificationStatus: testCase.classificationStatus,
+            proposedTags: [],
+            humanDecisions: [],
+            diagnostics: [{
+              code: testCase.code,
+              evidenceRef: "ev_source_public_restricted",
+              repairHint: testCase.repairHint
+            }]
+          }}
+          onAppendReview={vi.fn()}
+        />
+      );
+      const diagnostic = screen.getByRole("region", { name: "Locked governance diagnostic" });
+      expect(within(diagnostic).getByText(testCase.code)).toBeInTheDocument();
+      expect(within(diagnostic).getByText(testCase.repairHint)).toBeInTheDocument();
+      fireEvent.change(screen.getByLabelText("Review rationale"), { target: { value: "Attempted locked review." } });
+      expect(screen.getByRole("button", { name: "Append governance review" })).toBeDisabled();
+      unmount();
+    }
+  });
+
   it("strictly accepts safe references and rejects private, identity, credential, and provider-error fields", () => {
     const parsed = governanceReviewDtoFromJson(reviewDto());
     expect(Object.isFrozen(parsed)).toBe(true);
     expect(Object.isFrozen(parsed.proposedTags)).toBe(true);
+    expect(() => governanceReviewDtoFromJson({
+      ...reviewDto(),
+      humanDecisions: [
+        reviewDto().humanDecisions[0]!,
+        {
+          tag: "contains_pii",
+          action: "remove",
+          rationale: "The same review event can carry another traceable decision.",
+          eventRef: "evt_review_governance_public_record",
+          supersedesEventRef: "evt_classify_governance_public_restricted"
+        }
+      ]
+    })).not.toThrow();
     expect(() => governanceReviewDtoFromJson({ ...reviewDto(), rawContent: "private body" })).toThrow();
     expect(() => governanceReviewDtoFromJson({ ...reviewDto(), sourceIdentity: "confidential source" })).toThrow();
     const credentialBearingDto = {
@@ -168,6 +226,53 @@ describe("GovernanceReview", () => {
         eventRef: "evt_review_missing_link"
       }]
     })).toThrow("Governance review DTO could not be parsed safely.");
+    expect(() => governanceReviewDtoFromJson({
+      ...reviewDto(),
+      humanDecisions: [{
+        tag: "public_safe",
+        action: "supersede",
+        rationale: "Self-reference is not valid provenance.",
+        eventRef: "evt_review_self_reference",
+        supersedesEventRef: "evt_review_self_reference"
+      }]
+    })).toThrow("Governance review DTO could not be parsed safely.");
+    const invalidSupersedeProvenance = [
+      [{
+        tag: "public_safe",
+        action: "supersede",
+        rationale: "Unknown provenance is not visible in this review.",
+        eventRef: "evt_review_unknown_target",
+        supersedesEventRef: "evt_governance_not_visible"
+      }],
+      [
+        {
+          tag: "public_safe",
+          action: "supersede",
+          rationale: "A later review event is not prior provenance.",
+          eventRef: "evt_review_before_later_target",
+          supersedesEventRef: "evt_review_later_target"
+        },
+        {
+          tag: "public_safe",
+          action: "add",
+          rationale: "This event appears later in the DTO history.",
+          eventRef: "evt_review_later_target"
+        }
+      ],
+      [{
+        tag: "public_safe",
+        action: "supersede",
+        rationale: "The referenced classifier event contains another tag.",
+        eventRef: "evt_review_wrong_tag_target",
+        supersedesEventRef: "evt_classify_governance_public_record"
+      }]
+    ];
+    for (const humanDecisions of invalidSupersedeProvenance) {
+      expect(() => governanceReviewDtoFromJson({
+        ...reviewDto(),
+        humanDecisions
+      })).toThrow("Governance review DTO could not be parsed safely.");
+    }
     expect(() => governanceReviewDtoFromJson({
       ...reviewDto(),
       proposedTags: [{
