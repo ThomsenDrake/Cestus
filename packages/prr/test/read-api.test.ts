@@ -55,6 +55,104 @@ describe("PRR read API DTOs", () => {
     expect(stallingDetail.escalationGate.every((check) => typeof check.detail === "string")).toBe(true);
   });
 
+  it("prepares a routine follow-up preview from an estimated deadline while keeping exact send review locked", () => {
+    const request = requestReadModel({
+      prrRequestId: "prr_followup_estimated",
+      status: "sent",
+      agency: { name: "Records Office", email: "records@example.gov" },
+      requester: { name: "Avery Investigator", email: "avery@example.org" },
+      requestText: "Please provide the requested meeting records.",
+      activeDeadline: {
+        deadlineDate: "2026-07-15",
+        source: "estimated",
+        confidence: "workflow",
+        explanation: "Workflow estimate for a routine status check.",
+        citedRules: [
+          {
+            jurisdictionPack: { name: "us-federal-foia", version: "0.1.0" },
+            label: "FOIA determination deadline",
+            citation: "5 U.S.C. 552(a)(6)(A)(i)"
+          }
+        ]
+      },
+      latestOutboundCorrespondence: {
+        correspondenceId: "corr_followup_estimated_sent",
+        provider: "gmail",
+        providerMessageId: "provider-message-followup-estimated",
+        providerThreadId: "provider-thread-followup-estimated",
+        subject: "Public records request for meeting records",
+        occurredAt: "2026-07-01T12:00:00.000Z",
+        bodyHash: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        evidenceIds: [],
+        attachmentEvidenceIds: ["ev_original_request"]
+      },
+      latestInboundCorrespondence: {
+        correspondenceId: "corr_followup_estimated_ack",
+        provider: "gmail",
+        providerMessageId: "provider-message-followup-estimated-ack",
+        providerThreadId: "provider-thread-followup-estimated",
+        subject: "Re: Public records request for meeting records",
+        occurredAt: "2026-07-02T12:00:00.000Z",
+        evidenceIds: ["ev_agency_acknowledgement"]
+      }
+    });
+    const workspace = buildPrrWorkspaceDto(projectionFromRequests([request]), {
+      now: "2026-07-20T12:00:00.000Z"
+    });
+    const detail = detailById(workspace, request.prrRequestId);
+
+    expect(detail).toMatchObject({
+      laneId: "needs-follow-up",
+      followUpDraft: {
+        kind: "routine-follow-up",
+        deadlineBasis: {
+          source: "estimated",
+          deadlineDate: "2026-07-15"
+        },
+        recipients: ["records@example.gov"],
+        subject: "Re: Public records request for meeting records",
+        citations: [{ citation: "5 U.S.C. 552(a)(6)(A)(i)" }],
+        attachmentEvidenceIds: [],
+        evidenceIds: [],
+        providerState: {
+          provider: "gmail",
+          reviewState: "requires-review"
+        }
+      }
+    });
+    expect(detail.sendGate.map((check) => check.id)).toEqual([
+      "draft-body",
+      "recipients",
+      "subject",
+      "citations",
+      "attachments",
+      "evidence",
+      "risk-review",
+      "provider-ready"
+    ]);
+    expect(detail.sendGate.every((check) => check.locked && !check.ready)).toBe(true);
+    expect(detail.followUpDraft?.body).toContain("an estimated response date of 2026-07-15");
+    expect(detail.followUpDraft?.body).not.toMatch(/appeal|enforcement|lawsuit|violation/i);
+
+    const confirmedRequest: PrrRequestReadModel = {
+      ...request,
+      prrRequestId: "prr_followup_confirmed",
+      activeDeadline: {
+        ...request.activeDeadline!,
+        source: "confirmed",
+        confirmedBy: "actor_investigator"
+      }
+    };
+    const confirmedDetail = detailById(
+      buildPrrWorkspaceDto(projectionFromRequests([confirmedRequest]), {
+        now: "2026-07-20T12:00:00.000Z"
+      }),
+      confirmedRequest.prrRequestId
+    );
+    expect(confirmedDetail.followUpDraft?.body).toContain("a confirmed response date of 2026-07-15");
+    expect(confirmedDetail.followUpDraft?.body).not.toContain("an estimated response date");
+  });
+
   it("defensively owns nested DTO data from projection inputs", () => {
     const deadlineRule = {
       jurisdictionPack: { name: "us-federal-foia", version: "0.1.0" },
@@ -318,6 +416,12 @@ function requestReadModel(
     productionBatches: overrides.productionBatches ?? [],
     productionEvidenceIds: overrides.productionEvidenceIds ?? [],
     exemptions: overrides.exemptions ?? [],
-    ...(overrides.activeDeadline === undefined ? {} : { activeDeadline: overrides.activeDeadline })
+    ...(overrides.activeDeadline === undefined ? {} : { activeDeadline: overrides.activeDeadline }),
+    ...(overrides.latestOutboundCorrespondence === undefined
+      ? {}
+      : { latestOutboundCorrespondence: overrides.latestOutboundCorrespondence }),
+    ...(overrides.latestInboundCorrespondence === undefined
+      ? {}
+      : { latestInboundCorrespondence: overrides.latestInboundCorrespondence })
   };
 }

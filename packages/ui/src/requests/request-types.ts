@@ -105,6 +105,32 @@ export interface PrrEvidencePacket {
   readonly classificationState: string;
 }
 
+export interface PrrFollowUpDraft {
+  readonly deadlineBasisLabel: string;
+  readonly recipients: readonly string[];
+  readonly subject: string;
+  readonly body: string;
+  readonly citations: readonly string[];
+  readonly attachmentEvidenceIds: readonly string[];
+  readonly evidenceIds: readonly string[];
+  readonly providerState: string;
+}
+
+export interface PrrFeeScopePressure {
+  readonly feeSummary?: string;
+  readonly feeEvidenceId?: string;
+  readonly proposedScope?: string;
+  readonly acceptedScope?: string;
+  readonly scopeEvidenceId?: string;
+}
+
+export interface PrrProductionSummary {
+  readonly productionId: string;
+  readonly label: string;
+  readonly receivedAt: string;
+  readonly evidenceIds: readonly string[];
+}
+
 export interface PrrDetailModel {
   readonly prrRequestId: string;
   readonly title: string;
@@ -115,6 +141,9 @@ export interface PrrDetailModel {
   readonly deadlinePosture: string;
   readonly correspondence: PrrCorrespondenceSummary;
   readonly evidencePackets: readonly PrrEvidencePacket[];
+  readonly followUpDraft?: PrrFollowUpDraft;
+  readonly feeScopePressure?: PrrFeeScopePressure;
+  readonly productions?: readonly PrrProductionSummary[];
   readonly diagnostics: readonly string[];
   readonly timeline: readonly string[];
 }

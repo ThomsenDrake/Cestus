@@ -56,7 +56,7 @@ describe("RequestDetailRail", () => {
     const providerRow = gateRow(rail, "Provider ready");
     const riskRow = gateRow(rail, "Risk flags");
 
-    expect(within(providerRow).getByText("Complete")).toBeInTheDocument();
+    expect(within(providerRow).getByText("Needs review")).toBeInTheDocument();
     expect(within(riskRow).getByText("Needs review")).toBeInTheDocument();
   });
 
