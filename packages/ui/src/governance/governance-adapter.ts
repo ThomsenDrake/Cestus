@@ -159,6 +159,17 @@ const governanceReviewSchema = z.object({
     }
   }
 
+  if (
+    value.diagnostics.some((diagnostic) => diagnostic.code === "projection-failed") &&
+    value.proposedTags.some((proposal) => proposal.workflowAccess !== "locked")
+  ) {
+    context.addIssue({
+      code: "custom",
+      path: ["proposedTags"],
+      message: "projection failure requires every proposal to remain locked"
+    });
+  }
+
   const statusDiagnostic = {
     missing: "classification-missing",
     failed: "classification-failed",

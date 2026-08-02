@@ -166,6 +166,36 @@ describe("GovernanceReview", () => {
     }
   });
 
+  it("renders projection failure as locked even when classification succeeded", () => {
+    const onAppendReview = vi.fn();
+    const lockedProposals = reviewDto().proposedTags.map((proposal) => ({
+      ...proposal,
+      workflowAccess: "locked" as const,
+      repairHint: proposal.repairHint ?? "request-human-governance-review" as const
+    }));
+    render(
+      <GovernanceReview
+        review={{
+          ...reviewDto(),
+          proposedTags: lockedProposals,
+          diagnostics: [{
+            code: "projection-failed",
+            evidenceRef: "ev_source_public_restricted",
+            repairHint: "rebuild-governance-projection"
+          }]
+        }}
+        onAppendReview={onAppendReview}
+      />
+    );
+
+    const diagnostic = screen.getByRole("region", { name: "Locked governance diagnostic" });
+    expect(within(diagnostic).getByText("projection-failed")).toBeInTheDocument();
+    expect(within(diagnostic).getByText("rebuild-governance-projection")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Review rationale"), { target: { value: "Attempted failed projection review." } });
+    expect(screen.getByRole("button", { name: "Append governance review" })).toBeDisabled();
+    expect(onAppendReview).not.toHaveBeenCalled();
+  });
+
   it("strictly accepts safe references and rejects private, identity, credential, and provider-error fields", () => {
     const parsed = governanceReviewDtoFromJson(reviewDto());
     expect(Object.isFrozen(parsed)).toBe(true);
@@ -299,6 +329,24 @@ describe("GovernanceReview", () => {
         repairHint: "retry-or-review-classification"
       }]
     })).toThrow("Governance review DTO could not be parsed safely.");
+    const projectionFailure = {
+      code: "projection-failed" as const,
+      evidenceRef: "ev_source_public_restricted",
+      repairHint: "rebuild-governance-projection" as const
+    };
+    expect(() => governanceReviewDtoFromJson({
+      ...reviewDto(),
+      diagnostics: [projectionFailure]
+    })).toThrow("Governance review DTO could not be parsed safely.");
+    expect(() => governanceReviewDtoFromJson({
+      ...reviewDto(),
+      proposedTags: reviewDto().proposedTags.map((proposal) => ({
+        ...proposal,
+        workflowAccess: "locked",
+        repairHint: proposal.repairHint ?? "request-human-governance-review"
+      })),
+      diagnostics: [projectionFailure]
+    })).not.toThrow();
   });
 });
 

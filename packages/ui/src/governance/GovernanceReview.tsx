@@ -22,11 +22,12 @@ export function GovernanceReview({ review, onAppendReview }: GovernanceReviewPro
     [review.humanDecisions, review.proposedTags, tag]
   );
   const supersedeMissingEventRef = action === "supersede" && supersedesEventRef === undefined;
-  const classificationLocked = review.classificationStatus !== "succeeded";
+  const reviewLocked = review.classificationStatus !== "succeeded" ||
+    review.diagnostics.some((diagnostic) => diagnostic.code === "projection-failed");
 
   async function appendReview(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (classificationLocked) {
+    if (reviewLocked) {
       return;
     }
 
@@ -56,7 +57,7 @@ export function GovernanceReview({ review, onAppendReview }: GovernanceReviewPro
         </p>
       </header>
 
-      {classificationLocked ? (
+      {reviewLocked ? (
         <section aria-label="Locked governance diagnostic" className="border border-[var(--signal-red)] p-3">
           <h3 className="font-mono text-base text-[var(--signal-red)] sm:text-sm">Classification locked</h3>
           <ul role="list" className="mt-2 space-y-2">
@@ -130,7 +131,7 @@ export function GovernanceReview({ review, onAppendReview }: GovernanceReviewPro
         ) : null}
         <button
           type="submit"
-          disabled={classificationLocked || submitting || rationale.trim().length === 0 || supersedeMissingEventRef}
+          disabled={reviewLocked || submitting || rationale.trim().length === 0 || supersedeMissingEventRef}
           className={actionButtonClass}
         >
           {submitting ? "Appending governance review" : "Append governance review"}
