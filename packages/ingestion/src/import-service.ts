@@ -83,6 +83,7 @@ export class IngestionImportService {
   }
 
   async approveImport(input: ApproveImportInput): Promise<KnowledgeEventOf<"ingestion.import.approved">> {
+    this.assertHumanApprovalActor(input.approvedBy);
     const event: AppendableKnowledgeEvent<"ingestion.import.approved"> = {
       type: "ingestion.import.approved",
       version: 1,
@@ -104,6 +105,12 @@ export class IngestionImportService {
     }
 
     return appended;
+  }
+
+  private assertHumanApprovalActor(approvedBy: string): void {
+    if (this.dependencies.actor.kind !== "human" || approvedBy !== this.dependencies.actor.id) {
+      throw new Error("Raw import approval requires the configured human service actor.");
+    }
   }
 
   async importApprovedOccurrences(
@@ -179,7 +186,9 @@ export class IngestionImportService {
         event.type === "ingestion.import.approved" &&
         event.payload.sourceCollectionId === input.sourceCollectionId &&
         event.payload.scanBatchId === input.scanBatchId &&
-        event.payload.importBatchId === input.importBatchId
+        event.payload.importBatchId === input.importBatchId &&
+        event.context.actor.kind === "human" &&
+        event.payload.approvedBy === event.context.actor.id
     );
   }
 

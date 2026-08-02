@@ -222,7 +222,7 @@ describe("LegacyImportRuntime gated import and staging workflow", () => {
       sourceCollectionId: "src_old_cestus",
       scanBatchId: "scan_old_cestus_001",
       importBatchId: "imp_old_cestus_001",
-      approvedBy: "actor_investigator"
+      approvedBy: actor.id
     });
     expect(approved.ok).toBe(true);
     expect((await workspace.ledger.readAll()).map((event) => event.type)).not.toContain("evidence.ingested");
@@ -474,7 +474,7 @@ async function preparedImportedRuntime() {
     sourceCollectionId: "src_old_cestus",
     scanBatchId: "scan_old_cestus_001",
     importBatchId: "imp_old_cestus_001",
-    approvedBy: "actor_investigator"
+    approvedBy: actor.id
   });
   await runtime.importApproved({
     sourceCollectionId: "src_old_cestus",

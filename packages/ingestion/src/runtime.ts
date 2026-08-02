@@ -176,6 +176,10 @@ export function createIngestionRuntime(input: CreateIngestionRuntimeInput) {
       if (!workspace.ok) {
         return workspace;
       }
+      const approvalActorError = configuredHumanApprovalError(input.actor, command.approvedBy, "raw-import");
+      if (approvalActorError !== undefined) {
+        return approvalActorError;
+      }
 
       const projection = await projectionFor(workspace.workspace);
       if (!projection.sources.has(command.sourceCollectionId)) {
@@ -217,7 +221,7 @@ export function createIngestionRuntime(input: CreateIngestionRuntimeInput) {
       if (source === undefined) {
         return sourceNotRegisteredError(command.sourceCollectionId);
       }
-      const approval = approvalFor(projection, command);
+      const approval = await approvalFor(workspace.workspace, command);
       if (approval === undefined) {
         return stableIngestionError({
           code: "INGESTION_IMPORT_APPROVAL_REQUIRED",
@@ -227,6 +231,16 @@ export function createIngestionRuntime(input: CreateIngestionRuntimeInput) {
       }
       if (completedScanFor(projection, command.sourceCollectionId, command.scanBatchId) === undefined) {
         return scanRequiredError();
+      }
+      const completion = completionFor(projection, command);
+      if (completion !== undefined) {
+        return {
+          ok: true,
+          importBatchId: command.importBatchId,
+          totals: { ...completion.totals },
+          review: buildIngestionReviewDto(projection, command.sourceCollectionId),
+          eventIds: []
+        };
       }
 
       const rootDir = rootDirFromRegisteredSource(source.rootUri, "import");
@@ -242,7 +256,7 @@ export function createIngestionRuntime(input: CreateIngestionRuntimeInput) {
             command,
             input.actor,
             approvedOccurrences.error.allowedRepairActions,
-            approval.approvedEventId
+            approval.id
           );
         } catch {
           return runtimeInternalError("import");
@@ -266,7 +280,7 @@ export function createIngestionRuntime(input: CreateIngestionRuntimeInput) {
             command,
             input.actor,
             materialized.error.allowedRepairActions,
-            approval.approvedEventId
+            approval.id
           );
         } catch {
           return runtimeInternalError("import");
@@ -368,6 +382,10 @@ export function createIngestionRuntime(input: CreateIngestionRuntimeInput) {
       const workspace = requireMountedWorkspace(input.mountedWorkspace, "write");
       if (!workspace.ok) {
         return workspace;
+      }
+      const approvalActorError = configuredHumanApprovalError(input.actor, command.approvedBy, "provider");
+      if (approvalActorError !== undefined) {
+        return approvalActorError;
       }
 
       const projection = await projectionFor(workspace.workspace);
@@ -530,14 +548,55 @@ function completedScanFor(
   return scan?.sourceCollectionId === sourceCollectionId && scan.state === "completed" ? scan : undefined;
 }
 
-function approvalFor(
-  projection: IngestionProjection,
+async function approvalFor(
+  workspace: MountedWorkspace,
   input: Pick<ApproveRawImportInput, "sourceCollectionId" | "scanBatchId" | "importBatchId">
 ) {
-  const approval = projection.importApprovals.get(input.importBatchId);
-  return approval?.sourceCollectionId === input.sourceCollectionId && approval.scanBatchId === input.scanBatchId
-    ? approval
+  const importEvents = await workspace.ledger.readStream(
+    `ingestion_import_${input.sourceCollectionId}_${input.scanBatchId}_${input.importBatchId}`
+  );
+  return importEvents.find(
+    (event): event is KnowledgeEventOf<"ingestion.import.approved"> =>
+      event.type === "ingestion.import.approved"
+      && event.payload.sourceCollectionId === input.sourceCollectionId
+      && event.payload.scanBatchId === input.scanBatchId
+      && event.payload.importBatchId === input.importBatchId
+      && event.context.actor.kind === "human"
+      && event.payload.approvedBy === event.context.actor.id
+  );
+}
+
+function completionFor(
+  projection: IngestionProjection,
+  input: Pick<ImportApprovedInput, "sourceCollectionId" | "scanBatchId" | "importBatchId">
+) {
+  const completion = projection.importCompletions.get(input.importBatchId);
+  return completion?.sourceCollectionId === input.sourceCollectionId
+    && completion.scanBatchId === input.scanBatchId
+    ? completion
     : undefined;
+}
+
+function configuredHumanApprovalError(
+  actor: ActorRef,
+  approvedBy: string,
+  approval: "raw-import" | "provider"
+): IngestionRuntimeResult<never> | undefined {
+  if (actor.kind === "human" && approvedBy === actor.id) {
+    return undefined;
+  }
+
+  return approval === "raw-import"
+    ? stableIngestionError({
+      code: "INGESTION_IMPORT_APPROVAL_REQUIRED",
+      message: "Raw import approval requires the configured human runtime actor.",
+      allowedRepairActions: ["retry raw import approval as the configured human runtime actor"]
+    })
+    : stableIngestionError({
+      code: "INGESTION_PROVIDER_APPROVAL_REQUIRED",
+      message: "Provider parsing approval requires the configured human runtime actor.",
+      allowedRepairActions: ["retry provider approval as the configured human runtime actor"]
+    });
 }
 
 async function appendStaleSourceDiagnostic(
