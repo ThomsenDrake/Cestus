@@ -31,13 +31,21 @@ const workflowRepairHintSchema = z.enum([
 const proposedTagSchema = z.object({
   tag: governanceTagSchema,
   confidence: z.number().min(0).max(1),
+  confidenceThreshold: z.number().min(0.8).max(1),
   rationale: safeRationaleSchema,
   eventRef: eventRefSchema,
   workflowAccess: z.enum(["ordinary-internal-only", "locked"]),
   repairHint: workflowRepairHintSchema.optional()
 }).strict().superRefine((value, context) => {
-  if (value.workflowAccess === "locked" && value.repairHint === undefined) {
-    context.addIssue({ code: "custom", message: "locked proposals require a repair hint" });
+  if (
+    value.workflowAccess === "locked" &&
+    value.repairHint !== "request-human-governance-review"
+  ) {
+    context.addIssue({
+      code: "custom",
+      path: ["repairHint"],
+      message: "locked proposals require the human-governance-review repair hint"
+    });
   }
   if (value.workflowAccess === "ordinary-internal-only" && value.repairHint !== undefined) {
     context.addIssue({ code: "custom", message: "unlocked ordinary proposals must not carry a repair hint" });
@@ -86,12 +94,20 @@ const governanceReviewSchema = z.object({
   humanDecisions: z.array(humanDecisionSchema),
   diagnostics: z.array(governanceReviewDiagnosticSchema)
 }).strict().superRefine((value, context) => {
+  const projectionFailed = value.diagnostics.some(
+    (diagnostic) => diagnostic.code === "projection-failed"
+  );
   for (const [index, proposal] of value.proposedTags.entries()) {
-    if (proposal.workflowAccess === "ordinary-internal-only" && proposal.confidence < value.confidenceThreshold) {
+    const expectedAccess = projectionFailed || proposal.confidence < proposal.confidenceThreshold
+      ? "locked"
+      : "ordinary-internal-only";
+    if (proposal.workflowAccess !== expectedAccess) {
       context.addIssue({
         code: "custom",
         path: ["proposedTags", index, "workflowAccess"],
-        message: "ordinary workflow access requires active-policy confidence"
+        message: projectionFailed
+          ? "projection failure requires every proposal to remain locked"
+          : "proposal workflow access must match its event-time confidence threshold"
       });
     }
   }
@@ -157,17 +173,6 @@ const governanceReviewSchema = z.object({
         message: "supersede provenance must contain the same governance tag"
       });
     }
-  }
-
-  if (
-    value.diagnostics.some((diagnostic) => diagnostic.code === "projection-failed") &&
-    value.proposedTags.some((proposal) => proposal.workflowAccess !== "locked")
-  ) {
-    context.addIssue({
-      code: "custom",
-      path: ["proposedTags"],
-      message: "projection failure requires every proposal to remain locked"
-    });
   }
 
   const statusDiagnostic = {

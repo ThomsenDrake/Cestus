@@ -3,12 +3,19 @@ import {
   buildEvidenceWorkspaceDto,
   type EvidenceWorkspaceDto
 } from "../../ingestion/src/read-api.js";
-import type { ActorRef } from "../../ontology/src/contracts.js";
+import type { ActorRef, KnowledgeEvent } from "../../ontology/src/contracts.js";
 import {
   containsCredentialShapedEvidenceText,
   EvidenceReviewService
 } from "../../ontology/src/evidence-service.js";
 import type { EventLedger } from "../../ontology/src/event-ledger.js";
+import {
+  activeGovernancePolicyRef,
+  buildEvidenceGovernanceWorkspaceDto,
+  type EvidenceGovernanceWorkspaceDto
+} from "../../ontology/src/governance-read-model.js";
+import { assertSecretSafeText, governanceTags } from "../../ontology/src/governance-policy.js";
+import { GovernanceService } from "../../ontology/src/governance-service.js";
 import type { LocalRuntimeRequest, LocalRuntimeResponse } from "./http-handler.js";
 
 const proposalTextSchema = z.string().min(1).refine(
@@ -27,6 +34,32 @@ const assertionCandidateInputSchema = z.object({
   object: z.union([proposalTextSchema, z.number(), z.boolean(), z.null()]),
   confidence: z.number().min(0).max(1)
 }).strict();
+const safeGovernanceTextSchema = z.string().min(1).refine(
+  isSecretSafeGovernanceText,
+  { message: "governance text must not contain credential-shaped material" }
+);
+const safeGovernanceEventRefSchema = z.string().regex(/^evt_[a-zA-Z0-9_-]+$/).refine(
+  isSecretSafeGovernanceText,
+  { message: "governance event reference must not contain credential-shaped material" }
+);
+const governanceReviewInputSchema = z.object({
+  evidenceRef: z.string().regex(/^ev_[a-zA-Z0-9_-]+$/).refine(
+    isSecretSafeGovernanceText,
+    { message: "evidence reference must not contain credential-shaped material" }
+  ),
+  tag: z.enum(governanceTags),
+  action: z.enum(["affirm", "add", "remove", "supersede"]),
+  rationale: safeGovernanceTextSchema,
+  supersedesEventRef: safeGovernanceEventRefSchema.optional()
+}).strict().superRefine((value, context) => {
+  if (value.action === "supersede" && value.supersedesEventRef === undefined) {
+    context.addIssue({
+      code: "custom",
+      path: ["supersedesEventRef"],
+      message: "supersede requires an earlier governance event reference"
+    });
+  }
+});
 
 const knownBlockingReasons = new Set([
   "Evidence ingestion provenance is missing.",
@@ -51,6 +84,10 @@ export interface HandleEvidenceHttpRouteInput {
   readonly now?: () => string;
 }
 
+type RuntimeEvidenceWorkspaceDto = EvidenceWorkspaceDto & {
+  readonly governance: EvidenceGovernanceWorkspaceDto;
+};
+
 export async function handleEvidenceHttpRoute(
   input: HandleEvidenceHttpRouteInput
 ): Promise<LocalRuntimeResponse | undefined> {
@@ -58,10 +95,14 @@ export async function handleEvidenceHttpRoute(
 
   if (input.request.method === "GET" && path === "/api/evidence/workspace") {
     try {
-      return json(200, buildEvidenceWorkspaceDto(await input.ledger.readAll()));
+      return json(200, buildRuntimeEvidenceWorkspaceDto(await input.ledger.readAll()));
     } catch {
       return json(503, unavailableEvidenceWorkspaceDto());
     }
+  }
+
+  if (input.request.method === "POST" && path === "/api/evidence/governance-reviews") {
+    return appendGovernanceReview(input);
   }
 
   if (input.request.method !== "POST" || path !== "/api/evidence/assertion-candidates") {
@@ -107,9 +148,9 @@ export async function handleEvidenceHttpRoute(
     ));
   }
 
-  let workspace: EvidenceWorkspaceDto;
+  let workspace: RuntimeEvidenceWorkspaceDto;
   try {
-    workspace = buildEvidenceWorkspaceDto(await input.ledger.readAll());
+    workspace = buildRuntimeEvidenceWorkspaceDto(await input.ledger.readAll());
   } catch {
     workspace = unavailableEvidenceWorkspaceDto();
   }
@@ -128,7 +169,69 @@ export async function handleEvidenceHttpRoute(
   });
 }
 
-function unavailableEvidenceWorkspaceDto(): EvidenceWorkspaceDto {
+async function appendGovernanceReview(
+  input: HandleEvidenceHttpRouteInput
+): Promise<LocalRuntimeResponse> {
+  const body = parseJsonBody(input.request.body);
+  if (!body.ok) {
+    return invalidGovernanceReviewInput();
+  }
+  const parsed = governanceReviewInputSchema.safeParse(body.value);
+  if (!parsed.success) {
+    return invalidGovernanceReviewInput();
+  }
+
+  try {
+    const events = await input.ledger.readAll();
+    const { supersedesEventRef, evidenceRef, ...decision } = parsed.data;
+    await new GovernanceService({ ledger: input.ledger, actor: input.actor }).reviewEvidenceGovernance({
+      evidenceId: evidenceRef,
+      reviewedBy: input.actor.id,
+      policy: activeGovernancePolicyRef(events),
+      decisions: [{
+        ...decision,
+        ...(supersedesEventRef === undefined ? {} : { supersedesEventId: supersedesEventRef })
+      }]
+    });
+  } catch {
+    return json(409, diagnostic(
+      "EVIDENCE_GOVERNANCE_REVIEW_BLOCKED",
+      "Governance review could not be appended safely.",
+      ["reload the evidence workspace", "review classification and append-only governance provenance"]
+    ));
+  }
+
+  let workspace: RuntimeEvidenceWorkspaceDto;
+  try {
+    workspace = buildRuntimeEvidenceWorkspaceDto(await input.ledger.readAll());
+  } catch {
+    workspace = unavailableEvidenceWorkspaceDto();
+  }
+  return json(201, { ok: true, workspace });
+}
+
+function invalidGovernanceReviewInput(): LocalRuntimeResponse {
+  return json(400, diagnostic(
+    "EVIDENCE_GOVERNANCE_REVIEW_INPUT_INVALID",
+    "Governance review input is invalid.",
+    ["provide a valid evidence reference, governance tag, action, and safe rationale"]
+  ));
+}
+
+function buildRuntimeEvidenceWorkspaceDto(
+  events: readonly KnowledgeEvent[]
+): RuntimeEvidenceWorkspaceDto {
+  const workspace = buildEvidenceWorkspaceDto(events);
+  return Object.freeze({
+    ...workspace,
+    governance: buildEvidenceGovernanceWorkspaceDto(
+      events,
+      workspace.items.map((item) => item.evidenceId)
+    )
+  });
+}
+
+function unavailableEvidenceWorkspaceDto(): RuntimeEvidenceWorkspaceDto {
   return {
     schemaVersion: "evidence-workspace.v1",
     status: "degraded",
@@ -140,7 +243,8 @@ function unavailableEvidenceWorkspaceDto(): EvidenceWorkspaceDto {
       severity: "error",
       message: "The local evidence ledger could not be replayed safely.",
       repairActions: ["retry evidence replay", "inspect the local evidence ledger"]
-    }]
+    }],
+    governance: buildEvidenceGovernanceWorkspaceDto([], [])
   };
 }
 
@@ -158,7 +262,11 @@ function parseJsonBody(body: string | undefined):
 }
 
 function diagnostic(
-  code: "EVIDENCE_ASSERTION_INPUT_INVALID" | "EVIDENCE_ASSERTION_PREPARATION_BLOCKED",
+  code:
+    | "EVIDENCE_ASSERTION_INPUT_INVALID"
+    | "EVIDENCE_ASSERTION_PREPARATION_BLOCKED"
+    | "EVIDENCE_GOVERNANCE_REVIEW_INPUT_INVALID"
+    | "EVIDENCE_GOVERNANCE_REVIEW_BLOCKED",
   message: string,
   repairActions: readonly string[]
 ) {
@@ -166,6 +274,17 @@ function diagnostic(
     ok: false,
     diagnostic: { code, message, repairActions: [...repairActions] }
   };
+}
+
+const commonSecretValuePattern = /(?:^|[^a-z0-9])(?:sk[_-](?:live|test|proj)[_-]?|gh[pousr]_|github[_-]?pat[_-]|glpat[_-]|xox[baprs]?[_-]|AKIA|ASIA|AIza|ya29|eyJ|hf[_-]|rk[_-]live|pk[_-]live|sg[._-])[a-z0-9._-]{3,}/i;
+
+function isSecretSafeGovernanceText(value: string): boolean {
+  try {
+    assertSecretSafeText(value);
+  } catch {
+    return false;
+  }
+  return !commonSecretValuePattern.test(value);
 }
 
 function json(status: number, body: unknown): LocalRuntimeResponse {

@@ -103,6 +103,82 @@ export function workspaceDto(): EvidenceWorkspaceDto {
       }
     ],
     assertionCandidates: [],
-    diagnostics: []
+    diagnostics: [],
+    governance: {
+      schemaVersion: "evidence-governance-workspace.v1",
+      reviews: [
+        {
+          schemaVersion: "governance-review.v1",
+          evidenceRef: "ev_ing_001",
+          classificationStatus: "succeeded",
+          confidenceThreshold: 0.9,
+          proposedTags: [{
+            tag: "public_record",
+            confidence: 0.99,
+            confidenceThreshold: 0.9,
+            rationale: "Imported public record.",
+            eventRef: "evt_governance_public_record",
+            workflowAccess: "ordinary-internal-only"
+          }],
+          humanDecisions: [],
+          diagnostics: []
+        },
+        {
+          schemaVersion: "governance-review.v1",
+          evidenceRef: "ev_ing_blocked",
+          classificationStatus: "succeeded",
+          confidenceThreshold: 0.9,
+          proposedTags: [{
+            tag: "contains_pii",
+            confidence: 1,
+            confidenceThreshold: 0.9,
+            rationale: "Classifier proposed restricted handling.",
+            eventRef: "evt_classify_governance_blocked",
+            workflowAccess: "ordinary-internal-only"
+          }],
+          humanDecisions: [{
+            tag: "contains_pii",
+            action: "affirm",
+            rationale: "Human-confirmed restricted record.",
+            eventRef: "evt_governance_blocked",
+            supersedesEventRef: "evt_classify_governance_blocked"
+          }],
+          diagnostics: []
+        }
+      ],
+      exportPreview: {
+        schemaVersion: "governance-export-preview.v1",
+        mode: "preview-only",
+        includedEvidence: [],
+        excludedEvidence: [
+          {
+            evidenceRef: "ev_ing_001",
+            governanceEventRefs: ["evt_governance_public_record"],
+            requiredApprovals: [{
+              category: "other-unsafe",
+              approvalId: "human-affirm-public-safe-eligibility",
+              optInAvailableInPreview: false
+            }]
+          },
+          {
+            evidenceRef: "ev_ing_blocked",
+            governanceEventRefs: ["evt_classify_governance_blocked", "evt_governance_blocked"],
+            requiredApprovals: [
+              {
+                category: "private",
+                approvalId: "human-approve-private-evidence-inclusion",
+                optInAvailableInPreview: true
+              },
+              {
+                category: "quarantine",
+                approvalId: "quarantine-release-unavailable-in-preview",
+                optInAvailableInPreview: false
+              }
+            ]
+          }
+        ],
+        diagnostics: []
+      }
+    }
   };
 }

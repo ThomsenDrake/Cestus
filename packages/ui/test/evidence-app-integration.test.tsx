@@ -3,7 +3,10 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { App } from "../src/App.js";
 import type { EvidenceWorkspaceAdapter } from "../src/evidence/evidence-adapter.js";
-import { createStaticEvidenceWorkspaceAdapter } from "../src/evidence/evidence-adapter.js";
+import {
+  createHttpEvidenceWorkspaceAdapter,
+  createStaticEvidenceWorkspaceAdapter
+} from "../src/evidence/evidence-adapter.js";
 import { workspaceDto } from "./fixtures/evidence.js";
 
 describe("evidence app integration", () => {
@@ -12,6 +15,9 @@ describe("evidence app integration", () => {
     const adapter: EvidenceWorkspaceAdapter = {
       loadWorkspace,
       async prepareAssertionCandidate() {
+        throw new Error("not exercised");
+      },
+      async appendGovernanceReview() {
         throw new Error("not exercised");
       }
     };
@@ -32,6 +38,9 @@ describe("evidence app integration", () => {
         throw new Error("Authorization Bearer secret-value");
       },
       async prepareAssertionCandidate() {
+        throw new Error("not exercised");
+      },
+      async appendGovernanceReview() {
         throw new Error("not exercised");
       }
     };
@@ -69,7 +78,10 @@ describe("evidence app integration", () => {
       async loadWorkspace() {
         return base;
       },
-      prepareAssertionCandidate
+      prepareAssertionCandidate,
+      async appendGovernanceReview() {
+        throw new Error("not exercised");
+      }
     };
     render(<App evidenceAdapter={adapter} />);
     fireEvent.click(screen.getByRole("link", { name: "Evidence" }));
@@ -90,5 +102,118 @@ describe("evidence app integration", () => {
     render(<App evidenceAdapter={createStaticEvidenceWorkspaceAdapter(workspaceDto())} />);
     fireEvent.click(screen.getByRole("link", { name: "Evidence" }));
     expect(await screen.findByRole("heading", { name: "Evidence" })).toBeInTheDocument();
+  });
+
+  it("composes governance review and preview and refreshes after append", async () => {
+    const base = workspaceDto();
+    const refreshed = structuredClone(base) as unknown as {
+      governance: {
+        reviews: Array<Record<string, unknown>>;
+        exportPreview: {
+          includedEvidence: Array<Record<string, unknown>>;
+          excludedEvidence: Array<Record<string, unknown>>;
+        };
+      };
+    };
+    refreshed.governance.reviews[0]!.humanDecisions = [{
+      tag: "public_safe",
+      action: "add",
+      rationale: "Human review confirmed preview eligibility.",
+      eventRef: "evt_review_governance_public_safe"
+    }];
+    const publicExclusion = refreshed.governance.exportPreview.excludedEvidence.shift()!;
+    refreshed.governance.exportPreview.includedEvidence = [{
+      evidenceRef: "ev_ing_001",
+      governanceEventRefs: [
+        ...(publicExclusion.governanceEventRefs as string[]),
+        "evt_review_governance_public_safe"
+      ]
+    }];
+    const appendGovernanceReview = vi.fn(async () => ({ workspace: refreshed }));
+    const adapter = {
+      async loadWorkspace() {
+        return base;
+      },
+      async prepareAssertionCandidate() {
+        throw new Error("not exercised");
+      },
+      appendGovernanceReview
+    } as unknown as EvidenceWorkspaceAdapter;
+    render(<App evidenceAdapter={adapter} />);
+    fireEvent.click(screen.getByRole("link", { name: "Evidence" }));
+
+    expect(await screen.findByRole("region", { name: "Governance review" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Governance export preview" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /export|publish|opt.?in|quarantine|release/i })).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Review tag"), { target: { value: "public_safe" } });
+    fireEvent.change(screen.getByLabelText("Review action"), { target: { value: "add" } });
+    fireEvent.change(screen.getByLabelText("Review rationale"), {
+      target: { value: "Human review confirmed preview eligibility." }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Append governance review" }));
+
+    await waitFor(() => expect(appendGovernanceReview).toHaveBeenCalledWith({
+      evidenceRef: "ev_ing_001",
+      tag: "public_safe",
+      action: "add",
+      rationale: "Human review confirmed preview eligibility."
+    }));
+    expect(await screen.findByRole("region", { name: "Included by default" })).toHaveTextContent("ev_ing_001");
+  });
+
+  it("posts governance review through the strict HTTP evidence adapter", async () => {
+    const workspace = workspaceDto();
+    const fetcher = vi.fn(async () => new Response(JSON.stringify({ ok: true, workspace }), { status: 201 }));
+    const adapter = createHttpEvidenceWorkspaceAdapter({ fetcher });
+    const appendGovernanceReview = (adapter as unknown as {
+      appendGovernanceReview(input: Record<string, unknown>): Promise<{ workspace: unknown }>;
+    }).appendGovernanceReview;
+
+    expect(appendGovernanceReview).toBeTypeOf("function");
+    const result = await appendGovernanceReview.call(adapter, {
+      evidenceRef: "ev_ing_001",
+      tag: "public_safe",
+      action: "add",
+      rationale: "Human review confirmed preview eligibility."
+    });
+    expect(fetcher).toHaveBeenCalledWith("/api/evidence/governance-reviews", expect.objectContaining({
+      method: "POST",
+      headers: { accept: "application/json", "content-type": "application/json" }
+    }));
+    expect(result.workspace).toMatchObject({ governance: { schemaVersion: "evidence-governance-workspace.v1" } });
+    expect(Object.isFrozen(result.workspace)).toBe(true);
+  });
+
+  it("rejects credential-shaped governance review input before invoking fetch", async () => {
+    const fetcher = vi.fn(async () => new Response("{}", { status: 500 }));
+    const adapter = createHttpEvidenceWorkspaceAdapter({ fetcher });
+    const unsafeInputs = [
+      {
+        evidenceRef: "ev_ing_001",
+        tag: "public_safe" as const,
+        action: "add" as const,
+        rationale: "Authorization: Bearer runtime-secret-value"
+      },
+      {
+        evidenceRef: "ev_ghp_abcdefghijklmnopqrstuvwxyz1234567890",
+        tag: "public_safe" as const,
+        action: "add" as const,
+        rationale: "Human review confirmed preview eligibility."
+      },
+      {
+        evidenceRef: "ev_ing_001",
+        tag: "public_safe" as const,
+        action: "supersede" as const,
+        rationale: "Human review supersedes prior handling.",
+        supersedesEventRef: "evt_AKIA1234567890ABCDEF"
+      }
+    ];
+
+    for (const input of unsafeInputs) {
+      await expect(adapter.appendGovernanceReview(input)).rejects.toThrow(
+        "Governance review input could not be prepared safely."
+      );
+    }
+    expect(fetcher).not.toHaveBeenCalled();
   });
 });

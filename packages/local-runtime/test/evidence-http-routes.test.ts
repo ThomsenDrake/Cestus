@@ -56,6 +56,89 @@ describe("local runtime evidence HTTP routes", () => {
     expect(events.filter((event) => event.type === "assertion.proposed")).toHaveLength(1);
   });
 
+  it("reads governance state and appends a human review with refreshed replay and preview", async () => {
+    const ledger = new InMemoryEventLedger();
+    const ingestion = evidenceIngestedEvent();
+    await seedEvents(ledger, [...goldenIngestionLedgerEvents, ingestion]);
+    const committedIngestion = (await ledger.readStream("evidence_ev_ing_001"))
+      .find((event) => event.type === "evidence.ingested");
+    if (committedIngestion === undefined) {
+      throw new Error("test setup requires committed evidence ingestion");
+    }
+    const classification = await ledger.append(evidenceGovernanceClassifiedEvent(committedIngestion.id));
+
+    const before = structuredClone(await ledger.readAll());
+    const workspaceResponse = await handleEvidenceHttpRoute({
+      request: { method: "GET", url: "/api/evidence/workspace" },
+      ledger,
+      actor
+    });
+    expect(workspaceResponse?.status).toBe(200);
+    expect(JSON.parse(workspaceResponse!.body)).toMatchObject({
+      governance: {
+        schemaVersion: "evidence-governance-workspace.v1",
+        reviews: [{
+          evidenceRef: "ev_ing_001",
+          classificationStatus: "succeeded",
+          proposedTags: [{ tag: "public_record", eventRef: classification.id }],
+          humanDecisions: []
+        }],
+        exportPreview: {
+          mode: "preview-only",
+          includedEvidence: [],
+          excludedEvidence: [{ evidenceRef: "ev_ing_001" }]
+        }
+      }
+    });
+
+    const reviewResponse = await handleEvidenceHttpRoute({
+      request: {
+        method: "POST",
+        url: "/api/evidence/governance-reviews",
+        body: JSON.stringify({
+          evidenceRef: "ev_ing_001",
+          tag: "public_safe",
+          action: "add",
+          rationale: "Human review confirmed default preview eligibility."
+        })
+      },
+      ledger,
+      actor
+    });
+    expect(reviewResponse?.status).toBe(201);
+    const reviewed = JSON.parse(reviewResponse!.body);
+    expect(reviewed).toMatchObject({
+      ok: true,
+      workspace: {
+        governance: {
+          reviews: [{
+            evidenceRef: "ev_ing_001",
+            humanDecisions: [{
+              tag: "public_safe",
+              action: "add",
+              rationale: "Human review confirmed default preview eligibility."
+            }]
+          }],
+          exportPreview: {
+            mode: "preview-only",
+            includedEvidence: [{ evidenceRef: "ev_ing_001" }],
+            excludedEvidence: []
+          }
+        }
+      }
+    });
+
+    const after = await ledger.readAll();
+    expect(after.slice(0, before.length)).toEqual(before);
+    expect(after.filter((event) => event.type === "evidence.governance.reviewed")).toHaveLength(1);
+    expect(after.some((event) => [
+      "export.generated",
+      "report.generated",
+      "evidence.quarantined",
+      "evidence.tombstoned"
+    ].includes(event.type))).toBe(false);
+  });
+
   it("rejects credential-shaped proposal material without appending or echoing it", async () => {
     const ledger = new InMemoryEventLedger();
     await seedEvents(ledger, [...goldenIngestionLedgerEvents, evidenceIngestedEvent()]);
@@ -72,6 +155,31 @@ describe("local runtime evidence HTTP routes", () => {
           predicate: "agency.name",
           object: secret,
           confidence: 0.84
+        })
+      },
+      ledger,
+      actor
+    });
+
+    expect(response?.status).toBe(400);
+    expect(response?.body).not.toContain(secret);
+    expect(await ledger.readAll()).toEqual(before);
+  });
+
+  it("rejects credential-shaped governance review material without appending or echoing it", async () => {
+    const ledger = new InMemoryEventLedger();
+    const before = await ledger.readAll();
+    const secret = "Authorization: Bearer governance-secret-value";
+
+    const response = await handleEvidenceHttpRoute({
+      request: {
+        method: "POST",
+        url: "/api/evidence/governance-reviews",
+        body: JSON.stringify({
+          evidenceRef: "ev_ing_001",
+          tag: "public_safe",
+          action: "add",
+          rationale: secret
         })
       },
       ledger,
@@ -219,6 +327,32 @@ function evidenceIngestedEvent(): KnowledgeEvent {
       contentHash: "sha256:1111111111111111111111111111111111111111111111111111111111111111",
       mediaType: "text/plain",
       sizeBytes: 4
+    }
+  };
+}
+
+function evidenceGovernanceClassifiedEvent(
+  evidenceEventId: string
+): AppendableKnowledgeEvent<"evidence.governance.classified"> {
+  return {
+    type: "evidence.governance.classified",
+    version: 1,
+    streamId: "evidence_ev_ing_001",
+    context: {
+      actor: { id: "actor_classifier", kind: "extractor", label: "Governance classifier" },
+      occurredAt: "2026-07-05T12:05:00.000Z",
+      causationId: evidenceEventId,
+      correlationId: "corr_ingestion_golden",
+      coreVersion: "0.1.0",
+      packVersions: { core: "0.1.0", ingestion: "0.1.0" }
+    },
+    payload: {
+      evidenceId: "ev_ing_001",
+      evidenceEventId,
+      contentHash: "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+      policy: { policyId: "gov_policy_default", version: "0.1.0" },
+      classifier: { actorId: "actor_classifier", kind: "ai", label: "Governance classifier" },
+      tags: [{ tag: "public_record", confidence: 0.99, rationale: "Imported public record." }]
     }
   };
 }
