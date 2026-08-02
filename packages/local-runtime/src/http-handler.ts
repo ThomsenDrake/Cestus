@@ -10,6 +10,7 @@ import {
 import { handleAgentHttpRoute } from "./agent-http-routes.js";
 import { authorizedLocalRuntimeRequest } from "./auth.js";
 import type { ResolvedLocalRuntimeConfig } from "./config.js";
+import { handleEvidenceHttpRoute } from "./evidence-http-routes.js";
 import { handleIngestionHttpRoute } from "./ingestion-http-routes.js";
 import type { LocalIngestionRuntimeFactory } from "./ingestion-runtime-factory.js";
 import { createDefaultOperatorStatusProviders } from "./operator-status-providers.js";
@@ -143,6 +144,18 @@ export function createLocalRuntimeHttpHandler(
         ...(input.ingestionRuntimeFactory === undefined
           ? {}
           : { ingestionRuntimeFactory: input.ingestionRuntimeFactory })
+      });
+      if (response !== undefined) {
+        return response;
+      }
+    }
+
+    if (path.startsWith("/api/evidence/")) {
+      const response = await handleEvidenceHttpRoute({
+        request,
+        ledger: handle.ledger,
+        actor: input.actor,
+        now: localRuntimeNow(input.now)
       });
       if (response !== undefined) {
         return response;

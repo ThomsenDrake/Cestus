@@ -35,6 +35,15 @@ import type {
   IngestionWorkspaceDto,
   RetryIngestionJobInput
 } from "./ingestion/ingestion-types.js";
+import { EvidenceWorkspace } from "./evidence/EvidenceWorkspace.js";
+import {
+  httpEvidenceWorkspaceAdapter,
+  type EvidenceWorkspaceAdapter
+} from "./evidence/evidence-adapter.js";
+import type {
+  EvidenceWorkspaceDto,
+  PrepareEvidenceAssertionCandidateInput
+} from "./evidence/evidence-types.js";
 import { OntologyWorkspace } from "./ontology/OntologyWorkspace.js";
 import {
   httpOntologyWorkspaceAdapter,
@@ -68,10 +77,12 @@ const implementedModuleIds = new Set(["command", "requests"]);
 implementedModuleIds.add("ingestion");
 implementedModuleIds.add("agents");
 implementedModuleIds.add("ontology");
+implementedModuleIds.add("evidence");
 
 interface AppProps {
   readonly requestsAdapter?: RequestsWorkspaceAdapter;
   readonly ingestionAdapter?: IngestionWorkspaceAdapter;
+  readonly evidenceAdapter?: EvidenceWorkspaceAdapter;
   readonly operatorStatusAdapter?: OperatorStatusAdapter;
   readonly agentAdapter?: AgentAdapter;
   readonly ontologyAdapter?: OntologyWorkspaceAdapter;
@@ -80,6 +91,7 @@ interface AppProps {
 export function App({
   requestsAdapter = httpRequestsAdapter,
   ingestionAdapter = httpIngestionWorkspaceAdapter,
+  evidenceAdapter = httpEvidenceWorkspaceAdapter,
   operatorStatusAdapter = httpOperatorStatusAdapter,
   agentAdapter = httpAgentAdapter,
   ontologyAdapter = httpOntologyWorkspaceAdapter
@@ -111,6 +123,11 @@ export function App({
   const [ingestionReloadKey, setIngestionReloadKey] = useState(0);
   const [ingestionJobs, setIngestionJobs] = useState<readonly IngestionJobDto[]>([]);
   const [ingestionDiagnostics, setIngestionDiagnostics] = useState<readonly IngestionRuntimeDiagnosticDto[]>([]);
+  const [evidenceWorkspace, setEvidenceWorkspace] = useState<EvidenceWorkspaceDto | undefined>();
+  const [loadedEvidenceAdapter, setLoadedEvidenceAdapter] = useState<EvidenceWorkspaceAdapter | undefined>();
+  const [evidenceLoadState, setEvidenceLoadState] = useState<"idle" | "loading" | "loaded" | "error">("idle");
+  const [evidenceLoadError, setEvidenceLoadError] = useState<string | undefined>();
+  const [evidenceReloadKey, setEvidenceReloadKey] = useState(0);
   const [ontologyWorkspace, setOntologyWorkspace] = useState<OntologyWorkspaceDto | undefined>();
   const [loadedOntologyAdapter, setLoadedOntologyAdapter] = useState<OntologyWorkspaceAdapter | undefined>();
   const [ontologyLoadState, setOntologyLoadState] = useState<"idle" | "loading" | "loaded" | "error">("idle");
@@ -145,6 +162,7 @@ export function App({
   const commandActive = activeModuleId === "command";
   const requestsActive = activeModuleId === "requests";
   const ingestionActive = activeModuleId === "ingestion";
+  const evidenceActive = activeModuleId === "evidence";
   const agentActive = activeModuleId === "agents";
   const ontologyActive = activeModuleId === "ontology";
   const selectedPrrModalRequest = useMemo(
@@ -304,6 +322,44 @@ export function App({
       canceled = true;
     };
   }, [ingestionActive, ingestionAdapter, ingestionReloadKey, ingestionWorkspace, loadedIngestionAdapter]);
+
+  useEffect(() => {
+    if (!evidenceActive) {
+      return;
+    }
+
+    if (evidenceWorkspace !== undefined && loadedEvidenceAdapter === evidenceAdapter) {
+      return;
+    }
+
+    let canceled = false;
+    setEvidenceLoadState("loading");
+    setEvidenceLoadError(undefined);
+
+    evidenceAdapter
+      .loadWorkspace()
+      .then((workspace) => {
+        if (canceled) {
+          return;
+        }
+        setEvidenceWorkspace(workspace);
+        setLoadedEvidenceAdapter(evidenceAdapter);
+        setEvidenceLoadState("loaded");
+      })
+      .catch(() => {
+        if (canceled) {
+          return;
+        }
+        setEvidenceWorkspace(undefined);
+        setLoadedEvidenceAdapter(undefined);
+        setEvidenceLoadState("error");
+        setEvidenceLoadError("Evidence workspace could not be loaded safely.");
+      });
+
+    return () => {
+      canceled = true;
+    };
+  }, [evidenceActive, evidenceAdapter, evidenceReloadKey, evidenceWorkspace, loadedEvidenceAdapter]);
 
   useEffect(() => {
     if (!ontologyActive) {
@@ -499,6 +555,21 @@ export function App({
       onApproveProviderParsing={handleApproveProviderParsing}
       onRetryJob={handleRetryIngestionJob}
       onLoadDiagnostics={handleLoadIngestionDiagnostics}
+    />
+  );
+  const evidenceMain = (
+    <EvidenceWorkspace
+      workspace={evidenceWorkspace}
+      loadState={evidenceLoadState}
+      loadError={evidenceLoadError}
+      onRetry={() => {
+        setEvidenceWorkspace(undefined);
+        setLoadedEvidenceAdapter(undefined);
+        setEvidenceLoadState("idle");
+        setEvidenceLoadError(undefined);
+        setEvidenceReloadKey((current) => current + 1);
+      }}
+      onPrepareAssertionCandidate={handlePrepareEvidenceAssertionCandidate}
     />
   );
   const ontologyMain = (
@@ -703,6 +774,15 @@ export function App({
       });
   }
 
+  async function handlePrepareEvidenceAssertionCandidate(input: PrepareEvidenceAssertionCandidateInput) {
+    const result = await evidenceAdapter.prepareAssertionCandidate(input);
+    setEvidenceWorkspace(result.workspace);
+    setLoadedEvidenceAdapter(evidenceAdapter);
+    setEvidenceLoadState("loaded");
+    setEvidenceLoadError(undefined);
+    return result.candidate;
+  }
+
   async function refreshAgentStateAfterMutation(preferredMemoryId?: string) {
     const [status, cockpit, approvalCockpit, memory] = await Promise.all([
       agentAdapter.loadStatus(),
@@ -872,6 +952,8 @@ export function App({
   const commandOrRequestsModeLabel = requestsActive ? "Requests" : "Command";
   const modeLabel = ontologyActive
     ? "Ontology"
+    : evidenceActive
+      ? "Evidence"
     : agentActive
       ? "Agent"
       : ingestionActive
@@ -879,6 +961,8 @@ export function App({
         : commandOrRequestsModeLabel;
   const searchLabel = requestsActive
     ? "Requests search"
+    : evidenceActive
+      ? "Evidence search"
     : ingestionActive
       ? "Ingestion search"
       : ontologyActive
@@ -888,6 +972,8 @@ export function App({
         : "Command search";
   const searchPlaceholder = requestsActive
     ? "Search requests, agencies, evidence, and correspondence"
+    : evidenceActive
+      ? "Search evidence, occurrences, hashes, governance, and linkage"
     : ingestionActive
       ? "Search source collections, scans, duplicates, and diagnostics"
       : ontologyActive
@@ -897,6 +983,8 @@ export function App({
         : "Search requests, evidence, agencies, and assertions";
   const mainId = requestsActive
     ? "requests"
+    : evidenceActive
+      ? "evidence"
     : ingestionActive
       ? "ingestion"
       : ontologyActive
@@ -906,6 +994,8 @@ export function App({
           : "command";
   const main = requestsActive
     ? requestsMain
+    : evidenceActive
+      ? evidenceMain
     : ingestionActive
       ? ingestionMain
       : ontologyActive
@@ -927,13 +1017,27 @@ export function App({
       : ontologyLoadState === "loaded" && ontologyWorkspace !== undefined
         ? "Replay current"
         : "Replay loading";
+  const evidenceLedgerLabel = evidenceLoadState === "error"
+    ? "Ledger unavailable"
+    : evidenceWorkspace?.status === "degraded"
+      ? "Evidence degraded"
+      : evidenceLoadState === "loaded" && evidenceWorkspace !== undefined
+        ? `High-water ${evidenceWorkspace.sourceHighWaterMark}`
+        : "Replay pending";
+  const evidenceSyncLabel = evidenceLoadState === "error"
+    ? "Retry required"
+    : evidenceWorkspace?.status === "degraded"
+      ? "Review required"
+      : evidenceLoadState === "loaded" && evidenceWorkspace !== undefined
+        ? "Corpus current"
+        : "Replay loading";
   const decisionRail = requestsActive ? (
     <RequestWorkspaceIntelligenceRail
       workspace={requestsWorkspace}
       savedViewId={requestsViewContext.savedViewId}
       viewMode={requestsViewContext.viewMode}
     />
-  ) : agentActive || ontologyActive ? null : (
+  ) : agentActive || ontologyActive || evidenceActive ? null : (
     commandDecisionRail
   );
 
@@ -945,14 +1049,14 @@ export function App({
           activeModuleId={activeModuleId}
           workspaceName="Cestus Local"
           modeLabel={modeLabel}
-          ledgerLabel={ontologyActive ? ontologyLedgerLabel : "Ledger synced"}
-          syncLabel={ontologyActive ? ontologySyncLabel : requestsActive ? "PRR sync local" : "Local sync live"}
+          ledgerLabel={ontologyActive ? ontologyLedgerLabel : evidenceActive ? evidenceLedgerLabel : "Ledger synced"}
+          syncLabel={ontologyActive ? ontologySyncLabel : evidenceActive ? evidenceSyncLabel : requestsActive ? "PRR sync local" : "Local sync live"}
           deploymentLabel="Solo laptop"
           searchLabel={searchLabel}
           searchPlaceholder={searchPlaceholder}
           mainId={mainId}
-          mainLabel={ontologyActive ? "Ontology workspace" : agentActive ? "Agent workspace" : ingestionActive ? "Ingestion workspace" : requestsActive ? "Requests workspace" : "Command workspace"}
-          onNewRequest={agentActive || ontologyActive ? undefined : handleNewRequest}
+          mainLabel={ontologyActive ? "Ontology workspace" : evidenceActive ? "Evidence workspace" : agentActive ? "Agent workspace" : ingestionActive ? "Ingestion workspace" : requestsActive ? "Requests workspace" : "Command workspace"}
+          onNewRequest={agentActive || ontologyActive || evidenceActive ? undefined : handleNewRequest}
           onModuleSelect={handleModuleSelect}
           main={main}
           decisionRail={decisionRail}
