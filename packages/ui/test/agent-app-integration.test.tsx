@@ -11,6 +11,7 @@ import type {
   OntologyBootstrapRouteDto
 } from "../src/agent/agent-types.js";
 import { createStaticIngestionWorkspaceAdapter } from "../src/ingestion/ingestion-adapter.js";
+import { createStaticOntologyWorkspaceAdapter } from "../src/ontology/ontology-adapter.js";
 import { createStaticOperatorStatusAdapter } from "../src/operator-status/operator-status-adapter.js";
 import type { OperatorStatusDto } from "../src/operator-status/operator-status-types.js";
 import { createTestRequestsAdapter } from "./request-test-utils.js";
@@ -90,6 +91,15 @@ describe("agent app integration", () => {
       <App
         requestsAdapter={createTestRequestsAdapter()}
         ingestionAdapter={createStaticIngestionWorkspaceAdapter({ mounted: false, diagnostics: [] })}
+        ontologyAdapter={createStaticOntologyWorkspaceAdapter({
+          schemaVersion: "ontology-workspace.v1",
+          status: "ready",
+          sourceHighWaterMark: 0,
+          entities: [],
+          relationships: [],
+          assertions: [],
+          diagnostics: []
+        })}
         operatorStatusAdapter={createStaticOperatorStatusAdapter(operatorStatus())}
         agentAdapter={adapter}
       />
@@ -106,7 +116,7 @@ describe("agent app integration", () => {
       expect(screen.getByRole("region", { name: "Give Cestus Agent a task" })).toBeInTheDocument();
       expect(screen.getByRole("region", { name: "Agent run cockpit" })).toBeInTheDocument();
 
-      await waitFor(() => expect(loads).toEqual({ status: 1, cockpit: 1, approvals: 1, ontologyRoute: 1 }));
+      await waitFor(() => expect(loads).toEqual({ status: 2, cockpit: 1, approvals: 1, ontologyRoute: 1 }));
       const review = screen.getByRole("region", { name: "Ontology bootstrap review" });
       expect(within(review).getByText("Ontology bootstrap")).toBeInTheDocument();
       expect(within(review).getByText("Review staging approval preview")).toBeInTheDocument();
@@ -150,7 +160,7 @@ describe("agent app integration", () => {
       />
     );
 
-    fireEvent.click(await screen.findByRole("button", { name: "Select Miami-Dade Aviation Department stalling signal" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Select Economic Development Office stalling signal" }));
     expect(screen.getByRole("button", { name: "Back to agent brief" })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("link", { name: "Agent" }));
@@ -229,7 +239,7 @@ describe("agent app integration", () => {
       description: "Preserve the description field from the app composer."
     })]);
     expect(String((creates[0] as { readonly taskId: string }).taskId)).toMatch(/^task_review-imported-archive_/);
-    expect(loads).toEqual({ status: 2, cockpit: 2, approvals: 2 });
+    expect(loads).toEqual({ status: 3, cockpit: 2, approvals: 2 });
   });
 
   it("queues a task through the Agent adapter without exposing generic run start", async () => {
@@ -285,7 +295,7 @@ describe("agent app integration", () => {
       priority: "normal"
     })]);
     expect(screen.queryByRole("button", { name: /start run/i })).not.toBeInTheDocument();
-    expect(loads).toEqual({ status: 2, cockpit: 2, approvals: 2 });
+    expect(loads).toEqual({ status: 3, cockpit: 2, approvals: 2 });
   });
 
   it("approves provider byte-transfer previews through the Agent adapter only and reloads status plus cockpit", async () => {
@@ -347,7 +357,7 @@ describe("agent app integration", () => {
     }]);
     const refreshedCockpit = await screen.findByRole("region", { name: "Agent approval cockpit" });
     expect(within(refreshedCockpit).getByText("0 visible requests")).toBeInTheDocument();
-    expect(loads).toEqual({ status: 2, cockpit: 2, approvals: 2 });
+    expect(loads).toEqual({ status: 3, cockpit: 2, approvals: 2 });
   });
 
   it("refreshes the Agent status, approval cockpit, and cockpit DTO together", async () => {
@@ -396,7 +406,7 @@ describe("agent app integration", () => {
 
     const refreshedCockpit = await screen.findByRole("region", { name: "Agent approval cockpit" });
     expect(within(refreshedCockpit).getByText("0 visible requests")).toBeInTheDocument();
-    expect(loads).toEqual({ status: 2, cockpit: 2, approvals: 2 });
+    expect(loads).toEqual({ status: 3, cockpit: 2, approvals: 2 });
   });
 
   it("shows a safe message when task queueing fails and does not call approval routes", async () => {

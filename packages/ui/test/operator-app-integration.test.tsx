@@ -100,9 +100,15 @@ describe("operator cockpit app integration", () => {
 
     const cockpit = await screen.findByRole("region", { name: "Operator cockpit" });
     expect(within(cockpit).getAllByText(/unavailable/i).length).toBeGreaterThan(0);
+    const runtimeSources = screen.getByRole("region", { name: "Command runtime source status" });
+    const operatorSource = within(runtimeSources).getByRole("heading", { name: "Operator status" }).closest("li");
+    expect(operatorSource).not.toBeNull();
+    expect(within(operatorSource as HTMLElement).getByText("Unavailable")).toBeInTheDocument();
+    expect(within(operatorSource as HTMLElement).getByText("Operator runtime unavailable for test.")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Command" })).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: "Requests" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: "Ingestion" })).not.toBeInTheDocument();
+    expect(screen.getByRole("main", { name: "Command workspace" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Command" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("link", { name: "Ingestion" })).not.toHaveAttribute("aria-current");
     expect(screen.queryByRole("dialog", { name: "Guided request builder" })).not.toBeInTheDocument();
     expect(screen.queryByRole("dialog", { name: /Request investigation detail/i })).not.toBeInTheDocument();
   });

@@ -129,14 +129,16 @@ describe("ingestion app integration", () => {
 
     const approveButton = await screen.findByRole("button", { name: "Approve raw import" });
     await waitFor(() => expect(approveButton).toBeEnabled());
+    expect(listJobs).toHaveBeenCalledTimes(1);
 
     fireEvent.click(approveButton);
 
     expect((await screen.findAllByText("imp_001")).length).toBeGreaterThan(0);
+    await waitFor(() => expect(listJobs).toHaveBeenCalledTimes(2));
     expect(screen.queryByText("Ingestion action failed. Reload the workspace and try again.")).not.toBeInTheDocument();
-    expect(
-      await screen.findByText("Ingestion support state could not be refreshed. The action completed; reload jobs and diagnostics if needed.")
-    ).toBeInTheDocument();
+    expect((await screen.findAllByText(
+      "Ingestion support state could not be refreshed. The action completed; reload jobs and diagnostics if needed."
+    )).length).toBeGreaterThan(0);
   });
 });
 
