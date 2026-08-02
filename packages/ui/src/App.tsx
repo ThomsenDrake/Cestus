@@ -913,6 +913,20 @@ export function App({
         : agentActive
           ? agentMain
           : commandMain;
+  const ontologyLedgerLabel = ontologyLoadState === "error"
+    ? "Ledger unavailable"
+    : ontologyWorkspace?.status === "degraded"
+      ? "Projection degraded"
+      : ontologyLoadState === "loaded" && ontologyWorkspace !== undefined
+        ? `High-water ${ontologyWorkspace.sourceHighWaterMark}`
+        : "Replay pending";
+  const ontologySyncLabel = ontologyLoadState === "error"
+    ? "Retry required"
+    : ontologyWorkspace?.status === "degraded"
+      ? "Repair required"
+      : ontologyLoadState === "loaded" && ontologyWorkspace !== undefined
+        ? "Replay current"
+        : "Replay loading";
   const decisionRail = requestsActive ? (
     <RequestWorkspaceIntelligenceRail
       workspace={requestsWorkspace}
@@ -931,8 +945,8 @@ export function App({
           activeModuleId={activeModuleId}
           workspaceName="Cestus Local"
           modeLabel={modeLabel}
-          ledgerLabel="Ledger synced"
-          syncLabel={requestsActive ? "PRR sync local" : "Local sync live"}
+          ledgerLabel={ontologyActive ? ontologyLedgerLabel : "Ledger synced"}
+          syncLabel={ontologyActive ? ontologySyncLabel : requestsActive ? "PRR sync local" : "Local sync live"}
           deploymentLabel="Solo laptop"
           searchLabel={searchLabel}
           searchPlaceholder={searchPlaceholder}

@@ -55,6 +55,7 @@ export function buildGraphProjection(events: readonly KnowledgeEvent[]): GraphPr
   for (const event of events) {
     switch (event.type) {
       case "assertion.proposed":
+        assertions.delete(event.payload.assertionId);
         proposedAssertions.set(event.payload.assertionId, {
           assertionId: event.payload.assertionId,
           reviewState: "proposed",
@@ -68,7 +69,7 @@ export function buildGraphProjection(events: readonly KnowledgeEvent[]): GraphPr
 
       case "assertion.accepted": {
         const assertion = proposedAssertions.get(event.payload.assertionId);
-        if (assertion) {
+        if (assertion && event.context.causationId === assertion.proposedByEventId) {
           assertions.set(event.payload.assertionId, {
             ...assertion,
             reviewState: "accepted",

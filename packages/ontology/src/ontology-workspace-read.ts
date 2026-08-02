@@ -88,31 +88,47 @@ export function buildOntologyWorkspaceReadDto(input: readonly unknown[]): Ontolo
 
   const diagnostics: OntologyReadDiagnosticDto[] = [];
   const graph = buildGraphProjection(events);
-  const evidenceEvents = new Map<string, KnowledgeEventOf<"evidence.ingested">>();
-  const proposals = new Map<string, KnowledgeEventOf<"assertion.proposed">>();
-  const acceptances = new Map<string, KnowledgeEventOf<"assertion.accepted">>();
+  const eventsById = new Map(events.map((event) => [event.id, event]));
+  const assertionStates = new Map<string, {
+    readonly proposal: KnowledgeEventOf<"assertion.proposed">;
+    acceptance?: KnowledgeEventOf<"assertion.accepted">;
+  }>();
+  const entityEvents = new Map<string, KnowledgeEventOf<"entity.resolved">>();
+  const relationshipEvents = new Map<string, KnowledgeEventOf<"relationship.accepted">>();
 
   for (const event of events) {
-    if (event.type === "evidence.ingested") {
-      evidenceEvents.set(event.payload.evidenceId, event);
-    } else if (event.type === "assertion.proposed") {
-      proposals.set(event.payload.assertionId, event);
+    if (event.type === "assertion.proposed") {
+      if (assertionStates.has(event.payload.assertionId)) {
+        diagnostics.push(missingProvenanceDiagnostic("A repeated assertion proposal requires a new exact acceptance before it can enter accepted truth."));
+      }
+      assertionStates.set(event.payload.assertionId, { proposal: event });
     } else if (event.type === "assertion.accepted") {
-      const proposal = proposals.get(event.payload.assertionId);
-      if (proposal !== undefined && event.context.causationId === proposal.id) {
-        acceptances.set(event.payload.assertionId, event);
+      const state = assertionStates.get(event.payload.assertionId);
+      if (state !== undefined && event.context.causationId === state.proposal.id) {
+        state.acceptance = event;
       } else {
         diagnostics.push(missingProvenanceDiagnostic("An assertion acceptance was omitted because its proposal provenance is incomplete."));
       }
+    } else if (event.type === "entity.resolved") {
+      entityEvents.set(event.payload.entityId, event);
+    } else if (event.type === "relationship.accepted") {
+      relationshipEvents.set(event.payload.relationshipId, event);
     }
   }
 
-  const assertions = [...proposals.values()]
-    .sort((left, right) => left.payload.assertionId.localeCompare(right.payload.assertionId))
-    .map((proposal): OntologyAssertionReadDto => {
-      const evidence = evidenceEvents.get(proposal.payload.evidenceId);
-      const accepted = acceptances.get(proposal.payload.assertionId);
-      const evidenceIsBound = evidence !== undefined && proposal.context.causationId === evidence.id;
+  const assertions = [...assertionStates.values()]
+    .sort((left, right) => left.proposal.payload.assertionId.localeCompare(right.proposal.payload.assertionId))
+    .map((state): OntologyAssertionReadDto => {
+      const proposal = state.proposal;
+      const causedBy = proposal.context.causationId === undefined
+        ? undefined
+        : eventsById.get(proposal.context.causationId);
+      const evidence = causedBy?.type === "evidence.ingested" &&
+        causedBy.payload.evidenceId === proposal.payload.evidenceId
+        ? causedBy
+        : undefined;
+      const accepted = state.acceptance;
+      const evidenceIsBound = evidence !== undefined;
 
       if (!evidenceIsBound) {
         diagnostics.push(missingProvenanceDiagnostic("An assertion was omitted from accepted truth because its evidence event provenance is incomplete."));
@@ -141,11 +157,8 @@ export function buildOntologyWorkspaceReadDto(input: readonly unknown[]): Ontolo
     assertions.filter((assertion) => assertion.reviewState === "accepted").map((assertion) => assertion.assertionId)
   );
 
-  const entityEvents = events.filter(
-    (event): event is KnowledgeEventOf<"entity.resolved"> => event.type === "entity.resolved"
-  );
   const entities: OntologyEntityReadDto[] = [];
-  for (const event of entityEvents) {
+  for (const event of entityEvents.values()) {
     const projected = graph.entities.get(event.payload.entityId);
     if (
       projected === undefined ||
@@ -155,15 +168,15 @@ export function buildOntologyWorkspaceReadDto(input: readonly unknown[]): Ontolo
       continue;
     }
 
-    const supportingAssertions = projected.assertionIds
+    const supportingAssertions = event.payload.assertionIds
       .map((assertionId) => assertionById.get(assertionId))
       .filter((assertion): assertion is OntologyAssertionReadDto => assertion !== undefined);
     entities.push({
-      entityId: projected.entityId,
-      canonicalLabel: projected.canonicalLabel,
-      entityType: projected.entityType,
+      entityId: event.payload.entityId,
+      canonicalLabel: event.payload.canonicalLabel,
+      entityType: event.payload.entityType,
       reviewState: "accepted",
-      supportingAssertionIds: sortedUnique(projected.assertionIds),
+      supportingAssertionIds: sortedUnique(event.payload.assertionIds),
       evidenceIds: sortedUnique(supportingAssertions.map((assertion) => assertion.evidenceId)),
       eventIds: sortedUnique([
         event.id,
@@ -178,11 +191,8 @@ export function buildOntologyWorkspaceReadDto(input: readonly unknown[]): Ontolo
   entities.sort((left, right) => left.entityId.localeCompare(right.entityId));
   const acceptedEntityIds = new Set(entities.map((entity) => entity.entityId));
 
-  const relationshipEvents = events.filter(
-    (event): event is KnowledgeEventOf<"relationship.accepted"> => event.type === "relationship.accepted"
-  );
   const relationships: OntologyRelationshipReadDto[] = [];
-  for (const event of relationshipEvents) {
+  for (const event of relationshipEvents.values()) {
     const projected = graph.relationships.get(event.payload.relationshipId);
     if (
       projected === undefined ||
@@ -194,12 +204,12 @@ export function buildOntologyWorkspaceReadDto(input: readonly unknown[]): Ontolo
       continue;
     }
 
-    const referencedAssertions = projected.assertionIds
+    const referencedAssertions = event.payload.assertionIds
       .map((assertionId) => assertionById.get(assertionId))
       .filter((assertion): assertion is OntologyAssertionReadDto => assertion !== undefined);
     const contradictionAssertions = assertions.filter(
       (assertion) =>
-        assertion.subjectRef === projected.relationshipId && isContradictionPredicate(assertion.predicate)
+        assertion.subjectRef === event.payload.relationshipId && isContradictionPredicate(assertion.predicate)
     );
     const supportingAssertions = referencedAssertions.filter(
       (assertion) => !isContradictionPredicate(assertion.predicate)
@@ -207,10 +217,10 @@ export function buildOntologyWorkspaceReadDto(input: readonly unknown[]): Ontolo
     const allRelevantAssertions = uniqueAssertions([...referencedAssertions, ...contradictionAssertions]);
 
     relationships.push({
-      relationshipId: projected.relationshipId,
-      fromEntityId: projected.fromEntityId,
-      toEntityId: projected.toEntityId,
-      relationshipType: projected.relationshipType,
+      relationshipId: event.payload.relationshipId,
+      fromEntityId: event.payload.fromEntityId,
+      toEntityId: event.payload.toEntityId,
+      relationshipType: event.payload.relationshipType,
       reviewState: "accepted",
       supportingAssertionIds: sortedUnique(supportingAssertions.map((assertion) => assertion.assertionId)),
       contradictingAssertionIds: sortedUnique([
@@ -224,7 +234,10 @@ export function buildOntologyWorkspaceReadDto(input: readonly unknown[]): Ontolo
         event.id,
         ...allRelevantAssertions.flatMap((assertion) => assertion.eventIds)
       ]),
-      packVersions: packVersionsFor([event])
+      packVersions: mergePackVersions([
+        packVersionsFor([event]),
+        ...allRelevantAssertions.map((assertion) => assertion.packVersions)
+      ])
     });
   }
   relationships.sort((left, right) => left.relationshipId.localeCompare(right.relationshipId));

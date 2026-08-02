@@ -63,12 +63,95 @@ describe("ontology workspace", () => {
 
     fireEvent.click(screen.getByRole("link", { name: "Ontology" }));
     const diagnostics = await screen.findByRole("region", { name: "Ontology diagnostics" });
+    const commandBand = screen.getByRole("banner", { name: "Cestus command band" });
 
     expect(within(diagnostics).getByText("projection-lag")).toBeInTheDocument();
     expect(within(diagnostics).getByText(/rebuild the ontology projection/)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /inspect relationship/i })).not.toBeInTheDocument();
+    expect(within(commandBand).queryByText("Ledger synced")).not.toBeInTheDocument();
+    expect(within(commandBand).queryByText("Local sync live")).not.toBeInTheDocument();
+    expect(within(commandBand).getByText("Projection degraded")).toBeInTheDocument();
+    expect(within(commandBand).getByText("Repair required")).toBeInTheDocument();
     fireEvent.click(within(diagnostics).getByRole("button", { name: "Retry ontology replay" }));
     await waitFor(() => expect(loadCount).toBe(2));
+  });
+
+  it("never claims synced or live while the ontology replay is loading or unavailable", async () => {
+    const neverResolves = new Promise<OntologyWorkspaceDto>(() => undefined);
+    const loading = render(<App ontologyAdapter={{ loadWorkspace: () => neverResolves }} />);
+
+    fireEvent.click(screen.getByRole("link", { name: "Ontology" }));
+    await screen.findByRole("region", { name: "Ontology loading state" });
+    let commandBand = screen.getByRole("banner", { name: "Cestus command band" });
+    expect(within(commandBand).queryByText("Ledger synced")).not.toBeInTheDocument();
+    expect(within(commandBand).queryByText("Local sync live")).not.toBeInTheDocument();
+    expect(within(commandBand).getByText("Replay pending")).toBeInTheDocument();
+    expect(within(commandBand).getByText("Replay loading")).toBeInTheDocument();
+
+    loading.unmount();
+    render(<App ontologyAdapter={{ async loadWorkspace() { throw new Error("offline"); } }} />);
+    fireEvent.click(screen.getByRole("link", { name: "Ontology" }));
+    await screen.findByRole("region", { name: "Ontology load error" });
+    commandBand = screen.getByRole("banner", { name: "Cestus command band" });
+    expect(within(commandBand).queryByText("Ledger synced")).not.toBeInTheDocument();
+    expect(within(commandBand).queryByText("Local sync live")).not.toBeInTheDocument();
+    expect(within(commandBand).getByText("Ledger unavailable")).toBeInTheDocument();
+    expect(within(commandBand).getByText("Retry required")).toBeInTheDocument();
+  });
+
+  it("renders keyboard-selectable accepted entities when no relationship exists", async () => {
+    const base = ontologyWorkspace();
+    const entity = base.entities[0];
+    if (entity === undefined) {
+      throw new Error("ontology fixture requires an accepted entity");
+    }
+    const adapter = createStaticOntologyWorkspaceAdapter(ontologyWorkspace({
+      entities: [entity],
+      relationships: [],
+      assertions: [
+        {
+          assertionId: "as_agency_name",
+          reviewState: "accepted",
+          predicate: "agency.name",
+          confidence: 0.94,
+          evidenceId: "ev_agency_pdf",
+          eventIds: ["evt_ingest_agency_pdf", "evt_propose_agency_name", "evt_accept_agency_name"],
+          packVersions: [{ name: "core", version: "0.1.0" }]
+        },
+        {
+          assertionId: "as_agency_alias",
+          reviewState: "proposed",
+          subjectRef: "ent_example_agency",
+          predicate: "agency.alias",
+          confidence: 0.7,
+          evidenceId: "ev_agency_pdf",
+          eventIds: ["evt_ingest_agency_pdf", "evt_propose_agency_alias"],
+          packVersions: [{ name: "core", version: "0.1.0" }]
+        }
+      ]
+    }));
+    render(<App ontologyAdapter={adapter} />);
+
+    fireEvent.click(screen.getByRole("link", { name: "Ontology" }));
+    const workspace = await screen.findByRole("region", { name: "Ontology provenance workspace" });
+    const acceptedGraph = within(workspace).getByRole("region", { name: "Accepted ontology graph" });
+    const entityButton = within(acceptedGraph).getByRole("button", {
+      name: "Inspect entity ent_example_agency"
+    });
+
+    entityButton.focus();
+    expect(entityButton).toHaveFocus();
+    fireEvent.click(entityButton);
+    expect(entityButton).toHaveAttribute("aria-pressed", "true");
+    expect(within(acceptedGraph).queryByText("as_agency_alias")).not.toBeInTheDocument();
+    const detail = within(workspace).getByRole("region", { name: "Entity provenance" });
+    expect(within(detail).getByText("ent_example_agency")).toBeInTheDocument();
+    expect(within(detail).getByText("Example Agency")).toBeInTheDocument();
+    expect(within(detail).getByText("GovernmentAgency")).toBeInTheDocument();
+    expect(within(detail).getByText(/as_agency_name/)).toBeInTheDocument();
+    expect(within(detail).getByText("ev_agency_pdf")).toBeInTheDocument();
+    expect(within(workspace).getByRole("region", { name: "Ontology review material" }))
+      .toHaveTextContent("as_agency_alias");
   });
 
   it("strictly parses immutable browser-safe DTOs", () => {

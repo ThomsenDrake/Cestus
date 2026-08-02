@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type {
   OntologyAssertionDto,
+  OntologyEntityDto,
   OntologyRelationshipDto,
   OntologyWorkspaceDto
 } from "./ontology-types.js";
@@ -18,21 +19,37 @@ export function OntologyWorkspace({
   loadError,
   onRetry
 }: OntologyWorkspaceProps) {
-  const [selectedRelationshipId, setSelectedRelationshipId] = useState<string | undefined>();
+  const [selectedGraphItem, setSelectedGraphItem] = useState<
+    { readonly kind: "entity" | "relationship"; readonly id: string } | undefined
+  >();
   const selectedRelationship = useMemo(
-    () => workspace?.relationships.find((item) => item.relationshipId === selectedRelationshipId)
-      ?? workspace?.relationships[0],
-    [selectedRelationshipId, workspace]
+    () => selectedGraphItem?.kind === "relationship"
+      ? workspace?.relationships.find((item) => item.relationshipId === selectedGraphItem.id)
+      : selectedGraphItem === undefined
+        ? workspace?.relationships[0]
+        : undefined,
+    [selectedGraphItem, workspace]
+  );
+  const selectedEntity = useMemo(
+    () => selectedGraphItem?.kind === "entity"
+      ? workspace?.entities.find((item) => item.entityId === selectedGraphItem.id)
+      : selectedGraphItem === undefined && workspace?.relationships.length === 0
+        ? workspace?.entities[0]
+        : undefined,
+    [selectedGraphItem, workspace]
   );
 
   useEffect(() => {
-    if (
-      selectedRelationshipId !== undefined &&
-      workspace?.relationships.some((item) => item.relationshipId === selectedRelationshipId) !== true
-    ) {
-      setSelectedRelationshipId(undefined);
+    if (selectedGraphItem === undefined) {
+      return;
     }
-  }, [selectedRelationshipId, workspace]);
+    const stillExists = selectedGraphItem.kind === "relationship"
+      ? workspace?.relationships.some((item) => item.relationshipId === selectedGraphItem.id)
+      : workspace?.entities.some((item) => item.entityId === selectedGraphItem.id);
+    if (stillExists !== true) {
+      setSelectedGraphItem(undefined);
+    }
+  }, [selectedGraphItem, workspace]);
 
   if (loadState === "error") {
     return (
@@ -91,34 +108,63 @@ export function OntologyWorkspace({
         <div className="min-w-0 space-y-4">
           <section aria-label="Accepted ontology graph" className="border border-[var(--console-line)] bg-[var(--console-void)]/72">
             <SectionHeader title="Accepted graph" meta={`${workspace.entities.length} entities · ${workspace.relationships.length} relationships`} />
-            {workspace.relationships.length === 0 ? (
+            {workspace.entities.length === 0 && workspace.relationships.length === 0 ? (
               <p className="p-4 text-base text-pretty text-[var(--muted-amber)] sm:text-sm">
-                No accepted relationship can be rendered from the current replay. Review diagnostics and provenance before repair.
+                No accepted graph item can be rendered from the current replay. Review diagnostics and provenance before repair.
               </p>
             ) : (
-              <ul role="list" className="divide-y divide-[var(--console-line)]">
-                {workspace.relationships.map((relationship) => (
-                  <li key={relationship.relationshipId}>
-                    <button
-                      type="button"
-                      aria-label={`Inspect relationship ${relationship.relationshipId}`}
-                      aria-pressed={selectedRelationship?.relationshipId === relationship.relationshipId}
-                      onClick={() => setSelectedRelationshipId(relationship.relationshipId)}
-                      className="relative w-full min-w-0 px-4 py-3 text-left hover:bg-[var(--console-panel)] focus-visible:-outline-offset-2 focus-visible:outline-2 focus-visible:outline-[var(--signal-cyan)]"
-                    >
-                      <span className="block break-all font-mono text-base text-[var(--signal-cyan)] sm:text-sm">
-                        {relationship.relationshipId}
-                      </span>
-                      <span className="mt-1 block text-base text-[var(--paper-light)] sm:text-sm">
-                        {relationship.fromEntityId} → {relationship.relationshipType} → {relationship.toEntityId}
-                      </span>
-                      <span className="mt-1 block font-mono text-base uppercase text-[var(--signal-amber)] sm:text-sm">
-                        {relationship.reviewState}
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
+              <div>
+                {workspace.entities.length === 0 ? null : (
+                  <GraphItemGroup title="Entities">
+                    {workspace.entities.map((entity) => (
+                      <li key={entity.entityId}>
+                        <button
+                          type="button"
+                          aria-label={`Inspect entity ${entity.entityId}`}
+                          aria-pressed={selectedEntity?.entityId === entity.entityId}
+                          onClick={() => setSelectedGraphItem({ kind: "entity", id: entity.entityId })}
+                          className="relative w-full min-w-0 px-4 py-3 text-left hover:bg-[var(--console-panel)] focus-visible:-outline-offset-2 focus-visible:outline-2 focus-visible:outline-[var(--signal-cyan)]"
+                        >
+                          <span className="block break-all font-mono text-base text-[var(--signal-cyan)] sm:text-sm">
+                            {entity.entityId}
+                          </span>
+                          <span className="mt-1 block text-base text-[var(--paper-light)] sm:text-sm">
+                            {entity.canonicalLabel} · {entity.entityType}
+                          </span>
+                          <span className="mt-1 block font-mono text-base uppercase text-[var(--signal-amber)] sm:text-sm">
+                            {entity.reviewState}
+                          </span>
+                        </button>
+                      </li>
+                    ))}
+                  </GraphItemGroup>
+                )}
+                {workspace.relationships.length === 0 ? null : (
+                  <GraphItemGroup title="Relationships">
+                    {workspace.relationships.map((relationship) => (
+                      <li key={relationship.relationshipId}>
+                        <button
+                          type="button"
+                          aria-label={`Inspect relationship ${relationship.relationshipId}`}
+                          aria-pressed={selectedRelationship?.relationshipId === relationship.relationshipId}
+                          onClick={() => setSelectedGraphItem({ kind: "relationship", id: relationship.relationshipId })}
+                          className="relative w-full min-w-0 px-4 py-3 text-left hover:bg-[var(--console-panel)] focus-visible:-outline-offset-2 focus-visible:outline-2 focus-visible:outline-[var(--signal-cyan)]"
+                        >
+                          <span className="block break-all font-mono text-base text-[var(--signal-cyan)] sm:text-sm">
+                            {relationship.relationshipId}
+                          </span>
+                          <span className="mt-1 block text-base text-[var(--paper-light)] sm:text-sm">
+                            {relationship.fromEntityId} → {relationship.relationshipType} → {relationship.toEntityId}
+                          </span>
+                          <span className="mt-1 block font-mono text-base uppercase text-[var(--signal-amber)] sm:text-sm">
+                            {relationship.reviewState}
+                          </span>
+                        </button>
+                      </li>
+                    ))}
+                  </GraphItemGroup>
+                )}
+              </div>
             )}
           </section>
 
@@ -132,7 +178,13 @@ export function OntologyWorkspace({
           </section>
         </div>
 
-        <RelationshipDetail relationship={selectedRelationship} assertions={workspace.assertions} />
+        {selectedRelationship !== undefined ? (
+          <RelationshipDetail relationship={selectedRelationship} assertions={workspace.assertions} />
+        ) : selectedEntity !== undefined ? (
+          <EntityDetail entity={selectedEntity} assertions={workspace.assertions} />
+        ) : (
+          <GraphDetailEmpty />
+        )}
       </div>
     </section>
   );
@@ -142,20 +194,9 @@ function RelationshipDetail({
   relationship,
   assertions
 }: {
-  readonly relationship: OntologyRelationshipDto | undefined;
+  readonly relationship: OntologyRelationshipDto;
   readonly assertions: readonly OntologyAssertionDto[];
 }) {
-  if (relationship === undefined) {
-    return (
-      <section aria-label="Relationship provenance" className="min-w-0 border border-[var(--console-line)] bg-[var(--console-void)]/72 p-4">
-        <h2 className="font-mono text-base text-[var(--signal-amber)] sm:text-sm">Relationship provenance</h2>
-        <p className="mt-3 text-base text-pretty text-[var(--muted-amber)] sm:text-sm">
-          Select an accepted relationship after the projection is repaired.
-        </p>
-      </section>
-    );
-  }
-
   const reviewStateByAssertionId = new Map(
     assertions.map((assertion) => [assertion.assertionId, assertion.reviewState])
   );
@@ -183,6 +224,61 @@ function RelationshipDetail({
           values={relationship.packVersions.map((pack) => `${pack.name}@${pack.version}`)}
         />
       </dl>
+    </section>
+  );
+}
+
+function EntityDetail({
+  entity,
+  assertions
+}: {
+  readonly entity: OntologyEntityDto;
+  readonly assertions: readonly OntologyAssertionDto[];
+}) {
+  const reviewStateByAssertionId = new Map(
+    assertions.map((assertion) => [assertion.assertionId, assertion.reviewState])
+  );
+  return (
+    <section aria-label="Entity provenance" className="min-w-0 self-start border border-[var(--console-line)] bg-[var(--console-void)]/72 p-4 xl:sticky xl:top-4">
+      <p className="font-mono text-base uppercase tracking-[0.12em] text-[var(--signal-red)] sm:text-sm">Why this entity exists</p>
+      <h2 className="mt-2 break-all text-xl font-semibold text-[var(--paper-light)]">{entity.entityId}</h2>
+      <dl className="mt-4 grid min-w-0 gap-3 text-base sm:text-sm">
+        <Detail label="Canonical label" values={[entity.canonicalLabel]} />
+        <Detail label="Type" values={[entity.entityType]} />
+        <Detail label="Review state" values={[entity.reviewState]} tone="accepted" />
+        <Detail
+          label="Supporting assertions"
+          values={entity.supportingAssertionIds.map((id) => `${id} · ${reviewStateByAssertionId.get(id) ?? "unknown"}`)}
+        />
+        <Detail label="Evidence IDs" values={entity.evidenceIds} />
+        <Detail label="Event references" values={entity.eventIds} />
+        <Detail
+          label="Active pack versions"
+          values={entity.packVersions.map((pack) => `${pack.name}@${pack.version}`)}
+        />
+      </dl>
+    </section>
+  );
+}
+
+function GraphDetailEmpty() {
+  return (
+    <section aria-label="Graph provenance" className="min-w-0 border border-[var(--console-line)] bg-[var(--console-void)]/72 p-4">
+      <h2 className="font-mono text-base text-[var(--signal-amber)] sm:text-sm">Graph provenance</h2>
+      <p className="mt-3 text-base text-pretty text-[var(--muted-amber)] sm:text-sm">
+        Select an accepted entity or relationship after the projection is repaired.
+      </p>
+    </section>
+  );
+}
+
+function GraphItemGroup({ title, children }: { readonly title: string; readonly children: ReactNode }) {
+  return (
+    <section aria-label={`Accepted ${title.toLowerCase()}`} className="border-t border-[var(--console-line)] first:border-t-0">
+      <h3 className="px-4 py-2 font-mono text-base uppercase text-[var(--muted-amber)] sm:text-sm">{title}</h3>
+      <ul role="list" className="divide-y divide-[var(--console-line)] border-t border-[var(--console-line)]">
+        {children}
+      </ul>
     </section>
   );
 }
