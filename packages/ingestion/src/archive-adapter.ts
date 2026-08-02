@@ -19,7 +19,7 @@ export interface ZipArchiveChild {
 export class ArchiveExpansionError extends Error {
   constructor(
     message: string,
-    readonly code: "unsafe-path" | "entry-count-limit" | "expanded-byte-limit" | "invalid-archive"
+    readonly code: "unsafe-path" | "nested-archive" | "entry-count-limit" | "expanded-byte-limit" | "invalid-archive"
   ) {
     super(message);
     this.name = "ArchiveExpansionError";
@@ -68,6 +68,9 @@ export class ZipArchiveAdapter {
       if (entryContent === undefined) {
         continue;
       }
+      if (isZipArchive(entryContent)) {
+        throw new ArchiveExpansionError("nested archive entries are not supported", "nested-archive");
+      }
       verifiedExpandedBytes += entryContent.byteLength;
       if (verifiedExpandedBytes > options.maxExpandedBytes) {
         throw new ArchiveExpansionError("archive expansion byte limit exceeded", "expanded-byte-limit");
@@ -83,6 +86,17 @@ export class ZipArchiveAdapter {
 
     return children;
   }
+}
+
+function isZipArchive(content: Uint8Array): boolean {
+  return content.byteLength >= 4
+    && content[0] === 0x50
+    && content[1] === 0x4b
+    && (
+      (content[2] === 0x03 && content[3] === 0x04)
+      || (content[2] === 0x05 && content[3] === 0x06)
+      || (content[2] === 0x07 && content[3] === 0x08)
+    );
 }
 
 export const zipArchiveAdapterRef = fflateAdapter;
