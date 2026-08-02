@@ -54,6 +54,10 @@ export type IngestionEvidenceLinkSummary = KnowledgeEventOf<"ingestion.evidence.
   linkedEventId: string;
 };
 
+export type IngestionEvidenceSummary = KnowledgeEventOf<"evidence.ingested">["payload"] & {
+  ingestedEventId: string;
+};
+
 export interface IngestionParseJobSummary {
   parseJobId: string;
   sourceCollectionId: string;
@@ -103,6 +107,7 @@ export interface IngestionProjection {
   importApprovalsByScanBatchId: Map<string, string[]>;
   importCompletions: Map<string, IngestionImportCompletionSummary>;
   importCompletionsByScanBatchId: Map<string, string[]>;
+  evidenceById: Map<string, IngestionEvidenceSummary>;
   evidenceLinks: Map<string, IngestionEvidenceLinkSummary>;
   evidenceByHash: Map<string, string>;
   parseJobs: Map<string, IngestionParseJobSummary>;
@@ -122,6 +127,7 @@ export function buildIngestionProjection(events: readonly unknown[]): IngestionP
     importApprovalsByScanBatchId: new Map(),
     importCompletions: new Map(),
     importCompletionsByScanBatchId: new Map(),
+    evidenceById: new Map(),
     evidenceLinks: new Map(),
     evidenceByHash: new Map(),
     parseJobs: new Map(),
@@ -182,6 +188,9 @@ export function buildIngestionProjection(events: readonly unknown[]): IngestionP
         scanIdByStreamId.set(event.streamId, event.payload.scanBatchId);
         sourceCollectionIdByStreamId.set(event.streamId, event.payload.sourceCollectionId);
         projectImportCompleted(projection, event);
+        break;
+      case "evidence.ingested":
+        projectEvidenceIngested(projection, event);
         break;
       case "ingestion.evidence.linked":
         sourceCollectionIdByStreamId.set(event.streamId, event.payload.sourceCollectionId);
@@ -296,6 +305,21 @@ function projectImportCompleted(
   });
   appendUnique(projection.importCompletionsByScanBatchId, event.payload.scanBatchId, event.payload.importBatchId);
   rememberSourceImport(projection, event.payload.sourceCollectionId, event.payload.importBatchId);
+}
+
+function projectEvidenceIngested(
+  projection: IngestionProjection,
+  event: KnowledgeEventOf<"evidence.ingested">
+): void {
+  if (projection.evidenceById.has(event.payload.evidenceId)) {
+    return;
+  }
+
+  projection.evidenceById.set(event.payload.evidenceId, {
+    ...event.payload,
+    source: { ...event.payload.source },
+    ingestedEventId: event.id
+  });
 }
 
 function projectEvidenceLinked(
