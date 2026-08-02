@@ -22,9 +22,9 @@ const actor = {
 const tempDirs: string[] = [];
 const handlers: LocalRuntimeHttpHandler[] = [];
 
-afterEach(() => {
+afterEach(async () => {
   for (const handler of handlers.splice(0)) {
-    handler.close();
+    await handler.close();
   }
 
   for (const dir of tempDirs.splice(0)) {

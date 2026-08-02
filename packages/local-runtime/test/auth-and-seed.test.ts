@@ -19,10 +19,10 @@ const fixedNow = "2026-07-05T13:00:00.000Z";
 const tempDirs: string[] = [];
 const handlers: LocalRuntimeHttpHandler[] = [];
 
-afterEach(() => {
+afterEach(async () => {
   try {
     for (const handler of handlers.splice(0)) {
-      handler.close();
+      await handler.close();
     }
   } finally {
     for (const dir of tempDirs.splice(0)) {
@@ -206,7 +206,7 @@ describe("local runtime auth and explicit seed", () => {
 
     const workspace = await handler({ method: "GET", url: "/api/requests/workspace" });
     expect(JSON.parse(workspace.body).cards).toEqual([]);
-    closeTestHandler(handler);
+    await closeTestHandler(handler);
     await expect(rawEventCount(config)).resolves.toBe(0);
   });
 
@@ -320,7 +320,7 @@ describe("local runtime auth and explicit seed", () => {
 
     const workspace = await handler({ method: "GET", url: "/api/requests/workspace" });
     expect(JSON.parse(workspace.body).cards).toEqual([]);
-    closeTestHandler(handler);
+    await closeTestHandler(handler);
     await expect(rawEventCount(config)).resolves.toBe(beforeCount);
   });
 });
@@ -337,12 +337,12 @@ function testHandler(input: CreateLocalRuntimeHttpHandlerInput): LocalRuntimeHtt
   return handler;
 }
 
-function closeTestHandler(handler: LocalRuntimeHttpHandler): void {
+async function closeTestHandler(handler: LocalRuntimeHttpHandler): Promise<void> {
   const index = handlers.indexOf(handler);
   if (index >= 0) {
     handlers.splice(index, 1);
   }
-  handler.close();
+  await handler.close();
 }
 
 async function rawEventCount(config: ResolvedLocalRuntimeConfig): Promise<number> {

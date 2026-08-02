@@ -10,6 +10,20 @@ import {
   type EventLedger
 } from "./event-ledger.js";
 
+export interface PrecommitGuardedEventLedger extends EventLedger {
+  appendWithPrecommitGuard(
+    event: AppendableKnowledgeEvent,
+    options: AppendOptions,
+    guard: () => void
+  ): Promise<KnowledgeEvent>;
+}
+
+export function hasPrecommitGuardedAppend(
+  ledger: EventLedger
+): ledger is PrecommitGuardedEventLedger {
+  return typeof (ledger as Partial<PrecommitGuardedEventLedger>).appendWithPrecommitGuard === "function";
+}
+
 interface StoredEventRow {
   id: string;
   type: string;
@@ -28,7 +42,7 @@ function eventId(): string {
   return `evt_${randomUUID().replaceAll("-", "")}`;
 }
 
-export class SQLiteEventLedger implements EventLedger {
+export class SQLiteEventLedger implements PrecommitGuardedEventLedger {
   private readonly db: DatabaseSync;
 
   constructor(dbPath: string) {
@@ -51,6 +65,22 @@ export class SQLiteEventLedger implements EventLedger {
   }
 
   async append(event: AppendableKnowledgeEvent, options: AppendOptions = {}): Promise<KnowledgeEvent> {
+    return await this.appendInTransaction(event, options);
+  }
+
+  async appendWithPrecommitGuard(
+    event: AppendableKnowledgeEvent,
+    options: AppendOptions,
+    guard: () => void
+  ): Promise<KnowledgeEvent> {
+    return await this.appendInTransaction(event, options, guard);
+  }
+
+  private async appendInTransaction(
+    event: AppendableKnowledgeEvent,
+    options: AppendOptions,
+    precommitGuard?: (() => void) | undefined
+  ): Promise<KnowledgeEvent> {
     let transactionOpen = false;
 
     try {
@@ -107,6 +137,13 @@ export class SQLiteEventLedger implements EventLedger {
           );
         }
         throw error;
+      }
+
+      if (precommitGuard !== undefined) {
+        const guardResult = precommitGuard();
+        if (guardResult !== undefined) {
+          throw new Error("SQLite event precommit guard must complete synchronously.");
+        }
       }
 
       this.db.exec("COMMIT");

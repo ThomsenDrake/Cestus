@@ -720,6 +720,10 @@ export function App({
       loadError={agentLoadError}
       onRefresh={handleRefreshAgentStatus}
       onCreateTask={handleCreateAgentTask}
+      onPauseResidentWork={handlePauseResidentWork}
+      onResumeResidentWork={handleResumeResidentWork}
+      onRetryTask={handleRetryAgentTask}
+      onCancelTask={handleCancelAgentTask}
       onMemoryFilterChange={setAgentMemoryFilters}
       onSelectMemory={setSelectedAgentMemoryId}
       onRecordMemory={handleRecordMemory}
@@ -804,6 +808,22 @@ export function App({
       );
       throw error;
     }
+  }
+
+  function handlePauseResidentWork() {
+    void runAgentSupervisionMutation(() => agentAdapter.pauseResidentWork());
+  }
+
+  function handleResumeResidentWork() {
+    void runAgentSupervisionMutation(() => agentAdapter.resumeResidentWork());
+  }
+
+  function handleRetryAgentTask(taskId: string) {
+    void runAgentSupervisionMutation(() => agentAdapter.retryTask(taskId));
+  }
+
+  function handleCancelAgentTask(taskId: string) {
+    void runAgentSupervisionMutation(() => agentAdapter.cancelTask(taskId));
   }
 
   function handleApproveToolRequest(input: {
@@ -942,6 +962,18 @@ export function App({
     setLoadedAgentAdapter(agentAdapter);
     setAgentLoadState("loaded");
     setAgentLoadError(undefined);
+  }
+
+  async function runAgentSupervisionMutation(action: () => Promise<unknown>) {
+    setAgentApprovalDiagnostic(undefined);
+    try {
+      await action();
+      await refreshAgentStateAfterMutation();
+    } catch (error: unknown) {
+      setAgentApprovalDiagnostic(
+        safeAgentText(error instanceof Error ? error.message : "Resident supervision could not be changed safely.")
+      );
+    }
   }
 
   async function runIngestionAction(action: () => Promise<IngestionActionResult>) {

@@ -51,6 +51,7 @@ import {
   computeSpecialistHandoffId,
   hashSpecialistHandoffManifest,
   hashSpecialistHandoffMaterial,
+  parseAuthorityBoundSpecialistHandoffManifest,
   parseSpecialistHandoffMaterial,
   verifyAuthorityBoundSpecialistHandoffManifest,
   verifySpecialistHandoffManifest,
@@ -63,7 +64,7 @@ import {
   type HandoffAuthorityBinding,
   type MountedSpecialistHandoffAuthorityWitness
 } from "./specialist-handoff-authority.js";
-import { taskOrchestrationStreamId } from "./task-orchestrator-events.js";
+import { buildTaskAttemptId, taskOrchestrationStreamId } from "./task-orchestrator-events.js";
 import {
   authoritativeFinalOutputStepSchemaId as authoritativeProjectedFinalOutputStepSchemaId,
   buildSpecialistHandoffProjection,
@@ -182,6 +183,22 @@ export interface RecordAuthorityBoundSpecialistHandoffResult {
   readonly readback: SpecialistHandoffReadback;
   readonly manifestStore: SpecialistHandoffManifestStore;
   readonly authorityBinding: HandoffAuthorityBinding;
+}
+
+export interface RecoverAuthorityBoundSpecialistHandoffTerminalSuffixInput {
+  readonly ledger: EventLedger;
+  readonly manifestStore: SpecialistHandoffManifestStore;
+  readonly actor: ActorRef;
+  readonly taskId: string;
+  readonly runId: string;
+  readonly handoffAuthorityWitness: MountedSpecialistHandoffAuthorityWitness;
+}
+
+export interface RecoverAuthorityBoundSpecialistHandoffTerminalSuffixResult {
+  readonly terminal: KnowledgeEventOf<"agent.specialist-run.completed">;
+  readonly orchestration: KnowledgeEventOf<"agent.task.orchestration.completed">;
+  readonly taskStatus: KnowledgeEventOf<"agent.task.status.changed">;
+  readonly readback: SpecialistHandoffReadback;
 }
 
 export interface FinalizeSpecialistRunAfterHandoffInput {
@@ -1095,6 +1112,145 @@ export async function recordAuthorityBoundSpecialistHandoff(
     manifestStore: input.manifestStore,
     authorityBinding: authority.binding
   });
+}
+
+/**
+ * Completes only the missing durable suffix of an already recorded,
+ * authority-bound mounted handoff. The full existing prefix is validated
+ * before the first append so an ambiguous or out-of-order prefix is inert.
+ */
+export async function recoverAuthorityBoundSpecialistHandoffTerminalSuffix(
+  input: RecoverAuthorityBoundSpecialistHandoffTerminalSuffixInput
+): Promise<RecoverAuthorityBoundSpecialistHandoffTerminalSuffixResult> {
+  const authority = await consumeMountedSpecialistHandoffAuthorityWitness(input.handoffAuthorityWitness);
+  await authority.revalidateCurrent();
+  assertManifestStoreAvailable(input.manifestStore);
+  const stream = await input.ledger.readStream(`agent_run_${input.runId}`);
+  const preparedEvents = stream.filter((event): event is KnowledgeEventOf<"agent.specialist-handoff.prepared"> =>
+    event.type === "agent.specialist-handoff.prepared" && event.payload.runId === input.runId
+  );
+  const recordedEvents = stream.filter((event): event is KnowledgeEventOf<"agent.specialist-handoff.recorded"> =>
+    event.type === "agent.specialist-handoff.recorded" && event.payload.runId === input.runId
+  );
+  const terminals = stream.filter((event): event is KnowledgeEventOf<"agent.specialist-run.completed"> | KnowledgeEventOf<"agent.specialist-run.failed"> =>
+    event.type === "agent.specialist-run.completed" || event.type === "agent.specialist-run.failed"
+  );
+  const terminalCandidate = terminals[0];
+  if (preparedEvents.length !== 1 || recordedEvents.length !== 1 || terminals.length !== 1 ||
+    terminalCandidate === undefined || terminalCandidate.type !== "agent.specialist-run.completed") {
+    throw new Error("Authority-bound mounted terminal recovery prefix is missing or ambiguous.");
+  }
+  const prepared = preparedEvents[0]!;
+  const recorded = recordedEvents[0]!;
+  const terminal = terminalCandidate;
+  const manifestHash = contentHashFromLedger(recorded.payload.handoffManifestHash);
+  const bytes = await input.manifestStore.get(manifestHash);
+  if (!Buffer.isBuffer(bytes)) {
+    throw new Error("Authority-bound mounted terminal recovery manifest is unavailable.");
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(bytes.toString("utf8"));
+  } catch {
+    throw new Error("Authority-bound mounted terminal recovery manifest is malformed.");
+  }
+  if (hashSpecialistHandoffManifest(parsed) !== manifestHash) {
+    throw new Error("Authority-bound mounted terminal recovery manifest hash does not match.");
+  }
+  verifyAuthorityBoundSpecialistHandoffManifest({ manifest: parsed, handoffManifestHash: manifestHash });
+  const manifest = parseAuthorityBoundSpecialistHandoffManifest(parsed);
+  const binding = compactAuthorityBoundHandoffBinding(manifest, manifestHash);
+  if (manifest.taskId !== input.taskId || manifest.runId !== input.runId || manifest.status !== "ready-for-review" ||
+    !isAuthorityBoundHandoffPayload(prepared.payload) || !sameCanonicalValue(prepared.payload, binding) ||
+    recorded.payload.preparedEventId !== prepared.id || !isAuthorityBoundHandoffPayload(recorded.payload) ||
+    !sameCanonicalValue(omitRecordedTimestamp(recorded.payload), binding) ||
+    !terminalMatchesRecordedHandoff(terminal, manifest, recorded)) {
+    throw new Error("Authority-bound mounted terminal recovery prefix does not match its canonical handoff.");
+  }
+
+  const lifecycle: MountedHandoffTaskLifecycle = Object.freeze({
+    taskId: input.taskId,
+    runId: input.runId,
+    runType: preparedHandoffRunType(manifest.runType),
+    retryGeneration: 0,
+    attemptId: buildTaskAttemptId({
+      taskId: input.taskId,
+      runType: preparedHandoffRunType(manifest.runType),
+      retryGeneration: 0
+    })
+  });
+  if (
+    authority.taskLifecycle.taskId !== lifecycle.taskId ||
+    authority.taskLifecycle.runId !== lifecycle.runId ||
+    authority.taskLifecycle.runType !== lifecycle.runType ||
+    authority.taskLifecycle.retryGeneration !== lifecycle.retryGeneration ||
+    authority.taskLifecycle.attemptId !== lifecycle.attemptId ||
+    !sameCanonicalValue(authority.binding, manifest.authorityBinding)
+  ) {
+    throw new Error("Authority-bound mounted terminal recovery witness does not match the durable prefix.");
+  }
+  await authority.revalidateCurrent();
+  const orchestrationStream = await input.ledger.readStream(taskOrchestrationStreamId(
+    lifecycle.taskId,
+    lifecycle.runType
+  ));
+  const orchestrationEvents = orchestrationStream.filter((event): event is KnowledgeEventOf<"agent.task.orchestration.completed"> =>
+    event.type === "agent.task.orchestration.completed" && event.payload.taskId === input.taskId &&
+    event.payload.runId === input.runId
+  );
+  if (orchestrationEvents.length > 1 || orchestrationEvents.some((event) =>
+    !authorityBoundOrchestrationMatches(event, manifest, prepared, recorded, terminal, lifecycle)
+  )) {
+    throw new Error("Authority-bound mounted orchestration recovery prefix is ambiguous.");
+  }
+
+  const taskStream = await input.ledger.readStream(`agent_task_${input.taskId}`);
+  const terminalStatuses = taskStream.filter((event): event is KnowledgeEventOf<"agent.task.status.changed"> =>
+    event.type === "agent.task.status.changed" && event.payload.taskId === input.taskId &&
+    (event.payload.status === "completed" || event.payload.status === "failed" ||
+      event.payload.status === "canceled" || event.payload.status === "blocked" ||
+      event.payload.status === "waiting-for-approval")
+  );
+  const existingOrchestration = orchestrationEvents[0];
+  if (terminalStatuses.length > 1 || (existingOrchestration === undefined
+    ? terminalStatuses.length !== 0
+    : terminalStatuses.some((event) => !authorityBoundTaskStatusMatches(
+        event,
+        input.taskId,
+        input.runId,
+        "completed",
+        existingOrchestration.id
+      )))) {
+    throw new Error("Authority-bound mounted task recovery prefix is inconsistent.");
+  }
+
+  const recoveryNow = () => terminal.context.occurredAt;
+  const orchestration = existingOrchestration ?? await appendOrReuseAuthorityBoundOrchestrationCompleted({
+    ledger: input.ledger,
+    actor: input.actor,
+    now: recoveryNow
+  }, manifest, prepared, recorded, terminal, lifecycle, orchestrationStream);
+  await authority.revalidateCurrent();
+  const currentTaskStream = existingOrchestration === undefined
+    ? await input.ledger.readStream(`agent_task_${input.taskId}`)
+    : taskStream;
+  const taskStatus = terminalStatuses[0] ?? await appendOrReuseAuthorityBoundTaskStatus({
+    ledger: input.ledger,
+    actor: input.actor,
+    now: recoveryNow
+  }, manifest, terminal, orchestration, currentTaskStream);
+  await authority.revalidateCurrent();
+  const readback = await assertCompleteAuthorityBoundHandoffProjection(
+    input.ledger,
+    input.manifestStore,
+    manifest,
+    prepared,
+    recorded,
+    terminal,
+    taskStatus
+  );
+  await authority.revalidateCurrent();
+  return Object.freeze({ terminal, orchestration, taskStatus, readback });
 }
 
 export async function finalizeSpecialistRunAfterHandoff(

@@ -1,4 +1,4 @@
-import type { ActorRef, AppendableKnowledgeEvent, KnowledgeEventOf } from "../../ontology/src/contracts.js";
+import type { ActorRef, AppendableKnowledgeEvent, KnowledgeEvent, KnowledgeEventOf } from "../../ontology/src/contracts.js";
 import type { AppendOptions, EventLedger } from "../../ontology/src/event-ledger.js";
 import { buildAgentMemoryDetail, buildAgentMemoryList } from "./memory.js";
 import { buildAgentProjection } from "./projection.js";
@@ -54,6 +54,7 @@ import {
   createTaskOrchestrator,
   type TaskOrchestratorBudgets,
   type TaskOrchestratorConcurrencyPolicy,
+  type TaskOrchestratorExplicitRetryGeneration,
   type TaskOrchestratorPolicy
 } from "./task-orchestrator.js";
 import type { TaskOrchestratorTickSummary } from "./task-orchestrator-types.js";
@@ -81,6 +82,47 @@ const defaultTaskOrchestratorBudgets: TaskOrchestratorBudgets = {
   derivativeArtifactByteBudget: 65_536,
   wallClockBudgetMs: 120_000
 };
+
+function durableExplicitRetryGenerations(
+  events: readonly KnowledgeEvent[]
+): readonly TaskOrchestratorExplicitRetryGeneration[] {
+  const latestStatusByTask = new Map<string, { readonly event: KnowledgeEventOf<"agent.task.status.changed">; readonly order: number }>();
+  for (const [order, event] of events.entries()) {
+    if (event.type === "agent.task.status.changed") {
+      latestStatusByTask.set(event.payload.taskId, { event, order });
+    }
+  }
+  const retries: TaskOrchestratorExplicitRetryGeneration[] = [];
+  for (const [taskId, status] of latestStatusByTask) {
+    if (
+      status.event.payload.status !== "queued" ||
+      status.event.payload.reason !== "Human requested a retry." ||
+      status.event.context.actor.kind !== "human" ||
+      status.event.context.actor.id !== status.event.payload.changedBy
+    ) {
+      continue;
+    }
+    const priorFailure = events
+      .slice(0, status.order)
+      .filter((event): event is KnowledgeEventOf<"agent.task.orchestration.failed"> =>
+        event.type === "agent.task.orchestration.failed" &&
+        event.payload.taskId === taskId &&
+        event.payload.retryable === true
+      )
+      .sort((left, right) => right.payload.retryGeneration - left.payload.retryGeneration)
+      .at(0);
+    if (priorFailure === undefined) continue;
+    retries.push(Object.freeze({
+      taskId,
+      runType: priorFailure.payload.runType,
+      retryGeneration: priorFailure.payload.retryGeneration + 1,
+      retryPolicyEventId: status.event.id
+    }));
+  }
+  return Object.freeze(retries.sort((left, right) =>
+    left.taskId.localeCompare(right.taskId) || left.runType.localeCompare(right.runType)
+  ));
+}
 
 export interface CreateAgentRuntimeInput {
   readonly ledger: EventLedger;
@@ -175,12 +217,14 @@ export function createAgentRuntime(input: CreateAgentRuntimeInput) {
   const tickTaskOrchestrator = async (): Promise<TaskOrchestratorTickSummary> => {
     await assertResidentIdentityReadyForTaskOrchestration(input);
     const capabilities = assertTaskOrchestratorRuntimeCapabilities(input.taskOrchestratorCapabilities);
+    const explicitRetryGenerations = durableExplicitRetryGenerations(await input.ledger.readAll());
     return await createTaskOrchestrator({
       ledger: input.ledger,
       actor: input.actor,
       now: input.now,
       policy: {
         ...defaultTaskOrchestratorPolicy,
+        ...(explicitRetryGenerations.length === 0 ? {} : { explicitRetryGenerations }),
         ...(capabilities.providerPolicy === undefined ? {} : { providerPolicy: capabilities.providerPolicy })
       },
       concurrency: defaultTaskOrchestratorConcurrency,

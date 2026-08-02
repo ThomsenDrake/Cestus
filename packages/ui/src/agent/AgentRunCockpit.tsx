@@ -9,11 +9,21 @@ type CockpitView = "Queue" | "Run" | "Audit" | "Handoff";
 
 interface AgentRunCockpitProps {
   readonly cockpit: AgentCockpitDto;
+  readonly onPauseResidentWork?: (() => void) | undefined;
+  readonly onResumeResidentWork?: (() => void) | undefined;
+  readonly onRetryTask?: ((taskId: string) => void) | undefined;
+  readonly onCancelTask?: ((taskId: string) => void) | undefined;
 }
 
 const cockpitViews: readonly CockpitView[] = ["Queue", "Run", "Audit", "Handoff"];
 
-export function AgentRunCockpit({ cockpit }: AgentRunCockpitProps) {
+export function AgentRunCockpit({
+  cockpit,
+  onPauseResidentWork,
+  onResumeResidentWork,
+  onRetryTask,
+  onCancelTask
+}: AgentRunCockpitProps) {
   const [view, setView] = useState<CockpitView>("Queue");
   const serverSelectedRun = cockpit.selectedRun;
   const [selectedRunId, setSelectedRunId] = useState<string | undefined>(
@@ -27,7 +37,7 @@ export function AgentRunCockpit({ cockpit }: AgentRunCockpitProps) {
   const selectedRunRecord = serverSelectedRun?.runId === selectedRunSummary?.runId
     ? serverSelectedRun
     : undefined;
-  const activeRun = selectedRunRecord ?? selectedRunSummary;
+  const activeRun = selectedRunRecord;
 
   const summary = useMemo(() => {
     const doingLabel = activeRun === undefined
@@ -54,6 +64,15 @@ export function AgentRunCockpit({ cockpit }: AgentRunCockpitProps) {
 
   return (
     <section aria-label="Agent run cockpit" className="space-y-4">
+      {cockpit.supervision === undefined ? null : (
+        <ResidentSupervisionPanel
+          supervision={cockpit.supervision}
+          onPauseResidentWork={onPauseResidentWork}
+          onResumeResidentWork={onResumeResidentWork}
+          onRetryTask={onRetryTask}
+          onCancelTask={onCancelTask}
+        />
+      )}
       <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
         {summary.map((item) => (
           <SummaryCard key={item.label} label={item.label} value={item.value} />
@@ -115,7 +134,7 @@ export function AgentRunCockpit({ cockpit }: AgentRunCockpitProps) {
             {cockpit.runQueue.length > 0 ? (
               <ul role="list" className="divide-y divide-[var(--console-line)] border border-[var(--console-line)] bg-[var(--console-panel)]">
                 {cockpit.runQueue.map((run) => {
-                  const selected = activeRun?.runId === run.runId;
+                  const selected = selectedRunId === run.runId;
                   return (
                     <li key={run.runId} className={`grid gap-2 px-4 py-3 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.7fr)] ${selected ? "bg-[var(--console-void)]/72" : ""}`}>
                       <div className="min-w-0">
@@ -212,18 +231,18 @@ export function AgentRunCockpit({ cockpit }: AgentRunCockpitProps) {
       {view === "Run" ? (
         <section aria-label="Selected run detail" className="space-y-4">
           {activeRun === undefined ? (
-            <EmptyState>No run is selected.</EmptyState>
+            selectedRunSummary === undefined ? (
+              <EmptyState>No run is selected.</EmptyState>
+            ) : (
+              <>
+                <SelectedRunMissingData />
+                <EmptyState>No selected-run detail is available yet.</EmptyState>
+              </>
+            )
           ) : (
             <section className="border border-[var(--console-line)] bg-[var(--console-panel)]">
               <SectionHeader title="Selected run" meta={activeRun.runId} />
               <div className="space-y-4 px-4 py-4">
-                {selectedRunRecord === undefined ? (
-                  <RunFallbackNotice
-                    label="Active queued run"
-                    run={activeRun}
-                    note="Detailed selected-run fields are unavailable yet; showing the active queue run only."
-                  />
-                ) : null}
                 <dl className="grid gap-3 lg:grid-cols-2">
                   <DetailRow label="Run type" value={activeRun.runType} />
                   <DetailRow label="State" value={activeRun.state} />
@@ -251,6 +270,63 @@ export function AgentRunCockpit({ cockpit }: AgentRunCockpitProps) {
                     </ul>
                   ) : (
                     <EmptyState>No run steps reported.</EmptyState>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <SubsectionHeader title="Resident plan history" />
+                  {selectedRunRecord?.planHistory.length ? (
+                    <ul role="list" className="divide-y divide-[var(--console-line)] border border-[var(--console-line)] bg-[var(--console-void)]/48">
+                      {selectedRunRecord.planHistory.map((plan) => (
+                        <li key={plan.eventId} className="space-y-3 px-4 py-3">
+                          <div className="grid gap-2 md:grid-cols-2">
+                            <InlineStat label="Plan" value={`${plan.planId} | revision ${plan.planRevision}`} breakAll />
+                            <InlineStat label="Recorded" value={plan.recordedAt} />
+                            <InlineStat label="Attempt" value={plan.attemptId} breakAll />
+                            <InlineStat label="Provenance event" value={plan.eventId} breakAll />
+                          </div>
+                          <ol className="space-y-2 border-l border-[var(--console-line)] pl-3">
+                            {plan.steps.map((step) => (
+                              <li key={`${plan.eventId}:${step.ordinal}`} className="text-base text-[var(--paper-light)] sm:text-sm">
+                                <span className="font-mono text-[var(--signal-amber)]">{step.ordinal}. {step.toolId}</span>
+                                {` | ${step.expectedSafeOutputClass} | ${step.purpose}`}
+                              </li>
+                            ))}
+                          </ol>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <EmptyState>No durable resident plans are reported for the selected run.</EmptyState>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <SubsectionHeader title="Resident observation history" />
+                  {selectedRunRecord?.observationHistory.length ? (
+                    <ul role="list" className="divide-y divide-[var(--console-line)] border border-[var(--console-line)] bg-[var(--console-void)]/48">
+                      {selectedRunRecord.observationHistory.map((observation) => (
+                        <li key={observation.eventId} className="grid gap-3 px-4 py-3 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.7fr)]">
+                          <div className="min-w-0">
+                            <p className="break-all font-mono text-base text-[var(--signal-cyan)] sm:text-sm">
+                              {observation.observationId} | {observation.kind}
+                            </p>
+                            <p className="mt-2 break-words text-base text-[var(--paper-light)] sm:text-sm">{observation.safeSummary}</p>
+                          </div>
+                          <dl className="grid gap-2 md:grid-cols-2">
+                            <InlineStat label="Plan" value={`${observation.planId} | revision ${observation.planRevision}`} breakAll />
+                            <InlineStat label="Step" value={String(observation.stepOrdinal)} />
+                            <InlineStat label="Recorded" value={observation.recordedAt} />
+                            <InlineStat label="Provenance event" value={observation.eventId} breakAll />
+                            <InlineStat label="Artifact hashes" value={listLabel(observation.artifactHashes)} breakAll />
+                            <InlineStat label="Tool request" value={observation.toolRequestId ?? "not reported"} breakAll />
+                            <InlineStat label="Model invocation event" value={observation.modelInvocationEventId ?? "not reported"} breakAll />
+                          </dl>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <EmptyState>No durable resident observations are reported for the selected run.</EmptyState>
                   )}
                 </div>
 
@@ -292,15 +368,11 @@ export function AgentRunCockpit({ cockpit }: AgentRunCockpitProps) {
       {view === "Audit" ? (
         <section aria-label="Selected run audit" className="space-y-4">
           {selectedRunRecord === undefined ? (
-            activeRun === undefined ? (
+            selectedRunSummary === undefined ? (
               <EmptyState>No run is selected.</EmptyState>
             ) : (
               <>
-                <RunFallbackNotice
-                  label="Active queued run"
-                  run={activeRun}
-                  note="Detailed selected-run audit is unavailable yet; showing the active queue run only."
-                />
+                <SelectedRunMissingData />
                 <EmptyState>No selected-run audit details are available yet.</EmptyState>
               </>
             )
@@ -388,19 +460,17 @@ export function AgentRunCockpit({ cockpit }: AgentRunCockpitProps) {
 
       {view === "Handoff" ? (
         <section aria-label="Selected run handoff" className="space-y-4">
-          {selectedRunRecord?.handoff === undefined ? (
-            activeRun === undefined ? (
+          {selectedRunRecord === undefined ? (
+            selectedRunSummary === undefined ? (
               <EmptyState>No handoff artifacts are ready for human review.</EmptyState>
             ) : (
               <>
-                <RunFallbackNotice
-                  label="Active queued run"
-                  run={activeRun}
-                  note="Detailed selected-run handoff is unavailable yet; showing the active queue run only."
-                />
+                <SelectedRunMissingData />
                 <EmptyState>No selected-run handoff artifacts are available yet.</EmptyState>
               </>
             )
+          ) : selectedRunRecord.handoff === undefined ? (
+            <EmptyState>No handoff artifacts are reported for the selected run.</EmptyState>
           ) : (
             <section className="border border-[var(--console-line)] bg-[var(--console-panel)]">
               <SectionHeader title="Handoff artifacts" meta={selectedRunRecord.handoff.status} />
@@ -515,23 +585,83 @@ function EmptyState({ children }: { readonly children: string }) {
   return <p className="border border-[var(--console-line)] bg-[var(--console-void)]/48 px-4 py-3 text-base text-[var(--muted-amber)] sm:text-sm">{children}</p>;
 }
 
-function RunFallbackNotice({
-  label,
-  run,
-  note
-}: {
-  readonly label: string;
-  readonly run: AgentCockpitDto["runQueue"][number];
-  readonly note: string;
-}) {
+function SelectedRunMissingData() {
   return (
-    <section aria-label={label} className="space-y-2 border border-[var(--console-line)] bg-[var(--console-void)]/48 px-4 py-3">
-      <dl className="grid gap-2 lg:grid-cols-3">
-        <DetailRow label="Run ID" value={run.runId} breakAll />
-        <DetailRow label="Run type" value={run.runType} />
-        <DetailRow label="State" value={run.state} />
-      </dl>
-      <p className="text-base text-[var(--muted-amber)] sm:text-sm">{note}</p>
+    <p className="border border-[var(--signal-amber)] bg-[var(--console-void)]/48 px-4 py-3 text-base text-[var(--signal-amber)] sm:text-sm">
+      Selected-run data is unavailable; queue summary was not substituted.
+    </p>
+  );
+}
+
+function ResidentSupervisionPanel({
+  supervision,
+  onPauseResidentWork,
+  onResumeResidentWork,
+  onRetryTask,
+  onCancelTask
+}: {
+  readonly supervision: NonNullable<AgentCockpitDto["supervision"]>;
+  readonly onPauseResidentWork?: (() => void) | undefined;
+  readonly onResumeResidentWork?: (() => void) | undefined;
+  readonly onRetryTask?: ((taskId: string) => void) | undefined;
+  readonly onCancelTask?: ((taskId: string) => void) | undefined;
+}) {
+  const invoke = (action: typeof supervision.controls[number]): void => {
+    if (!action.enabled) return;
+    if (action.action === "pause") onPauseResidentWork?.();
+    if (action.action === "resume") onResumeResidentWork?.();
+    if (action.action === "retry" && action.taskId !== undefined) onRetryTask?.(action.taskId);
+    if (action.action === "cancel" && action.taskId !== undefined) onCancelTask?.(action.taskId);
+  };
+  const callbackAvailable = (action: typeof supervision.controls[number]): boolean =>
+    action.action === "pause" ? onPauseResidentWork !== undefined
+      : action.action === "resume" ? onResumeResidentWork !== undefined
+        : action.action === "retry" ? onRetryTask !== undefined
+          : onCancelTask !== undefined;
+
+  return (
+    <section aria-label="Resident supervision" className="border border-[var(--console-line)] bg-[var(--console-panel)]">
+      <SectionHeader title="Resident supervision" meta={supervision.schemaVersion} />
+      <div className="space-y-4 px-4 py-4">
+        <dl className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <InlineStat label="Wake state" value={supervision.supervisorState} />
+          <InlineStat label="Workspace" value={supervision.workspaceState} />
+          <InlineStat label="Workspace ID" value={supervision.workspaceId ?? "not admitted"} breakAll />
+          <InlineStat label="Next wake" value={supervision.nextWakeAt ?? "not scheduled"} />
+        </dl>
+        <p className="text-base text-[var(--paper-light)] sm:text-sm">{supervision.safeMessage}</p>
+        <div className="flex flex-wrap gap-2">
+          {supervision.controls.map((control) => (
+            <button
+              key={`${control.action}:${control.taskId ?? "resident"}`}
+              type="button"
+              disabled={!control.enabled || !callbackAvailable(control)}
+              onClick={() => invoke(control)}
+              className="min-h-10 border border-[var(--console-line)] px-3 py-2 text-base text-[var(--signal-cyan)] disabled:cursor-not-allowed disabled:text-[var(--muted-amber)] disabled:opacity-60 sm:min-h-9 sm:text-sm"
+            >
+              {control.label}
+            </button>
+          ))}
+        </div>
+        {supervision.diagnostics.length === 0 ? null : (
+          <ul role="list" className="divide-y divide-[var(--console-line)] border border-[var(--console-line)] bg-[var(--console-void)]/48">
+            {supervision.diagnostics.map((diagnostic) => (
+              <li key={`${diagnostic.category}:${diagnostic.safeMessage}`} className="px-4 py-3">
+                <p className="font-mono text-base text-[var(--signal-amber)] sm:text-sm">{diagnostic.category}</p>
+                <p className="mt-1 text-base text-[var(--paper-light)] sm:text-sm">{diagnostic.safeMessage}</p>
+                <p className="mt-1 text-base text-[var(--muted-amber)] sm:text-sm">
+                  {diagnostic.allowedRepairActions.join(", ") || "No automatic repair action is available."}
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
+        {supervision.provenanceEventIds.length === 0 ? null : (
+          <p className="break-all font-mono text-base text-[var(--muted-amber)] sm:text-sm">
+            Provenance: {supervision.provenanceEventIds.join(", ")}
+          </p>
+        )}
+      </div>
     </section>
   );
 }

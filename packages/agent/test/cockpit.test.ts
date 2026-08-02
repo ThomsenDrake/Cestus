@@ -222,6 +222,100 @@ describe("agent cockpit dto", () => {
     }));
   });
 
+  it("joins durable resident plan and observation history only to the exact selected run and task", () => {
+    const attemptId = "attempt_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    const cockpit = buildAgentCockpit({
+      status: statusFixture({ completedRun: true }),
+      generatedAt: "2026-07-09T12:06:15.000Z",
+      selectedRunId: "run_report_done",
+      residentPlans: [
+        {
+          eventId: "evt_plan_report_revision_1",
+          runId: "run_report_done",
+          taskId: "task_report_done",
+          attemptId,
+          planId: "plan_report_revision_1",
+          planRevision: 1,
+          recordedAt: "2026-07-09T11:02:00.000Z",
+          steps: [{
+            ordinal: 1,
+            purpose: "Revise the local report outline.",
+            toolId: "local.report-outline",
+            expectedSafeOutputClass: "derivative"
+          }]
+        },
+        {
+          eventId: "evt_plan_report_revision_0",
+          runId: "run_report_done",
+          taskId: "task_report_done",
+          attemptId,
+          planId: "plan_report_revision_0",
+          planRevision: 0,
+          recordedAt: "2026-07-09T11:01:00.000Z",
+          steps: [{
+            ordinal: 1,
+            purpose: "Prepare the local report outline.",
+            toolId: "local.report-outline",
+            expectedSafeOutputClass: "derivative"
+          }]
+        },
+        {
+          eventId: "evt_plan_wrong_task",
+          runId: "run_report_done",
+          taskId: "task_other_report",
+          attemptId,
+          planId: "plan_wrong_task",
+          planRevision: 0,
+          recordedAt: "2026-07-09T11:00:00.000Z",
+          steps: [{
+            ordinal: 1,
+            purpose: "Unrelated task plan.",
+            toolId: "local.report-outline",
+            expectedSafeOutputClass: "derivative"
+          }]
+        }
+      ],
+      residentObservations: [
+        {
+          eventId: "evt_observation_report",
+          runId: "run_report_done",
+          taskId: "task_report_done",
+          attemptId,
+          observationId: "observation_report",
+          planId: "plan_report_revision_1",
+          planRevision: 1,
+          stepOrdinal: 1,
+          kind: "tool-result",
+          safeSummary: "Revised report outline recorded locally.",
+          artifactHashes: [hashD],
+          recordedAt: "2026-07-09T11:03:00.000Z"
+        },
+        {
+          eventId: "evt_observation_wrong_task",
+          runId: "run_report_done",
+          taskId: "task_other_report",
+          attemptId,
+          observationId: "observation_wrong_task",
+          planId: "plan_wrong_task",
+          planRevision: 0,
+          stepOrdinal: 1,
+          kind: "tool-result",
+          safeSummary: "Unrelated task observation.",
+          artifactHashes: [hashE],
+          recordedAt: "2026-07-09T11:00:30.000Z"
+        }
+      ]
+    });
+
+    expect(cockpit.selectedRun?.planHistory.map((plan) => plan.eventId)).toEqual([
+      "evt_plan_report_revision_0",
+      "evt_plan_report_revision_1"
+    ]);
+    expect(cockpit.selectedRun?.observationHistory.map((observation) => observation.eventId)).toEqual([
+      "evt_observation_report"
+    ]);
+  });
+
   it("ignores supplied specialist handoffs that do not exactly match run, run type, and task", () => {
     const wrongRunType = {
       ...reportBuilderHandoffFixture(),

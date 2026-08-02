@@ -32,6 +32,44 @@ describeEventLedgerContract("SQLiteEventLedger", {
 });
 
 describe("SQLiteEventLedger", () => {
+  it("rolls back a guarded append when its synchronous precommit guard fails", async () => {
+    const ledger = new SQLiteEventLedger(dbPath());
+    const guardFailure = new Error("mounted workspace is no longer current");
+
+    await expect(ledger.appendWithPrecommitGuard(
+      evidenceEvent("ev_sqlite_guarded_rollback"),
+      { expectedGlobalEventCount: 0, expectedNextSequence: 1 },
+      () => {
+        throw guardFailure;
+      }
+    )).rejects.toBe(guardFailure);
+    expect(await ledger.readAll()).toEqual([]);
+
+    const committed = await ledger.append(evidenceEvent("ev_sqlite_guarded_rollback"), {
+      expectedGlobalEventCount: 0,
+      expectedNextSequence: 1
+    });
+    expect(committed.sequence).toBe(1);
+    ledger.close();
+  });
+
+  it("commits a guarded append through the canonical event path after its guard succeeds", async () => {
+    const ledger = new SQLiteEventLedger(dbPath());
+    let guardCalls = 0;
+
+    const committed = await ledger.appendWithPrecommitGuard(
+      evidenceEvent("ev_sqlite_guarded_commit"),
+      { expectedGlobalEventCount: 0, expectedNextSequence: 1 },
+      () => {
+        guardCalls += 1;
+      }
+    );
+
+    expect(guardCalls).toBe(1);
+    expect(await ledger.readAll()).toEqual([committed]);
+    ledger.close();
+  });
+
   it("throws a structured concurrency error while preserving the message", async () => {
     const ledger = new SQLiteEventLedger(dbPath());
     await ledger.append(evidenceEvent("ev_sqlite_conflict"));

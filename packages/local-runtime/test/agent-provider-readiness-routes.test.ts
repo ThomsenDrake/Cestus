@@ -9,9 +9,9 @@ import { createLocalRuntimeHttpHandler, type LocalRuntimeHttpHandler } from "../
 const handlers: LocalRuntimeHttpHandler[] = [];
 const tempDirs: string[] = [];
 
-afterEach(() => {
+afterEach(async () => {
   for (const handler of handlers.splice(0)) {
-    handler.close();
+    await handler.close();
   }
   for (const dir of tempDirs.splice(0)) {
     rmSync(dir, { recursive: true, force: true });
@@ -27,7 +27,7 @@ describe("agent provider readiness route", () => {
     expect(response.status).toBe(200);
     expect(body.schemaVersion).toBe("agent-provider-readiness.v1");
     expect(response.body).not.toMatch(/authorization:\s*bearer|password=|private key|secret=|raw-provider-material/i);
-    closeHandler(handler);
+    await closeHandler(handler);
     expect(await eventTypes(config)).toEqual([]);
   });
 
@@ -56,7 +56,7 @@ describe("agent provider readiness route", () => {
       })
     ]));
     expect(response.body).not.toMatch(/runtime-provider-material|authorization:\s*bearer|provider error|response body/i);
-    closeHandler(handler);
+    await closeHandler(handler);
     expect(await eventTypes(config)).toEqual([]);
   });
 });
@@ -77,8 +77,8 @@ function testHandler(input: { readonly dotEnvLines?: readonly string[] } = {}) {
   return { handler, config };
 }
 
-function closeHandler(handler: LocalRuntimeHttpHandler): void {
-  handler.close();
+async function closeHandler(handler: LocalRuntimeHttpHandler): Promise<void> {
+  await handler.close();
   const index = handlers.indexOf(handler);
   if (index >= 0) {
     handlers.splice(index, 1);

@@ -150,6 +150,86 @@ describe("agent app integration", () => {
     expect(screen.getByRole("button", { name: "Record memory" })).toBeInTheDocument();
   });
 
+  it("renders durable supervision state and invokes only the supported resident controls", async () => {
+    const commands: Array<{ readonly action: string; readonly taskId?: string }> = [];
+    const supervisedCockpit = {
+      ...agentCockpit(),
+      supervision: {
+        schemaVersion: "agent-supervision-cockpit.v1",
+        observedAt: "2026-07-09T13:00:00.000Z",
+        supervisorState: "running",
+        workspaceState: "available",
+        workspaceId: "ws_case_001",
+        nextWakeAt: "2026-07-09T13:00:30.000Z",
+        safeMessage: "Resident work is supervised by the local runtime.",
+        activeCycle: false,
+        provenanceEventIds: ["evt_supervision_fixture"],
+        diagnostics: [],
+        controls: [
+          { action: "pause", label: "Pause resident work", enabled: true },
+          { action: "resume", label: "Resume resident work", enabled: false },
+          { action: "retry", label: "Retry task", enabled: false, taskId: "task_provider_review" },
+          { action: "cancel", label: "Cancel task", enabled: true, taskId: "task_provider_review" }
+        ]
+      }
+    } as unknown as AgentCockpitDto;
+    const adapter = {
+      ...createStaticAgentAdapter(agentStatus(), approvalCockpit(), { cockpit: agentCockpit() }),
+      async loadCockpit() {
+        return supervisedCockpit;
+      },
+      async pauseResidentWork() {
+        commands.push({ action: "pause" });
+        return { schemaVersion: "agent-supervision-command-result.v1", supervision: supervisedCockpit.supervision! };
+      },
+      async resumeResidentWork() {
+        commands.push({ action: "resume" });
+        return { schemaVersion: "agent-supervision-command-result.v1", supervision: supervisedCockpit.supervision! };
+      },
+      async retryTask(taskId: string) {
+        commands.push({ action: "retry", taskId });
+        return {
+          schemaVersion: "agent-task-supervision-result.v1",
+          task: agentStatus().tasks[0]!,
+          supervision: supervisedCockpit.supervision!
+        };
+      },
+      async cancelTask(taskId: string) {
+        commands.push({ action: "cancel", taskId });
+        return {
+          schemaVersion: "agent-task-supervision-result.v1",
+          task: agentStatus().tasks[0]!,
+          supervision: supervisedCockpit.supervision!
+        };
+      }
+    } as AgentAdapter;
+
+    render(
+      <App
+        requestsAdapter={createTestRequestsAdapter()}
+        ingestionAdapter={createStaticIngestionWorkspaceAdapter({ mounted: false, diagnostics: [] })}
+        operatorStatusAdapter={createStaticOperatorStatusAdapter(operatorStatus())}
+        agentAdapter={adapter}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("link", { name: "Agent" }));
+    const supervision = await screen.findByRole("region", { name: "Resident supervision" });
+
+    expect(within(supervision).getByText("running")).toBeInTheDocument();
+    expect(within(supervision).getByText("available")).toBeInTheDocument();
+    expect(within(supervision).getByText("2026-07-09T13:00:30.000Z")).toBeInTheDocument();
+    expect(within(supervision).getByRole("button", { name: "Resume resident work" })).toBeDisabled();
+    expect(within(supervision).getByRole("button", { name: "Retry task" })).toBeDisabled();
+
+    fireEvent.click(within(supervision).getByRole("button", { name: "Pause resident work" }));
+    fireEvent.click(within(supervision).getByRole("button", { name: "Cancel task" }));
+    await waitFor(() => expect(commands).toEqual([
+      { action: "pause" },
+      { action: "cancel", taskId: "task_provider_review" }
+    ]));
+  });
+
   it("does not carry selected Command decision rail controls into the Agent module", async () => {
     render(
       <App
@@ -976,6 +1056,8 @@ function agentCockpit(overrides: Partial<AgentCockpitDto> = {}): AgentCockpitDto
           retryable: false
         }
       ],
+      planHistory: [],
+      observationHistory: [],
       contextPacks: [
         {
           contextPackId: "ctx_provider_review",

@@ -114,7 +114,7 @@ export async function startLocalRuntimeServer(
   try {
     await listen(server, config);
   } catch (error) {
-    handler.close();
+    await handler.close();
     throw error;
   }
 
@@ -140,7 +140,7 @@ export async function startLocalRuntimeServer(
       try {
         await closeServer(server);
       } finally {
-        handler.close();
+        await handler.close();
       }
     }
   });
