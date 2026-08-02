@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import { type AppendableKnowledgeEvent, type KnowledgeEvent } from "../src/contracts.js";
 import { type AppendOptions, type EventLedger, InMemoryEventLedger } from "../src/event-ledger.js";
 import { buildGovernanceProjection } from "../src/governance-projection.js";
+import type { GovernanceTag } from "../src/governance-policy.js";
 import { GovernanceService } from "../src/governance-service.js";
+import { buildGovernanceExportPreview } from "../src/governance-export-preview.js";
 import { goldenGovernanceLedgerEvents } from "./fixtures/golden-governance-ledger.js";
 
 const humanActor = { id: "actor_investigator", kind: "human" as const, label: "Investigator" };
@@ -85,6 +87,180 @@ describe("governed exports and reports", () => {
         requiredOptInTags: []
       }
     ]);
+  });
+
+  it("previews public-safe defaults and names exact approvals for every exclusion category", () => {
+    const classified = [
+      ...classifiedEvidence("ev_source_identity", ["source_identity"]),
+      ...classifiedEvidence("ev_credential_risk", ["credential_risk"]),
+      ...classifiedEvidence("ev_export_restricted", ["export_restricted"]),
+      ...classifiedEvidence("ev_other_unsafe", ["public_record"])
+    ];
+    const preview = buildGovernanceExportPreview(
+      [...governanceEventsWithoutPrivateQuarantine, ...classified],
+      [
+        "ev_source_public",
+        "ev_source_private",
+        "ev_source_identity",
+        "ev_credential_risk",
+        "ev_export_restricted",
+        "ev_other_unsafe"
+      ]
+    );
+
+    expect(preview.mode).toBe("preview-only");
+    expect(preview.includedEvidence).toEqual([{
+      evidenceRef: "ev_source_public",
+      governanceEventRefs: ["evt_classify_governance_public", "evt_review_governance_public"]
+    }]);
+    expect(preview.excludedEvidence.map((item) => ({
+      evidenceRef: item.evidenceRef,
+      approvals: item.requiredApprovals.map((approval) => [approval.category, approval.approvalId])
+    }))).toEqual([
+      {
+        evidenceRef: "ev_credential_risk",
+        approvals: [["credential-risk", "human-approve-credential-risk-inclusion"]]
+      },
+      {
+        evidenceRef: "ev_export_restricted",
+        approvals: [["export-restricted", "human-approve-export-restricted-inclusion"]]
+      },
+      {
+        evidenceRef: "ev_other_unsafe",
+        approvals: [["other-unsafe", "human-affirm-public-safe-eligibility"]]
+      },
+      {
+        evidenceRef: "ev_source_identity",
+        approvals: [["source-identity", "human-approve-source-identity-inclusion"]]
+      },
+      {
+        evidenceRef: "ev_source_private",
+        approvals: [["private", "human-approve-private-evidence-inclusion"]]
+      }
+    ]);
+    expect(preview.diagnostics).toEqual([]);
+    expect(JSON.stringify(preview)).not.toMatch(/Requester mailbox response|source\.pdf|provider error/i);
+  });
+
+  it("keeps every exclusion cause and missing state fail-closed with safe-reference diagnostics", () => {
+    const preview = buildGovernanceExportPreview(
+      [...goldenGovernanceLedgerEvents, ingestedEvidence("ev_unclassified")],
+      ["ev_source_private", "ev_source_removed", "ev_unclassified", "ev_missing"]
+    );
+
+    expect(preview.excludedEvidence).toEqual([
+      {
+        evidenceRef: "ev_missing",
+        governanceEventRefs: [],
+        requiredApprovals: [{
+          category: "other-unsafe",
+          approvalId: "human-affirm-public-safe-eligibility",
+          optInAvailableInPreview: false
+        }]
+      },
+      {
+        evidenceRef: "ev_source_private",
+        governanceEventRefs: ["evt_classify_governance_private", "evt_quarantine_governance_private"],
+        requiredApprovals: [
+          {
+            category: "private",
+            approvalId: "human-approve-private-evidence-inclusion",
+            optInAvailableInPreview: true
+          },
+          {
+            category: "quarantine",
+            approvalId: "quarantine-release-unavailable-in-preview",
+            optInAvailableInPreview: false
+          }
+        ]
+      },
+      {
+        evidenceRef: "ev_source_removed",
+        governanceEventRefs: ["evt_classify_governance_removed", "evt_tombstone_governance_removed"],
+        requiredApprovals: [
+          {
+            category: "other-unsafe",
+            approvalId: "human-affirm-public-safe-eligibility",
+            optInAvailableInPreview: false
+          },
+          {
+            category: "tombstoned",
+            approvalId: "tombstone-reversal-unavailable-in-preview",
+            optInAvailableInPreview: false
+          }
+        ]
+      },
+      {
+        evidenceRef: "ev_unclassified",
+        governanceEventRefs: [],
+        requiredApprovals: [
+          {
+            category: "other-unsafe",
+            approvalId: "governance-classification-required-before-preview",
+            optInAvailableInPreview: false
+          },
+          {
+            category: "other-unsafe",
+            approvalId: "human-affirm-public-safe-eligibility",
+            optInAvailableInPreview: false
+          }
+        ]
+      }
+    ]);
+    expect(preview.excludedEvidence.find((item) => item.evidenceRef === "ev_source_private")?.requiredApprovals).toHaveLength(2);
+    expect(preview.diagnostics).toEqual([
+      {
+        code: "evidence-state-missing",
+        evidenceRef: "ev_missing",
+        repairHint: "verify-evidence-reference"
+      },
+      {
+        code: "classification-missing",
+        evidenceRef: "ev_unclassified",
+        repairHint: "record-governance-classification"
+      }
+    ]);
+    expect(Object.keys(preview.diagnostics[0] ?? {}).sort()).toEqual([
+      "code",
+      "evidenceRef",
+      "repairHint"
+    ]);
+  });
+
+  it("rejects credential-shaped requested references without echoing them", () => {
+    const attempt = () => buildGovernanceExportPreview(goldenGovernanceLedgerEvents, ["ev_sk_live_example123"]);
+
+    expect(attempt).toThrow("Governance export preview requires safe evidence and event references");
+    try {
+      attempt();
+    } catch (error) {
+      expect(String(error)).not.toContain("sk_live_example123");
+    }
+  });
+
+  it("excludes human-reviewed public-safe state when its classification event is missing", () => {
+    const evidence = ingestedEvidence("ev_reviewed_without_classification");
+    const review = reviewedEvidenceWithoutClassification(evidence);
+    const preview = buildGovernanceExportPreview(
+      [evidence, review],
+      ["ev_reviewed_without_classification"]
+    );
+
+    expect(preview.includedEvidence).toEqual([]);
+    expect(preview.excludedEvidence).toEqual([{
+      evidenceRef: "ev_reviewed_without_classification",
+      governanceEventRefs: ["evt_review_ev_reviewed_without_classification"],
+      requiredApprovals: [{
+        category: "other-unsafe",
+        approvalId: "governance-classification-required-before-preview",
+        optInAvailableInPreview: false
+      }]
+    }]);
+    expect(preview.diagnostics).toEqual([{
+      code: "classification-missing",
+      evidenceRef: "ev_reviewed_without_classification",
+      repairHint: "record-governance-classification"
+    }]);
   });
 
   it("records generated exports with human opt-ins and explicit governance causation", async () => {
@@ -488,3 +664,97 @@ describe("governed exports and reports", () => {
     expect(await ledger.readStream("export_exp_secret_opt_in_001")).toHaveLength(0);
   });
 });
+
+function classifiedEvidence(evidenceId: string, tags: readonly GovernanceTag[]): KnowledgeEvent[] {
+  const ingest = ingestedEvidence(evidenceId);
+  const ingestEventId = ingest.id;
+  const classifyEventId = `evt_classify_${evidenceId}`;
+  const context = {
+    actor: systemActor,
+    occurredAt: "2026-08-02T12:00:00.000Z",
+    correlationId: `corr_${evidenceId}`,
+    coreVersion: "0.1.0",
+    packVersions: { core: "0.1.0" }
+  } as const;
+
+  return [
+    ingest,
+    {
+      id: classifyEventId,
+      type: "evidence.governance.classified",
+      version: 1,
+      streamId: `evidence_${evidenceId}`,
+      sequence: 2,
+      context: { ...context, causationId: ingestEventId },
+      payload: {
+        evidenceId,
+        evidenceEventId: ingestEventId,
+        contentHash: unrelatedContentHash,
+        policy,
+        classifier: {
+          actorId: "actor_system",
+          kind: "ruleset",
+          label: "Governance ruleset"
+        },
+        tags: tags.map((tag) => ({
+          tag,
+          confidence: 0.99,
+          rationale: "Rule-based governance proposal requires review."
+        }))
+      }
+    }
+  ] as KnowledgeEvent[];
+}
+
+function ingestedEvidence(evidenceId: string): KnowledgeEvent {
+  return {
+    id: `evt_ingest_${evidenceId}`,
+    type: "evidence.ingested",
+    version: 1,
+    streamId: `evidence_${evidenceId}`,
+    sequence: 1,
+    context: {
+      actor: systemActor,
+      occurredAt: "2026-08-02T12:00:00.000Z",
+      correlationId: `corr_${evidenceId}`,
+      coreVersion: "0.1.0",
+      packVersions: { core: "0.1.0" }
+    },
+    payload: {
+      evidenceId,
+      source: { kind: "file", label: "Governance-safe reference" },
+      contentHash: unrelatedContentHash,
+      mediaType: "application/octet-stream",
+      sizeBytes: 1
+    }
+  } as KnowledgeEvent;
+}
+
+function reviewedEvidenceWithoutClassification(evidence: KnowledgeEvent): KnowledgeEvent {
+  const evidenceId = "ev_reviewed_without_classification";
+  return {
+    id: "evt_review_ev_reviewed_without_classification",
+    type: "evidence.governance.reviewed",
+    version: 1,
+    streamId: `evidence_${evidenceId}`,
+    sequence: 2,
+    context: {
+      actor: humanActor,
+      occurredAt: "2026-08-02T12:01:00.000Z",
+      causationId: evidence.id,
+      correlationId: `corr_${evidenceId}`,
+      coreVersion: "0.1.0",
+      packVersions: { core: "0.1.0" }
+    },
+    payload: {
+      evidenceId,
+      reviewedBy: "actor_investigator",
+      policy,
+      decisions: [{
+        tag: "public_safe",
+        action: "add",
+        rationale: "Human review proposed public-safe handling."
+      }]
+    }
+  } as KnowledgeEvent;
+}

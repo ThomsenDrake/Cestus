@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   assertSecretSafeText,
   defaultGovernancePolicy,
+  evaluateGovernanceWorkflowAccess,
   governanceTags,
   isHighConfidence,
+  protectedGovernanceCapabilities,
   publicSafeDefaultTags,
   restrictedExportTags,
   validateGovernancePolicy
@@ -26,6 +28,75 @@ describe("governance policy helpers", () => {
   it("uses a visible high-confidence threshold", () => {
     expect(isHighConfidence(0.94, defaultGovernancePolicy)).toBe(true);
     expect(isHighConfidence(0.79, defaultGovernancePolicy)).toBe(false);
+  });
+
+  it("allows high-confidence classification to unlock only ordinary internal workflow", () => {
+    const classification = {
+      status: "succeeded" as const,
+      proposedTag: "public_safe",
+      confidence: 0.96
+    };
+
+    expect(evaluateGovernanceWorkflowAccess({
+      capability: "ordinary_internal_workflow",
+      classification
+    })).toEqual({
+      capability: "ordinary_internal_workflow",
+      allowed: true,
+      reason: "high-confidence-classification"
+    });
+
+    for (const capability of protectedGovernanceCapabilities) {
+      expect(evaluateGovernanceWorkflowAccess({ capability, classification })).toMatchObject({
+        capability,
+        allowed: false,
+        reason: "human-gate-required",
+        repairHint: {
+          code: "human-approval-required",
+          action: "use-protected-human-workflow"
+        }
+      });
+    }
+  });
+
+  it("locks low, missing, failed, and unknown-tag classifications with exact repair hints", () => {
+    const cases = [
+      {
+        classification: { status: "succeeded" as const, proposedTag: "public_safe", confidence: 0.62 },
+        reason: "low-confidence" as const,
+        action: "request-human-governance-review" as const
+      },
+      {
+        classification: { status: "missing" as const },
+        reason: "classification-missing" as const,
+        action: "record-governance-classification" as const
+      },
+      {
+        classification: { status: "failed" as const },
+        reason: "classification-failed" as const,
+        action: "retry-or-review-classification" as const
+      },
+      {
+        classification: { status: "succeeded" as const, proposedTag: "unrecognized_tag", confidence: 0.99 },
+        reason: "unknown-tag" as const,
+        action: "replace-unknown-governance-tag" as const
+      }
+    ];
+
+    for (const testCase of cases) {
+      expect(evaluateGovernanceWorkflowAccess({
+        capability: "ordinary_internal_workflow",
+        classification: testCase.classification
+      })).toEqual({
+        capability: "ordinary_internal_workflow",
+        allowed: false,
+        reason: testCase.reason,
+        repairHint: {
+          code: "governance-review-required",
+          action: testCase.action
+        }
+      });
+    }
   });
 
   it("rejects governance policies with low-confidence thresholds", () => {
