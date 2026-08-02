@@ -81,6 +81,22 @@ describe("PRR workspace model", () => {
     ]);
   });
 
+  it("keeps incomplete, malformed, and locked gate arrays fail-closed", () => {
+    const selected = getSelectedPrrRequest(buildTestRequestsWorkspace(), "prr_fee_building_permits");
+    expect(selected).toBeDefined();
+
+    const oneReadySendCheck = [{ ...selected!.sendGate[0]!, complete: true, locked: false }];
+    const readyButLockedSendGate = selected!.sendGate.map((check) => ({
+      ...check,
+      complete: true,
+      locked: check.id === "provider-ready"
+    }));
+
+    expect(sendGateArmed(oneReadySendCheck)).toBe(false);
+    expect(sendGateArmed(readyButLockedSendGate)).toBe(false);
+    expect(unresolvedEscalationPrerequisites([])).toEqual(["Legal escalation gate unavailable"]);
+  });
+
   it("does not fabricate a provider for draft-only requests without correspondence", () => {
     const selected = getSelectedPrrRequest(buildTestRequestsWorkspace(), "prr_draft_city_budget");
 

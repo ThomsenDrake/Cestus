@@ -26,6 +26,24 @@ export const prrWorkspaceDtoLaneOrder = [
   "appeal-escalation"
 ] as const;
 
+export const prrWorkspaceDtoSendGateCheckIds = Object.freeze([
+  "draft-body",
+  "recipients",
+  "subject",
+  "citations",
+  "attachments",
+  "evidence",
+  "risk-review",
+  "provider-ready"
+] as const);
+
+export const prrWorkspaceDtoLegalEscalationGateCheckIds = Object.freeze([
+  "confirmed-deadline-or-stalling",
+  "jurisdiction-guidance",
+  "correspondence-evidence",
+  "user-confirmed-escalation"
+] as const);
+
 export type PrrWorkspaceDtoLaneId = (typeof prrWorkspaceDtoLaneOrder)[number];
 export type PrrWorkspaceDtoSeverity = "low" | "medium" | "high" | "critical";
 export type PrrWorkspaceDtoDueState = "none" | "upcoming" | "overdue";

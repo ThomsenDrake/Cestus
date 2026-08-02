@@ -59,6 +59,22 @@ describe("RequestDetailModal", () => {
     expect(within(dialog).getByText("Legal escalation locked")).toBeInTheDocument();
   });
 
+  it("keeps send and legal escalation closed for malformed gate models", () => {
+    const selected = selectedRequest();
+    const malformed = {
+      ...selected,
+      sendGate: [{ ...selected.sendGate[0]!, complete: true, locked: false }],
+      escalationGate: []
+    };
+
+    render(<RequestDetailModal selectedRequest={malformed} onClose={() => undefined} />);
+
+    const dialog = screen.getByRole("dialog", { name: /Request investigation detail/i });
+    expect(within(dialog).getByRole("button", { name: "Review to send" })).toBeDisabled();
+    expect(within(dialog).getByText("Missing: Legal escalation gate unavailable")).toBeInTheDocument();
+    expect(within(dialog).queryByText("All escalation prerequisites are satisfied.")).not.toBeInTheDocument();
+  });
+
   it("shows the exact routine follow-up preview while send remains locked for review", () => {
     const followUpDeadline: KnowledgeEvent = {
       id: "evt_prr_ack_florida_records_deadline_estimated",

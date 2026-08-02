@@ -9,6 +9,10 @@ import type {
   PrrWorkspaceDtoSignalMapNode
 } from "../../../prr/src/read-api.js";
 import {
+  prrWorkspaceDtoLegalEscalationGateCheckIds,
+  prrWorkspaceDtoSendGateCheckIds
+} from "../../../prr/src/read-api.js";
+import {
   prrLaneOrder,
   type PrrAgencyGroup,
   type PrrBuilderModel,
@@ -229,11 +233,40 @@ export function getSelectedPrrRequest(
 }
 
 export function sendGateArmed(gate: readonly PrrGateCheck[] | undefined): boolean {
-  return gate !== undefined && gate.length > 0 && gate.every((check) => check.complete);
+  return (
+    hasExactGateTopology(gate, prrWorkspaceDtoSendGateCheckIds) &&
+    gate.every((check) => check.complete && !check.locked)
+  );
 }
 
 export function unresolvedEscalationPrerequisites(gate: readonly PrrGateCheck[] | undefined): readonly string[] {
-  return Object.freeze((gate ?? []).filter((check) => !check.complete).map((check) => check.label));
+  if (!hasExactGateTopology(gate, prrWorkspaceDtoLegalEscalationGateCheckIds)) {
+    return Object.freeze(["Legal escalation gate unavailable"]);
+  }
+  return Object.freeze(gate.filter((check) => !check.complete || check.locked).map((check) => check.label));
+}
+
+function hasExactGateTopology(
+  gate: readonly PrrGateCheck[] | undefined,
+  expectedIds: readonly string[]
+): gate is readonly PrrGateCheck[] {
+  if (gate === undefined || gate.length !== expectedIds.length) {
+    return false;
+  }
+
+  const expected = new Set(expectedIds);
+  const seen = new Set<string>();
+  for (const check of gate) {
+    if (
+      !expected.has(check.id) ||
+      seen.has(check.id) ||
+      check.complete === check.locked
+    ) {
+      return false;
+    }
+    seen.add(check.id);
+  }
+  return seen.size === expectedIds.length;
 }
 
 function toSavedView(view: PrrWorkspaceDtoSavedView): PrrSavedView {
@@ -372,7 +405,8 @@ function toGateCheck(check: PrrWorkspaceDtoGateCheck): PrrGateCheck {
   return Object.freeze({
     id: check.id,
     label: check.id === "risk-review" ? "Risk flags" : check.label,
-    complete: check.ready,
+    complete: check.ready && !check.locked,
+    locked: check.locked,
     detail: check.detail
   });
 }
