@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { KnowledgeEvent } from "../../ontology/src/contracts.js";
+import { validateKnowledgeEvent, type KnowledgeEvent } from "../../ontology/src/contracts.js";
 import { buildIngestionProjection } from "../src/projection.js";
 import { buildEvidenceWorkspaceDto, buildIngestionReviewDto } from "../src/read-api.js";
 import { diagnosticRecordedEvent, goldenIngestionLedgerEvents } from "./fixtures/golden-ingestion-ledger.js";
@@ -139,6 +139,7 @@ describe("ingestion read API", () => {
     expect(dto.items[0]).toMatchObject({
       governanceTags: [{ tag: "public_record", source: "ai", status: "active" }],
       quarantined: true,
+      quarantineLockLevels: ["workflow"],
       linkedReferences: [{ kind: "prr", id: "prr_evidence_review_001", eventIds: [prrEvent.id] }],
       provenanceComplete: true,
       selectableForAssertionCandidate: false,
@@ -185,8 +186,14 @@ describe("ingestion read API", () => {
       }
     };
     const events = goldenIngestionLedgerEvents.map((event) =>
-      event.type === "ingestion.evidence.linked"
-        ? { ...event, payload: { ...event.payload, occurrenceIds: [...event.payload.occurrenceIds, "occ_archive_001"] } }
+      event.type === "ingestion.import.completed"
+        ? {
+            ...event,
+            payload: {
+              ...event.payload,
+              totals: { ...event.payload.totals, occurrencesLinked: 3 }
+            }
+          }
         : event
     );
     const dto = buildEvidenceWorkspaceDto([...events, archiveOccurrence, evidenceIngestedEvent]);
@@ -200,6 +207,167 @@ describe("ingestion read API", () => {
         internalPath: "inside/a.txt",
         adapter: { name: "zip", version: "0.1.0" }
       }
+    }));
+    expect(dto.items[0]).toMatchObject({
+      provenanceComplete: true,
+      selectableForAssertionCandidate: true
+    });
+  });
+
+  it("reconciles omitted duplicate links from the exact completed scan", () => {
+    const events = goldenIngestionLedgerEvents.map((event) =>
+      event.type === "ingestion.evidence.linked"
+        ? { ...event, payload: { ...event.payload, occurrenceIds: ["occ_001"] } }
+        : event
+    );
+
+    const dto = buildEvidenceWorkspaceDto([...events, evidenceIngestedEvent]);
+
+    expect(dto.items[0]).toMatchObject({
+      occurrences: [
+        { occurrenceId: "occ_001", sourcePath: "contracts/a.txt" },
+        { occurrenceId: "occ_002", sourcePath: "duplicates/a-copy.txt" }
+      ],
+      provenanceComplete: true,
+      selectableForAssertionCandidate: true
+    });
+  });
+
+  it("blocks a batch when completion totals do not match exact observed lineage", () => {
+    const events = goldenIngestionLedgerEvents.map((event) => {
+      if (event.type === "ingestion.evidence.linked") {
+        return { ...event, payload: { ...event.payload, occurrenceIds: ["occ_001"] } };
+      }
+      if (event.type === "ingestion.import.completed") {
+        return {
+          ...event,
+          payload: {
+            ...event.payload,
+            totals: { ...event.payload.totals, occurrencesLinked: 1 }
+          }
+        };
+      }
+      return event;
+    });
+
+    const dto = buildEvidenceWorkspaceDto([...events, evidenceIngestedEvent]);
+
+    expect(dto.items[0]).toMatchObject({
+      occurrences: [
+        { occurrenceId: "occ_001" },
+        { occurrenceId: "occ_002" }
+      ],
+      provenanceComplete: false,
+      selectableForAssertionCandidate: false,
+      blockingReasons: ["Import completion totals do not match observed occurrence lineage."]
+    });
+  });
+
+  it("omits tombstoned and all-locked evidence while retaining workflow-locked evidence", () => {
+    const base = [...goldenIngestionLedgerEvents, evidenceIngestedEvent];
+    const workflow = buildEvidenceWorkspaceDto([...base, quarantinedEvent]);
+    const allLocked = buildEvidenceWorkspaceDto([...base, {
+      ...quarantinedEvent,
+      id: "evt_ing_evidence_quarantined_all",
+      payload: {
+        ...quarantinedEvent.payload,
+        quarantineId: "quarantine_ing_all",
+        lockLevel: "all"
+      }
+    }]);
+    const tombstoned = buildEvidenceWorkspaceDto([...base, tombstonedEvent()]);
+
+    expect(workflow.items[0]).toMatchObject({
+      quarantineLockLevels: ["workflow"],
+      selectableForAssertionCandidate: false
+    });
+    expect(allLocked.items).toEqual([]);
+    expect(tombstoned.items).toEqual([]);
+  });
+
+  it("links investigations through specialist-run source event provenance", () => {
+    const runStarted: KnowledgeEvent = {
+      id: "evt_agent_specialist_run_started_evidence",
+      type: "agent.specialist-run.started",
+      version: 1,
+      streamId: "agent_run_run_evidence_review_001",
+      sequence: 1,
+      context: {
+        ...evidenceIngestedEvent.context,
+        occurredAt: "2026-07-05T12:07:00.000Z"
+      },
+      payload: {
+        runId: "run_evidence_review_001",
+        residentAgentId: "agent_default",
+        runType: "evidence-triage",
+        startedBy: "actor_investigator",
+        investigationId: "inv_evidence_review_001",
+        sourceEventIds: ["evt_ing_evidence_linked"]
+      }
+    };
+    expect(validateKnowledgeEvent(runStarted).success).toBe(true);
+
+    const dto = buildEvidenceWorkspaceDto([
+      ...goldenIngestionLedgerEvents,
+      evidenceIngestedEvent,
+      runStarted
+    ]);
+
+    expect(dto.items[0]?.linkedReferences).toContainEqual({
+      kind: "investigation",
+      id: "inv_evidence_review_001",
+      eventIds: [runStarted.id]
+    });
+  });
+
+  it("never exposes credential-shaped evidence or assertion fields in the browser DTO", () => {
+    const secret = "access_token=super-sensitive-value-123";
+    const unsafeEvents = goldenIngestionLedgerEvents.map((event) => {
+      if (event.type === "ingestion.source.registered") {
+        return { ...event, payload: { ...event.payload, label: secret } };
+      }
+      if (event.type === "ingestion.occurrence.observed" && event.payload.occurrenceId === "occ_001") {
+        return { ...event, payload: { ...event.payload, sourcePath: secret } };
+      }
+      return event;
+    });
+    const unsafeEvidence: KnowledgeEvent = {
+      ...evidenceIngestedEvent,
+      payload: {
+        ...evidenceIngestedEvent.payload,
+        source: { kind: "file", label: secret }
+      }
+    };
+    const unsafeProposal: KnowledgeEvent = {
+      id: "evt_assertion_proposed_unsafe",
+      type: "assertion.proposed",
+      version: 1,
+      streamId: "assertion_as_unsafe_browser",
+      sequence: 1,
+      context: {
+        ...evidenceIngestedEvent.context,
+        occurredAt: "2026-07-05T12:07:00.000Z",
+        causationId: evidenceIngestedEvent.id
+      },
+      payload: {
+        assertionId: "as_unsafe_browser",
+        evidenceId: "ev_ing_001",
+        predicate: secret,
+        object: "Example Agency",
+        confidence: 0.8,
+        reviewState: "proposed"
+      }
+    };
+
+    const dto = buildEvidenceWorkspaceDto([...unsafeEvents, unsafeEvidence, unsafeProposal]);
+    const serialized = JSON.stringify(dto);
+
+    expect(serialized).not.toContain(secret);
+    expect(dto.items).toEqual([]);
+    expect(dto.assertionCandidates).toEqual([]);
+    expect(dto.diagnostics).toContainEqual(expect.objectContaining({
+      code: "secret-safety",
+      severity: "error"
     }));
   });
 
@@ -271,3 +439,24 @@ describe("ingestion read API", () => {
     expect(buildIngestionReviewDto(noScanProjection, "src_drive_001").totals.observedFiles).toBe(0);
   });
 });
+
+function tombstonedEvent(): KnowledgeEvent {
+  return {
+    id: "evt_ing_evidence_tombstoned",
+    type: "evidence.tombstoned",
+    version: 1,
+    streamId: "evidence_ev_ing_001",
+    sequence: 2,
+    context: {
+      ...evidenceIngestedEvent.context,
+      occurredAt: "2026-07-05T12:06:00.000Z",
+      causationId: evidenceIngestedEvent.id
+    },
+    payload: {
+      evidenceId: "ev_ing_001",
+      tombstoneId: "tombstone_ing_001",
+      tombstonedBy: "actor_investigator",
+      reason: "Superseded duplicate retained only for ledger replay."
+    }
+  };
+}

@@ -22,6 +22,7 @@ export interface EvidenceItemDto {
   readonly parseJobs: readonly EvidenceParseJobDto[];
   readonly governanceTags: readonly EvidenceGovernanceTagDto[];
   readonly quarantined: boolean;
+  readonly quarantineLockLevels: readonly ("workflow" | "export" | "all")[];
   readonly tombstoned: boolean;
   readonly linkedReferences: readonly EvidenceLinkedReferenceDto[];
   readonly provenanceComplete: boolean;
@@ -86,7 +87,7 @@ export interface EvidenceAssertionCandidateDto {
 }
 
 export interface EvidenceWorkspaceDiagnosticDto {
-  readonly code: "projection-error" | "missing-provenance";
+  readonly code: "projection-error" | "missing-provenance" | "secret-safety";
   readonly severity: "warning" | "error";
   readonly message: string;
   readonly repairActions: readonly string[];

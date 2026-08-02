@@ -4,6 +4,7 @@ import {
   type KnowledgeEventOf
 } from "../../ontology/src/contracts.js";
 import {
+  containsCredentialShapedEvidenceText,
   evaluateEvidenceProposalEligibility
 } from "../../ontology/src/evidence-service.js";
 import { buildGovernanceProjection } from "../../ontology/src/governance-projection.js";
@@ -42,6 +43,7 @@ export interface EvidenceItemDto {
   readonly parseJobs: readonly EvidenceParseJobDto[];
   readonly governanceTags: readonly EvidenceGovernanceTagDto[];
   readonly quarantined: boolean;
+  readonly quarantineLockLevels: readonly ("workflow" | "export" | "all")[];
   readonly tombstoned: boolean;
   readonly linkedReferences: readonly EvidenceLinkedReferenceDto[];
   readonly provenanceComplete: boolean;
@@ -109,7 +111,7 @@ export interface EvidenceAssertionCandidateDto {
 }
 
 export interface EvidenceWorkspaceDiagnosticDto {
-  readonly code: "projection-error" | "missing-provenance";
+  readonly code: "projection-error" | "missing-provenance" | "secret-safety";
   readonly severity: "warning" | "error";
   readonly message: string;
   readonly repairActions: readonly string[];
@@ -123,18 +125,27 @@ export function buildEvidenceWorkspaceDto(rawEvents: readonly unknown[]): Eviden
     ...projection.evidenceById.keys(),
     ...[...projection.evidenceLinks.values()].map((link) => link.evidenceId)
   ]);
+  let secretSafetyViolation = false;
   const items = [...evidenceIds]
     .sort(compareCodeUnits)
-    .map((evidenceId) => {
+    .map((evidenceId): EvidenceItemDto | undefined => {
       const evidence = projection.evidenceById.get(evidenceId);
       const links = [...projection.evidenceLinks.values()]
         .filter((link) => link.evidenceId === evidenceId)
         .sort((left, right) => compareCodeUnits(left.linkedEventId, right.linkedEventId));
-      const occurrenceIds = sortedUnique(links.flatMap((link) => link.occurrenceIds));
       const state = governance.evidenceGovernance.get(evidenceId);
       const eligibility = evaluateEvidenceProposalEligibility(events, evidenceId);
+      const occurrenceIds = sortedUnique([
+        ...links.flatMap((link) => link.occurrenceIds),
+        ...eligibility.reconciledOccurrenceIds
+      ]);
+      const quarantineLockLevels = quarantineLockLevelsForEvidence(events, evidenceId);
 
-      return {
+      if (state?.tombstoned === true || quarantineLockLevels.includes("all")) {
+        return undefined;
+      }
+
+      const item: EvidenceItemDto = {
         evidenceId,
         ...(evidence?.contentHash === undefined
           ? links[0]?.contentHash === undefined ? {} : { contentHash: links[0].contentHash }
@@ -168,12 +179,34 @@ export function buildEvidenceWorkspaceDto(rawEvents: readonly unknown[]): Eviden
           .sort((left, right) => compareCodeUnits(left.tag, right.tag))
           .map((tag) => ({ ...tag })),
         quarantined: state?.quarantined === true,
-        tombstoned: state?.tombstoned === true,
-        linkedReferences: linkedReferences(events, evidenceId),
+        quarantineLockLevels,
+        tombstoned: false,
+        linkedReferences: linkedReferences(
+          events,
+          evidenceId,
+          eligibility.provenanceEventIds,
+          evidence?.contentHash ?? links[0]?.contentHash
+        ),
         provenanceComplete: eligibility.provenanceComplete,
         selectableForAssertionCandidate: eligibility.selectable,
         blockingReasons: [...eligibility.blockingReasons]
-      } satisfies EvidenceItemDto;
+      };
+      if (containsCredentialShapedValue(item)) {
+        secretSafetyViolation = true;
+        return undefined;
+      }
+      return item;
+    })
+    .filter((item): item is EvidenceItemDto => item !== undefined);
+  const visibleEvidenceIds = new Set(items.map((item) => item.evidenceId));
+  const candidates = assertionCandidates(events, projection)
+    .filter((candidate) => visibleEvidenceIds.has(candidate.evidenceReferences[0]?.evidenceId ?? ""))
+    .filter((candidate) => {
+      if (!containsCredentialShapedValue(candidate)) {
+        return true;
+      }
+      secretSafetyViolation = true;
+      return false;
     });
   const diagnostics: EvidenceWorkspaceDiagnosticDto[] = [
     ...[...projection.diagnostics.values()]
@@ -189,9 +222,17 @@ export function buildEvidenceWorkspaceDto(rawEvents: readonly unknown[]): Eviden
       .map((item) => ({
         code: "missing-provenance" as const,
         severity: "error" as const,
-        message: `Evidence ${item.evidenceId} is missing required ingestion provenance.`,
+        message: "An evidence item is missing required ingestion provenance.",
         repairActions: ["inspect the source occurrence and import lineage", "repair the projection from the ledger"]
-      }))
+      })),
+    ...(secretSafetyViolation
+      ? [{
+          code: "secret-safety" as const,
+          severity: "error" as const,
+          message: "Unsafe evidence metadata was omitted from the browser workspace.",
+          repairActions: ["inspect the local evidence ledger", "supersede unsafe metadata with a sanitized event"]
+        }]
+      : [])
   ];
 
   return {
@@ -199,7 +240,7 @@ export function buildEvidenceWorkspaceDto(rawEvents: readonly unknown[]): Eviden
     status: diagnostics.length === 0 ? "ready" : "degraded",
     sourceHighWaterMark: rawEvents.length,
     items,
-    assertionCandidates: assertionCandidates(events, projection),
+    assertionCandidates: candidates,
     diagnostics
   };
 }
@@ -424,7 +465,9 @@ function evidenceOccurrenceDto(occurrence: IngestionOccurrenceSummary): Evidence
 
 function linkedReferences(
   events: readonly KnowledgeEvent[],
-  evidenceId: string
+  evidenceId: string,
+  provenanceEventIds: readonly string[],
+  contentHash: string | undefined
 ): EvidenceLinkedReferenceDto[] {
   const references = new Map<string, { kind: "prr" | "investigation"; id: string; eventIds: string[] }>();
   for (const event of events) {
@@ -435,6 +478,18 @@ function linkedReferences(
     rememberLinkedReference(references, "prr", payload.prrRequestId, event.id);
     rememberLinkedReference(references, "investigation", payload.investigationId, event.id);
   }
+  const provenanceIds = new Set(provenanceEventIds);
+  for (const event of events) {
+    if (event.type !== "agent.specialist-run.started" || event.payload.investigationId === undefined) {
+      continue;
+    }
+    const referencesProvenance = event.payload.sourceEventIds?.some((eventId) => provenanceIds.has(eventId)) === true;
+    const referencesArtifact = contentHash !== undefined &&
+      event.payload.inputArtifactHashes?.includes(contentHash as `sha256:${string}`) === true;
+    if (referencesProvenance || referencesArtifact) {
+      rememberLinkedReference(references, "investigation", event.payload.investigationId, event.id);
+    }
+  }
 
   return [...references.values()]
     .sort((left, right) => compareCodeUnits(`${left.kind}:${left.id}`, `${right.kind}:${right.id}`))
@@ -443,6 +498,31 @@ function linkedReferences(
       id: reference.id,
       eventIds: sortedUnique(reference.eventIds)
     }));
+}
+
+function quarantineLockLevelsForEvidence(
+  events: readonly KnowledgeEvent[],
+  evidenceId: string
+): Array<"workflow" | "export" | "all"> {
+  return [...new Set(events
+    .filter((event): event is KnowledgeEventOf<"evidence.quarantined"> =>
+      event.type === "evidence.quarantined" && event.payload.evidenceId === evidenceId
+    )
+    .map((event) => event.payload.lockLevel))]
+    .sort(compareCodeUnits);
+}
+
+function containsCredentialShapedValue(value: unknown): boolean {
+  if (typeof value === "string") {
+    return containsCredentialShapedEvidenceText(value);
+  }
+  if (Array.isArray(value)) {
+    return value.some(containsCredentialShapedValue);
+  }
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+  return Object.values(value as Record<string, unknown>).some(containsCredentialShapedValue);
 }
 
 function payloadReferencesEvidence(payload: unknown, evidenceId: string): boolean {

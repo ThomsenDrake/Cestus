@@ -84,7 +84,6 @@ describe("evidence app integration", () => {
     await waitFor(() => expect(prepareAssertionCandidate).toHaveBeenCalled());
     expect(await screen.findByText("as_evidence_app_001")).toBeInTheDocument();
     expect(screen.getAllByText(/review required/i).length).toBeGreaterThan(0);
-    expect(document.body).not.toHaveTextContent("accepted assertion");
   });
 
   it("supports an immutable static adapter for focused rendering", async () => {

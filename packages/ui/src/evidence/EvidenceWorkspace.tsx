@@ -215,7 +215,11 @@ export function EvidenceWorkspace({
               <Detail label="Media" values={[selectedItem.mediaType ?? "Unavailable", selectedItem.sizeBytes === undefined ? "size unavailable" : `${selectedItem.sizeBytes} bytes`]} />
               <Detail label="Source collections" values={selectedItem.sourceCollections.map((source) => `${source.label} · ${source.sourceCollectionId}`)} />
               <Detail label="Import batches" values={selectedItem.importBatchIds} />
-              <Detail label="Governance state" values={[selectedItem.quarantined ? "quarantined" : "not quarantined", selectedItem.tombstoned ? "tombstoned" : "active"]} />
+              <Detail label="Governance state" values={[
+                selectedItem.quarantined ? "quarantined" : "not quarantined",
+                selectedItem.tombstoned ? "tombstoned" : "active",
+                ...selectedItem.quarantineLockLevels.map((level) => `${level} lock`)
+              ]} />
               <Detail label="Linked PRR or investigations" values={selectedItem.linkedReferences.map((reference) => `${reference.kind} · ${reference.id}`)} />
             </dl>
 

@@ -4,17 +4,24 @@ import {
   type EvidenceWorkspaceDto
 } from "../../ingestion/src/read-api.js";
 import type { ActorRef } from "../../ontology/src/contracts.js";
-import { EvidenceReviewService } from "../../ontology/src/evidence-service.js";
+import {
+  containsCredentialShapedEvidenceText,
+  EvidenceReviewService
+} from "../../ontology/src/evidence-service.js";
 import type { EventLedger } from "../../ontology/src/event-ledger.js";
 import type { LocalRuntimeRequest, LocalRuntimeResponse } from "./http-handler.js";
 
 const proposalTextSchema = z.string().min(1).refine(
-  (value) => !/api[_ -]?key|authorization|bearer|password|secret|oauth|credential|cookie\s*:|session\s*=/i.test(value),
+  (value) => !containsCredentialShapedEvidenceText(value),
   { message: "proposal text must not contain credential-shaped material" }
 );
 const assertionCandidateInputSchema = z.object({
-  assertionId: z.string().regex(/^as_[a-zA-Z0-9_-]+$/),
-  evidenceId: z.string().regex(/^ev_[a-zA-Z0-9_-]+$/),
+  assertionId: z.string().regex(/^as_[a-zA-Z0-9_-]+$/).refine(
+    (value) => !containsCredentialShapedEvidenceText(value)
+  ),
+  evidenceId: z.string().regex(/^ev_[a-zA-Z0-9_-]+$/).refine(
+    (value) => !containsCredentialShapedEvidenceText(value)
+  ),
   subjectRef: proposalTextSchema.optional(),
   predicate: proposalTextSchema,
   object: z.union([proposalTextSchema, z.number(), z.boolean(), z.null()]),
@@ -28,11 +35,12 @@ const knownBlockingReasons = new Set([
   "Evidence source collection provenance is missing.",
   "Human import approval provenance is missing.",
   "Evidence import completion provenance is missing.",
+  "Import completion totals do not match observed occurrence lineage.",
   "A linked source occurrence is missing.",
   "A linked source occurrence does not match its import provenance.",
   "Quarantined evidence is excluded from ordinary assertion preparation.",
   "Tombstoned evidence is excluded from ordinary assertion preparation.",
-  "Assertion candidate has already completed human review.",
+  "Assertion candidate contains credential-shaped material.",
   "Assertion candidate ID already exists with different proposal content."
 ]);
 

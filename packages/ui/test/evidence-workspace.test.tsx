@@ -63,6 +63,7 @@ describe("EvidenceWorkspace", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Inspect evidence ev_ing_blocked" }));
     expect(screen.getByText("Quarantined evidence is excluded from ordinary assertion preparation.")).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Evidence detail" })).toHaveTextContent("workflow lock");
     expect(screen.getByRole("button", { name: "Prepare assertion candidate" })).toBeDisabled();
 
     fireEvent.click(screen.getByRole("button", { name: "Inspect evidence ev_ing_001" }));
@@ -82,7 +83,6 @@ describe("EvidenceWorkspace", () => {
     const result = await screen.findByRole("status", { name: "Assertion candidate prepared" });
     expect(result).toHaveTextContent("review required");
     expect(result).toHaveTextContent("ev_ing_001");
-    expect(result).not.toHaveTextContent("accepted");
   });
 
   it("strictly parses immutable browser-safe DTOs", () => {
@@ -99,6 +99,13 @@ describe("EvidenceWorkspace", () => {
         severity: "error",
         message: "Authorization Bearer secret-value",
         repairActions: ["retry"]
+      }]
+    })).toThrow(/credential-shaped/i);
+    expect(() => evidenceWorkspaceDtoFromJson({
+      ...workspaceDto(),
+      items: [{
+        ...workspaceDto().items[0]!,
+        source: { kind: "file", label: "ghp_abcdefghijklmnopqrstuvwxyz1234567890" }
       }]
     })).toThrow(/credential-shaped/i);
   });

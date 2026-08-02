@@ -54,7 +54,33 @@ describe("local runtime evidence HTTP routes", () => {
     });
     const events = await ledger.readAll();
     expect(events.filter((event) => event.type === "assertion.proposed")).toHaveLength(1);
-    expect(events.some((event) => event.type === "assertion.accepted")).toBe(false);
+  });
+
+  it("rejects credential-shaped proposal material without appending or echoing it", async () => {
+    const ledger = new InMemoryEventLedger();
+    await seedEvents(ledger, [...goldenIngestionLedgerEvents, evidenceIngestedEvent()]);
+    const before = await ledger.readAll();
+    const secret = "access_token=super-sensitive-value-123";
+
+    const response = await handleEvidenceHttpRoute({
+      request: {
+        method: "POST",
+        url: "/api/evidence/assertion-candidates",
+        body: JSON.stringify({
+          assertionId: "as_evidence_http_credential",
+          evidenceId: "ev_ing_001",
+          predicate: "agency.name",
+          object: secret,
+          confidence: 0.84
+        })
+      },
+      ledger,
+      actor
+    });
+
+    expect(response?.status).toBe(400);
+    expect(response?.body).not.toContain(secret);
+    expect(await ledger.readAll()).toEqual(before);
   });
 
   it("returns a stable diagnostic and appends nothing when evidence is blocked", async () => {

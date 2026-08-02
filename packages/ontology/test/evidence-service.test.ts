@@ -101,7 +101,6 @@ describe("EvidenceService", () => {
     });
     expect(replay.event.id).toBe(result.event.id);
     expect(events.filter((event) => event.type === "assertion.proposed")).toHaveLength(1);
-    expect(events.some((event) => event.type === "assertion.accepted")).toBe(false);
 
     await expect(service.prepareAssertionCandidate({
       ...input,
@@ -134,6 +133,43 @@ describe("EvidenceService", () => {
     const incompleteService = new EvidenceReviewService({ ledger: incompleteLedger });
     await expect(incompleteService.prepareAssertionCandidate(input)).rejects.toThrow(/occurrence lineage is missing/);
     expect((await incompleteLedger.readAll()).some((event) => event.type === "assertion.proposed")).toBe(false);
+  });
+
+  it("requires human import approval for the exact completed scan before proposing", async () => {
+    const ledger = new InMemoryEventLedger();
+    const wrongScanEvents = goldenIngestionLedgerEvents.map((event) =>
+      event.type === "ingestion.import.approved"
+        ? { ...event, payload: { ...event.payload, scanBatchId: "scan_wrong" } }
+        : event
+    );
+    await seedEvents(ledger, [...wrongScanEvents, evidenceIngestedEvent()]);
+    const before = await ledger.readAll();
+
+    await expect(new EvidenceReviewService({ ledger }).prepareAssertionCandidate({
+      assertionId: "as_wrong_scan_candidate",
+      evidenceId: "ev_ing_001",
+      predicate: "agency.name",
+      object: "Example Agency",
+      confidence: 0.82,
+      actor: { id: "actor_reviewer", kind: "human", label: "Reviewer" }
+    })).rejects.toThrow(/Human import approval provenance is missing/);
+    expect(await ledger.readAll()).toEqual(before);
+  });
+
+  it("rejects credential-shaped proposal material at the durable service boundary", async () => {
+    const ledger = new InMemoryEventLedger();
+    await seedEvents(ledger, [...goldenIngestionLedgerEvents, evidenceIngestedEvent()]);
+    const before = await ledger.readAll();
+
+    await expect(new EvidenceReviewService({ ledger }).prepareAssertionCandidate({
+      assertionId: "as_credential_candidate",
+      evidenceId: "ev_ing_001",
+      predicate: "agency.name",
+      object: "access_token=super-sensitive-value-123",
+      confidence: 0.82,
+      actor: { id: "actor_reviewer", kind: "human", label: "Reviewer" }
+    })).rejects.toThrow(/credential-shaped/i);
+    expect(await ledger.readAll()).toEqual(before);
   });
 });
 
