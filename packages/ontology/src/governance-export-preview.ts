@@ -204,9 +204,10 @@ function governanceEventRefsByEvidence(events: readonly KnowledgeEvent[]): Reado
 }
 
 const unsafeGovernanceRefPattern = /(?:^|[_-])(?:sk[_-](?:live|test|proj)|gh[pousr]|github[_-]?pat|glpat|xox[baprs]?|AKIA|ASIA|AIza|ya29|eyJ|hf|rk[_-]live|pk[_-]live|sg)(?:[_-]|$)/i;
+const awsAccessKeyRefPattern = /(?:^|[_-])(?:AKIA|ASIA)[a-z0-9]{16}/i;
 
 function assertSafeGovernanceRef(value: string, pattern: RegExp): string {
-  if (!pattern.test(value) || unsafeGovernanceRefPattern.test(value)) {
+  if (!pattern.test(value) || unsafeGovernanceRefPattern.test(value) || awsAccessKeyRefPattern.test(value)) {
     throw new Error("Governance export preview requires safe evidence and event references");
   }
   return value;
