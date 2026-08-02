@@ -86,6 +86,10 @@ describe("GovernanceService", () => {
       evidenceEventId: evidence.id,
       contentHash
     });
+    expect(event.payload.tags).toEqual([
+      { tag: "public_record", confidence: 0.96, rationale: "Produced by a public agency." },
+      { tag: "contains_pii", confidence: 0.91, rationale: "Names and addresses are visible." }
+    ]);
   });
 
   it("installs governance policy through a human-gated service helper", async () => {

@@ -161,6 +161,24 @@ describe("governance projection", () => {
     expect(projection.evidenceGovernance.has("ev_source_removed")).toBe(true);
   });
 
+  it("rebuilds tags, quarantine, incidents, and public-safe eligibility deterministically", () => {
+    const snapshot = () => {
+      const projection = buildGovernanceProjection(goldenGovernanceLedgerEvents);
+      return {
+        evidence: [...projection.evidenceGovernance.values()].map((state) => ({
+          evidenceId: state.evidenceId,
+          tags: [...state.currentTags.values()],
+          quarantined: state.quarantined,
+          tombstoned: state.tombstoned
+        })),
+        incidents: [...projection.incidents.values()],
+        publicSafeEvidenceIds: projection.publicSafeEvidenceIds()
+      };
+    };
+
+    expect(snapshot()).toEqual(snapshot());
+  });
+
   it("returns immutable projection snapshots", () => {
     const projection = buildGovernanceProjection(goldenGovernanceLedgerEvents);
     const firstState = projection.evidenceGovernance.values().next().value;

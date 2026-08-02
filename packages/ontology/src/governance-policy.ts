@@ -14,6 +14,52 @@ export const governanceTags = [
 
 export type GovernanceTag = (typeof governanceTags)[number];
 
+export const protectedGovernanceCapabilities = [
+  "prr_send",
+  "legal_escalation",
+  "quarantine_release",
+  "sensitive_export",
+  "publication",
+  "graph_acceptance"
+] as const;
+
+export type ProtectedGovernanceCapability = (typeof protectedGovernanceCapabilities)[number];
+export type GovernanceWorkflowCapability = "ordinary_internal_workflow" | ProtectedGovernanceCapability;
+
+export type GovernanceClassificationResult =
+  | {
+      readonly status: "succeeded";
+      readonly proposedTag: string;
+      readonly confidence: number;
+    }
+  | {
+      readonly status: "missing";
+    }
+  | {
+      readonly status: "failed";
+    };
+
+export interface GovernanceWorkflowDecision {
+  readonly capability: GovernanceWorkflowCapability;
+  readonly allowed: boolean;
+  readonly reason:
+    | "high-confidence-classification"
+    | "human-gate-required"
+    | "low-confidence"
+    | "classification-missing"
+    | "classification-failed"
+    | "unknown-tag";
+  readonly repairHint?: {
+    readonly code: "human-approval-required" | "governance-review-required";
+    readonly action:
+      | "use-protected-human-workflow"
+      | "request-human-governance-review"
+      | "record-governance-classification"
+      | "retry-or-review-classification"
+      | "replace-unknown-governance-tag";
+  };
+}
+
 export const publicSafeDefaultTags = ["public_safe"] as const satisfies readonly GovernanceTag[];
 
 export const restrictedExportTags = [
@@ -160,10 +206,74 @@ export function isHighConfidence(confidence: number, policy: GovernancePolicy = 
   return Number.isFinite(confidence) && confidence >= 0 && confidence <= 1 && confidence >= policy.confidenceThreshold;
 }
 
+export function evaluateGovernanceWorkflowAccess(input: {
+  readonly capability: GovernanceWorkflowCapability;
+  readonly classification: GovernanceClassificationResult;
+  readonly policy?: GovernancePolicy;
+}): GovernanceWorkflowDecision {
+  if (input.capability !== "ordinary_internal_workflow") {
+    return {
+      capability: input.capability,
+      allowed: false,
+      reason: "human-gate-required",
+      repairHint: {
+        code: "human-approval-required",
+        action: "use-protected-human-workflow"
+      }
+    };
+  }
+
+  if (input.classification.status === "missing") {
+    return lockedWorkflowDecision(input.capability, "classification-missing", "record-governance-classification");
+  }
+
+  if (input.classification.status === "failed") {
+    return lockedWorkflowDecision(input.capability, "classification-failed", "retry-or-review-classification");
+  }
+
+  if (!isGovernanceTag(input.classification.proposedTag)) {
+    return lockedWorkflowDecision(input.capability, "unknown-tag", "replace-unknown-governance-tag");
+  }
+
+  if (!isHighConfidence(input.classification.confidence, input.policy ?? defaultGovernancePolicy)) {
+    return lockedWorkflowDecision(input.capability, "low-confidence", "request-human-governance-review");
+  }
+
+  return {
+    capability: input.capability,
+    allowed: true,
+    reason: "high-confidence-classification"
+  };
+}
+
 export function assertSecretSafeText(value: string): string {
   if (secretTextPatterns.some((pattern) => pattern.test(value))) {
     throw new Error("Governance text must not contain secrets");
   }
 
   return value;
+}
+
+function isGovernanceTag(value: string): value is GovernanceTag {
+  return governanceTags.some((tag) => tag === value);
+}
+
+function lockedWorkflowDecision(
+  capability: "ordinary_internal_workflow",
+  reason: "low-confidence" | "classification-missing" | "classification-failed" | "unknown-tag",
+  action:
+    | "request-human-governance-review"
+    | "record-governance-classification"
+    | "retry-or-review-classification"
+    | "replace-unknown-governance-tag"
+): GovernanceWorkflowDecision {
+  return {
+    capability,
+    allowed: false,
+    reason,
+    repairHint: {
+      code: "governance-review-required",
+      action
+    }
+  };
 }
