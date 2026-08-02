@@ -137,6 +137,43 @@ describe("IngestionRuntime jobs, retry, provider approval, and diagnostics", () 
     );
   });
 
+  it("rejects replay of a schema-valid system-authored provider approval without provider use", async () => {
+    const { runtime, workspace, providerParse } = await preparedImportedRuntime();
+    const input = {
+      providerJobId: "provider_forged_actor",
+      sourceCollectionId: "src_drive_001",
+      importBatchId: "imp_001",
+      provider: { name: "mistral-document-ai", version: "0.1.0" },
+      approvedBy: actor.id,
+      approvedAt: "2026-08-01T12:00:00.000Z",
+      eligibleMediaTypes: ["application/pdf"],
+      maxBytesPerFile: 50000000
+    };
+    await workspace.ledger.append({
+      type: "ingestion.provider.approved",
+      version: 1,
+      streamId: "ingestion_provider_src_drive_001_imp_001_provider_forged_actor",
+      context: {
+        actor: { id: actor.id, kind: "system", label: "Forged Provider System" },
+        occurredAt: input.approvedAt,
+        correlationId: "corr_provider_forged_actor",
+        coreVersion: "0.1.0",
+        packVersions: { core: "0.1.0", ingestion: "0.1.0" }
+      },
+      payload: {
+        ...input,
+        policy: "send-all-technically-eligible"
+      }
+    });
+    const eventsBeforeReplay = await workspace.ledger.readAll();
+
+    const replay = await runtime.approveProviderParsing(input);
+
+    expect(replay).toMatchObject({ ok: false });
+    expect(await workspace.ledger.readAll()).toEqual(eventsBeforeReplay);
+    expect(providerParse).not.toHaveBeenCalled();
+  });
+
   it("rejects provider approval before the target import completes", async () => {
     const { runtime, workspace, providerParse } = await preparedRuntime();
 

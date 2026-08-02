@@ -1,9 +1,12 @@
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { InMemoryEventLedger } from "../../ontology/src/event-ledger.js";
 import type { MountedWorkspace } from "../../ingestion/src/mount-contract.js";
+import { createFakeMountedWorkspace } from "../../ingestion/test/runtime-test-helpers.js";
+import { createHttpIngestionWorkspaceAdapter } from "../../ui/src/ingestion/ingestion-adapter.js";
 import { resolveLocalRuntimeConfig } from "../src/config.js";
 import {
   createLocalRuntimeHttpHandler,
@@ -95,6 +98,88 @@ describe("local runtime ingestion HTTP routes", () => {
     });
   });
 
+  it("derives default approval identity for real UI raw-import and provider payloads", async () => {
+    const workspace = createFakeMountedWorkspace("Default UI approval workspace");
+    tempDirs.push(workspace.rootDir);
+    const sourceRoot = join(workspace.rootDir, "source");
+    mkdirSync(sourceRoot, { recursive: true });
+    writeFileSync(join(sourceRoot, "a.txt"), "alpha");
+    const defaultActor = {
+      id: "actor_local_runtime",
+      kind: "human",
+      label: "Local Runtime User"
+    } as const;
+    const handler = createLocalRuntimeHttpHandler({
+      config: resolveLocalRuntimeConfig({ cwd: tempDir(), env: {} }),
+      actor: defaultActor,
+      ingestionMountResolver: {
+        resolve: vi.fn(async () => ({ ok: true as const, workspace }))
+      }
+    });
+    handlers.push(handler);
+    const sentBodies: Array<{ url: string; body: Record<string, unknown> }> = [];
+    const fetcher: typeof fetch = async (request, init) => {
+      const url = String(request);
+      const body = typeof init?.body === "string" ? init.body : undefined;
+      if (body !== undefined) {
+        sentBodies.push({ url, body: JSON.parse(body) as Record<string, unknown> });
+      }
+      const response = await handler({
+        method: init?.method ?? "GET",
+        url,
+        ...(body === undefined ? {} : { body })
+      });
+      return new Response(response.body, {
+        status: response.status,
+        headers: response.headers
+      });
+    };
+    const uiAdapter = createHttpIngestionWorkspaceAdapter({ fetcher });
+
+    await expect(uiAdapter.registerSource({
+      sourceCollectionId: "src_default_ui",
+      label: "Default UI source",
+      rootUri: pathToFileURL(sourceRoot).href,
+      sourceRoot
+    })).resolves.toMatchObject({ ok: true });
+    await expect(uiAdapter.dryRunScan({
+      sourceCollectionId: "src_default_ui",
+      scanBatchId: "scan_default_ui"
+    })).resolves.toMatchObject({ ok: true });
+    await expect(uiAdapter.approveRawImport({
+      sourceCollectionId: "src_default_ui",
+      scanBatchId: "scan_default_ui",
+      importBatchId: "imp_default_ui",
+      approvedBy: "actor_ui_local"
+    })).resolves.toMatchObject({ ok: true });
+    await expect(uiAdapter.importApproved({
+      sourceCollectionId: "src_default_ui",
+      scanBatchId: "scan_default_ui",
+      importBatchId: "imp_default_ui"
+    })).resolves.toMatchObject({ ok: true });
+    await expect(uiAdapter.approveProviderParsing({
+      providerJobId: "provider_imp_default_ui",
+      sourceCollectionId: "src_default_ui",
+      importBatchId: "imp_default_ui",
+      provider: { name: "mistral-document-ai", version: "0.1.0" },
+      approvedBy: "actor_ui_local",
+      eligibleMediaTypes: ["application/pdf"],
+      maxBytesPerFile: 50000000
+    })).resolves.toMatchObject({ ok: true });
+
+    expect(sentBodies.filter(({ url }) => url.endsWith("/approve")).map(({ body }) => body.approvedBy))
+      .toEqual(["actor_ui_local", "actor_ui_local"]);
+    const approvalEvents = (await workspace.ledger.readAll()).filter((event) =>
+      event.type === "ingestion.import.approved" || event.type === "ingestion.provider.approved"
+    );
+    expect(approvalEvents).toHaveLength(2);
+    expect(approvalEvents.every((event) =>
+      event.context.actor.kind === "human"
+      && event.context.actor.id === defaultActor.id
+      && event.payload.approvedBy === defaultActor.id
+    )).toBe(true);
+  });
+
   it("provider approval route records approval only and does not parse provider bytes", async () => {
     const approveProviderParsing = vi.fn(async () => ({
       ok: true as const,
@@ -125,7 +210,7 @@ describe("local runtime ingestion HTTP routes", () => {
 
     expect(response.status).toBe(200);
     expect(JSON.parse(response.body).eventIds).toEqual(["evt_provider_approval"]);
-    expect(approveProviderParsing).toHaveBeenCalledWith(body);
+    expect(approveProviderParsing).toHaveBeenCalledWith({ ...body, approvedBy: actor.id });
     expect(approveProviderParsing).toHaveBeenCalledTimes(1);
     expect(providerParse).not.toHaveBeenCalled();
   });
@@ -330,7 +415,7 @@ describe("local runtime ingestion HTTP routes", () => {
     expect(runtime.retryJob).toHaveBeenCalledWith({ jobId: "job_001" });
     expect(runtime.diagnostics).toHaveBeenCalledWith({ sourceCollectionId: "src_drive_001" });
     expect(runtime.registerSource).toHaveBeenCalledWith(sourceRegistration());
-    expect(runtime.approveRawImport).toHaveBeenCalledWith(importApproval());
+    expect(runtime.approveRawImport).toHaveBeenCalledWith({ ...importApproval(), approvedBy: actor.id });
     expect(runtime.importApproved).toHaveBeenCalledWith(importExecution());
   });
 });

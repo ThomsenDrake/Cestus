@@ -99,6 +99,9 @@ export class ProviderParseApprovalService {
         event.type === "ingestion.provider.approved" &&
         event.payload.providerJobId === parsed.providerJobId
     );
+    if (existingApproval !== undefined) {
+      this.assertStoredHumanApprovalActor(existingApproval);
+    }
     const payload = {
       providerJobId: parsed.providerJobId,
       sourceCollectionId: parsed.sourceCollectionId,
@@ -139,6 +142,14 @@ export class ProviderParseApprovalService {
   private assertHumanApprovalActor(approvedBy: string): void {
     if (this.dependencies.actor.kind !== "human" || approvedBy !== this.dependencies.actor.id) {
       throw new Error("Provider parsing approval requires the configured human service actor.");
+    }
+  }
+
+  private assertStoredHumanApprovalActor(
+    approval: KnowledgeEventOf<"ingestion.provider.approved">
+  ): void {
+    if (approval.context.actor.kind !== "human" || approval.payload.approvedBy !== approval.context.actor.id) {
+      throw new Error("Stored provider approval requires a matching human event actor.");
     }
   }
 
