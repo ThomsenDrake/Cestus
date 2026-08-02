@@ -10,6 +10,7 @@ const filters: readonly { readonly label: string; readonly value: QueueFilter }[
   { label: "Deadlines", value: "deadline" },
   { label: "Signals", value: "signal" },
   { label: "Evidence", value: "evidence" },
+  { label: "Advisories", value: "advisory" },
   { label: "Diagnostics", value: "diagnostic" }
 ];
 

@@ -36,6 +36,42 @@ describe("operator shell", () => {
     expect(screen.getAllByRole("link", { name: "Cestus home" })).toHaveLength(2);
     expect(screen.getByRole("link", { name: "Command" })).toHaveAttribute("aria-current", "page");
     expect(screen.getByRole("link", { name: "Agent" })).not.toHaveAttribute("aria-disabled");
+    expect(screen.getByRole("link", { name: "Settings" })).toHaveAttribute("aria-disabled", "true");
+  });
+
+  it("routes every implemented module and leaves unavailable Settings inert", () => {
+    const onModuleSelect = vi.fn();
+    render(
+      <OpsShell
+        modules={workspaceModules}
+        activeModuleId="command"
+        workspaceName="Cestus Local"
+        modeLabel="Command"
+        ledgerLabel="Ledger synced"
+        syncLabel="Local sync live"
+        deploymentLabel="Solo laptop"
+        mainId="command"
+        mainLabel="Command workspace"
+        onModuleSelect={onModuleSelect}
+        main={<h1>Command</h1>}
+        decisionRail={<aside aria-label="Decision rail">Agent brief</aside>}
+      />
+    );
+
+    for (const label of ["Command", "Requests", "Evidence", "Ontology", "Agent", "Ingestion"]) {
+      fireEvent.click(screen.getByRole("link", { name: label }));
+    }
+    fireEvent.click(screen.getByRole("link", { name: "Settings" }));
+
+    expect(onModuleSelect.mock.calls.map(([moduleId]) => moduleId)).toStrictEqual([
+      "command",
+      "requests",
+      "evidence",
+      "ontology",
+      "agents",
+      "ingestion"
+    ]);
+    expect(onModuleSelect).not.toHaveBeenCalledWith("settings");
   });
 
   it("opens the mobile module menu as a focus-managed dialog", () => {

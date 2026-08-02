@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { buildCommandBoardViewModel, getSelectedCommandItem } from "./workspace/command-model.js";
-import { commandWorkspaceFixture } from "./workspace/command-fixtures.js";
+import {
+  buildCommandBoardInputFromRuntime,
+  type CommandRuntimeSource
+} from "./workspace/command-runtime.js";
 import type { QueueFilter } from "./workspace/command-types.js";
 import { AgentWorkspace } from "./agent/AgentWorkspace.js";
 import {
@@ -73,6 +76,7 @@ import { CommandDashboard } from "./workspace/CommandDashboard.js";
 import { DecisionRail } from "./workspace/DecisionRail.js";
 import { OpsShell } from "./workspace/OpsShell.js";
 import { workspaceModules } from "./workspace/workspace-nav.js";
+import { safeCommandText } from "./workspace/command-safety.js";
 
 const implementedModuleIds = new Set(["command", "requests"]);
 implementedModuleIds.add("ingestion");
@@ -87,7 +91,10 @@ interface AppProps {
   readonly operatorStatusAdapter?: OperatorStatusAdapter;
   readonly agentAdapter?: AgentAdapter;
   readonly ontologyAdapter?: OntologyWorkspaceAdapter;
+  readonly now?: (() => string) | undefined;
 }
+
+const systemNow = () => new Date().toISOString();
 
 export function App({
   requestsAdapter = httpRequestsAdapter,
@@ -95,8 +102,10 @@ export function App({
   evidenceAdapter = httpEvidenceWorkspaceAdapter,
   operatorStatusAdapter = httpOperatorStatusAdapter,
   agentAdapter = httpAgentAdapter,
-  ontologyAdapter = httpOntologyWorkspaceAdapter
+  ontologyAdapter = httpOntologyWorkspaceAdapter,
+  now = systemNow
 }: AppProps = {}) {
+  const [commandOpenedAt] = useState(() => now());
   const [activeModuleId, setActiveModuleId] = useState("command");
   const [activeFilter, setActiveFilter] = useState<QueueFilter>("all");
   const [selectedItemId, setSelectedItemId] = useState<string | undefined>();
@@ -155,10 +164,74 @@ export function App({
   const [agentLoadState, setAgentLoadState] = useState<"idle" | "loading" | "loaded" | "error">("idle");
   const [agentLoadError, setAgentLoadError] = useState<string | undefined>();
   const [agentReloadKey, setAgentReloadKey] = useState(0);
-  const model = useMemo(
-    () => buildCommandBoardViewModel({ ...commandWorkspaceFixture, reviewedItemIds, agentStatus }),
-    [agentStatus, reviewedItemIds]
-  );
+  const [commandAgentStatus, setCommandAgentStatus] = useState<AgentStatusDto | undefined>();
+  const [loadedCommandAgentAdapter, setLoadedCommandAgentAdapter] = useState<AgentAdapter | undefined>();
+  const [commandAgentLoadState, setCommandAgentLoadState] = useState<"idle" | "loading" | "loaded" | "error">("idle");
+  const model = useMemo(() => {
+    const generatedAt = requestsWorkspace?.generatedAt
+      ?? operatorStatus?.generatedAt
+      ?? commandAgentStatus?.generatedAt
+      ?? commandOpenedAt;
+    const input = buildCommandBoardInputFromRuntime({
+      generatedAt,
+      requests: commandSource(
+        requestsLoadState,
+        requestsWorkspace,
+        "diag_command_prr_unavailable",
+        "PRR runtime is unavailable. No fixture data was substituted."
+      ),
+      evidence: commandSource(
+        evidenceLoadState,
+        evidenceWorkspace,
+        "diag_command_evidence_unavailable",
+        "Evidence runtime is unavailable. No fixture data was substituted."
+      ),
+      ingestion: commandSource(
+        ingestionLoadState,
+        ingestionWorkspace === undefined
+          ? undefined
+          : {
+              workspace: ingestionWorkspace,
+              jobs: { jobs: ingestionJobs },
+              diagnostics: { diagnostics: ingestionDiagnostics }
+            },
+        "diag_command_ingestion_unavailable",
+        "Ingestion runtime is unavailable. No fixture data was substituted."
+      ),
+      ontology: commandSource(
+        ontologyLoadState,
+        ontologyWorkspace,
+        "diag_command_ontology_unavailable",
+        "Ontology runtime is unavailable. No fixture data was substituted."
+      ),
+      operator: operatorStatus === undefined
+        ? { state: "loading" }
+        : { state: "ready", data: operatorStatus },
+      agent: commandSource(
+        commandAgentLoadState,
+        commandAgentStatus,
+        "diag_command_agent_unavailable",
+        "Resident agent runtime is unavailable. No fixture data was substituted."
+      )
+    }, reviewedItemIds);
+    return buildCommandBoardViewModel(input);
+  }, [
+    commandAgentLoadState,
+    commandAgentStatus,
+    commandOpenedAt,
+    evidenceLoadState,
+    evidenceWorkspace,
+    ingestionDiagnostics,
+    ingestionJobs,
+    ingestionLoadState,
+    ingestionWorkspace,
+    ontologyLoadState,
+    ontologyWorkspace,
+    operatorStatus,
+    requestsLoadState,
+    requestsWorkspace,
+    reviewedItemIds
+  ]);
   const selectedItem = getSelectedCommandItem(model, selectedItemId);
   const commandActive = activeModuleId === "command";
   const requestsActive = activeModuleId === "requests";
@@ -166,6 +239,10 @@ export function App({
   const evidenceActive = activeModuleId === "evidence";
   const agentActive = activeModuleId === "agents";
   const ontologyActive = activeModuleId === "ontology";
+  const requestsRequired = commandActive || requestsActive;
+  const ingestionRequired = commandActive || ingestionActive;
+  const evidenceRequired = commandActive || evidenceActive;
+  const ontologyRequired = commandActive || ontologyActive;
   const selectedPrrModalRequest = useMemo(
     () => (requestsWorkspace === undefined ? undefined : getSelectedPrrRequest(requestsWorkspace, selectedPrrRequestId)),
     [requestsWorkspace, selectedPrrRequestId]
@@ -215,7 +292,7 @@ export function App({
   }, [commandActive, loadedOperatorStatusAdapter, operatorStatus, operatorStatusAdapter, operatorStatusReloadKey]);
 
   useEffect(() => {
-    if (!requestsActive) {
+    if (!requestsRequired) {
       return;
     }
 
@@ -251,13 +328,15 @@ export function App({
         setSelectedPrrRequestId(undefined);
         setRequestDetailModalOpen(false);
         setRequestsLoadState("error");
-        setRequestsLoadError(error instanceof Error ? error.message : "Requests workspace could not be loaded.");
+        setRequestsLoadError(
+          safeCommandText(error instanceof Error ? error.message : "Requests workspace could not be loaded safely.")
+        );
       });
 
     return () => {
       canceled = true;
     };
-  }, [loadedRequestsAdapter, requestsActive, requestsAdapter, requestsReloadKey, requestsWorkspace]);
+  }, [loadedRequestsAdapter, requestsAdapter, requestsReloadKey, requestsRequired, requestsWorkspace]);
 
   useEffect(() => {
     if (!pendingRequestBuilderOpen || !requestsActive || requestsWorkspace === undefined || requestsLoadState !== "loaded") {
@@ -270,7 +349,7 @@ export function App({
   }, [pendingRequestBuilderOpen, requestsActive, requestsLoadState, requestsWorkspace]);
 
   useEffect(() => {
-    if (!ingestionActive) {
+    if (!ingestionRequired) {
       return;
     }
 
@@ -316,16 +395,16 @@ export function App({
         setIngestionJobs([]);
         setIngestionDiagnostics([]);
         setIngestionLoadState("error");
-        setIngestionLoadError(error instanceof Error ? error.message : "Ingestion workspace could not be loaded.");
+        setIngestionLoadError("Ingestion workspace could not be loaded safely.");
       });
 
     return () => {
       canceled = true;
     };
-  }, [ingestionActive, ingestionAdapter, ingestionReloadKey, ingestionWorkspace, loadedIngestionAdapter]);
+  }, [ingestionAdapter, ingestionReloadKey, ingestionRequired, ingestionWorkspace, loadedIngestionAdapter]);
 
   useEffect(() => {
-    if (!evidenceActive) {
+    if (!evidenceRequired) {
       return;
     }
 
@@ -360,10 +439,10 @@ export function App({
     return () => {
       canceled = true;
     };
-  }, [evidenceActive, evidenceAdapter, evidenceReloadKey, evidenceWorkspace, loadedEvidenceAdapter]);
+  }, [evidenceAdapter, evidenceReloadKey, evidenceRequired, evidenceWorkspace, loadedEvidenceAdapter]);
 
   useEffect(() => {
-    if (!ontologyActive) {
+    if (!ontologyRequired) {
       return;
     }
 
@@ -400,7 +479,43 @@ export function App({
     return () => {
       canceled = true;
     };
-  }, [loadedOntologyAdapter, ontologyActive, ontologyAdapter, ontologyReloadKey, ontologyWorkspace]);
+  }, [loadedOntologyAdapter, ontologyAdapter, ontologyReloadKey, ontologyRequired, ontologyWorkspace]);
+
+  useEffect(() => {
+    if (!commandActive) {
+      return;
+    }
+
+    if (commandAgentStatus !== undefined && loadedCommandAgentAdapter === agentAdapter) {
+      return;
+    }
+
+    let canceled = false;
+    setCommandAgentLoadState("loading");
+
+    agentAdapter
+      .loadStatus()
+      .then((status) => {
+        if (canceled) {
+          return;
+        }
+        setCommandAgentStatus(status);
+        setLoadedCommandAgentAdapter(agentAdapter);
+        setCommandAgentLoadState("loaded");
+      })
+      .catch(() => {
+        if (canceled) {
+          return;
+        }
+        setCommandAgentStatus(undefined);
+        setLoadedCommandAgentAdapter(undefined);
+        setCommandAgentLoadState("error");
+      });
+
+    return () => {
+      canceled = true;
+    };
+  }, [agentAdapter, commandActive, commandAgentStatus, loadedCommandAgentAdapter]);
 
   useEffect(() => {
     if (!agentActive) {
@@ -518,6 +633,7 @@ export function App({
           onFilterChange={setActiveFilter}
           onSelectItem={setSelectedItemId}
           onMarkReviewed={(itemId) => setReviewedItemIds((current) => [...new Set([...current, itemId])])}
+          onNavigate={handleCommandNavigate}
         />
       </section>
     </div>
@@ -619,11 +735,17 @@ export function App({
       defaultVotes={model.decisionRail.defaultVotes}
       selectedItem={selectedItem}
       onClearSelection={() => setSelectedItemId(undefined)}
+      onNavigate={handleCommandNavigate}
     />
   );
   function handleModuleSelect(moduleId: string) {
     if (implementedModuleIds.has(moduleId)) {
       setActiveModuleId(moduleId);
+      if (moduleId === "agents") {
+        setCommandAgentStatus(undefined);
+        setLoadedCommandAgentAdapter(undefined);
+        setCommandAgentLoadState("idle");
+      }
       if (moduleId !== "requests") {
         setRequestDetailModalOpen(false);
         setRequestBuilderOpen(false);
@@ -637,6 +759,14 @@ export function App({
     if (target !== undefined) {
       handleModuleSelect(target);
     }
+  }
+
+  function handleCommandNavigate(target: string) {
+    if (target === "command") {
+      handleRefreshOperatorStatus();
+      return;
+    }
+    handleModuleSelect(target);
   }
 
   function handleRefreshOperatorStatus() {
@@ -1092,6 +1222,21 @@ export function App({
       ) : null}
     </>
   );
+}
+
+function commandSource<T>(
+  loadState: "idle" | "loading" | "loaded" | "error",
+  data: T | undefined,
+  diagnosticId: string,
+  message: string
+): CommandRuntimeSource<T> {
+  if (loadState === "loaded" && data !== undefined) {
+    return { state: "ready", data };
+  }
+  if (loadState === "error" || (loadState === "loaded" && data === undefined)) {
+    return { state: "unavailable", diagnosticId, message };
+  }
+  return { state: "loading" };
 }
 
 async function loadOntologyBootstrapRoutes(

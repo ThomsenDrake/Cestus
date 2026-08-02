@@ -5,6 +5,7 @@ interface PriorityQueueProps {
   readonly selectedItemId: string | undefined;
   readonly onSelectItem: (itemId: string) => void;
   readonly onMarkReviewed: (itemId: string) => void;
+  readonly emptyMessage?: string | undefined;
 }
 
 const severityClasses: Record<CommandQueueItem["severity"], string> = {
@@ -14,11 +15,17 @@ const severityClasses: Record<CommandQueueItem["severity"], string> = {
   low: "border-[var(--console-line)] text-[var(--muted-amber)]"
 };
 
-export function PriorityQueue({ items, selectedItemId, onSelectItem, onMarkReviewed }: PriorityQueueProps) {
+export function PriorityQueue({
+  items,
+  selectedItemId,
+  onSelectItem,
+  onMarkReviewed,
+  emptyMessage = "No urgent work is waiting in this filter."
+}: PriorityQueueProps) {
   if (items.length === 0) {
     return (
       <div className="border border-[var(--console-line)] bg-[var(--console-void)]/72 p-5 text-base text-pretty text-[var(--muted-amber)]">
-        No urgent work is waiting in this filter.
+        {emptyMessage}
       </div>
     );
   }

@@ -5,6 +5,7 @@ interface DecisionRailProps {
   readonly defaultVotes: readonly DecisionVote[];
   readonly selectedItem: CommandQueueItem | undefined;
   readonly onClearSelection: () => void;
+  readonly onNavigate?: ((moduleId: string) => void) | undefined;
 }
 
 const voteToneClasses: Record<DecisionVote["tone"], string> = {
@@ -15,13 +16,19 @@ const voteToneClasses: Record<DecisionVote["tone"], string> = {
   neutral: "border-[var(--console-line)] text-[var(--muted-amber)]"
 };
 
-export function DecisionRail({ agentBrief, defaultVotes, selectedItem, onClearSelection }: DecisionRailProps) {
+export function DecisionRail({
+  agentBrief,
+  defaultVotes,
+  selectedItem,
+  onClearSelection,
+  onNavigate = () => undefined
+}: DecisionRailProps) {
   return (
     <aside aria-label="Decision rail" className="h-full p-4 lg:p-5">
       {selectedItem === undefined ? (
         <AgentBriefView agentBrief={agentBrief} votes={defaultVotes} />
       ) : (
-        <SelectedItemDetail selectedItem={selectedItem} onClearSelection={onClearSelection} />
+        <SelectedItemDetail selectedItem={selectedItem} onClearSelection={onClearSelection} onNavigate={onNavigate} />
       )}
     </aside>
   );
@@ -49,10 +56,12 @@ function AgentBriefView({
 
 function SelectedItemDetail({
   selectedItem,
-  onClearSelection
+  onClearSelection,
+  onNavigate
 }: {
   readonly selectedItem: CommandQueueItem;
   readonly onClearSelection: () => void;
+  readonly onNavigate: (moduleId: string) => void;
 }) {
   return (
     <div>
@@ -72,12 +81,51 @@ function SelectedItemDetail({
           <dd className="mt-1 text-base text-[var(--muted-amber)] sm:text-sm">{selectedItem.state}</dd>
         </div>
         <div>
+          <dt className="text-base font-medium text-[var(--paper-light)] sm:text-sm">Source</dt>
+          <dd className="mt-1 text-base text-[var(--muted-amber)] sm:text-sm">
+            {selectedItem.sourceLabel} / {selectedItem.context}
+          </dd>
+        </div>
+        <div>
+          <dt className="text-base font-medium text-[var(--paper-light)] sm:text-sm">Source timestamp</dt>
+          <dd className="mt-1 font-mono text-base text-[var(--signal-cyan)] sm:text-sm">
+            {selectedItem.detail.runtimeTimestamp ?? "Unavailable from source DTO"}
+          </dd>
+        </div>
+        {selectedItem.detail.confidence === undefined ? null : (
+          <div>
+            <dt className="text-base font-medium text-[var(--paper-light)] sm:text-sm">Confidence</dt>
+            <dd className="mt-1 text-base text-[var(--muted-amber)] sm:text-sm">
+              {Math.round(selectedItem.detail.confidence * 100)}%
+            </dd>
+          </div>
+        )}
+        <div>
           <dt className="text-base font-medium text-[var(--paper-light)] sm:text-sm">Basis</dt>
           <dd className="mt-1 text-base text-[var(--muted-amber)] sm:text-sm">{selectedItem.detail.basis}</dd>
         </div>
         <div>
-          <dt className="text-base font-medium text-[var(--paper-light)] sm:text-sm">Recommended action</dt>
-          <dd className="mt-1 text-base text-[var(--muted-amber)] sm:text-sm">{selectedItem.actionLabel}</dd>
+          <dt className="text-base font-medium text-[var(--paper-light)] sm:text-sm">Uncertainty</dt>
+          <dd className="mt-1 text-base text-[var(--muted-amber)] sm:text-sm">{selectedItem.detail.uncertainty}</dd>
+        </div>
+        <div>
+          <dt className="text-base font-medium text-[var(--paper-light)] sm:text-sm">Supported next action</dt>
+          <dd className="mt-1 text-base text-[var(--muted-amber)] sm:text-sm">
+            {selectedItem.detail.recommendedAction}
+          </dd>
+          {selectedItem.actionTarget === undefined ? null : (
+            <button
+              type="button"
+              onClick={() => onNavigate(selectedItem.actionTarget ?? "command")}
+              className="relative mt-3 min-h-10 border border-[var(--console-line)] px-3 py-2 text-base text-[var(--signal-amber)] hover:border-[var(--signal-amber)] hover:bg-[var(--console-panel)] hover:text-[var(--paper-light)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--signal-cyan)] sm:text-sm"
+            >
+              <span
+                aria-hidden="true"
+                className="pointer-fine:hidden absolute left-1/2 top-1/2 size-[max(100%,3rem)] -translate-1/2"
+              />
+              {selectedItem.actionLabel}
+            </button>
+          )}
         </div>
         <div>
           <dt className="text-base font-medium text-[var(--paper-light)] sm:text-sm">Provenance</dt>

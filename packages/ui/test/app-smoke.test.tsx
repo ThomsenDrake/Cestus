@@ -1,11 +1,15 @@
 /** @vitest-environment jsdom */
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { PrrWorkspaceDto } from "../../prr/src/read-api.js";
 import { prrWorkspaceSeedEvents } from "../../prr/src/workspace-seed.js";
 import { buildAgentCockpit } from "../../agent/src/cockpit.js";
 import { App } from "../src/App.js";
+import { createStaticAgentAdapter } from "../src/agent/agent-adapter.js";
 import type { AgentApprovalCockpitDto, AgentCockpitDto, AgentStatusDto } from "../src/agent/agent-types.js";
+import type { EvidenceWorkspaceAdapter } from "../src/evidence/evidence-adapter.js";
+import { createStaticIngestionWorkspaceAdapter } from "../src/ingestion/ingestion-adapter.js";
+import { createStaticOntologyWorkspaceAdapter } from "../src/ontology/ontology-adapter.js";
 import { createStaticOperatorStatusAdapter } from "../src/operator-status/operator-status-adapter.js";
 import type { OperatorStatusDto } from "../src/operator-status/operator-status-types.js";
 import {
@@ -72,6 +76,117 @@ describe("Cestus UI bootstrap", () => {
     expect(screen.queryByRole("dialog", { name: /Request investigation detail/i })).not.toBeInTheDocument();
   });
 
+  it("renders Command priority state from the injected runtime DTO without a fixture fallback", async () => {
+    const workspace = buildTestRequestsWorkspace();
+    const runtimeAgency = "Runtime Command Office";
+    const runtimeWorkspace: PrrWorkspaceDto = {
+      ...workspace,
+      cards: workspace.cards.map((card) =>
+        card.prrRequestId === "prr_draft_city_budget" ? { ...card, agencyName: runtimeAgency } : card
+      ),
+      requestDetails: workspace.requestDetails.map((detail) =>
+        detail.prrRequestId === "prr_draft_city_budget" ? { ...detail, agencyName: runtimeAgency } : detail
+      ),
+      queueRows: workspace.queueRows.map((row) =>
+        row.prrRequestId === "prr_draft_city_budget" ? { ...row, agencyName: runtimeAgency } : row
+      )
+    };
+
+    render(
+      <App
+        requestsAdapter={createStaticRequestsAdapter(runtimeWorkspace)}
+        operatorStatusAdapter={operatorStatusAdapter}
+      />
+    );
+
+    const runtimeRow = await screen.findByRole("button", {
+      name: `Select ${runtimeAgency} response window`
+    });
+    expect(runtimeRow).toBeInTheDocument();
+    expect(screen.queryByText(/Florida Department of Corrections stalling signal/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Miami-Dade Aviation Department stalling signal/i)).not.toBeInTheDocument();
+
+    fireEvent.click(runtimeRow);
+    const detail = screen.getByRole("complementary", { name: "Decision rail" });
+    expect(within(detail).getByText("estimated deadline / draft | prr_draft_city_budget")).toBeInTheDocument();
+    expect(within(detail).getByText("2026-07-20T12:00:00.000Z")).toBeInTheDocument();
+    expect(within(detail).getByText("estimated deadline from PRR read model")).toBeInTheDocument();
+    expect(within(detail).getByText(/deadline is an estimate from the active jurisdiction workflow/i)).toBeInTheDocument();
+    expect(within(detail).getByText("Check request scope, fee posture, and next correspondence.")).toBeInTheDocument();
+    expect(within(detail).getByText("prr_draft_city_budget")).toBeInTheDocument();
+    expect(within(detail).getByRole("button", { name: "Review deadline" })).toBeInTheDocument();
+  });
+
+  it("keeps verified Command sections visible when one injected subsystem fails safely", async () => {
+    const workspace = buildTestRequestsWorkspace();
+    const staticRequests = createStaticRequestsAdapter(workspace);
+    const loadRequestsWorkspace = vi.fn(() => staticRequests.loadRequestsWorkspace());
+    const requestsAdapter: RequestsWorkspaceAdapter = {
+      ...staticRequests,
+      loadRequestsWorkspace
+    };
+    const staticIngestion = createStaticIngestionWorkspaceAdapter({
+      mounted: true,
+      workspaceId: "ws_command_runtime",
+      diagnostics: []
+    });
+    const loadIngestionWorkspace = vi.fn(() => staticIngestion.loadWorkspace());
+    const ingestionAdapter = { ...staticIngestion, loadWorkspace: loadIngestionWorkspace };
+    const staticOntology = createStaticOntologyWorkspaceAdapter({
+      schemaVersion: "ontology-workspace.v1",
+      status: "ready",
+      sourceHighWaterMark: 9,
+      entities: [],
+      relationships: [],
+      assertions: [],
+      diagnostics: []
+    });
+    const loadOntologyWorkspace = vi.fn(() => staticOntology.loadWorkspace());
+    const ontologyAdapter = { ...staticOntology, loadWorkspace: loadOntologyWorkspace };
+    const staticAgent = createStaticAgentAdapter(appSmokeAgentStatus());
+    const loadAgentStatus = vi.fn(() => staticAgent.loadStatus());
+    const agentAdapter = { ...staticAgent, loadStatus: loadAgentStatus };
+    const loadEvidenceWorkspace = vi.fn(async () => {
+      throw new Error("Evidence provider failed with bearer unsafe-runtime-secret");
+    });
+    const evidenceAdapter: EvidenceWorkspaceAdapter = {
+      loadWorkspace: loadEvidenceWorkspace,
+      async prepareAssertionCandidate() {
+        throw new Error("Not used by Command.");
+      },
+      async appendGovernanceReview() {
+        throw new Error("Not used by Command.");
+      }
+    };
+
+    render(
+      <App
+        requestsAdapter={requestsAdapter}
+        ingestionAdapter={ingestionAdapter}
+        evidenceAdapter={evidenceAdapter}
+        ontologyAdapter={ontologyAdapter}
+        operatorStatusAdapter={operatorStatusAdapter}
+        agentAdapter={agentAdapter}
+        now={() => "2026-07-20T12:00:00.000Z"}
+      />
+    );
+
+    expect(await screen.findByRole("button", { name: "Select City Budget Office response window" })).toBeInTheDocument();
+    const runtimeSources = screen.getByRole("region", { name: "Command runtime source status" });
+    expect(within(runtimeSources).getByText("Evidence runtime is unavailable. No fixture data was substituted.")).toBeInTheDocument();
+    expect(within(runtimeSources).getByText("9 request queue rows replayed from PRR state.")).toBeInTheDocument();
+    expect(within(runtimeSources).getByText("0 ingestion jobs visible for the mounted workspace.")).toBeInTheDocument();
+    expect(within(runtimeSources).getByText("0 ontology assertion proposals still require human review.")).toBeInTheDocument();
+    expect(within(runtimeSources).getByText("0 pending approvals and 0 active locks.")).toBeInTheDocument();
+    expect(screen.getAllByText("Evidence runtime is unavailable. No fixture data was substituted.")).toHaveLength(2);
+    expect(document.body.textContent).not.toContain("unsafe-runtime-secret");
+    expect(loadRequestsWorkspace).toHaveBeenCalledTimes(1);
+    expect(loadIngestionWorkspace).toHaveBeenCalledTimes(1);
+    expect(loadEvidenceWorkspace).toHaveBeenCalledTimes(1);
+    expect(loadOntologyWorkspace).toHaveBeenCalledTimes(1);
+    expect(loadAgentStatus).toHaveBeenCalledTimes(1);
+  });
+
   it("renders Requests from backend-derived PRR DTOs", async () => {
     render(<App requestsAdapter={createTestRequestsAdapter()} operatorStatusAdapter={operatorStatusAdapter} />);
 
@@ -98,7 +213,9 @@ describe("Cestus UI bootstrap", () => {
       render(<App operatorStatusAdapter={operatorStatusAdapter} />);
       fireEvent.click(screen.getByRole("link", { name: "Requests" }));
       expect(await screen.findByText("Building Services Department")).toBeInTheDocument();
-      expect(fetchCalls).toEqual(["/api/requests/workspace"]);
+      expect(fetchCalls.filter((path) => path === "/api/requests/workspace")).toEqual([
+        "/api/requests/workspace"
+      ]);
     } finally {
       globalThis.fetch = originalFetch;
     }
@@ -166,6 +283,84 @@ describe("Cestus UI bootstrap", () => {
     } finally {
       globalThis.fetch = originalFetch;
     }
+  });
+
+  it("sanitizes an injected Requests rejection before supported navigation renders it", async () => {
+    const awsAccessKey = "AKIAABCDEFGHIJKLMNOP";
+    const jwt = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJjZXN0dXMifQ.signature_value";
+    const failingAdapter: RequestsWorkspaceAdapter = {
+      async loadRequestsWorkspace() {
+        throw new Error(`Requests adapter rejected bearer raw-secret ${awsAccessKey} ${jwt}`);
+      },
+      async createDraftRequest() {
+        throw new Error("Not used by this test.");
+      }
+    };
+
+    render(<App requestsAdapter={failingAdapter} operatorStatusAdapter={operatorStatusAdapter} />);
+
+    expect(await screen.findAllByText("PRR runtime is unavailable. No fixture data was substituted.")).toHaveLength(2);
+    fireEvent.click(screen.getByRole("link", { name: "Requests" }));
+    const errorRegion = await screen.findByRole("region", { name: "Requests load error" });
+
+    expect(errorRegion).toHaveTextContent("Requests adapter rejected");
+    expect(errorRegion.textContent).not.toContain("raw-secret");
+    expect(errorRegion.textContent).not.toContain(awsAccessKey);
+    expect(errorRegion.textContent).not.toContain(jwt);
+    expect(errorRegion.textContent).not.toMatch(/\b(?:AKIA|ASIA)[A-Z0-9]{16}\b/);
+    expect(errorRegion.textContent).not.toMatch(/\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/);
+  });
+
+  it("does not render AWS, Google API key, or JWT shapes from an injected Ontology DTO", async () => {
+    const awsAccessKey = "ASIAABCDEFGHIJKLMNOP";
+    const googleApiKey = "AIza1234567890abcdefghijklmnopqrstuvwxy";
+    const jwt = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJjb21tYW5kIn0.signature_value";
+    const ontologyAdapter = {
+      async loadWorkspace() {
+        return {
+          schemaVersion: "ontology-workspace.v1" as const,
+          status: "degraded" as const,
+          sourceHighWaterMark: 2,
+          entities: [],
+          relationships: [],
+          assertions: [{
+            assertionId: "as_dom_shape",
+            reviewState: "proposed" as const,
+            predicate: `mentions_${awsAccessKey}`,
+            confidence: 0.51,
+            evidenceId: "ev_dom_shape",
+            eventIds: ["evt_dom_shape"],
+            packVersions: []
+          }],
+          diagnostics: [{
+            code: "projection-lag" as const,
+            severity: "error" as const,
+            message: `Projection ${googleApiKey} ${jwt}`,
+            repairActions: ["open Ontology"]
+          }]
+        };
+      }
+    };
+
+    render(
+      <App
+        requestsAdapter={createStaticRequestsAdapter(buildTestRequestsWorkspace())}
+        ontologyAdapter={ontologyAdapter}
+        operatorStatusAdapter={operatorStatusAdapter}
+      />
+    );
+
+    const assertionRow = await screen.findByRole("button", {
+      name: "Select Ontology assertion as_dom_shape awaits human review."
+    });
+    fireEvent.click(assertionRow);
+
+    expect(document.body.textContent).not.toContain(awsAccessKey);
+    expect(document.body.textContent).not.toContain(googleApiKey);
+    expect(document.body.textContent).not.toContain(jwt);
+    expect(document.body.textContent).not.toMatch(/\b(?:AKIA|ASIA)[A-Z0-9]{16}\b/);
+    expect(document.body.textContent).not.toMatch(/\bAIza[A-Za-z0-9_-]{35}\b/);
+    expect(document.body.textContent).not.toMatch(/\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/);
   });
 
   it("reloads Requests when the adapter prop changes", async () => {
