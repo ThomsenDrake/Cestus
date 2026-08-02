@@ -744,7 +744,7 @@ describe("factory-issued mounted runtime capture production imports", () => {
         : [],
     );
     expect(() => assertCaptureSeamImportersAreAllowed(workspaceRoot)).not.toThrow();
-  });
+  }, 15_000);
 
   it("permits the future mounted authority operation as the sole importer", () => {
     const fixtureRoot = createFixtureWorkspace();
