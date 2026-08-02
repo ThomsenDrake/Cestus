@@ -1,4 +1,5 @@
 import {
+  buildTaskAttemptId,
   createAgentRuntime,
   createContextPackRegistry,
   lookupInvestigativeContextPackRegistrarEvidence,
@@ -14,8 +15,17 @@ import type { ActorRef } from "../../ontology/src/contracts.js";
 import { createTaskOrchestratorProviderApprovalAdapter } from "../../agent/src/task-orchestrator-approval.js";
 import { createTaskOrchestratorHandoffCapability } from "../../agent/src/task-orchestrator.js";
 import { createLocalAgentProviderConfiguration } from "./agent-provider-readiness.js";
+import { issueMountedArtifactAuthorityOperationForFactory } from "./mounted-artifact-authority-operation.js";
 import { createMountedPromptArtifactStore } from "./mounted-prompt-artifact-store.js";
+import {
+  createPortableMountedAgentArtifactStoreProducer,
+  type FactoryPortableMountedAgentHandoffProducerResultV1
+} from "./portable-mounted-agent-artifact-stores.js";
 import type { LocalRuntimeHandle } from "./runtime-factory.js";
+import {
+  createWakeSupervisorRuntime,
+  type WakeSupervisorRuntime
+} from "./wake-supervisor-runtime.js";
 import type { MountedProductionPromptReadbackWitness } from "../../agent/src/production-prompt-readback.js";
 import type { PromptArtifactEnvelope } from "../../agent/src/prompt-artifacts.js";
 
@@ -30,13 +40,16 @@ export type LocalAgentRuntimeFactory = (
   input: LocalAgentRuntimeFactoryInput
 ) => ReturnType<typeof createAgentRuntime>;
 
+type LocalAgentRuntime = ReturnType<typeof createAgentRuntime>;
+
+const mountedResidentTaskRuntimeHandles = new WeakMap<LocalAgentRuntime, LocalRuntimeHandle>();
+
 export const defaultLocalAgentRuntimeFactory: LocalAgentRuntimeFactory = (input) => {
+  if ((input.approvedToolExecutors?.length ?? 0) > 0) {
+    return contextFreeLocalAgentRuntimeFactory(input);
+  }
   const contextRegistry = createContextPackRegistry();
-  let capturedContextBindingVerifier: (() => void) | undefined;
-  const verifyFactoryHeldContextBindings = (): void => {
-    capturedContextBindingVerifier ??= createFactoryHeldContextBindingVerifier(contextRegistry);
-    capturedContextBindingVerifier();
-  };
+  const verifyFactoryHeldContextBindings = createFactoryHeldContextBindingVerifier(contextRegistry);
   const configuredProviders = createLocalAgentProviderConfiguration({
     cwd: input.handle.config.cwd,
     now: input.now
@@ -58,6 +71,112 @@ export const defaultLocalAgentRuntimeFactory: LocalAgentRuntimeFactory = (input)
     )
   });
 };
+
+/**
+ * Creates an unbranded runtime for ordinary agent CRUD and the approved-tool
+ * scheduler. It deliberately exposes no task-orchestrator context capability
+ * and never grants mounted resident-task authority.
+ */
+export const contextFreeLocalAgentRuntimeFactory: LocalAgentRuntimeFactory = (input) => {
+  const handle = input.handle;
+  return createContextFreeLocalAgentRuntime(input, handle);
+};
+
+function createContextFreeLocalAgentRuntime(
+  input: LocalAgentRuntimeFactoryInput,
+  handle: LocalRuntimeHandle
+): LocalAgentRuntime {
+  const configuredProviders = createLocalAgentProviderConfiguration({
+    cwd: handle.config.cwd,
+    now: input.now
+  });
+  const runtime = createAgentRuntime({
+    ledger: handle.ledger,
+    actor: input.actor,
+    now: input.now,
+    identityLifecycle: () => handle.residentIdentity.lifecycle(),
+    identityLifecycleReady: () => handle.residentIdentity.ready(),
+    providers: configuredProviders.providers,
+    approvedToolExecutors: input.approvedToolExecutors ?? []
+  });
+  return runtime;
+}
+
+/**
+ * Creates the bounded runtime used only by the mounted evidence-triage route.
+ * The existing wake-runtime owner proves the handle came from the private
+ * createSqlitePrrRuntime issuer before this factory reads any handle property.
+ */
+export const mountedResidentTaskLocalAgentRuntimeFactory: LocalAgentRuntimeFactory = (input) => {
+  const handle = input.handle;
+  assertFactoryIssuedMountedResidentTaskHandle(handle);
+  const runtime = createContextFreeLocalAgentRuntime(input, handle);
+  mountedResidentTaskRuntimeHandles.set(runtime, handle);
+  return runtime;
+};
+
+export function assertMountedResidentTaskRuntimeBinding(input: {
+  readonly runtime: LocalAgentRuntime;
+  readonly handle: LocalRuntimeHandle;
+}): void {
+  const handle = input.handle;
+  if (mountedResidentTaskRuntimeHandles.get(input.runtime) !== handle) {
+    throw new Error("blocked.mounted-resident-task-runtime-binding-required");
+  }
+  assertFactoryIssuedMountedResidentTaskHandle(handle);
+}
+
+function assertFactoryIssuedMountedResidentTaskHandle(handle: LocalRuntimeHandle): void {
+  let authenticationRuntime: WakeSupervisorRuntime | undefined;
+  try {
+    // Wake construction consumes a fresh private handle capture, while issuer
+    // registration happens only if supervision starts. This runtime never
+    // starts and is burned immediately, so a later task wake gets independent
+    // authority from the same still-current factory handle.
+    authenticationRuntime = createWakeSupervisorRuntime({
+      runtimeHandle: handle,
+      actor: {
+        id: "actor_mounted_resident_task_authenticator",
+        kind: "system",
+        label: "Mounted resident task authenticator"
+      },
+      supervisorEpoch: "epoch_mounted_resident_task_authentication",
+      policy: {
+        policyVersion: "authentication-only",
+        policyDigest: "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+        lockStateDigest: "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      now: () => "1970-01-01T00:00:00.000Z",
+      createSafeId: (kind) => `${kind}_mounted_resident_task_authentication`
+    });
+  } catch {
+    throw new Error("blocked.mounted-resident-task-runtime-binding-required");
+  } finally {
+    if (authenticationRuntime !== undefined) {
+      void authenticationRuntime.stop();
+    }
+  }
+}
+
+/** The policy-authorized factory remains the sole issuer for this operation. */
+export async function bindMountedEvidenceTriageHandoffForLocalAgentRuntimeFactory(input: {
+  readonly wakeRuntime: WakeSupervisorRuntime;
+  readonly taskId: string;
+  readonly runId: string;
+}): Promise<FactoryPortableMountedAgentHandoffProducerResultV1> {
+  const operation = issueMountedArtifactAuthorityOperationForFactory(input.wakeRuntime);
+  return await createPortableMountedAgentArtifactStoreProducer(operation).bind({
+    taskId: input.taskId,
+    attemptId: buildTaskAttemptId({
+      taskId: input.taskId,
+      runType: "evidence-triage",
+      retryGeneration: 0
+    }),
+    approvedRunId: input.runId,
+    runType: "evidence-triage",
+    retryGeneration: 0
+  });
+}
 
 type FactoryHeldRegistrarEvidence =
   | NonNullable<ReturnType<typeof lookupPrrContextPackRegistrarEvidence>>

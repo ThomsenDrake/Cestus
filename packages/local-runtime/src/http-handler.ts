@@ -4,7 +4,7 @@ import type { DeadlineCalculator, PrrRuntimeNow } from "../../prr/src/runtime.js
 import { prrWorkspaceSeedEvents } from "../../prr/src/workspace-seed.js";
 import type { IngestionWorkspaceMountResolver } from "../../ingestion/src/mount-contract.js";
 import {
-  defaultLocalAgentRuntimeFactory,
+  contextFreeLocalAgentRuntimeFactory,
   type LocalAgentRuntimeFactory
 } from "./agent-runtime-factory.js";
 import { handleAgentHttpRoute } from "./agent-http-routes.js";
@@ -127,7 +127,7 @@ export function createLocalRuntimeHttpHandler(
         handle,
         actor: input.actor,
         now: localRuntimeNow(input.now),
-        agentRuntimeFactory: input.agentRuntimeFactory ?? defaultLocalAgentRuntimeFactory
+        agentRuntimeFactory: input.agentRuntimeFactory ?? contextFreeLocalAgentRuntimeFactory
       });
       if (response !== undefined) {
         return response;
