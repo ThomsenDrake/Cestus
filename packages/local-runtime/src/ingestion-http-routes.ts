@@ -84,7 +84,7 @@ export async function handleIngestionHttpRoute(
   }
 
   try {
-    return json(200, await method(payload.value as never));
+    return json(200, await method(runtimePayload(route, payload.value, input.actor) as never));
   } catch {
     return json(
       500,
@@ -95,6 +95,18 @@ export async function handleIngestionHttpRoute(
       })
     );
   }
+}
+
+function runtimePayload(
+  route: RuntimeRoute,
+  payload: Record<string, unknown>,
+  actor: CreateIngestionRuntimeInput["actor"]
+): Record<string, unknown> {
+  if (route.runtimeMethod === "approveRawImport" || route.runtimeMethod === "approveProviderParsing") {
+    return { ...payload, approvedBy: actor.id };
+  }
+
+  return payload;
 }
 
 type Route = RuntimeRoute | {
