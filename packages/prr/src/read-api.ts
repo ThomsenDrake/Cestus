@@ -107,6 +107,7 @@ export interface PrrWorkspaceDtoRequestDetail {
   readonly timeline: readonly PrrWorkspaceDtoTimelineEntry[];
   readonly stallingSignals: readonly PrrStallingSignalReadModel[];
   readonly productionBatches: readonly PrrProductionBatchReadModel[];
+  readonly followUpDraft?: PrrWorkspaceDtoFollowUpDraft;
   readonly latestOutboundCorrespondence?: PrrCorrespondenceSummaryReadModel;
   readonly latestInboundCorrespondence?: PrrCorrespondenceSummaryReadModel;
   readonly activeDeadline?: PrrDeadlineReadModel;
@@ -114,6 +115,26 @@ export interface PrrWorkspaceDtoRequestDetail {
   readonly scopeNarrowing?: PrrScopeNarrowingReadModel;
   readonly denial?: PrrDenialReadModel;
   readonly appeal?: PrrAppealReadModel;
+}
+
+export interface PrrWorkspaceDtoFollowUpDraft {
+  readonly kind: "routine-follow-up";
+  readonly deadlineBasis: {
+    readonly source: "estimated" | "confirmed";
+    readonly deadlineDate: string;
+    readonly explanation: string;
+  };
+  readonly recipients: readonly string[];
+  readonly subject: string;
+  readonly body: string;
+  readonly citations: PrrDeadlineReadModel["citedRules"];
+  readonly attachmentEvidenceIds: readonly string[];
+  readonly evidenceIds: readonly string[];
+  readonly providerState: {
+    readonly provider: PrrCorrespondenceSummaryReadModel["provider"] | "none";
+    readonly reviewState: "requires-review";
+    readonly detail: string;
+  };
 }
 
 export interface PrrWorkspaceDtoGateSummary {
@@ -339,6 +360,7 @@ export function buildPrrWorkspaceDto(
       timeline: detailTimeline,
       stallingSignals: request.stallingSignals,
       productionBatches: request.productionBatches,
+      followUpDraft: buildRoutineFollowUpDraft(request, card.laneId),
       latestOutboundCorrespondence: request.latestOutboundCorrespondence,
       latestInboundCorrespondence: request.latestInboundCorrespondence,
       activeDeadline: request.activeDeadline,
@@ -599,7 +621,6 @@ function buildActionPacket(
 }
 
 function buildSendGate(request: PrrRequestReadModel): readonly PrrWorkspaceDtoGateCheck[] {
-  const providerReady = request.latestOutboundCorrespondence !== undefined;
   return Object.freeze([
     freezeGateCheck({
       id: "draft-body",
@@ -612,8 +633,8 @@ function buildSendGate(request: PrrRequestReadModel): readonly PrrWorkspaceDtoGa
           : "No request text is available from replay."
     }),
     freezeGateCheck({
-      id: "recipient",
-      label: "Recipient",
+      id: "recipients",
+      label: "Recipients",
       ready: false,
       locked: true,
       detail:
@@ -643,6 +664,13 @@ function buildSendGate(request: PrrRequestReadModel): readonly PrrWorkspaceDtoGa
       detail: "Attachment readiness requires explicit review event evidence."
     }),
     freezeGateCheck({
+      id: "evidence",
+      label: "Evidence",
+      ready: false,
+      locked: true,
+      detail: "Evidence references must be reviewed against the exact draft before send can be armed."
+    }),
+    freezeGateCheck({
       id: "risk-review",
       label: "Risk review",
       ready: false,
@@ -652,13 +680,82 @@ function buildSendGate(request: PrrRequestReadModel): readonly PrrWorkspaceDtoGa
     freezeGateCheck({
       id: "provider-ready",
       label: "Provider ready",
-      ready: providerReady,
-      locked: !providerReady,
-      detail: providerReady
-        ? "Outbound correspondence exists in replayed events."
-        : "No outbound provider event proves send capability."
+      ready: false,
+      locked: true,
+      detail:
+        request.latestOutboundCorrespondence === undefined && request.latestInboundCorrespondence === undefined
+          ? "No provider history exists, and live provider readiness is not asserted."
+          : "Correspondence history exists, but live provider readiness requires exact human review."
     })
   ]);
+}
+
+function buildRoutineFollowUpDraft(
+  request: PrrRequestReadModel,
+  laneId: PrrWorkspaceDtoLaneId
+): PrrWorkspaceDtoFollowUpDraft | undefined {
+  if (laneId !== "needs-follow-up" || request.activeDeadline === undefined) {
+    return undefined;
+  }
+
+  const latestCorrespondence = request.latestInboundCorrespondence ?? request.latestOutboundCorrespondence;
+  const provider = latestCorrespondence?.provider ?? "none";
+  const deadline = request.activeDeadline;
+  const recipients = request.agency.email === undefined ? [] : [request.agency.email];
+  const subject = replySubject(
+    latestCorrespondence?.subject ?? `Public records request ${request.prrRequestId}`
+  );
+
+  return Object.freeze({
+    kind: "routine-follow-up",
+    deadlineBasis: Object.freeze({
+      source: deadline.source,
+      deadlineDate: deadline.deadlineDate,
+      explanation:
+        deadline.explanation ?? deadline.rationale ?? "No deadline explanation was recorded."
+    }),
+    recipients: Object.freeze([...recipients]),
+    subject,
+    body: routineFollowUpBody(request, deadline),
+    citations: deepFreezeClone(deadline.citedRules),
+    attachmentEvidenceIds: Object.freeze([]),
+    evidenceIds: Object.freeze([]),
+    providerState: Object.freeze({
+      provider,
+      reviewState: "requires-review",
+      detail:
+        provider === "none"
+          ? "No provider history is replayed; live provider readiness is not asserted."
+          : `${providerDisplayName(provider)} history is replayed; live provider readiness is not asserted.`
+    })
+  });
+}
+
+function routineFollowUpBody(request: PrrRequestReadModel, deadline: PrrDeadlineReadModel): string {
+  const basisLabel = deadline.source === "estimated" ? "an estimated" : "a confirmed";
+  return [
+    `Hello ${request.agency.name},`,
+    "",
+    `I am following up on public-records request ${request.prrRequestId}. Our records show ${basisLabel} response date of ${deadline.deadlineDate}. Please share the current status and any expected production schedule.`,
+    "",
+    "Thank you,",
+    request.requester.name
+  ].join("\n");
+}
+
+function replySubject(subject: string): string {
+  return /^re:/i.test(subject.trim()) ? subject.trim() : `Re: ${subject.trim()}`;
+}
+
+function providerDisplayName(provider: PrrCorrespondenceSummaryReadModel["provider"]): string {
+  switch (provider) {
+    case "gmail":
+      return "Gmail";
+    case "imap-smtp":
+      return "IMAP/SMTP";
+    case "himalaya":
+      return "Himalaya";
+  }
 }
 
 function buildEscalationGate(request: PrrRequestReadModel): readonly PrrWorkspaceDtoGateCheck[] {
@@ -1091,7 +1188,8 @@ function requireRequest(projection: PrrProjection, prrRequestId: string): PrrReq
 }
 
 function freezeRequestDetail(
-  detail: Omit<PrrWorkspaceDtoRequestDetail, "latestOutboundCorrespondence" | "latestInboundCorrespondence" | "activeDeadline" | "feeEstimate" | "scopeNarrowing" | "denial" | "appeal"> & {
+  detail: Omit<PrrWorkspaceDtoRequestDetail, "followUpDraft" | "latestOutboundCorrespondence" | "latestInboundCorrespondence" | "activeDeadline" | "feeEstimate" | "scopeNarrowing" | "denial" | "appeal"> & {
+    readonly followUpDraft?: PrrWorkspaceDtoFollowUpDraft | undefined;
     readonly latestOutboundCorrespondence?: PrrCorrespondenceSummaryReadModel | undefined;
     readonly latestInboundCorrespondence?: PrrCorrespondenceSummaryReadModel | undefined;
     readonly activeDeadline?: PrrDeadlineReadModel | undefined;
@@ -1119,6 +1217,7 @@ function freezeRequestDetail(
     timeline: Object.freeze([...detail.timeline]),
     stallingSignals: deepFreezeClone(detail.stallingSignals),
     productionBatches: deepFreezeClone(detail.productionBatches),
+    ...(detail.followUpDraft === undefined ? {} : { followUpDraft: deepFreezeClone(detail.followUpDraft) }),
     ...(detail.latestOutboundCorrespondence === undefined
       ? {}
       : { latestOutboundCorrespondence: deepFreezeClone(detail.latestOutboundCorrespondence) }),

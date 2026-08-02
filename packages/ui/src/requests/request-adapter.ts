@@ -579,6 +579,7 @@ function isRequestDetail(value: unknown): boolean {
     arrayOf(value.timeline, isTimelineEntry) &&
     arrayOf(value.stallingSignals, isStallingSignal) &&
     arrayOf(value.productionBatches, isProductionBatch) &&
+    isOptional(value.followUpDraft, isFollowUpDraft) &&
     isOptional(value.latestOutboundCorrespondence, isCorrespondenceSummary) &&
     isOptional(value.latestInboundCorrespondence, isCorrespondenceSummary) &&
     isOptional(value.activeDeadline, isDeadline) &&
@@ -586,6 +587,28 @@ function isRequestDetail(value: unknown): boolean {
     isOptional(value.scopeNarrowing, isScopeNarrowing) &&
     isOptional(value.denial, isDenial) &&
     isOptional(value.appeal, isAppeal)
+  );
+}
+
+function isFollowUpDraft(value: unknown): boolean {
+  return (
+    isJsonObject(value) &&
+    value.kind === "routine-follow-up" &&
+    isJsonObject(value.deadlineBasis) &&
+    (value.deadlineBasis.source === "estimated" || value.deadlineBasis.source === "confirmed") &&
+    isNonEmptyString(value.deadlineBasis.deadlineDate) &&
+    isNonEmptyString(value.deadlineBasis.explanation) &&
+    isStringArray(value.recipients) &&
+    isNonEmptyString(value.subject) &&
+    isNonEmptyString(value.body) &&
+    arrayOf(value.citations, isCitedRule) &&
+    isStringArray(value.attachmentEvidenceIds) &&
+    isStringArray(value.evidenceIds) &&
+    isJsonObject(value.providerState) &&
+    (value.providerState.provider === "none" ||
+      isStringInSet(value.providerState.provider, validCorrespondenceProviders)) &&
+    value.providerState.reviewState === "requires-review" &&
+    isNonEmptyString(value.providerState.detail)
   );
 }
 

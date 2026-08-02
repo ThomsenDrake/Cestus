@@ -306,9 +306,66 @@ function toDetailModel(detail: PrrWorkspaceDtoRequestDetail, card: PrrWorkspaceD
       latestOutbound: correspondenceLabel(detail.latestOutboundCorrespondence, "No outbound correspondence in replayed events.")
     }),
     evidencePackets: Object.freeze(detail.evidencePackets.map(toEvidencePacket)),
+    ...(detail.followUpDraft === undefined
+      ? {}
+      : {
+          followUpDraft: Object.freeze({
+            deadlineBasisLabel: `${detail.followUpDraft.deadlineBasis.source === "estimated" ? "Estimated" : "Confirmed"} deadline basis: ${detail.followUpDraft.deadlineBasis.deadlineDate}`,
+            recipients: Object.freeze([...detail.followUpDraft.recipients]),
+            subject: detail.followUpDraft.subject,
+            body: detail.followUpDraft.body,
+            citations: Object.freeze(detail.followUpDraft.citations.map((rule) => rule.citation)),
+            attachmentEvidenceIds: Object.freeze([...detail.followUpDraft.attachmentEvidenceIds]),
+            evidenceIds: Object.freeze([...detail.followUpDraft.evidenceIds]),
+            providerState: detail.followUpDraft.providerState.detail
+          })
+        }),
+    ...(detail.feeEstimate === undefined && detail.scopeNarrowing === undefined
+      ? {}
+      : {
+          feeScopePressure: Object.freeze({
+            ...(detail.feeEstimate === undefined
+              ? {}
+              : {
+                  feeSummary: formatFeePressure(detail.feeEstimate),
+                  ...(detail.feeEstimate.sourceEvidenceId === undefined
+                    ? {}
+                    : { feeEvidenceId: detail.feeEstimate.sourceEvidenceId })
+                }),
+            ...(detail.scopeNarrowing === undefined
+              ? {}
+              : {
+                  proposedScope: detail.scopeNarrowing.proposedScope,
+                  ...(detail.scopeNarrowing.acceptedScope === undefined
+                    ? {}
+                    : { acceptedScope: detail.scopeNarrowing.acceptedScope }),
+                  ...(detail.scopeNarrowing.sourceEvidenceId === undefined
+                    ? {}
+                    : { scopeEvidenceId: detail.scopeNarrowing.sourceEvidenceId })
+                })
+          })
+        }),
+    productions: Object.freeze(
+      detail.productionBatches.map((batch) =>
+        Object.freeze({
+          productionId: batch.productionId,
+          label: batch.label,
+          receivedAt: batch.receivedAt,
+          evidenceIds: Object.freeze([...batch.evidenceIds])
+        })
+      )
+    ),
     diagnostics: Object.freeze(detail.diagnostics.map((diagnostic) => diagnostic.message)),
     timeline: Object.freeze(detail.timeline.map((entry) => `${entry.type} at ${entry.occurredAt}`))
   });
+}
+
+function formatFeePressure(fee: NonNullable<PrrWorkspaceDtoRequestDetail["feeEstimate"]>): string {
+  const amount = new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: fee.currency
+  }).format(fee.amountCents / 100);
+  return fee.challenged ? `${amount} challenged` : `${amount} estimated`;
 }
 
 function toGateCheck(check: PrrWorkspaceDtoGateCheck): PrrGateCheck {

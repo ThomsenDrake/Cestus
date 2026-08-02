@@ -85,6 +85,40 @@ export function RequestDetailSections({
         </button>
       </section>
 
+      {selectedRequest.followUpDraft === undefined ? null : (
+        <RailSection title="Follow-up draft preview">
+          <p className="mb-3 font-mono text-base text-[var(--signal-amber)] sm:text-sm">
+            {selectedRequest.followUpDraft.deadlineBasisLabel}
+          </p>
+          <dl className="space-y-3">
+            <RailFact
+              label="Recipients"
+              value={listValue(selectedRequest.followUpDraft.recipients, "No recipients selected")}
+            />
+            <RailFact label="Subject" value={selectedRequest.followUpDraft.subject} />
+            <RailFact
+              label="Citations"
+              value={listValue(selectedRequest.followUpDraft.citations, "No citations selected")}
+            />
+            <RailFact
+              label="Attachments"
+              value={listValue(selectedRequest.followUpDraft.attachmentEvidenceIds, "No attachments selected")}
+            />
+            <RailFact
+              label="Evidence"
+              value={listValue(selectedRequest.followUpDraft.evidenceIds, "No evidence selected")}
+            />
+            <RailFact label="Provider state" value={selectedRequest.followUpDraft.providerState} />
+          </dl>
+          <div className="mt-3">
+            <h4 className="text-base font-medium text-[var(--paper-light)] sm:text-sm">Exact body</h4>
+            <p className="mt-1 whitespace-pre-wrap text-base text-pretty text-[var(--muted-amber)] sm:text-sm">
+              {selectedRequest.followUpDraft.body}
+            </p>
+          </div>
+        </RailSection>
+      )}
+
       <GateSection title="Send review gate" checks={selectedRequest.sendGate} />
 
       <section className="mt-5 border-t border-[var(--console-line)] pt-5">
@@ -120,6 +154,45 @@ export function RequestDetailSections({
         </dl>
       </RailSection>
 
+      {selectedRequest.feeScopePressure === undefined ? null : (
+        <RailSection title="Fee and scope pressure">
+          <dl className="space-y-3">
+            {selectedRequest.feeScopePressure.feeSummary === undefined ? null : (
+              <RailFact label="Fee" value={selectedRequest.feeScopePressure.feeSummary} />
+            )}
+            {selectedRequest.feeScopePressure.feeEvidenceId === undefined ? null : (
+              <RailFact label="Fee evidence" value={selectedRequest.feeScopePressure.feeEvidenceId} />
+            )}
+            {selectedRequest.feeScopePressure.proposedScope === undefined ? null : (
+              <RailFact label="Proposed scope" value={selectedRequest.feeScopePressure.proposedScope} />
+            )}
+            {selectedRequest.feeScopePressure.acceptedScope === undefined ? null : (
+              <RailFact label="Accepted scope" value={selectedRequest.feeScopePressure.acceptedScope} />
+            )}
+            {selectedRequest.feeScopePressure.scopeEvidenceId === undefined ? null : (
+              <RailFact label="Scope evidence" value={selectedRequest.feeScopePressure.scopeEvidenceId} />
+            )}
+          </dl>
+        </RailSection>
+      )}
+
+      {(selectedRequest.productions?.length ?? 0) === 0 ? null : (
+        <RailSection title="Productions">
+          <ul role="list" className="space-y-3">
+            {selectedRequest.productions?.map((production) => (
+              <li key={production.productionId} className="border border-[var(--console-line)] bg-[var(--console-void)]/62 p-3">
+                <h4 className="text-base font-semibold text-balance text-[var(--paper-light)] sm:text-sm">{production.label}</h4>
+                <dl className="mt-3 space-y-2">
+                  <RailFact label="Production ID" value={production.productionId} />
+                  <RailFact label="Received" value={production.receivedAt} />
+                  <RailFact label="Evidence IDs" value={listValue(production.evidenceIds, "No evidence IDs recorded")} />
+                </dl>
+              </li>
+            ))}
+          </ul>
+        </RailSection>
+      )}
+
       <RailSection title="Evidence intake">
         {selectedRequest.evidencePackets.length === 0 ? (
           <p className="text-base text-pretty text-[var(--muted-amber)] sm:text-sm">No evidence packets linked.</p>
@@ -145,6 +218,10 @@ export function RequestDetailSections({
       <RailList title="Timeline" emptyLabel="No timeline events recorded." items={selectedRequest.timeline} mono />
     </>
   );
+}
+
+function listValue(values: readonly string[], empty: string): string {
+  return values.length === 0 ? empty : values.join(", ");
 }
 
 function GateSection({ title, checks }: { readonly title: string; readonly checks: readonly PrrGateCheck[] }) {
@@ -192,7 +269,7 @@ function GateChecklist({ checks }: { readonly checks: readonly PrrGateCheck[] })
 
 function RailSection({ title, children }: { readonly title: string; readonly children: ReactNode }) {
   return (
-    <section className="mt-5 border-t border-[var(--console-line)] pt-5">
+    <section aria-label={title} className="mt-5 border-t border-[var(--console-line)] pt-5">
       <h3 className="mb-3 text-base font-semibold text-balance text-[var(--paper-light)] sm:text-sm">{title}</h3>
       {children}
     </section>

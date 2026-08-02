@@ -64,6 +64,10 @@ describe("createHttpRequestsAdapter", () => {
     [
       "request detail production batch",
       { requestDetails: [{ ...workspace.requestDetails[0], productionBatches: [{}] }] }
+    ],
+    [
+      "request detail follow-up preview",
+      { requestDetails: [{ ...workspace.requestDetails[0], followUpDraft: {} }] }
     ]
   ])("rejects malformed nested %s workspace payloads", async (_label, override) => {
     const fetcher = vi.fn(async () => jsonResponse(200, { ...workspace, ...override }));
