@@ -140,6 +140,49 @@ describe("zip archive expansion", () => {
     ]);
   });
 
+  it("rejects nested zip archives before occurrence creation", async () => {
+    const nestedArchive = zipSync({
+      "payload.txt": strToU8("nested payload")
+    });
+    writeFileSync(join(root, "nested.zip"), zipSync({
+      "payload.bin": nestedArchive
+    }));
+    const ledger = new InMemoryEventLedger();
+    const scanner = new LocalFilesystemScanner({
+      ledger,
+      actor: { id: "actor_system", kind: "system", label: "Scanner" }
+    });
+
+    const result = await scanner.scan({
+      sourceCollectionId: "src_drive_001",
+      scanBatchId: "scan_zip_nested",
+      rootDir: root
+    });
+
+    expect(result.occurrences).toHaveLength(0);
+    expect(result.diagnostics).toContainEqual(expect.objectContaining({
+      category: "ingestion",
+      message: expect.stringMatching(/nested archive/i)
+    }));
+    const events = await ledger.readAll();
+    expect(events.map((event) => event.type)).toEqual([
+      "ingestion.scan.started",
+      "diagnostic.recorded",
+      "ingestion.scan.completed"
+    ]);
+    expect(events[1]?.payload).toMatchObject({
+      severity: "error",
+      category: "ingestion",
+      message: "nested archive entries are not supported",
+      repairHint: {
+        contract: "ZipArchiveAdapter.expand",
+        violatedPath: "nested.zip",
+        allowedActions: ["skip archive", "rebuild archive without nested archives", "rerun dry-run"]
+      }
+    });
+    expect(JSON.stringify(events[1])).not.toMatch(/nested payload|payload\.bin|cestus-archive-scan-/i);
+  });
+
   it("records no scanner child occurrences for over-limit archives", async () => {
     writeFileSync(join(root, "too-large.zip"), zipSync({
       "large.txt": strToU8("too large")

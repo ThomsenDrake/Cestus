@@ -1,4 +1,4 @@
-import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { strToU8, zipSync } from "fflate";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -9,6 +9,7 @@ import {
 } from "../../ontology/src/event-ledger.js";
 import type { KnowledgeEvent } from "../../ontology/src/contracts.js";
 import { mountedWorkspaceCapabilities } from "../src/mount-contract.js";
+import { buildIngestionProjection } from "../src/projection.js";
 import { createIngestionRuntime } from "../src/runtime.js";
 import { createFakeMountedWorkspace } from "./runtime-test-helpers.js";
 
@@ -78,6 +79,209 @@ describe("IngestionRuntime core workflows", () => {
     const scanEvents = await workspace.ledger.readStream("ingestion_scan_scan_001");
     expect(scanned.eventIds).toEqual(scanEvents.map((event) => event.id));
     expect(scanned.eventIds).not.toContain((await workspace.ledger.readStream("ingestion_source_src_drive_001"))[0]?.id);
+  });
+
+  it("builds a deduplicated evidence corpus without changing the read-only fixture or invoking a provider", async () => {
+    const workspace = createFakeMountedWorkspace();
+    roots.push(workspace.rootDir);
+    const sourceRoot = join(workspace.rootDir, "source");
+    const firstPath = join(sourceRoot, "first", "record.txt");
+    const secondPath = join(sourceRoot, "second", "copy.txt");
+    const sourceBytes = Buffer.from("same source bytes", "utf8");
+    mkdirSync(join(sourceRoot, "first"), { recursive: true });
+    mkdirSync(join(sourceRoot, "second"), { recursive: true });
+    writeFileSync(firstPath, sourceBytes);
+    writeFileSync(secondPath, sourceBytes);
+    const providerParse = vi.fn();
+    const runtime = createIngestionRuntime({
+      mountedWorkspace: workspace,
+      actor,
+      providerRegistry: { "fixture-provider": { parse: providerParse } }
+    });
+    const expectReadOnlyFixture = () => {
+      expect(readFileSync(firstPath)).toEqual(sourceBytes);
+      expect(readFileSync(secondPath)).toEqual(sourceBytes);
+    };
+
+    await runtime.registerSource({
+      sourceCollectionId: "src_corpus_001",
+      label: "Portable fixture corpus",
+      rootUri: `file://${sourceRoot}`,
+      sourceRoot
+    });
+    const scanned = await runtime.dryRunScan({
+      sourceCollectionId: "src_corpus_001",
+      scanBatchId: "scan_corpus_001"
+    });
+
+    expect(scanned).toMatchObject({
+      ok: true,
+      review: {
+        totals: { observedFiles: 2, uniqueContent: 1, duplicateOccurrences: 1 },
+        approvalRequired: true,
+        duplicateGroups: [{
+          occurrenceCount: 2,
+          sourcePaths: ["first/record.txt", "second/copy.txt"]
+        }]
+      }
+    });
+    expectReadOnlyFixture();
+    const dryRunEvents = await workspace.ledger.readAll();
+    expect(dryRunEvents.some((event) => event.type === "evidence.ingested")).toBe(false);
+    const observed = dryRunEvents.filter((event) => event.type === "ingestion.occurrence.observed");
+    expect(observed).toHaveLength(2);
+    const contentHash = expectSha256ContentHash(observed[0]?.payload.contentHash);
+    await expect(workspace.blobStore.get(contentHash)).rejects.toThrow();
+
+    const blocked = await runtime.importApproved({
+      sourceCollectionId: "src_corpus_001",
+      scanBatchId: "scan_corpus_001",
+      importBatchId: "imp_corpus_001"
+    });
+    expect(blocked).toMatchObject({
+      ok: false,
+      error: { code: "INGESTION_IMPORT_APPROVAL_REQUIRED" }
+    });
+    expectReadOnlyFixture();
+
+    await runtime.approveRawImport({
+      sourceCollectionId: "src_corpus_001",
+      scanBatchId: "scan_corpus_001",
+      importBatchId: "imp_corpus_001",
+      approvedBy: "actor_investigator"
+    });
+    await expect(workspace.blobStore.get(contentHash)).rejects.toThrow();
+    expectReadOnlyFixture();
+
+    const imported = await runtime.importApproved({
+      sourceCollectionId: "src_corpus_001",
+      scanBatchId: "scan_corpus_001",
+      importBatchId: "imp_corpus_001"
+    });
+    expect(imported).toMatchObject({
+      ok: true,
+      totals: {
+        evidenceCreated: 1,
+        occurrencesLinked: 2,
+        duplicatesReused: 1,
+        skipped: 0
+      },
+      review: {
+        evidenceLinks: [{
+          contentHash,
+          occurrenceIds: expect.arrayContaining(observed.map((event) => event.payload.occurrenceId))
+        }],
+        parseJobs: [{ lane: "local", state: "queued" }]
+      }
+    });
+    expect(await workspace.blobStore.get(contentHash)).toEqual(sourceBytes);
+    expectReadOnlyFixture();
+
+    const firstImportEvents = await workspace.ledger.readAll();
+    expect(firstImportEvents.filter((event) => event.type === "evidence.ingested")).toHaveLength(1);
+    expect(firstImportEvents.filter((event) => event.type === "ingestion.evidence.linked")).toHaveLength(1);
+    expect(firstImportEvents.filter((event) => event.type === "ingestion.import.completed")).toHaveLength(1);
+    expect(firstImportEvents.filter((event) => event.type === "ingestion.parse.job.created")).toHaveLength(1);
+    expect(buildIngestionProjection(firstImportEvents).evidenceByHash.size).toBe(1);
+
+    const repeated = await runtime.importApproved({
+      sourceCollectionId: "src_corpus_001",
+      scanBatchId: "scan_corpus_001",
+      importBatchId: "imp_corpus_001"
+    });
+    expect(repeated).toMatchObject({ ok: true, eventIds: [] });
+    expect(await workspace.ledger.readAll()).toEqual(firstImportEvents);
+    expectReadOnlyFixture();
+
+    const wrongBatchProviderApproval = await runtime.approveProviderParsing({
+      providerJobId: "provider_corpus_wrong_batch",
+      sourceCollectionId: "src_corpus_001",
+      importBatchId: "imp_corpus_missing",
+      provider: { name: "fixture-provider", version: "0.1.0" },
+      approvedBy: "actor_investigator",
+      eligibleMediaTypes: ["text/plain"],
+      maxBytesPerFile: 1024
+    });
+    expect(wrongBatchProviderApproval).toMatchObject({
+      ok: false,
+      error: { code: "INGESTION_IMPORT_APPROVAL_REQUIRED" }
+    });
+
+    const exactBatchProviderApproval = await runtime.approveProviderParsing({
+      providerJobId: "provider_corpus_001",
+      sourceCollectionId: "src_corpus_001",
+      importBatchId: "imp_corpus_001",
+      provider: { name: "fixture-provider", version: "0.1.0" },
+      approvedBy: "actor_investigator",
+      eligibleMediaTypes: ["text/plain"],
+      maxBytesPerFile: 1024
+    });
+    expect(exactBatchProviderApproval.ok).toBe(true);
+    expect(providerParse).not.toHaveBeenCalled();
+    expectReadOnlyFixture();
+  });
+
+  it("preserves old and new path provenance when source bytes change between approved batches", async () => {
+    const workspace = createFakeMountedWorkspace();
+    roots.push(workspace.rootDir);
+    const sourceRoot = join(workspace.rootDir, "source");
+    const sourcePath = join(sourceRoot, "record.txt");
+    const oldBytes = Buffer.from("old bytes", "utf8");
+    const newBytes = Buffer.from("new bytes", "utf8");
+    mkdirSync(sourceRoot, { recursive: true });
+    writeFileSync(sourcePath, oldBytes);
+    const runtime = createIngestionRuntime({ mountedWorkspace: workspace, actor });
+
+    await runtime.registerSource({
+      sourceCollectionId: "src_refresh_001",
+      label: "Refresh fixture",
+      rootUri: `file://${sourceRoot}`,
+      sourceRoot
+    });
+    await runtime.dryRunScan({ sourceCollectionId: "src_refresh_001", scanBatchId: "scan_refresh_001" });
+    await runtime.approveRawImport({
+      sourceCollectionId: "src_refresh_001",
+      scanBatchId: "scan_refresh_001",
+      importBatchId: "imp_refresh_001",
+      approvedBy: "actor_investigator"
+    });
+    await runtime.importApproved({
+      sourceCollectionId: "src_refresh_001",
+      scanBatchId: "scan_refresh_001",
+      importBatchId: "imp_refresh_001"
+    });
+    expect(readFileSync(sourcePath)).toEqual(oldBytes);
+
+    writeFileSync(sourcePath, newBytes);
+    await runtime.dryRunScan({ sourceCollectionId: "src_refresh_001", scanBatchId: "scan_refresh_002" });
+    await runtime.approveRawImport({
+      sourceCollectionId: "src_refresh_001",
+      scanBatchId: "scan_refresh_002",
+      importBatchId: "imp_refresh_002",
+      approvedBy: "actor_investigator"
+    });
+    await runtime.importApproved({
+      sourceCollectionId: "src_refresh_001",
+      scanBatchId: "scan_refresh_002",
+      importBatchId: "imp_refresh_002"
+    });
+
+    const events = await workspace.ledger.readAll();
+    const projection = buildIngestionProjection(events);
+    const occurrences = [...projection.occurrencesById.values()]
+      .filter((occurrence) => occurrence.sourceCollectionId === "src_refresh_001");
+    expect(occurrences).toHaveLength(2);
+    expect(occurrences.map((occurrence) => occurrence.scanBatchId).sort()).toEqual([
+      "scan_refresh_001",
+      "scan_refresh_002"
+    ]);
+    expect(new Set(occurrences.map((occurrence) => occurrence.contentHash)).size).toBe(2);
+    expect(occurrences.every((occurrence) => occurrence.sourcePath === "record.txt")).toBe(true);
+    expect(events.filter((event) => event.type === "evidence.ingested")).toHaveLength(2);
+    expect(events.filter((event) => event.type === "ingestion.evidence.linked")).toHaveLength(2);
+    expect(projection.evidenceByHash.size).toBe(2);
+    expect(projection.parseJobs.size).toBe(2);
+    expect(readFileSync(sourcePath)).toEqual(newBytes);
   });
 
   it("lists source summaries through the runtime without exposing source roots", async () => {
@@ -347,4 +551,11 @@ class InterleavingEventLedger extends InMemoryEventLedger {
 
     return committed;
   }
+}
+
+function expectSha256ContentHash(value: string | undefined): `sha256:${string}` {
+  if (value === undefined || !/^sha256:[a-f0-9]{64}$/.test(value)) {
+    throw new Error("Expected the dry-run to compute a SHA-256 content hash");
+  }
+  return value as `sha256:${string}`;
 }

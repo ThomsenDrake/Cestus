@@ -340,6 +340,11 @@ function isZipPath(relativePath: string): boolean {
 function archiveDiagnostic(sourcePath: string, error: unknown): LocalFilesystemDiagnostic {
   if (error instanceof ArchiveExpansionError) {
     const limitActions = ["reduce archive contents", "increase reviewed archive limits", "rerun dry-run"];
+    const allowedActions = error.code === "unsafe-path"
+      ? ["skip archive", "rebuild archive without unsafe paths", "rerun dry-run"]
+      : error.code === "nested-archive"
+        ? ["skip archive", "rebuild archive without nested archives", "rerun dry-run"]
+        : limitActions;
     return {
       category: "ingestion",
       message: error.message,
@@ -347,9 +352,7 @@ function archiveDiagnostic(sourcePath: string, error: unknown): LocalFilesystemD
       repairHint: {
         contract: "ZipArchiveAdapter.expand",
         violatedPath: sourcePath,
-        allowedActions: error.code === "unsafe-path"
-          ? ["skip archive", "rebuild archive without unsafe paths", "rerun dry-run"]
-          : limitActions
+        allowedActions
       }
     };
   }
