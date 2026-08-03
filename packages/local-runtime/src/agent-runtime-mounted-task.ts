@@ -221,6 +221,12 @@ export interface AgentMountedTaskAdmissionDto {
   readonly sourceEventIds: readonly string[];
 }
 
+export interface MountedTaskBackgroundExecutionObservation {
+  readonly taskId: string;
+  readonly runId: string;
+  readonly outcome: "completed" | "failed";
+}
+
 export function createMountedEvidenceTriageBackgroundExecutionPort(input: {
   readonly handle: LocalRuntimeHandle;
   readonly now: () => string;
@@ -228,6 +234,9 @@ export function createMountedEvidenceTriageBackgroundExecutionPort(input: {
   readonly beforeLocalEffectForTest?: (() => void | Promise<void>) | undefined;
   readonly beforeRunStartSnapshotForTest?: (() => void | Promise<void>) | undefined;
   readonly beforeTaskRunningForTest?: (() => void | Promise<void>) | undefined;
+  readonly afterExecutionSettledForTest?: (
+    observation: MountedTaskBackgroundExecutionObservation
+  ) => void | undefined;
   readonly afterPendingScanForTest?: (
     tasks: readonly ResidentAdmittedLocalTask[]
   ) => void | undefined;
@@ -268,14 +277,24 @@ export function createMountedEvidenceTriageBackgroundExecutionPort(input: {
           now: input.now
         });
         const authority = await captureMountedTaskAuthority(input.handle, validationRuntime);
-        await assertCurrentAdmissionBinding({
-          handle: input.handle,
-          events,
-          authority,
-          taskId: admission.payload.taskId,
-          runId: admission.payload.runId,
-          providerMode: "local-fake"
-        });
+        try {
+          await assertCurrentAdmissionBinding({
+            handle: input.handle,
+            events,
+            authority,
+            taskId: admission.payload.taskId,
+            runId: admission.payload.runId,
+            providerMode: "local-fake"
+          });
+        } catch {
+          await recordStaleMountedTaskAdmissionDiagnostic({
+            handle: input.handle,
+            authority,
+            admission,
+            now: input.now
+          });
+          continue;
+        }
         pending.push(Object.freeze({ taskId: admission.payload.taskId, runId: admission.payload.runId }));
       }
       const result = Object.freeze(pending);
@@ -286,49 +305,141 @@ export function createMountedEvidenceTriageBackgroundExecutionPort(input: {
       task: ResidentAdmittedLocalTask,
       acquireHandoff: MountedEvidenceTriageHandoffAcquirer
     ): Promise<void> {
-      const admissions = admissionEventsFor(await input.handle.ledger.readAll(), task.taskId, task.runId);
-      if (admissions.length !== 1 || admissions[0]!.payload.providerMode !== "local-fake") {
-        throw mountedConflict("Background execution requires one exact durable local-fake admission.");
+      let outcome: MountedTaskBackgroundExecutionObservation["outcome"] = "failed";
+      try {
+        const admissions = admissionEventsFor(await input.handle.ledger.readAll(), task.taskId, task.runId);
+        if (admissions.length !== 1 || admissions[0]!.payload.providerMode !== "local-fake") {
+          throw mountedConflict("Background execution requires one exact durable local-fake admission.");
+        }
+        const admission = admissions[0]!;
+        const runtime = mountedResidentTaskLocalAgentRuntimeFactory({
+          handle: input.handle,
+          actor: residentActor,
+          now: input.now
+        });
+        const authority = await captureMountedTaskAuthority(input.handle, runtime);
+        const validated = await assertCurrentAdmissionBinding({
+          handle: input.handle,
+          events: await input.handle.ledger.readAll(),
+          authority,
+          taskId: admission.payload.taskId,
+          runId: admission.payload.runId,
+          providerMode: "local-fake"
+        });
+        await runMountedEvidenceTriageTask({
+          handle: input.handle,
+          runtime,
+          now: input.now,
+          taskId: admission.payload.taskId,
+          runId: admission.payload.runId,
+          evidenceIds: validated.evidence.map((binding) => binding.evidenceId),
+          providerMode: "local-fake",
+          acquireHandoffAuthority: acquireHandoff,
+          ...(input.beforeCompletionMemoryForTest === undefined
+            ? {}
+            : { beforeCompletionMemoryForTest: input.beforeCompletionMemoryForTest }),
+          ...(input.beforeLocalEffectForTest === undefined
+            ? {}
+            : { beforeLocalEffectForTest: input.beforeLocalEffectForTest }),
+          ...(input.beforeRunStartSnapshotForTest === undefined
+            ? {}
+            : { beforeRunStartSnapshotForTest: input.beforeRunStartSnapshotForTest }),
+          ...(input.beforeTaskRunningForTest === undefined
+            ? {}
+            : { beforeTaskRunningForTest: input.beforeTaskRunningForTest })
+        });
+        outcome = "completed";
+      } finally {
+        input.afterExecutionSettledForTest?.(Object.freeze({
+          taskId: task.taskId,
+          runId: task.runId,
+          outcome
+        }));
       }
-      const admission = admissions[0]!;
-      const runtime = mountedResidentTaskLocalAgentRuntimeFactory({
-        handle: input.handle,
-        actor: residentActor,
-        now: input.now
-      });
-      const authority = await captureMountedTaskAuthority(input.handle, runtime);
-      const validated = await assertCurrentAdmissionBinding({
-        handle: input.handle,
-        events: await input.handle.ledger.readAll(),
-        authority,
-        taskId: admission.payload.taskId,
-        runId: admission.payload.runId,
-        providerMode: "local-fake"
-      });
-      await runMountedEvidenceTriageTask({
-        handle: input.handle,
-        runtime,
-        now: input.now,
-        taskId: admission.payload.taskId,
-        runId: admission.payload.runId,
-        evidenceIds: validated.evidence.map((binding) => binding.evidenceId),
-        providerMode: "local-fake",
-        acquireHandoffAuthority: acquireHandoff,
-        ...(input.beforeCompletionMemoryForTest === undefined
-          ? {}
-          : { beforeCompletionMemoryForTest: input.beforeCompletionMemoryForTest }),
-        ...(input.beforeLocalEffectForTest === undefined
-          ? {}
-          : { beforeLocalEffectForTest: input.beforeLocalEffectForTest }),
-        ...(input.beforeRunStartSnapshotForTest === undefined
-          ? {}
-          : { beforeRunStartSnapshotForTest: input.beforeRunStartSnapshotForTest }),
-        ...(input.beforeTaskRunningForTest === undefined
-          ? {}
-          : { beforeTaskRunningForTest: input.beforeTaskRunningForTest })
-      });
     }
   });
+}
+
+async function recordStaleMountedTaskAdmissionDiagnostic(input: {
+  readonly handle: LocalRuntimeHandle;
+  readonly authority: MountedTaskAuthority;
+  readonly admission: MountedTaskAdmissionEvent;
+  readonly now: () => string;
+}): Promise<void> {
+  const digest = createHash("sha256").update(input.admission.id).digest("hex").slice(0, 32);
+  const diagnosticId = `diag_mounted_admission_${digest}`;
+  const streamId = `diagnostic_${diagnosticId}`;
+  const payload = Object.freeze({
+    diagnosticId,
+    severity: "error" as const,
+    category: "validation" as const,
+    message: "Mounted local task admission is stale and was skipped.",
+    repairHint: Object.freeze({
+      contract: "agent.mounted-task.execution.admitted.v1",
+      violatedPath: "payload.admissionManifestHash",
+      allowedActions: Object.freeze([
+        "review the stale admission",
+        "create a new task and admission"
+      ])
+    })
+  });
+  const exactExisting = (events: readonly KnowledgeEvent[]) => events.filter((event) =>
+    event.type === "diagnostic.recorded" &&
+    event.streamId === streamId &&
+    event.context.causationId === input.admission.id &&
+    event.payload.diagnosticId === diagnosticId &&
+    event.payload.severity === payload.severity &&
+    event.payload.category === payload.category &&
+    event.payload.message === payload.message &&
+    event.payload.repairHint.contract === payload.repairHint.contract &&
+    event.payload.repairHint.violatedPath === payload.repairHint.violatedPath &&
+    sameOrderedStrings(event.payload.repairHint.allowedActions, payload.repairHint.allowedActions)
+  );
+
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    await input.authority.revalidate();
+    const events = await input.handle.ledger.readAll();
+    const stream = events.filter((event) => event.streamId === streamId);
+    const exact = exactExisting(stream);
+    if (stream.length !== 0) {
+      if (stream.length === 1 && exact.length === 1) return;
+      throw mountedConflict("Mounted stale-admission diagnostic provenance is ambiguous.");
+    }
+    if (!hasPrecommitGuardedAppend(input.handle.ledger)) {
+      throw mountedConflict("Mounted stale-admission diagnostic write boundary is unavailable.");
+    }
+    const event: AppendableKnowledgeEvent<"diagnostic.recorded"> = {
+      type: "diagnostic.recorded",
+      version: 1,
+      streamId,
+      context: agentEventContext(input.now, `corr_${diagnosticId}`, input.admission.id),
+      payload: {
+        ...payload,
+        repairHint: {
+          ...payload.repairHint,
+          allowedActions: [...payload.repairHint.allowedActions]
+        }
+      }
+    };
+    try {
+      await input.handle.ledger.appendWithPrecommitGuard(event, {
+        expectedGlobalEventCount: events.length,
+        expectedNextSequence: 1
+      }, () => {
+        const currentness = inspectPortableWorkspaceCurrentness(input.handle);
+        if (!currentness.ok) throw new Error(currentness.category ?? "workspace-unavailable");
+      });
+      await input.authority.revalidate();
+      return;
+    } catch {
+      const reread = await input.handle.ledger.readAll();
+      const rereadStream = reread.filter((candidate) => candidate.streamId === streamId);
+      if (rereadStream.length === 1 && exactExisting(rereadStream).length === 1) return;
+      if (attempt === 1) {
+        throw mountedConflict("Mounted stale-admission diagnostic could not be recorded safely.");
+      }
+    }
+  }
 }
 
 export interface ReconstructMountedEvidenceTriageTaskInput {
@@ -563,6 +674,10 @@ interface MountedTaskAuthority {
     readonly manifest: SpecialistHandoffManifestStore;
     readonly reader: SpecialistHandoffManifestStore;
   }>;
+  withHandoffReadSnapshot<T>(
+    input: { readonly sourceArtifactHashes?: readonly ContentHash[] },
+    read: (reader: SpecialistHandoffManifestStore) => Promise<T>
+  ): Promise<T>;
 }
 
 interface MountedResidentPolicySnapshot {
@@ -756,6 +871,7 @@ export async function runMountedEvidenceTriageTask(
       now: operationNow
     });
     const scope = Object.freeze({ kind: "task", refs: Object.freeze([input.taskId]) });
+    await authority.revalidate();
     const contextPacks = await resolveEvidenceTriageContextPacks(contextRegistry);
     const promptArtifact = renderProductionSpecialistPrompt({
       runType: "evidence-triage",
@@ -1209,48 +1325,56 @@ export async function reconstructMountedEvidenceTriageTask(
   });
   const manifest = parseAuthorityBoundSpecialistHandoffManifest(manifestValue);
   const sourceArtifactHashes = sourceArtifactHashesForManifest(events, manifest);
-  const stores = await authority.handoffStores({ sourceArtifactHashes });
-  const handoffProjection = await buildSpecialistHandoffProjection({
-    events,
-    manifestReader: stores.reader,
-    taskId: input.taskId,
-    runId: input.runId
-  });
-  const readback = handoffProjection.selectedReadback;
-  if (handoffProjection.state !== "task-completed" || handoffProjection.diagnostics.length !== 0 ||
-    readback === undefined || readback.diagnostics.length !== 0 ||
-    readback.manifestHash !== handoffManifestHash || readback.recordedEventId !== recorded.id ||
-    readback.taskId !== input.taskId || readback.runId !== input.runId) {
-    throw mountedConflict("Mounted handoff does not replay as one authority-bound completed task.");
-  }
-  if (verified.taskId !== input.taskId || verified.runId !== input.runId ||
-    manifest.taskId !== input.taskId || manifest.runId !== input.runId ||
-    manifest.residentAgentId !== residentAgentId ||
-    manifest.promptArtifactHash !== recorded.payload.promptArtifactHash ||
-    manifest.authorityBinding.policyHash !== authority.policyHash ||
-    manifest.authorityBinding.activeLocksHash !== authority.activeLocksHash ||
-    !sameOrderedStrings(manifest.sourceEventIds, recorded.payload.sourceEventIds) ||
-    !sameOrderedStrings(
-      manifest.outputArtifacts.map((artifact) => artifact.artifactHash),
-      outputArtifactHashes
-    )) {
-    throw mountedConflict("Ledger and mounted handoff bindings do not agree exactly.");
-  }
-  for (const artifactHash of outputArtifactHashes) {
-    const bytes = await stores.reader.get(artifactHash);
-    if (hashBytes(bytes) !== artifactHash) {
-      throw mountedConflict("Mounted derivative artifact readback did not match its ledger hash.");
+  await authority.withHandoffReadSnapshot({ sourceArtifactHashes }, async (snapshotReader) => {
+    const reader = cachedMountedStoreReader(snapshotReader, [
+      { contentHash: handoffManifestHash, bytes: manifestBytes }
+    ]);
+    const handoffProjection = await buildSpecialistHandoffProjection({
+      events,
+      manifestReader: reader,
+      taskId: input.taskId,
+      runId: input.runId
+    });
+    const readback = handoffProjection.selectedReadback;
+    if (handoffProjection.state !== "task-completed" || handoffProjection.diagnostics.length !== 0 ||
+      readback === undefined || readback.diagnostics.length !== 0 ||
+      readback.manifestHash !== handoffManifestHash || readback.recordedEventId !== recorded.id ||
+      readback.taskId !== input.taskId || readback.runId !== input.runId) {
+      throw mountedConflict("Mounted handoff does not replay as one authority-bound completed task.");
     }
-  }
-  const promptStore = await createMountedPromptArtifactStore({ handle: input.handle });
-  const authoritativeContextPacks = await rehydrateMountedContextPacks(stores.reader, manifest.contextPackRefs);
-  const prompt = await promptStore.read({
-    inputArtifactHash: promptArtifactHash,
-    authoritativeResolvedContextPacks: authoritativeContextPacks
+    if (verified.taskId !== input.taskId || verified.runId !== input.runId ||
+      manifest.taskId !== input.taskId || manifest.runId !== input.runId ||
+      manifest.residentAgentId !== residentAgentId ||
+      manifest.promptArtifactHash !== recorded.payload.promptArtifactHash ||
+      manifest.authorityBinding.policyHash !== authority.policyHash ||
+      manifest.authorityBinding.activeLocksHash !== authority.activeLocksHash ||
+      !sameOrderedStrings(manifest.sourceEventIds, recorded.payload.sourceEventIds) ||
+      !sameOrderedStrings(
+        manifest.outputArtifacts.map((artifact) => artifact.artifactHash),
+        outputArtifactHashes
+      )) {
+      throw mountedConflict("Ledger and mounted handoff bindings do not agree exactly.");
+    }
+    for (const artifactHash of outputArtifactHashes) {
+      const bytes = await reader.get(artifactHash);
+      if (hashBytes(bytes) !== artifactHash) {
+        throw mountedConflict("Mounted derivative artifact readback did not match its ledger hash.");
+      }
+    }
+    const promptStore = await createMountedPromptArtifactStore({ handle: input.handle });
+    const authoritativeContextPacks = await rehydrateMountedContextPacks(reader, manifest.contextPackRefs);
+    const prompt = await promptStore.read({
+      inputArtifactHash: promptArtifactHash,
+      authoritativeResolvedContextPacks: authoritativeContextPacks
+    });
+    if (prompt.envelope.manifest.inputArtifactHash !== recorded.payload.promptArtifactHash) {
+      throw mountedConflict("Mounted prompt readback did not match the durable handoff.");
+    }
+    const workspaceManifestBytes = await reader.get(authority.workspaceManifestHash);
+    if (hashBytes(workspaceManifestBytes) !== authority.workspaceManifestHash) {
+      throw mountedConflict("Mounted workspace manifest provenance did not read back exactly.");
+    }
   });
-  if (prompt.envelope.manifest.inputArtifactHash !== recorded.payload.promptArtifactHash) {
-    throw mountedConflict("Mounted prompt readback did not match the durable handoff.");
-  }
   const memoryId = `mem_${input.runId}_handoff`;
   const memory = projection.activeMemory.find((candidate) => candidate.memoryId === memoryId);
   const expectedMemoryArtifacts = uniqueHashes([
@@ -1271,11 +1395,6 @@ export async function reconstructMountedEvidenceTriageTask(
   if (memory === undefined && input.allowMissingMemoryForRecovery !== true) {
     throw mountedConflict("Mounted task completion memory does not match the durable handoff.");
   }
-  const workspaceManifestBytes = await stores.reader.get(authority.workspaceManifestHash);
-  if (hashBytes(workspaceManifestBytes) !== authority.workspaceManifestHash) {
-    throw mountedConflict("Mounted workspace manifest provenance did not read back exactly.");
-  }
-  await authority.revalidate();
   return Object.freeze({
     schemaVersion: mountedTaskSchemaVersion,
     state: "completed",
@@ -1720,6 +1839,9 @@ async function captureMountedTaskAuthority(
     }
     const events = await handle.ledger.readAll();
     const projection = buildAgentProjection(events);
+    if (mountedResidentSupervisionIsPaused(events)) {
+      throw mountedConflict("Resident supervision is paused for mounted task execution.");
+    }
     const currentPolicy = mountedResidentPolicySnapshot(events, capturedWorkspace.workspaceId);
     if (currentPolicy.eventId !== capturedPolicy.eventId ||
       currentPolicy.policyId !== capturedPolicy.policyId ||
@@ -1814,6 +1936,30 @@ async function captureMountedTaskAuthority(
         revalidate
       });
       return Object.freeze({ material, manifest, reader });
+    },
+    async withHandoffReadSnapshot<T>(
+      storeInput: { readonly sourceArtifactHashes?: readonly ContentHash[] },
+      read: (reader: SpecialistHandoffManifestStore) => Promise<T>
+    ): Promise<T> {
+      await revalidate();
+      const sourceHashes = new Set<ContentHash>(storeInput.sourceArtifactHashes ?? []);
+      const sourceStore = sourceBlobStoreFor(capturedWorkspace);
+      let active = true;
+      const reader = mountedReadSnapshotReader({
+        readers: [
+          { store: new FileBlobStore(join(capturedWorkspace.paths.derivativeRoot, "specialist-handoff-manifest")) },
+          { store: new FileBlobStore(join(capturedWorkspace.paths.derivativeRoot, "specialist-handoff-material")) },
+          { store: sourceStore, allowedHashes: sourceHashes }
+        ],
+        isActive: () => active
+      });
+      try {
+        const result = await read(reader);
+        await revalidate();
+        return result;
+      } finally {
+        active = false;
+      }
     }
   });
 }
@@ -1858,12 +2004,70 @@ function mountedCompositeReader(input: {
   });
 }
 
+function mountedReadSnapshotReader(input: {
+  readonly readers: readonly MountedStoreReader[];
+  readonly isActive: () => boolean;
+}): SpecialistHandoffManifestStore {
+  return Object.freeze({
+    async put() {
+      throw mountedConflict("Mounted read snapshots cannot write fallback copies.");
+    },
+    async get(contentHash: ContentHash) {
+      if (!input.isActive()) {
+        throw mountedConflict("Mounted read snapshot authority has expired.");
+      }
+      const bytes = await readMountedStoreHashExact(contentHash, input.readers);
+      if (!input.isActive()) {
+        throw mountedConflict("Mounted read snapshot authority has expired.");
+      }
+      return bytes;
+    }
+  });
+}
+
+function cachedMountedStoreReader(
+  store: SpecialistHandoffManifestStore,
+  initial: readonly { readonly contentHash: ContentHash; readonly bytes: Buffer }[] = []
+): SpecialistHandoffManifestStore {
+  const cache = new Map<ContentHash, Buffer>();
+  for (const item of initial) {
+    if (hashBytes(item.bytes) !== item.contentHash) {
+      throw mountedConflict("Mounted read cache seed did not match its content hash.");
+    }
+    cache.set(item.contentHash, Buffer.from(item.bytes));
+  }
+  return Object.freeze({
+    async put() {
+      throw mountedConflict("Mounted read caches cannot write fallback copies.");
+    },
+    async get(contentHash: ContentHash) {
+      const cached = cache.get(contentHash);
+      if (cached !== undefined) return Buffer.from(cached);
+      const bytes = await store.get(contentHash);
+      if (hashBytes(bytes) !== contentHash) {
+        throw mountedConflict("Mounted cached read did not match its content hash.");
+      }
+      cache.set(contentHash, Buffer.from(bytes));
+      return Buffer.from(bytes);
+    }
+  });
+}
+
 async function readMountedStoreHash(
   contentHash: ContentHash,
   readers: readonly MountedStoreReader[],
   revalidate: () => Promise<void>
 ): Promise<Buffer> {
   await revalidate();
+  const bytes = await readMountedStoreHashExact(contentHash, readers);
+  await revalidate();
+  return bytes;
+}
+
+async function readMountedStoreHashExact(
+  contentHash: ContentHash,
+  readers: readonly MountedStoreReader[]
+): Promise<Buffer> {
   for (const reader of readers) {
     if (reader.allowedHashes !== undefined && !reader.allowedHashes.has(contentHash)) continue;
     try {
@@ -1871,7 +2075,6 @@ async function readMountedStoreHash(
       if (hashBytes(bytes) !== contentHash) {
         throw mountedConflict("Mounted handoff artifact bytes do not match their content hash.");
       }
-      await revalidate();
       return bytes;
     } catch (error) {
       if (error instanceof MountedResidentTaskError) throw error;
@@ -1952,7 +2155,6 @@ function createMountedEvidenceTriageContextRegistry(input: {
     stableSort: "ref-kind-ref-id-content-hash-v1" as const
   });
   const selection = async (contextPackId: string): Promise<InvestigativeSelectionManifest> => {
-    await input.authority.revalidate();
     const evidenceRefs = input.evidence.map((binding) => Object.freeze({
       refKind: "evidence" as const,
       refId: binding.evidenceId,
@@ -2011,7 +2213,6 @@ function createMountedEvidenceTriageContextRegistry(input: {
     },
     evidenceReader: {
       readEvidenceByIds: async ({ evidenceIds, contentHashes }) => {
-        await input.authority.revalidate();
         return evidenceIds.map((evidenceId, index): InvestigativeEvidenceRow => {
           const binding = input.evidence.find((candidate) => candidate.evidenceId === evidenceId);
           if (binding === undefined || binding.contentHash !== contentHashes[index]) {
@@ -2055,7 +2256,6 @@ function createMountedEvidenceTriageContextRegistry(input: {
     agentLockReader: { readActiveLocksByIds: async () => Object.freeze([]) },
     eventReader: {
       readEventsByIds: async ({ eventIds }) => {
-        await input.authority.revalidate();
         return eventIds.map((eventId) => {
           const event = input.events.find((candidate) => candidate.id === eventId);
           if (event === undefined) throw mountedConflict("Mounted evidence provenance event is unavailable.");
@@ -2072,7 +2272,6 @@ function createMountedEvidenceTriageContextRegistry(input: {
     evidenceSourcePosture: {
       postureVersion: "ingestion-current-source-posture.v1",
       checkEvidence: async ({ evidenceId, contentHash }) => {
-        await input.authority.revalidate();
         const binding = input.evidence.find((candidate) => candidate.evidenceId === evidenceId);
         if (binding === undefined || binding.contentHash !== contentHash) {
           return Object.freeze({
@@ -2118,7 +2317,6 @@ function operationalContextProvider(input: {
 }): OperationalContextPackProvider {
   const scope = Object.freeze({ kind: "task" as const, id: input.taskId });
   const readProjection = async () => {
-    await input.authority.revalidate();
     return { events: input.events, projection: buildAgentProjection(input.events) };
   };
   return {
@@ -2463,11 +2661,21 @@ async function assertMountedTaskEffectAllowed(
   const task = projection.tasks.get(taskId);
   const run = projection.runs.get(runId);
   const after = inspectPortableWorkspaceCurrentness(handle);
-  if (!after.ok || task === undefined || run === undefined || task.runId !== runId ||
+  if (!after.ok || mountedResidentSupervisionIsPaused(events) ||
+    task === undefined || run === undefined || task.runId !== runId ||
     run.taskId !== taskId || !allowedTaskStatuses.includes(task.status) || !allowedRunStates.includes(run.state)) {
     throw mountedConflict("Mounted task is no longer current for execution effects.");
   }
   return Object.freeze(events);
+}
+
+function mountedResidentSupervisionIsPaused(events: readonly KnowledgeEvent[]): boolean {
+  const latestPause = events.findLastIndex((event) => event.type === "agent.wake.supervisor.paused.v1");
+  const latestResume = events.findLastIndex((event) =>
+    event.type === "agent.wake.supervisor.resume.requested.v1" ||
+    event.type === "agent.wake.supervisor.recovery.verified.v1"
+  );
+  return latestPause > latestResume;
 }
 
 function taskFencedManifestStore(

@@ -1,7 +1,8 @@
-import { existsSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { AsyncLocalStorage } from "node:async_hooks";
+import { cpSync, existsSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import {
   buildTaskAttemptId,
   createAgentToolGateway,
@@ -27,14 +28,97 @@ import {
   defaultLocalAgentRuntimeFactory,
   type LocalAgentRuntimeFactory
 } from "../src/agent-runtime-factory.js";
+import { createMountedEvidenceTriageBackgroundExecutionPort } from "../src/agent-runtime-mounted-task.js";
 import {
   createLocalRuntimeHttpHandler,
   type CreateLocalRuntimeHttpHandlerInput,
   type LocalRuntimeHttpHandler
 } from "../src/http-handler.js";
+import { createSqlitePrrRuntime } from "../src/runtime-factory.js";
+import { createResidentSupervisionRuntime } from "../src/wake-supervisor-runtime.js";
 
 const handlers: LocalRuntimeHttpHandler[] = [];
 const tempDirs: string[] = [];
+type MountedTaskBackgroundExecutionObservation = Parameters<NonNullable<
+  CreateLocalRuntimeHttpHandlerInput["mountedTaskAfterBackgroundExecutionForTest"]
+>>[0];
+interface MountedTaskBackgroundExecutionTracker {
+  observe(observation: MountedTaskBackgroundExecutionObservation): void;
+  waitFor(taskId: string, runId: string): Promise<MountedTaskBackgroundExecutionObservation>;
+}
+const mountedTaskBackgroundExecutionTrackers = new WeakMap<
+  LocalRuntimeHttpHandler,
+  MountedTaskBackgroundExecutionTracker
+>();
+const completedFixtureWorkspaceId = "ws_mounted_evidence_triage";
+const completedFixtureTaskId = "task_route_mounted_triage";
+const completedFixtureRunId = "run_route_mounted_triage";
+interface CompletedMountedTaskFixture {
+  readonly rootDir: string;
+  readonly workspaceRoot: string;
+  readonly sourceEventIds: readonly string[];
+}
+let completedMountedTaskFixture: CompletedMountedTaskFixture | undefined;
+
+beforeAll(async () => {
+  const rootDir = mkdtempSync(join(tmpdir(), "cestus-agent-route-completed-fixture-"));
+  const config = persistentPortableConfig(rootDir, completedFixtureWorkspaceId);
+  let handler: LocalRuntimeHttpHandler | undefined;
+  try {
+    const sourceEventIds = await seedMountedEvidenceTriageSource(config);
+    const additionalSourceEventIds = await seedAdditionalMountedEvidenceTriageSource(config);
+    handler = testHandler({ config });
+    await createMountedEvidenceTriageTask(handler, completedFixtureTaskId);
+    await closeHandler(handler);
+    handler = undefined;
+    await seedInstalledPolicyAndIdentityLabel(config);
+    let tick = 0;
+    handler = testHandler({
+      config,
+      now: () => new Date(
+        Date.parse("2026-07-07T20:00:00.000Z") + tick++ * 1_000
+      ).toISOString()
+    });
+    const admitted = await handler({
+      method: "POST",
+      url: `/api/agent/tasks/${completedFixtureTaskId}/evidence-triage`,
+      body: JSON.stringify({
+        runId: completedFixtureRunId,
+        evidenceIds: ["ev_route_mounted_triage", "ev_route_mounted_triage_second"],
+        providerMode: "local-fake"
+      })
+    });
+    if (admitted.status !== 202) {
+      throw new Error(`Completed mounted task fixture admission failed: ${admitted.status}.`);
+    }
+    const completed = await waitForMountedTaskResult(
+      handler,
+      `/api/agent/tasks/${completedFixtureTaskId}/evidence-triage/${completedFixtureRunId}`
+    );
+    if (completed.status !== 200) {
+      throw new Error(`Completed mounted task fixture execution failed: ${completed.status}.`);
+    }
+    await closeHandler(handler);
+    handler = undefined;
+    completedMountedTaskFixture = Object.freeze({
+      rootDir,
+      workspaceRoot: join(rootDir, completedFixtureWorkspaceId),
+      sourceEventIds: Object.freeze([...sourceEventIds, ...additionalSourceEventIds])
+    });
+  } catch (error) {
+    rmSync(rootDir, { recursive: true, force: true });
+    throw error;
+  } finally {
+    if (handler !== undefined) await closeHandler(handler);
+  }
+});
+
+afterAll(() => {
+  if (completedMountedTaskFixture !== undefined) {
+    rmSync(completedMountedTaskFixture.rootDir, { recursive: true, force: true });
+    completedMountedTaskFixture = undefined;
+  }
+});
 
 afterEach(async () => {
   for (const handler of handlers.splice(0)) {
@@ -201,10 +285,7 @@ describe("agent HTTP routes", () => {
       providerMode: "local-fake",
       sourceEventIds
     });
-    const admissionEvents = await waitForAgentEvents(config, (events) => events.some((event) =>
-      event.type === "agent.mounted-task.execution.admitted.v1" &&
-      event.payload.taskId === "task_background_mounted_task"
-    ));
+    const admissionEvents = await allEvents(config);
     const admission = admissionEvents.find((event) =>
       event.type === "agent.mounted-task.execution.admitted.v1" &&
       event.payload.taskId === "task_background_mounted_task"
@@ -360,6 +441,100 @@ describe("agent HTTP routes", () => {
     });
   });
 
+  it("isolates one stale admission and still returns a later valid local task", async () => {
+    const config = portableConfig("ws_background_stale_then_valid");
+    await seedMountedEvidenceTriageSource(config);
+    const admissionOnlyExecution = {
+      async pendingLocalTasks() { return []; },
+      async execute() { throw new Error("Admission-only fixture must not execute tasks."); }
+    };
+    const first = testHandler({
+      config,
+      residentBackgroundExecutionForTest: admissionOnlyExecution
+    });
+    const staleTaskId = "task_background_stale_admission";
+    const staleRunId = "run_background_stale_admission";
+    const validTaskId = "task_background_valid_after_stale";
+    const validRunId = "run_background_valid_after_stale";
+    for (const { taskId, runId } of [
+      { taskId: staleTaskId, runId: staleRunId },
+      { taskId: validTaskId, runId: validRunId }
+    ]) {
+      await createMountedEvidenceTriageTask(first, taskId);
+      const admitted = await first({
+        method: "POST",
+        url: `/api/agent/tasks/${taskId}/evidence-triage`,
+        body: JSON.stringify({
+          runId,
+          evidenceIds: ["ev_route_mounted_triage"],
+          providerMode: "local-fake"
+        })
+      });
+      expect(admitted.status, admitted.body).toBe(202);
+    }
+    await closeHandler(first);
+
+    const before = await allEvents(config);
+    const staleAdmission = before.find((event) =>
+      event.type === "agent.mounted-task.execution.admitted.v1" &&
+      event.payload.taskId === staleTaskId && event.payload.runId === staleRunId
+    );
+    if (staleAdmission?.type !== "agent.mounted-task.execution.admitted.v1") {
+      throw new Error("Stale admission fixture is unavailable.");
+    }
+    const digest = staleAdmission.payload.admissionManifestHash.slice("sha256:".length);
+    rmSync(join(
+      requireMountedWorkspace(config).paths.jobRoot,
+      "agent-mounted-task-admission",
+      "input",
+      "sha256",
+      digest.slice(0, 2),
+      digest
+    ));
+
+    const handle = createSqlitePrrRuntime({
+      config,
+      actor: { id: "actor_stale_admission_scan", kind: "human", label: "Stale admission scan" },
+      now: () => "2026-07-07T20:06:00.000Z"
+    });
+    try {
+      await handle.residentIdentity.ready();
+      const background = createMountedEvidenceTriageBackgroundExecutionPort({
+        handle,
+        now: () => "2026-07-07T20:06:00.000Z"
+      });
+
+      await expect(background.pendingLocalTasks()).resolves.toEqual([
+        { taskId: validTaskId, runId: validRunId }
+      ]);
+      await expect(background.pendingLocalTasks()).resolves.toEqual([
+        { taskId: validTaskId, runId: validRunId }
+      ]);
+
+      const after = await handle.ledger.readAll();
+      const diagnostics = after.filter((event) =>
+        event.type === "diagnostic.recorded" && event.context.causationId === staleAdmission.id
+      );
+      expect(diagnostics).toHaveLength(1);
+      expect(diagnostics[0]?.payload).toEqual({
+        diagnosticId: expect.stringMatching(/^diag_[a-zA-Z0-9_-]+$/),
+        severity: "error",
+        category: "validation",
+        message: "Mounted local task admission is stale and was skipped.",
+        repairHint: {
+          contract: "agent.mounted-task.execution.admitted.v1",
+          violatedPath: "payload.admissionManifestHash",
+          allowedActions: ["review the stale admission", "create a new task and admission"]
+        }
+      });
+      expect(after.some((event) =>
+        event.type === "agent.specialist-run.started" && event.payload.runId === staleRunId
+      )).toBe(false);
+    } finally {
+      handle.close();
+    }
+  });
+
   it("recovers terminal mounted work before memory observation without duplicate execution", async () => {
     const config = portableConfig("ws_background_terminal_before_memory");
     await seedMountedEvidenceTriageSource(config);
@@ -385,13 +560,9 @@ describe("agent HTTP routes", () => {
     });
     expect(admitted.status, admitted.body).toBe(202);
 
-    const terminal = await waitForAgentEvents(config, (events) =>
-      crashCount > 0 && events.some((event) =>
-        event.type === "agent.specialist-run.completed" && event.payload.runId === runId
-      ) && events.some((event) =>
-        event.type === "agent.task.status.changed" && event.payload.taskId === taskId &&
-        event.payload.status === "completed"
-      ), 3_000);
+    const crashed = await waitForMountedBackgroundExecution(first, taskId, runId);
+    expect(crashed.outcome).toBe("failed");
+    const terminal = await allEvents(config);
     expect(crashCount).toBeGreaterThan(0);
     expect(terminal.filter((event) =>
       event.type === "agent.memory.recorded" && event.payload.memoryId === `mem_${runId}_handoff`
@@ -479,11 +650,10 @@ describe("agent HTTP routes", () => {
         })
       });
       expect(admitted.status, admitted.body).toBe(202);
-      const prefix = await waitForAgentEvents(config, (events) => crashCount > 0 && (
-        blockedType === "agent.task.orchestration.completed"
-          ? events.some((event) => event.type === "agent.specialist-run.completed" && event.payload.runId === runId)
-          : events.some((event) => event.type === "agent.task.orchestration.completed" && event.payload.runId === runId)
-      ), 3_000);
+      const crashed = await waitForMountedBackgroundExecution(first, taskId, runId);
+      expect(crashed.outcome).toBe("failed");
+      expect(crashCount).toBeGreaterThan(0);
+      const prefix = await allEvents(config);
       expect(prefix.some((event) => blockedType === "agent.task.orchestration.completed"
         ? event.type === blockedType && event.payload.taskId === taskId && event.payload.runId === runId
         : event.type === blockedType && event.payload.taskId === taskId &&
@@ -569,9 +739,9 @@ describe("agent HTTP routes", () => {
         })
       });
       expect(admitted.status, admitted.body).toBe(202);
-      await waitForAgentEvents(config, (events) => crashCount > 0 && events.some((event) =>
-        event.type === "agent.specialist-run.completed" && event.payload.runId === runId
-      ), 3_000);
+      const crashed = await waitForMountedBackgroundExecution(first, taskId, runId);
+      expect(crashed.outcome).toBe("failed");
+      expect(crashCount).toBeGreaterThan(0);
       await closeHandler(first);
       first = undefined;
     } finally {
@@ -622,8 +792,9 @@ describe("agent HTTP routes", () => {
         scanCount += count;
       }
     });
-    await waitForAgentEvents(config, () => scanCount > 0);
-    await new Promise<void>((resolve) => setImmediate(resolve));
+    const attempted = await waitForMountedBackgroundExecution(restarted, taskId, runId);
+    expect(attempted.outcome).toBe("failed");
+    expect(scanCount).toBeGreaterThan(0);
     const readback = await restarted({
       method: "GET",
       url: `/api/agent/tasks/${taskId}/evidence-triage/${runId}`
@@ -711,6 +882,267 @@ describe("agent HTTP routes", () => {
     }));
   });
 
+  it("keeps pause pending until an active mounted task is quiescent and fenced from later writes", async () => {
+    const config = portableConfig("ws_running_pause_fence");
+    await seedMountedEvidenceTriageSource(config);
+    const workspace = requireMountedWorkspace(config);
+    const effectEntered = Promise.withResolvers<void>();
+    const releaseEffect = Promise.withResolvers<void>();
+    const taskId = "task_running_pause_fence";
+    const runId = "run_running_pause_fence";
+    const handler = testHandler({
+      config,
+      mountedTaskBeforeLocalEffectForTest: async () => {
+        effectEntered.resolve();
+        await releaseEffect.promise;
+      }
+    });
+    await createMountedEvidenceTriageTask(handler, taskId);
+    const admitted = await handler({
+      method: "POST",
+      url: `/api/agent/tasks/${taskId}/evidence-triage`,
+      body: JSON.stringify({
+        runId,
+        evidenceIds: ["ev_route_mounted_triage"],
+        providerMode: "local-fake"
+      })
+    });
+    expect(admitted.status, admitted.body).toBe(202);
+    await effectEntered.promise;
+    const artifactStateAtFence = supervisionArtifactWriteState(workspace);
+
+    let pauseSettled = false;
+    const pausing = handler({
+      method: "POST",
+      url: "/api/agent/supervision/pause"
+    }).then((response) => {
+      pauseSettled = true;
+      return response;
+    });
+    const pausedEvents = await waitForAgentEvents(config, (events) => events.some((event) =>
+      event.type === "agent.wake.supervisor.paused.v1"
+    ));
+    expect(pausedEvents.some((event) => event.type === "agent.wake.supervisor.paused.v1")).toBe(true);
+    const pauseSettledBeforeEffectRelease = pauseSettled;
+    releaseEffect.resolve();
+
+    const execution = await waitForMountedBackgroundExecution(handler, taskId, runId);
+    const paused = await pausing;
+    expect(paused.status, paused.body).toBe(200);
+    expect({ pauseSettledBeforeEffectRelease, executionOutcome: execution.outcome }).toEqual({
+      pauseSettledBeforeEffectRelease: false,
+      executionOutcome: "failed"
+    });
+    expect(JSON.parse(paused.body)).toMatchObject({
+      supervision: { supervisorState: "paused", activeCycle: false }
+    });
+    expect(supervisionArtifactWriteState(workspace)).toEqual(artifactStateAtFence);
+    const events = await allEvents(config);
+    expect(events.some((event) =>
+      (event.type === "agent.model-invocation.requested" ||
+        event.type === "agent.model-invocation.completed" ||
+        event.type === "agent.specialist-handoff.recorded" ||
+        event.type === "agent.memory.recorded") &&
+      Reflect.get(event.payload, "runId") === runId
+    )).toBe(false);
+  });
+
+  it("serializes resume behind a durably paused active cycle until the pause response settles", async () => {
+    const config = portableConfig("ws_running_pause_resume_order");
+    await seedMountedEvidenceTriageSource(config);
+    const workspace = requireMountedWorkspace(config);
+    const effectEntered = Promise.withResolvers<void>();
+    const releaseEffect = Promise.withResolvers<void>();
+    const taskId = "task_running_pause_resume_order";
+    const runId = "run_running_pause_resume_order";
+    const handler = testHandler({
+      config,
+      mountedTaskBeforeLocalEffectForTest: async () => {
+        effectEntered.resolve();
+        await releaseEffect.promise;
+      }
+    });
+    await createMountedEvidenceTriageTask(handler, taskId);
+    const admitted = await handler({
+      method: "POST",
+      url: `/api/agent/tasks/${taskId}/evidence-triage`,
+      body: JSON.stringify({
+        runId,
+        evidenceIds: ["ev_route_mounted_triage"],
+        providerMode: "local-fake"
+      })
+    });
+    expect(admitted.status, admitted.body).toBe(202);
+    await effectEntered.promise;
+    const artifactStateAtFence = supervisionArtifactWriteState(workspace);
+
+    let pauseSettled = false;
+    const responseOrder: string[] = [];
+    const pausing = handler({
+      method: "POST",
+      url: "/api/agent/supervision/pause"
+    }).then((response) => {
+      pauseSettled = true;
+      responseOrder.push("pause");
+      return response;
+    });
+    await waitForAgentEvents(config, (events) => events.some((event) =>
+      event.type === "agent.wake.supervisor.paused.v1"
+    ));
+
+    const resuming = handler({
+      method: "POST",
+      url: "/api/agent/supervision/resume"
+    }).then((response) => {
+      responseOrder.push("resume");
+      return response;
+    });
+    const resumeBeforeRelease = await promiseSettlementWithin(resuming, 500);
+    const pauseSettledBeforeRelease = pauseSettled;
+    const beforeReleaseEvents = await allEvents(config);
+    releaseEffect.resolve();
+
+    const execution = await waitForMountedBackgroundExecution(handler, taskId, runId);
+    const [paused, resumed] = await Promise.all([pausing, resuming]);
+    const finalCockpit = await handler({ method: "GET", url: "/api/agent/cockpit" });
+    const events = await allEvents(config);
+    const supervisionControlTypes = events.filter((event) =>
+      event.type === "agent.wake.supervisor.pause.requested.v1" ||
+      event.type === "agent.wake.supervisor.paused.v1" ||
+      event.type === "agent.wake.supervisor.resume.requested.v1"
+    ).map((event) => event.type);
+
+    expect({ resumeBeforeRelease, pauseSettledBeforeRelease }).toEqual({
+      resumeBeforeRelease: "pending",
+      pauseSettledBeforeRelease: false
+    });
+    expect(beforeReleaseEvents.some((event) =>
+      event.type === "agent.wake.supervisor.resume.requested.v1"
+    )).toBe(false);
+    expect(responseOrder).toEqual(["pause", "resume"]);
+    expect(execution.outcome).toBe("failed");
+    expect(paused.status, paused.body).toBe(200);
+    expect(JSON.parse(paused.body)).toMatchObject({
+      supervision: { supervisorState: "paused", activeCycle: false }
+    });
+    expect(resumed.status, resumed.body).toBe(200);
+    expect(JSON.parse(resumed.body)).toMatchObject({
+      supervision: { supervisorState: "running" }
+    });
+    expect(finalCockpit.status, finalCockpit.body).toBe(200);
+    expect(JSON.parse(finalCockpit.body)).toMatchObject({
+      supervision: { supervisorState: "running" }
+    });
+    expect(supervisionControlTypes).toEqual([
+      "agent.wake.supervisor.pause.requested.v1",
+      "agent.wake.supervisor.paused.v1",
+      "agent.wake.supervisor.resume.requested.v1"
+    ]);
+    expect(supervisionArtifactWriteState(workspace)).toEqual(artifactStateAtFence);
+    expect(events.some((event) =>
+      (event.type === "agent.model-invocation.requested" ||
+        event.type === "agent.model-invocation.completed" ||
+        event.type === "agent.specialist-handoff.recorded" ||
+        event.type === "agent.memory.recorded") &&
+      Reflect.get(event.payload, "runId") === runId
+    )).toBe(false);
+  });
+
+  it("joins an already-started queued resume before stop returns and permits no later lifecycle writes", async () => {
+    const config = portableConfig("ws_stop_joins_queued_resume");
+    const actor = { id: "actor_stop_joins_resume", kind: "human" as const, label: "Stop joins resume" };
+    const handle = createSqlitePrrRuntime({
+      config,
+      actor,
+      now: () => "2026-07-07T20:08:00.000Z"
+    });
+    const activeEntered = Promise.withResolvers<void>();
+    const releaseActive = Promise.withResolvers<void>();
+    const resumeReadEntered = Promise.withResolvers<void>();
+    const releaseResumeRead = Promise.withResolvers<void>();
+    const resumeContext = new AsyncLocalStorage<"resume">();
+    const originalReadAll = SQLiteEventLedger.prototype.readAll;
+    let offered = false;
+    let heldResumeRead = false;
+    let pausing: Promise<unknown> | undefined;
+    let resuming: Promise<unknown> | undefined;
+    let stopping: Promise<unknown> | undefined;
+    let supervision: ReturnType<typeof createResidentSupervisionRuntime> | undefined;
+    SQLiteEventLedger.prototype.readAll = async function () {
+      if (resumeContext.getStore() === "resume" && !heldResumeRead) {
+        heldResumeRead = true;
+        resumeReadEntered.resolve();
+        await releaseResumeRead.promise;
+      }
+      return await originalReadAll.call(this);
+    };
+    try {
+      await handle.residentIdentity.ready();
+      supervision = createResidentSupervisionRuntime({
+        runtimeHandle: handle,
+        actor,
+        now: () => "2026-07-07T20:08:00.000Z",
+        createSupervisorOwnerId: () => "stop_joins_queued_resume",
+        backgroundExecution: {
+          async pendingLocalTasks() {
+            if (offered) return [];
+            offered = true;
+            return [{ taskId: "task_stop_joins_resume", runId: "run_stop_joins_resume" }];
+          },
+          async execute() {
+            activeEntered.resolve();
+            await releaseActive.promise;
+          }
+        }
+      });
+      await activeEntered.promise;
+
+      pausing = supervision.pause();
+      await waitForAgentEvents(config, (events) => events.some((event) =>
+        event.type === "agent.wake.supervisor.paused.v1"
+      ));
+      resuming = resumeContext.run("resume", () => supervision!.resume());
+      releaseActive.resolve();
+      await pausing;
+      await resumeReadEntered.promise;
+
+      const beforeStop = await handle.ledger.readAll();
+      stopping = supervision.stop();
+      const stopBeforeResumeReadReleased = await promiseSettlementWithin(stopping, 500);
+      const countWhileResumeReadHeld = (await handle.ledger.readAll()).length;
+      releaseResumeRead.resolve();
+      const resumeOutcome = await resuming.then(
+        () => "resolved" as const,
+        () => "rejected" as const
+      );
+      await stopping;
+
+      const afterStop = await handle.ledger.readAll();
+      const lifecycleAfterStopBoundary = afterStop.slice(beforeStop.length).filter((event) =>
+        event.type.startsWith("agent.wake.supervisor.")
+      );
+      expect({ stopBeforeResumeReadReleased, resumeOutcome }).toEqual({
+        stopBeforeResumeReadReleased: "pending",
+        resumeOutcome: "rejected"
+      });
+      expect(countWhileResumeReadHeld).toBe(beforeStop.length);
+      expect(afterStop).toHaveLength(beforeStop.length);
+      expect(lifecycleAfterStopBoundary).toHaveLength(0);
+      await expect(supervision.snapshot()).rejects.toThrow("stopped");
+      await expect(supervision.pause()).rejects.toThrow("stopped");
+      await expect(supervision.resume()).rejects.toThrow("stopped");
+    } finally {
+      SQLiteEventLedger.prototype.readAll = originalReadAll;
+      releaseActive.resolve();
+      releaseResumeRead.resolve();
+      await Promise.allSettled([pausing, resuming, stopping].filter(
+        (promise): promise is Promise<unknown> => promise !== undefined
+      ));
+      await supervision?.stop().catch(() => undefined);
+      handle.close();
+    }
+  });
+
   it("makes successful cancellation a quiescent fence before local effects and writes", async () => {
     const config = portableConfig("ws_running_cancel_fence");
     await seedMountedEvidenceTriageSource(config);
@@ -739,11 +1171,8 @@ describe("agent HTTP routes", () => {
       })
     });
     expect(admitted.status, admitted.body).toBe(202);
-    await waitForAgentEvents(config, (events) => didEnterEffect || events.some((event) =>
-      event.type === "agent.specialist-run.completed" && event.payload.runId === runId
-    ), 3_000);
-    expect(didEnterEffect).toBe(true);
     await effectEntered.promise;
+    expect(didEnterEffect).toBe(true);
     const artifactStateAtFence = supervisionArtifactWriteState(workspace);
 
     let cancelSettled = false;
@@ -1302,35 +1731,14 @@ describe("agent HTTP routes", () => {
   });
 
   it("completes and reconstructs a mounted local evidence-triage task through production routes", async () => {
-    const config = portableConfig("ws_mounted_evidence_triage");
-    const sourceEventIds = await seedMountedEvidenceTriageSource(config);
+    const config = clonedCompletedMountedTaskConfig();
+    const sourceEventIds = completedMountedTaskFixture?.sourceEventIds;
+    if (sourceEventIds === undefined) throw new Error("Completed mounted task fixture is unavailable.");
     const first = testHandler({ config });
-    const created = await first({
-      method: "POST",
-      url: "/api/agent/tasks",
-      body: JSON.stringify({
-        taskId: "task_route_mounted_triage",
-        title: "Triage mounted evidence",
-        priority: "normal",
-        description: "Produce a bounded local evidence-triage handoff."
-      })
+    const executed = await first({
+      method: "GET",
+      url: "/api/agent/tasks/task_route_mounted_triage/evidence-triage/run_route_mounted_triage"
     });
-
-    expect(created.status).toBe(200);
-    const admitted = await first({
-      method: "POST",
-      url: "/api/agent/tasks/task_route_mounted_triage/evidence-triage",
-      body: JSON.stringify({
-        runId: "run_route_mounted_triage",
-        evidenceIds: ["ev_route_mounted_triage"],
-        providerMode: "local-fake"
-      })
-    });
-    expect(admitted.status, admitted.body).toBe(202);
-    const executed = await waitForMountedTaskResult(
-      first,
-      "/api/agent/tasks/task_route_mounted_triage/evidence-triage/run_route_mounted_triage"
-    );
     const completed = JSON.parse(executed.body) as {
       readonly schemaVersion: string;
       readonly state: string;
@@ -1533,32 +1941,11 @@ describe("agent HTTP routes", () => {
   });
 
   it("uses one authoritative context snapshot when the production clock advances", async () => {
-    const config = portableConfig("ws_mounted_advancing_clock");
-    await seedMountedEvidenceTriageSource(config);
-    let tick = 0;
-    const now = () => new Date(
-      Date.parse("2026-07-07T20:00:00.000Z") + tick++ * 1_000
-    ).toISOString();
-    const handler = testHandler({ config, now });
-    await createMountedEvidenceTriageTask(handler, "task_route_mounted_advancing_clock");
-
-    const admitted = await handler({
-      method: "POST",
-      url: "/api/agent/tasks/task_route_mounted_advancing_clock/evidence-triage",
-      body: JSON.stringify({
-        runId: "run_route_mounted_advancing_clock",
-        evidenceIds: ["ev_route_mounted_triage"],
-        providerMode: "local-fake"
-      })
-    });
-    expect(admitted.status, admitted.body).toBe(202);
-    await waitForAgentEvents(config, (events) => events.some((event) =>
-      event.type === "agent.memory.recorded" &&
-      event.payload.memoryId === "mem_run_route_mounted_advancing_clock_handoff"
-    ), 3_000);
+    const config = clonedCompletedMountedTaskConfig();
+    const handler = testHandler({ config });
     const response = await handler({
       method: "GET",
-      url: "/api/agent/tasks/task_route_mounted_advancing_clock/evidence-triage/run_route_mounted_advancing_clock"
+      url: `/api/agent/tasks/${completedFixtureTaskId}/evidence-triage/${completedFixtureRunId}`
     });
     expect(response.status, response.body).toBe(200);
     expect(JSON.parse(response.body)).toMatchObject({ state: "completed" });
@@ -1616,36 +2003,15 @@ describe("agent HTTP routes", () => {
   });
 
   it("rejects a completed-run replay when the submitted evidence order changes", async () => {
-    const config = portableConfig("ws_mounted_reordered_replay");
-    await seedMountedEvidenceTriageSource(config);
-    await seedAdditionalMountedEvidenceTriageSource(config);
+    const config = clonedCompletedMountedTaskConfig();
     const handler = testHandler({ config });
-    const taskId = "task_route_mounted_reordered_replay";
-    const runId = "run_route_mounted_reordered_replay";
-    await createMountedEvidenceTriageTask(handler, taskId);
-
-    const initial = await handler({
-      method: "POST",
-      url: `/api/agent/tasks/${taskId}/evidence-triage`,
-      body: JSON.stringify({
-        runId,
-        evidenceIds: ["ev_route_mounted_triage", "ev_route_mounted_triage_second"],
-        providerMode: "local-fake"
-      })
-    });
-    expect(initial.status, initial.body).toBe(202);
-    const completed = await waitForMountedTaskResult(
-      handler,
-      `/api/agent/tasks/${taskId}/evidence-triage/${runId}`
-    );
-    expect(completed.status, completed.body).toBe(200);
     const idsBefore = (await allEvents(config)).map((event) => event.id);
 
     const reordered = await handler({
       method: "POST",
-      url: `/api/agent/tasks/${taskId}/evidence-triage`,
+      url: `/api/agent/tasks/${completedFixtureTaskId}/evidence-triage`,
       body: JSON.stringify({
-        runId,
+        runId: completedFixtureRunId,
         evidenceIds: ["ev_route_mounted_triage_second", "ev_route_mounted_triage"],
         providerMode: "local-fake"
       })
@@ -1656,82 +2022,12 @@ describe("agent HTTP routes", () => {
   });
 
   it("keeps the effective installed policy version after a label-only identity update", async () => {
-    const config = portableConfig("ws_mounted_installed_policy_identity_label");
-    await seedMountedEvidenceTriageSource(config);
-    const first = testHandler({ config });
-    const taskId = "task_route_mounted_installed_policy_identity_label";
-    const runId = "run_route_mounted_installed_policy_identity_label";
-    await createMountedEvidenceTriageTask(first, taskId);
-    await closeHandler(first);
-
-    const ledger = new SQLiteEventLedger(config.storage.sqlitePath);
-    try {
-      const initialized = (await ledger.readAll()).find((event): event is KnowledgeEventOf<"agent.identity.initialized"> =>
-        event.type === "agent.identity.initialized" && event.payload.residentAgentId === "agent_default"
-      );
-      if (initialized === undefined) throw new Error("Mounted policy fixture requires initialized identity.");
-      const installed = await ledger.append({
-        type: "agent.policy.installed",
-        version: 1,
-        streamId: "agent_policy_agent_policy_default",
-        context: {
-          actor: { id: "actor_policy_v77_reviewer", kind: "human", label: "Policy reviewer" },
-          occurredAt: "2026-07-07T19:59:00.000Z",
-          causationId: initialized.id,
-          correlationId: "corr_mounted_policy_v77",
-          coreVersion: "0.1.0",
-          packVersions: { core: "0.1.0", agent: "0.1.0" }
-        },
-        payload: {
-          policyId: "agent_policy_default",
-          residentAgentId: "agent_default",
-          version: "installed-policy-v77",
-          installedBy: "actor_policy_v77_reviewer",
-          humanGatedActionClasses: ["external-byte-transfer"],
-          allowedRunTypes: ["evidence-triage"],
-          credentialKinds: ["local-no-secret"],
-          rationale: "Approve the bounded mounted evidence-triage run."
-        }
-      } satisfies AppendableKnowledgeEvent<"agent.policy.installed">);
-      await ledger.append({
-        type: "agent.identity.updated",
-        version: 1,
-        streamId: "agent_identity_agent_default",
-        context: {
-          actor: { id: "actor_identity_label_reviewer", kind: "human", label: "Identity reviewer" },
-          occurredAt: "2026-07-07T19:59:30.000Z",
-          causationId: installed.id,
-          correlationId: "corr_mounted_identity_label_only",
-          coreVersion: "0.1.0",
-          packVersions: { core: "0.1.0", agent: "0.1.0" }
-        },
-        payload: {
-          residentAgentId: "agent_default",
-          updatedBy: "actor_identity_label_reviewer",
-          rationale: "Update only the resident label after policy installation.",
-          label: "Cestus Agent, reviewed label",
-          previousEventId: initialized.id
-        }
-      } satisfies AppendableKnowledgeEvent<"agent.identity.updated">, { expectedNextSequence: 2 });
-    } finally {
-      ledger.close();
-    }
-
+    const config = clonedCompletedMountedTaskConfig();
     const fresh = testHandler({ config });
-    const admitted = await fresh({
-      method: "POST",
-      url: `/api/agent/tasks/${taskId}/evidence-triage`,
-      body: JSON.stringify({
-        runId,
-        evidenceIds: ["ev_route_mounted_triage"],
-        providerMode: "local-fake"
-      })
+    const response = await fresh({
+      method: "GET",
+      url: `/api/agent/tasks/${completedFixtureTaskId}/evidence-triage/${completedFixtureRunId}`
     });
-    expect(admitted.status, admitted.body).toBe(202);
-    const response = await waitForMountedTaskResult(
-      fresh,
-      `/api/agent/tasks/${taskId}/evidence-triage/${runId}`
-    );
     expect(response.status, response.body).toBe(200);
     const body = JSON.parse(response.body) as { readonly promptArtifactHash: `sha256:${string}` };
     const prompt = JSON.parse(readMountedPromptArtifact(config, body.promptArtifactHash)) as {
@@ -1746,31 +2042,13 @@ describe("agent HTTP routes", () => {
   });
 
   it("rejects a second run for a terminal task without appending or changing terminal state", async () => {
-    const config = portableConfig("ws_mounted_terminal_replay");
-    await seedMountedEvidenceTriageSource(config);
+    const config = clonedCompletedMountedTaskConfig();
     const handler = testHandler({ config });
-    const taskId = "task_route_mounted_terminal_replay";
-    await createMountedEvidenceTriageTask(handler, taskId);
-    const admitted = await handler({
-      method: "POST",
-      url: `/api/agent/tasks/${taskId}/evidence-triage`,
-      body: JSON.stringify({
-        runId: "run_route_mounted_terminal_replay_local",
-        evidenceIds: ["ev_route_mounted_triage"],
-        providerMode: "local-fake"
-      })
-    });
-    expect(admitted.status, admitted.body).toBe(202);
-    const completed = await waitForMountedTaskResult(
-      handler,
-      `/api/agent/tasks/${taskId}/evidence-triage/run_route_mounted_terminal_replay_local`
-    );
-    expect(completed.status, completed.body).toBe(200);
     const idsBefore = (await allEvents(config)).map((event) => event.id);
 
     const replay = await handler({
       method: "POST",
-      url: `/api/agent/tasks/${taskId}/evidence-triage`,
+      url: `/api/agent/tasks/${completedFixtureTaskId}/evidence-triage`,
       body: JSON.stringify({
         runId: "run_route_mounted_terminal_replay_remote",
         evidenceIds: ["ev_route_mounted_triage"],
@@ -1782,7 +2060,7 @@ describe("agent HTTP routes", () => {
     expect(replay.status, replay.body).toBe(409);
     expect((await allEvents(config)).map((event) => event.id)).toEqual(idsBefore);
     expect(JSON.parse(status.body).tasks).toContainEqual(expect.objectContaining({
-      taskId,
+      taskId: completedFixtureTaskId,
       status: "completed"
     }));
   });
@@ -1885,24 +2163,12 @@ describe("agent HTTP routes", () => {
   });
 
   it("writes the authority-bound handoff manifest to its canonical mounted manifest store", async () => {
-    const config = portableConfig("ws_mounted_canonical_manifest_store");
-    await seedMountedEvidenceTriageSource(config);
+    const config = clonedCompletedMountedTaskConfig();
     const handler = testHandler({ config });
-    await createMountedEvidenceTriageTask(handler, "task_route_mounted_canonical_manifest_store");
-    const admitted = await handler({
-      method: "POST",
-      url: "/api/agent/tasks/task_route_mounted_canonical_manifest_store/evidence-triage",
-      body: JSON.stringify({
-        runId: "run_route_mounted_canonical_manifest_store",
-        evidenceIds: ["ev_route_mounted_triage"],
-        providerMode: "local-fake"
-      })
+    const response = await handler({
+      method: "GET",
+      url: `/api/agent/tasks/${completedFixtureTaskId}/evidence-triage/${completedFixtureRunId}`
     });
-    expect(admitted.status, admitted.body).toBe(202);
-    const response = await waitForMountedTaskResult(
-      handler,
-      "/api/agent/tasks/task_route_mounted_canonical_manifest_store/evidence-triage/run_route_mounted_canonical_manifest_store"
-    );
     expect(response.status, response.body).toBe(200);
     const body = JSON.parse(response.body) as {
       readonly handoff: { readonly manifestHash: `sha256:${string}` };
@@ -2359,9 +2625,12 @@ function testHandler(input: {
   readonly mountedTaskBeforeLocalEffectForTest?: () => void | Promise<void>;
   readonly mountedTaskBeforeRunStartSnapshotForTest?: () => void | Promise<void>;
   readonly mountedTaskBeforeTaskRunningForTest?: () => void | Promise<void>;
+  readonly mountedTaskAfterBackgroundExecutionForTest?:
+    CreateLocalRuntimeHttpHandlerInput["mountedTaskAfterBackgroundExecutionForTest"];
   readonly mountedTaskBackgroundScanForTest?: (taskCount: number) => void;
 } = {}) {
   const config = input.config ?? resolveLocalRuntimeConfig({ cwd: tempDir(), env: input.env ?? {} });
+  const executionTracker = createMountedTaskBackgroundExecutionTracker();
   const handler = createLocalRuntimeHttpHandler({
     config,
     actor: { id: "actor_agent_route", kind: "human", label: "Agent Route Test" },
@@ -2388,10 +2657,15 @@ function testHandler(input: {
     ...(input.mountedTaskBeforeTaskRunningForTest === undefined
       ? {}
       : { mountedTaskBeforeTaskRunningForTest: input.mountedTaskBeforeTaskRunningForTest }),
+    mountedTaskAfterBackgroundExecutionForTest(observation) {
+      executionTracker.observe(observation);
+      input.mountedTaskAfterBackgroundExecutionForTest?.(observation);
+    },
     ...(input.mountedTaskBackgroundScanForTest === undefined
       ? {}
       : { mountedTaskBackgroundScanForTest: input.mountedTaskBackgroundScanForTest })
   });
+  mountedTaskBackgroundExecutionTrackers.set(handler, executionTracker);
   handlers.push(handler);
   return handler;
 }
@@ -2404,6 +2678,13 @@ function tempDir(): string {
 
 function portableConfig(workspaceId: string): ReturnType<typeof resolveLocalRuntimeConfig> {
   const cwd = tempDir();
+  return persistentPortableConfig(cwd, workspaceId);
+}
+
+function persistentPortableConfig(
+  cwd: string,
+  workspaceId: string
+): ReturnType<typeof resolveLocalRuntimeConfig> {
   const workspaceRoot = join(cwd, workspaceId);
   createPortableWorkspace({
     rootDir: workspaceRoot,
@@ -2412,6 +2693,21 @@ function portableConfig(workspaceId: string): ReturnType<typeof resolveLocalRunt
     createdAt: "2026-07-10T12:00:00.000Z",
     createdBy: "agent-route-test"
   });
+  return resolveLocalRuntimeConfig({
+    cwd,
+    env: {
+      CESTUS_LOCAL_STORAGE: "portable-workspace",
+      CESTUS_WORKSPACE_ROOT: workspaceRoot
+    }
+  });
+}
+
+function clonedCompletedMountedTaskConfig(): ReturnType<typeof resolveLocalRuntimeConfig> {
+  const fixture = completedMountedTaskFixture;
+  if (fixture === undefined) throw new Error("Completed mounted task fixture is unavailable.");
+  const cwd = tempDir();
+  const workspaceRoot = join(cwd, completedFixtureWorkspaceId);
+  cpSync(fixture.workspaceRoot, workspaceRoot, { recursive: true });
   return resolveLocalRuntimeConfig({
     cwd,
     env: {
@@ -2460,13 +2756,53 @@ async function waitForMountedTaskResult(
   handler: LocalRuntimeHttpHandler,
   url: string
 ) {
-  const deadline = Date.now() + 2_000;
-  let response = await handler({ method: "GET", url });
-  while (response.status !== 200 && Date.now() < deadline) {
-    await new Promise((resolve) => setTimeout(resolve, 10));
-    response = await handler({ method: "GET", url });
-  }
-  return response;
+  const current = await handler({ method: "GET", url });
+  if (current.status === 200) return current;
+  const match = /^\/api\/agent\/tasks\/([^/]+)\/evidence-triage\/([^/?]+)$/.exec(url);
+  if (match === null) return current;
+  await waitForMountedBackgroundExecution(
+    handler,
+    decodeURIComponent(match[1]!),
+    decodeURIComponent(match[2]!)
+  );
+  return await handler({ method: "GET", url });
+}
+
+async function waitForMountedBackgroundExecution(
+  handler: LocalRuntimeHttpHandler,
+  taskId: string,
+  runId: string
+): Promise<MountedTaskBackgroundExecutionObservation> {
+  const tracker = mountedTaskBackgroundExecutionTrackers.get(handler);
+  if (tracker === undefined) throw new Error("Mounted background execution tracker is unavailable.");
+  return await tracker.waitFor(taskId, runId);
+}
+
+function createMountedTaskBackgroundExecutionTracker(): MountedTaskBackgroundExecutionTracker {
+  const observations = new Map<string, MountedTaskBackgroundExecutionObservation>();
+  const waiters = new Map<
+    string,
+    Array<(observation: MountedTaskBackgroundExecutionObservation) => void>
+  >();
+  const key = (taskId: string, runId: string) => `${taskId}\u0000${runId}`;
+  return Object.freeze({
+    observe(observation: MountedTaskBackgroundExecutionObservation) {
+      const observationKey = key(observation.taskId, observation.runId);
+      observations.set(observationKey, observation);
+      for (const resolve of waiters.get(observationKey) ?? []) resolve(observation);
+      waiters.delete(observationKey);
+    },
+    async waitFor(taskId: string, runId: string) {
+      const observationKey = key(taskId, runId);
+      const observed = observations.get(observationKey);
+      if (observed !== undefined) return observed;
+      return await new Promise<MountedTaskBackgroundExecutionObservation>((resolve) => {
+        const pending = waiters.get(observationKey) ?? [];
+        pending.push(resolve);
+        waiters.set(observationKey, pending);
+      });
+    }
+  });
 }
 
 async function createMountedEvidenceTriageTask(
@@ -2711,7 +3047,7 @@ async function seedMountedEvidenceTriageSource(
 
 async function seedAdditionalMountedEvidenceTriageSource(
   config: ReturnType<typeof resolveLocalRuntimeConfig>
-): Promise<void> {
+): Promise<readonly string[]> {
   const mounted = requireMountedWorkspace(config);
   const source = await new FileBlobStore(mounted.paths.blobRoot).put(
     Buffer.from("second bounded mounted evidence triage fixture", "utf8")
@@ -2737,7 +3073,7 @@ async function seedAdditionalMountedEvidenceTriageSource(
         sizeBytes: source.sizeBytes
       }
     } satisfies AppendableKnowledgeEvent<"evidence.ingested">);
-    await ledger.append({
+    const linked = await ledger.append({
       type: "ingestion.evidence.linked",
       version: 1,
       streamId: "ingestion_evidence_link_src_route_mounted_triage_second_imp_route_mounted_triage_second",
@@ -2757,6 +3093,64 @@ async function seedAdditionalMountedEvidenceTriageSource(
         occurrenceIds: ["occ_route_mounted_triage_second"]
       }
     } satisfies AppendableKnowledgeEvent<"ingestion.evidence.linked">);
+    return Object.freeze([evidence.id, linked.id]);
+  } finally {
+    ledger.close();
+  }
+}
+
+async function seedInstalledPolicyAndIdentityLabel(
+  config: ReturnType<typeof resolveLocalRuntimeConfig>
+): Promise<void> {
+  const ledger = new SQLiteEventLedger(config.storage.sqlitePath);
+  try {
+    const initialized = (await ledger.readAll()).find((event): event is KnowledgeEventOf<"agent.identity.initialized"> =>
+      event.type === "agent.identity.initialized" && event.payload.residentAgentId === "agent_default"
+    );
+    if (initialized === undefined) throw new Error("Mounted policy fixture requires initialized identity.");
+    const installed = await ledger.append({
+      type: "agent.policy.installed",
+      version: 1,
+      streamId: "agent_policy_agent_policy_default",
+      context: {
+        actor: { id: "actor_policy_v77_reviewer", kind: "human", label: "Policy reviewer" },
+        occurredAt: "2026-07-07T19:59:00.000Z",
+        causationId: initialized.id,
+        correlationId: "corr_mounted_policy_v77",
+        coreVersion: "0.1.0",
+        packVersions: { core: "0.1.0", agent: "0.1.0" }
+      },
+      payload: {
+        policyId: "agent_policy_default",
+        residentAgentId: "agent_default",
+        version: "installed-policy-v77",
+        installedBy: "actor_policy_v77_reviewer",
+        humanGatedActionClasses: ["external-byte-transfer"],
+        allowedRunTypes: ["evidence-triage"],
+        credentialKinds: ["local-no-secret"],
+        rationale: "Approve the bounded mounted evidence-triage run."
+      }
+    } satisfies AppendableKnowledgeEvent<"agent.policy.installed">);
+    await ledger.append({
+      type: "agent.identity.updated",
+      version: 1,
+      streamId: "agent_identity_agent_default",
+      context: {
+        actor: { id: "actor_identity_label_reviewer", kind: "human", label: "Identity reviewer" },
+        occurredAt: "2026-07-07T19:59:30.000Z",
+        causationId: installed.id,
+        correlationId: "corr_mounted_identity_label_only",
+        coreVersion: "0.1.0",
+        packVersions: { core: "0.1.0", agent: "0.1.0" }
+      },
+      payload: {
+        residentAgentId: "agent_default",
+        updatedBy: "actor_identity_label_reviewer",
+        rationale: "Update only the resident label after policy installation.",
+        label: "Cestus Agent, reviewed label",
+        previousEventId: initialized.id
+      }
+    } satisfies AppendableKnowledgeEvent<"agent.identity.updated">, { expectedNextSequence: 2 });
   } finally {
     ledger.close();
   }
@@ -3114,6 +3508,26 @@ function expectAgentStatusBodyToHideRuntimeMaterial(body: string): void {
   expect(body).not.toContain(providerSetupSentinel());
   expect(body).not.toContain(routeSessionSentinel());
   expect(body).not.toMatch(/runtime-provider-material|authorization:\s*bearer|provider error|response body|private key|password=|secret=/i);
+}
+
+async function promiseSettlementWithin(
+  promise: Promise<unknown>,
+  milliseconds: number
+): Promise<"settled" | "pending"> {
+  return await new Promise((resolve) => {
+    let observed = false;
+    const finish = (state: "settled" | "pending") => {
+      if (observed) return;
+      observed = true;
+      clearTimeout(timer);
+      resolve(state);
+    };
+    const timer = setTimeout(() => finish("pending"), milliseconds);
+    void promise.then(
+      () => finish("settled"),
+      () => finish("settled")
+    );
+  });
 }
 
 function createBarrier(count: number): { readonly arrive: () => Promise<void> } {

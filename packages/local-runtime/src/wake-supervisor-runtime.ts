@@ -13,7 +13,6 @@ import {
   type WorkspaceAvailabilityAuthority
 } from "../../agent/src/wake-supervisor.js";
 import { buildAgentProjection } from "../../agent/src/projection.js";
-import { buildTaskAttemptId } from "../../agent/src/task-orchestrator-events.js";
 import {
   consumeMountedSpecialistHandoffAuthorityWitness,
   type ConsumedMountedSpecialistHandoffAuthorityWitness,
@@ -24,7 +23,6 @@ import { hashCanonicalSpecialistHandoffJson } from "../../agent/src/specialist-h
 import type { ActorRef, KnowledgeEvent } from "../../ontology/src/contracts.js";
 import { mountPortableWorkspace, type MountedPortableWorkspace } from "../../workspace/src/index.js";
 import {
-  issueMountedArtifactAuthorityOperationForFactory,
   registerMountedArtifactAuthorityIssuerForWakeRuntime
 } from "./mounted-artifact-authority-operation.js";
 import {
@@ -40,8 +38,6 @@ import {
 } from "./mounted-provider-authority.js";
 import { createPortableWorkspaceLifecyclePorts } from "./portable-workspace-lifecycle.js";
 import {
-  consumeMountedHandoffAuthorityController,
-  createPortableMountedAgentArtifactStoreProducer,
   type PortableMountedAgentHandoffBinding
 } from "./portable-mounted-agent-artifact-stores.js";
 import type { LocalRuntimeHandle } from "./runtime-factory.js";
@@ -110,6 +106,11 @@ export interface MountedEvidenceTriageHandoffCapability {
 export type MountedEvidenceTriageHandoffAcquirer =
   () => Promise<MountedEvidenceTriageHandoffCapability>;
 
+export type MountedEvidenceTriageHandoffIssuer = (
+  wakeRuntime: WakeSupervisorRuntime,
+  task: ResidentAdmittedLocalTask
+) => Promise<MountedEvidenceTriageHandoffCapability>;
+
 export interface ResidentBackgroundExecutionPort {
   pendingLocalTasks(): Promise<readonly ResidentAdmittedLocalTask[]>;
   execute(
@@ -124,6 +125,7 @@ export interface ResidentSupervisionRuntimeInput {
   readonly now: () => string;
   readonly createSupervisorOwnerId?: (() => string) | undefined;
   readonly backgroundExecution?: ResidentBackgroundExecutionPort | undefined;
+  readonly issueMountedEvidenceTriageHandoff?: MountedEvidenceTriageHandoffIssuer | undefined;
   readonly beforeLeaseExpiryPollForTest?: (() => void | Promise<void>) | undefined;
 }
 
@@ -149,6 +151,10 @@ export function createResidentSupervisionRuntime(
   let backgroundRescanRequested = false;
   let activeCycle = false;
   let activeTaskId: string | undefined;
+  let pausePending = false;
+  let pendingPauseControls = 0;
+  let supervisionControlTail: Promise<void> = Promise.resolve();
+  let stopPromise: Promise<void> | undefined;
 
   const supervision: ResidentSupervisionRuntime = Object.freeze({
     async snapshot() {
@@ -170,7 +176,9 @@ export function createResidentSupervisionRuntime(
         return reconnectedSnapshot(input, durable);
       }
       if (durable.mode === "paused") {
+        pausePending = true;
         cancelTimer();
+        cancelBackgroundRetry();
         return pausedSnapshot(input, durable, wakeStatus, activeCycle);
       }
       if (wakeRuntime === undefined) {
@@ -187,73 +195,114 @@ export function createResidentSupervisionRuntime(
     async pause() {
       assertServiceRunning();
       requireCurrentWorkspace(input.runtimeHandle);
-      const durable = await durableSupervisionState(input.runtimeHandle, input.now());
-      if (durable.mode === "paused") {
-        return pausedSnapshot(input, durable, wakeStatus, activeCycle);
-      }
-      if (wakeRuntime === undefined) {
-        const issued = await issueWakeRuntime("pause");
-        wakeStatus = (await issued.supervision.start()).status;
-      }
-      const command = await wakeCommand(input, "pause", nextCommandId("pause"));
-      const result = await wakeRuntime!.supervision.pause(command);
-      wakeStatus = result.status;
-      if (result.outcome !== "completed") {
-        throw new Error("Resident supervision pause was not durably recorded.");
-      }
+      pendingPauseControls += 1;
+      pausePending = true;
       cancelTimer();
-      await wakeRuntime!.stop();
-      wakeRuntime = undefined;
-      return pausedSnapshot(
-        input,
-        await durableSupervisionState(input.runtimeHandle, input.now()),
-        wakeStatus,
-        activeCycle
-      );
+      cancelBackgroundRetry();
+      backgroundRescanRequested = false;
+      try {
+        return await serializeSupervisionControl(async () => {
+          assertServiceRunning();
+          requireCurrentWorkspace(input.runtimeHandle);
+          let durablePauseRecorded = false;
+          try {
+            let durable = await durableSupervisionState(input.runtimeHandle, input.now());
+            if (durable.mode !== "paused") {
+              if (wakeRuntime === undefined) {
+                const issued = await issueWakeRuntime("pause");
+                wakeStatus = (await issued.supervision.start()).status;
+              }
+              const command = await wakeCommand(input, "pause", nextCommandId("pause"));
+              const result = await wakeRuntime!.supervision.pause(command);
+              wakeStatus = result.status;
+              if (result.outcome !== "completed") {
+                throw new Error("Resident supervision pause was not durably recorded.");
+              }
+              durable = await durableSupervisionState(input.runtimeHandle, input.now());
+            }
+            if (durable.mode !== "paused") {
+              throw new Error("Resident supervision pause was not durably recorded.");
+            }
+            durablePauseRecorded = true;
+            await quiesceBackgroundExecution();
+            if (wakeRuntime !== undefined) {
+              await wakeRuntime.stop();
+              wakeRuntime = undefined;
+            }
+            return pausedSnapshot(input, durable, wakeStatus, activeCycle);
+          } catch (error) {
+            if (!durablePauseRecorded && pendingPauseControls === 1) {
+              pausePending = false;
+              scheduleBackgroundCycle();
+            }
+            throw error;
+          }
+        });
+      } finally {
+        pendingPauseControls -= 1;
+      }
     },
 
     async resume() {
       assertServiceRunning();
-      requireCurrentWorkspace(input.runtimeHandle);
-      const durable = await durableSupervisionState(input.runtimeHandle, input.now());
-      if (!authorityLost && durable.mode !== "paused" && wakeRuntime !== undefined) {
-        wakeStatus = await wakeRuntime.supervision.status();
-        return runningSnapshot(input, durable, wakeStatus, activeCycle);
-      }
-      if (wakeRuntime !== undefined) {
-        await wakeRuntime.stop();
-        wakeRuntime = undefined;
-      }
-      const operation = authorityLost ? "recover" : "resume";
-      if (operation === "recover" && durable.nextWakeAt !== undefined &&
-        !await fenceOwnedLeaseForRecovery()) {
-        return reconnectedSnapshot(input, await durableSupervisionState(input.runtimeHandle, input.now()));
-      }
-      const issued = await issueWakeRuntime(operation);
-      const command = await wakeCommand(input, operation, nextCommandId(operation));
-      const result = operation === "recover"
-        ? await issued.supervision.recover(command)
-        : await issued.supervision.resume(command);
-      wakeStatus = result.status;
-      if (result.outcome === "blocked") {
-        if (result.blocked?.category === "supervisor-lease-held") {
-          authorityLost = true;
-          await issued.stop().catch(() => undefined);
-          wakeRuntime = undefined;
-          return reconnectedSnapshot(input, await durableSupervisionState(input.runtimeHandle, input.now()));
+      return await serializeSupervisionControl(async () => {
+        assertServiceRunning();
+        requireCurrentWorkspace(input.runtimeHandle);
+        const durable = await awaitServiceRunning(
+          durableSupervisionState(input.runtimeHandle, input.now())
+        );
+        if (!authorityLost && durable.mode !== "paused" && wakeRuntime !== undefined) {
+          if (pendingPauseControls === 0) pausePending = false;
+          wakeStatus = await awaitServiceRunning(wakeRuntime.supervision.status());
+          return runningSnapshot(input, durable, wakeStatus, activeCycle);
         }
-        throw new Error("Resident supervision could not be resumed safely.");
-      }
-      authorityLost = false;
-      const snapshot = runningSnapshot(
-        input,
-        await durableSupervisionState(input.runtimeHandle, input.now()),
-        wakeStatus,
-        activeCycle
-      );
-      scheduleWake(snapshot.nextWakeAt);
-      scheduleBackgroundCycle();
-      return snapshot;
+        if (wakeRuntime !== undefined) {
+          await awaitServiceRunning(wakeRuntime.stop());
+          wakeRuntime = undefined;
+        }
+        const operation = authorityLost ? "recover" : "resume";
+        if (operation === "recover" && durable.nextWakeAt !== undefined &&
+          !await awaitServiceRunning(fenceOwnedLeaseForRecovery())) {
+          const reconnected = await awaitServiceRunning(
+            durableSupervisionState(input.runtimeHandle, input.now())
+          );
+          return reconnectedSnapshot(input, reconnected);
+        }
+        const issued = await awaitServiceRunning(issueWakeRuntime(operation));
+        const command = await awaitServiceRunning(
+          wakeCommand(input, operation, nextCommandId(operation))
+        );
+        const result = operation === "recover"
+          ? await awaitServiceRunning(issued.supervision.recover(command))
+          : await awaitServiceRunning(issued.supervision.resume(command));
+        wakeStatus = result.status;
+        if (result.outcome === "blocked") {
+          if (result.blocked?.category === "supervisor-lease-held") {
+            authorityLost = true;
+            await awaitServiceRunning(issued.stop().catch(() => undefined));
+            wakeRuntime = undefined;
+            const reconnected = await awaitServiceRunning(
+              durableSupervisionState(input.runtimeHandle, input.now())
+            );
+            return reconnectedSnapshot(input, reconnected);
+          }
+          throw new Error("Resident supervision could not be resumed safely.");
+        }
+        authorityLost = false;
+        if (pendingPauseControls === 0) pausePending = false;
+        const resumed = await awaitServiceRunning(
+          durableSupervisionState(input.runtimeHandle, input.now())
+        );
+        const snapshot = runningSnapshot(
+          input,
+          resumed,
+          wakeStatus,
+          activeCycle
+        );
+        scheduleWake(snapshot.nextWakeAt);
+        scheduleBackgroundCycle();
+        return snapshot;
+      });
     },
 
     signalLocalAdmission() {
@@ -271,16 +320,22 @@ export function createResidentSupervisionRuntime(
     },
 
     async stop() {
-      if (stopped) return;
+      if (stopPromise !== undefined) return await stopPromise;
       stopped = true;
+      pausePending = true;
       cancelTimer();
       cancelBackgroundRetry();
-      await pollCycle?.catch(() => undefined);
-      await backgroundCycle?.catch(() => undefined);
-      if (wakeRuntime !== undefined) {
-        await wakeRuntime.stop();
+      backgroundRescanRequested = false;
+      stopPromise = (async () => {
+        await pollCycle?.catch(() => undefined);
+        await backgroundCycle?.catch(() => undefined);
+        await supervisionControlTail;
+        const issued = wakeRuntime;
         wakeRuntime = undefined;
-      }
+        wakeStatus = undefined;
+        if (issued !== undefined) await issued.stop();
+      })();
+      return await stopPromise;
     }
   });
 
@@ -399,8 +454,14 @@ export function createResidentSupervisionRuntime(
     if (stopped) throw new Error("Resident supervision service is stopped.");
   }
 
+  async function awaitServiceRunning<T>(operation: Promise<T>): Promise<T> {
+    const result = await operation;
+    assertServiceRunning();
+    return result;
+  }
+
   function scheduleBackgroundCycle(): void {
-    if (stopped || input.backgroundExecution === undefined) return;
+    if (stopped || pausePending || input.backgroundExecution === undefined) return;
     cancelBackgroundRetry();
     if (backgroundCycleScheduled || backgroundCycle !== undefined) {
       backgroundRescanRequested = true;
@@ -428,7 +489,7 @@ export function createResidentSupervisionRuntime(
 
   async function runBackgroundCycle(): Promise<void> {
     const port = input.backgroundExecution;
-    if (port === undefined || stopped) return;
+    if (port === undefined || stopped || pausePending) return;
     const currentness = inspectPortableWorkspaceCurrentness(input.runtimeHandle);
     if (!currentness.ok) {
       authorityLost = true;
@@ -437,8 +498,12 @@ export function createResidentSupervisionRuntime(
     if ((await durableSupervisionState(input.runtimeHandle, input.now())).mode === "paused") return;
     const tasks = await port.pendingLocalTasks();
     for (const task of tasks) {
-      if (stopped) return;
+      if (stopped || pausePending) return;
       requireCurrentWorkspace(input.runtimeHandle);
+      if ((await durableSupervisionState(input.runtimeHandle, input.now())).mode === "paused") {
+        pausePending = true;
+        return;
+      }
       const operationTimestamp = input.now();
       const operationNow = () => operationTimestamp;
       const issued = wakeRuntime ?? await issueWakeRuntime(`task_${task.runId}`, operationNow);
@@ -455,7 +520,11 @@ export function createResidentSupervisionRuntime(
       activeCycle = true;
       activeTaskId = task.taskId;
       try {
-        await port.execute(task, mountedEvidenceTriageHandoffAcquirer(issued, task));
+        await port.execute(task, mountedEvidenceTriageHandoffAcquirer(
+          issued,
+          task,
+          input.issueMountedEvidenceTriageHandoff
+        ));
       } finally {
         activeCycle = false;
         activeTaskId = undefined;
@@ -467,7 +536,7 @@ export function createResidentSupervisionRuntime(
   }
 
   function scheduleBackgroundRetry(): void {
-    if (stopped || input.backgroundExecution === undefined || backgroundRetryTimer !== undefined) return;
+    if (stopped || pausePending || input.backgroundExecution === undefined || backgroundRetryTimer !== undefined) return;
     backgroundRetryTimer = setTimeout(() => {
       backgroundRetryTimer = undefined;
       scheduleBackgroundCycle();
@@ -479,37 +548,42 @@ export function createResidentSupervisionRuntime(
     if (backgroundRetryTimer !== undefined) clearTimeout(backgroundRetryTimer);
     backgroundRetryTimer = undefined;
   }
+
+  function serializeSupervisionControl<T>(operation: () => Promise<T>): Promise<T> {
+    const previous = supervisionControlTail;
+    const current = previous.then(operation);
+    supervisionControlTail = current.then(
+      () => undefined,
+      () => undefined
+    );
+    return current;
+  }
+
+  async function quiesceBackgroundExecution(): Promise<void> {
+    while (backgroundCycleScheduled || backgroundCycle !== undefined) {
+      const cycle = backgroundCycle;
+      if (cycle !== undefined) {
+        await cycle.catch(() => undefined);
+        continue;
+      }
+      await Promise.resolve();
+    }
+  }
 }
 
 function mountedEvidenceTriageHandoffAcquirer(
   wakeRuntime: WakeSupervisorRuntime,
-  task: ResidentAdmittedLocalTask
+  task: ResidentAdmittedLocalTask,
+  issuer: MountedEvidenceTriageHandoffIssuer | undefined
 ): MountedEvidenceTriageHandoffAcquirer {
   let acquired = false;
   return async () => {
     if (acquired) throw new Error("Mounted task handoff acquisition is one-shot.");
     acquired = true;
-    const operation = issueMountedArtifactAuthorityOperationForFactory(wakeRuntime);
-    const prepared = await createPortableMountedAgentArtifactStoreProducer(operation).bind({
-      taskId: task.taskId,
-      attemptId: buildTaskAttemptId({
-        taskId: task.taskId,
-        runType: "evidence-triage",
-        retryGeneration: 0
-      }),
-      approvedRunId: task.runId,
-      runType: "evidence-triage",
-      retryGeneration: 0
-    });
-    let consumed = false;
-    return Object.freeze({
-      binding: prepared.binding,
-      async consume(eventIds: readonly string[]) {
-        if (consumed) throw new Error("Mounted task handoff capability is already consumed.");
-        await consumeMountedHandoffAuthorityController(prepared.controller, eventIds);
-        consumed = true;
-      }
-    });
+    if (issuer === undefined) {
+      throw new Error("Mounted task handoff issuance is unavailable.");
+    }
+    return await issuer(wakeRuntime, task);
   };
 }
 
