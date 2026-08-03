@@ -493,6 +493,74 @@ describe("MVP specialist workflow descriptors", () => {
     });
   });
 
+  it("replays two timeline items that share one aggregate artifact and handoff provenance", async () => {
+    const registry = createContextPackRegistry();
+    const sharedArtifactHash = hash("d");
+    const sharedSourceEventIds = ["evt_timeline_shared_001", "evt_timeline_shared_002"];
+    registerTimelineDraftSummaryContextPack(registry, {
+      scope: { kind: "investigation", id: "investigation_shared_timeline_001" },
+      generatedAt: sourcedGeneratedAt,
+      safeSummary: "Two advisory timeline items share one replayed aggregate artifact.",
+      sourceEventIds: sharedSourceEventIds,
+      items: [{
+        itemId: "timeline_shared_001",
+        artifactHash: sharedArtifactHash,
+        summary: "The first item retains the shared aggregate provenance.",
+        uncertaintyCategories: ["date-precision"],
+        sourceEventIds: sharedSourceEventIds
+      }, {
+        itemId: "timeline_shared_002",
+        artifactHash: sharedArtifactHash,
+        summary: "The second item retains the shared aggregate provenance.",
+        uncertaintyCategories: ["date-precision"],
+        sourceEventIds: sharedSourceEventIds
+      }],
+      omissions: []
+    });
+
+    const resolved = await registry.buildResolved("timeline-draft-summary.v1");
+    expect(resolved.ref.artifactHashes).toEqual([sharedArtifactHash]);
+    expect(resolved.ref.sourceEventIds).toEqual(sharedSourceEventIds);
+    expect(resolved.payload).toMatchObject({
+      items: [
+        { itemId: "timeline_shared_001", artifactHash: sharedArtifactHash, sourceEventIds: sharedSourceEventIds },
+        { itemId: "timeline_shared_002", artifactHash: sharedArtifactHash, sourceEventIds: sharedSourceEventIds }
+      ]
+    });
+
+    const duplicateItemRegistry = createContextPackRegistry();
+    expect(() => registerTimelineDraftSummaryContextPack(duplicateItemRegistry, {
+      scope: { kind: "investigation", id: "investigation_duplicate_timeline_001" },
+      generatedAt: sourcedGeneratedAt,
+      safeSummary: "Duplicate timeline item identity must remain invalid.",
+      sourceEventIds: sharedSourceEventIds,
+      items: [0, 1].map(() => ({
+        itemId: "timeline_duplicate_001",
+        artifactHash: sharedArtifactHash,
+        summary: "A duplicate item must not become ambiguous replay state.",
+        uncertaintyCategories: [],
+        sourceEventIds: sharedSourceEventIds
+      })),
+      omissions: []
+    })).toThrow(/item ids.*unique/i);
+
+    const mismatchedProvenanceRegistry = createContextPackRegistry();
+    expect(() => registerTimelineDraftSummaryContextPack(mismatchedProvenanceRegistry, {
+      scope: { kind: "investigation", id: "investigation_mismatched_timeline_001" },
+      generatedAt: sourcedGeneratedAt,
+      safeSummary: "Mismatched timeline provenance must remain invalid.",
+      sourceEventIds: ["evt_timeline_unrelated_001"],
+      items: [{
+        itemId: "timeline_mismatched_001",
+        artifactHash: sharedArtifactHash,
+        summary: "An item cannot escape its exact handoff provenance.",
+        uncertaintyCategories: [],
+        sourceEventIds: sharedSourceEventIds
+      }],
+      omissions: []
+    })).toThrow(/source events.*exactly match/i);
+  });
+
   it("rejects completed reject, contest, supersede, and relink claims in contradiction narratives", async () => {
     const store = memoryArtifactStore();
     const output = sourcedContradictionOutput();
@@ -523,7 +591,15 @@ describe("MVP specialist workflow descriptors", () => {
     { field: "rationale" as const, value: "Assertion rejection has occurred." },
     { field: "confidenceCaveat" as const, value: "Assertion contestation has occurred." },
     { field: "alternativeExplanations" as const, value: "Assertion supersession has occurred." },
-    { field: "requestedFollowupEvidence" as const, value: "Claim relinking has occurred." }
+    { field: "requestedFollowupEvidence" as const, value: "Claim relinking has occurred." },
+    { field: "rationale" as const, value: "Rejecting the assertion has occurred." },
+    { field: "confidenceCaveat" as const, value: "Contesting the assertion has occurred." },
+    { field: "alternativeExplanations" as const, value: "Superseding the assertion has occurred." },
+    { field: "requestedFollowupEvidence" as const, value: "Relinking the claim has occurred." },
+    { field: "rationale" as const, value: "Assertion rejection should be reviewed; the rejection has occurred." },
+    { field: "confidenceCaveat" as const, value: "Assertion contestation should be reviewed; the contestation has occurred." },
+    { field: "alternativeExplanations" as const, value: "Assertion supersession should be reviewed; the supersession has occurred." },
+    { field: "requestedFollowupEvidence" as const, value: "Claim relinking should be reviewed; the relinking has occurred." }
   ])("rejects completed authority nominalization in $field", async ({ field, value }) => {
     const store = memoryArtifactStore();
     const output = sourcedContradictionOutput();

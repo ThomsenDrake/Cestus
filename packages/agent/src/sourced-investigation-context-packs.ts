@@ -33,6 +33,10 @@ export interface TimelineDraftSummaryPayload {
   };
   readonly items: readonly TimelineDraftSummaryItem[];
   readonly omissions: readonly string[];
+  readonly emptyProof?: {
+    readonly artifactHash: ContentHash;
+    readonly sourceEventIds: readonly string[];
+  } | undefined;
 }
 
 export interface RegisterTimelineDraftSummaryContextPackInput {
@@ -42,6 +46,10 @@ export interface RegisterTimelineDraftSummaryContextPackInput {
   readonly sourceEventIds: readonly string[];
   readonly items: readonly TimelineDraftSummaryItem[];
   readonly omissions: readonly string[];
+  readonly emptyProof?: {
+    readonly artifactHash: ContentHash;
+    readonly sourceEventIds: readonly string[];
+  } | undefined;
 }
 
 export interface SourcedInvestigationContextPackRegistrarEvidence {
@@ -70,7 +78,19 @@ const itemSchema = z.object({
   summary: safeTextSchema("timeline summary"),
   uncertaintyCategories: z.array(safeTextSchema("timeline uncertainty category")).max(12),
   sourceEventIds: z.array(eventIdSchema).min(1).max(64)
-}).strict();
+}).strict().superRefine((value, ctx) => {
+  if (new Set(value.sourceEventIds).size !== value.sourceEventIds.length) {
+    ctx.addIssue({ code: "custom", path: ["sourceEventIds"], message: "timeline item source event ids must be unique" });
+  }
+});
+const emptyProofSchema = z.object({
+  artifactHash: hashSchema,
+  sourceEventIds: z.array(eventIdSchema).min(1).max(64)
+}).strict().superRefine((value, ctx) => {
+  if (new Set(value.sourceEventIds).size !== value.sourceEventIds.length) {
+    ctx.addIssue({ code: "custom", path: ["sourceEventIds"], message: "empty timeline proof event ids must be unique" });
+  }
+});
 const payloadSchema = z.object({
   schemaVersion: z.literal("timeline-draft-summary.context.v1"),
   contextPackId: z.literal("timeline-draft-summary.v1"),
@@ -82,11 +102,18 @@ const payloadSchema = z.object({
     publicationAllowed: z.literal(false)
   }).strict(),
   items: z.array(itemSchema).max(100),
-  omissions: z.array(safeTextSchema("timeline omission")).max(100)
+  omissions: z.array(safeTextSchema("timeline omission")).max(100),
+  emptyProof: emptyProofSchema.optional()
 }).strict().superRefine((value, ctx) => {
   const itemIds = value.items.map((item) => item.itemId);
   if (new Set(itemIds).size !== itemIds.length) {
     ctx.addIssue({ code: "custom", path: ["items"], message: "timeline item ids must be unique" });
+  }
+  if ((value.items.length === 0) !== (value.emptyProof !== undefined)) {
+    ctx.addIssue({ code: "custom", path: ["emptyProof"], message: "empty timeline proof must exist exactly for a zero-item timeline" });
+  }
+  if (value.emptyProof !== undefined && value.omissions.length === 0) {
+    ctx.addIssue({ code: "custom", path: ["omissions"], message: "empty timeline proof requires an explicit omission" });
   }
 });
 
@@ -112,8 +139,14 @@ const timelineDraftSummaryPayloadParser: ContextPackPayloadParser = (payload, re
       ref.version !== 1 ||
       ref.scope?.kind !== parsed.scope.kind ||
       ref.scope.id !== parsed.scope.id ||
-      !sameStringSet(ref.artifactHashes ?? [], parsed.items.map((item) => item.artifactHash)) ||
-      !sameStringSet(ref.sourceEventIds ?? [], parsed.items.flatMap((item) => item.sourceEventIds))
+      !sameStringSet(ref.artifactHashes ?? [], [
+        ...parsed.items.map((item) => item.artifactHash),
+        ...(parsed.emptyProof === undefined ? [] : [parsed.emptyProof.artifactHash])
+      ]) ||
+      !sameStringSet(ref.sourceEventIds ?? [], [
+        ...parsed.items.flatMap((item) => item.sourceEventIds),
+        ...(parsed.emptyProof?.sourceEventIds ?? [])
+      ])
     )
   ) {
     throw new Error("timeline-draft-summary ref does not match its exact payload bindings");
@@ -146,7 +179,8 @@ export function registerTimelineDraftSummaryContextPack(
       itemId: item.itemId,
       artifactHash: item.artifactHash,
       sourceEventIds: item.sourceEventIds
-    }))
+    })),
+    ...(input.emptyProof === undefined ? {} : { emptyProof: input.emptyProof })
   });
   registry.register({
     descriptor: timelineDraftSummaryContextPackDescriptor,
@@ -157,12 +191,16 @@ export function registerTimelineDraftSummaryContextPack(
       generatedAt: input.generatedAt,
       payload: timelinePayload(input),
       safeSummary: input.safeSummary,
-      provenanceRefs: [
+      provenanceRefs: uniqueSorted([
         ...input.sourceEventIds,
-        ...input.items.map((item) => item.artifactHash)
-      ],
+        ...input.items.map((item) => item.artifactHash),
+        ...(input.emptyProof === undefined ? [] : [input.emptyProof.artifactHash])
+      ]),
       sourceEventIds: input.sourceEventIds,
-      artifactHashes: input.items.map((item) => item.artifactHash),
+      artifactHashes: uniqueSorted([
+        ...input.items.map((item) => item.artifactHash),
+        ...(input.emptyProof === undefined ? [] : [input.emptyProof.artifactHash])
+      ]) as readonly ContentHash[],
       scope: input.scope,
       sizeBudgetBytes: timelineDraftSummaryContextPackDescriptor.maxBytes
     })
@@ -197,10 +235,12 @@ function normalizeRegistrationInput(
 ): RegisterTimelineDraftSummaryContextPackInput {
   const payload = payloadSchema.parse(timelinePayload(input));
   const sourceEventIds = uniqueSorted(input.sourceEventIds);
-  if (
-    sourceEventIds.length === 0 ||
-    !sameStringSet(sourceEventIds, payload.items.flatMap((item) => item.sourceEventIds))
-  ) {
+  const emptyTimeline = payload.items.length === 0;
+  if (emptyTimeline
+    ? payload.emptyProof === undefined || sourceEventIds.length === 0 ||
+      !sameStringSet(sourceEventIds, payload.emptyProof.sourceEventIds)
+    : sourceEventIds.length === 0 ||
+      !sameStringSet(sourceEventIds, payload.items.flatMap((item) => item.sourceEventIds))) {
     throw new Error("timeline-draft-summary source events must exactly match its item provenance");
   }
   return Object.freeze({
@@ -214,7 +254,13 @@ function normalizeRegistrationInput(
       uncertaintyCategories: Object.freeze([...item.uncertaintyCategories]),
       sourceEventIds: Object.freeze([...item.sourceEventIds])
     }))),
-    omissions: Object.freeze([...payload.omissions])
+    omissions: Object.freeze([...payload.omissions]),
+    ...(payload.emptyProof === undefined ? {} : {
+      emptyProof: Object.freeze({
+        artifactHash: payload.emptyProof.artifactHash as ContentHash,
+        sourceEventIds: Object.freeze([...payload.emptyProof.sourceEventIds])
+      })
+    })
   });
 }
 
@@ -234,7 +280,13 @@ function timelinePayload(input: RegisterTimelineDraftSummaryContextPackInput): T
       uncertaintyCategories: [...item.uncertaintyCategories],
       sourceEventIds: [...item.sourceEventIds]
     })),
-    omissions: [...input.omissions]
+    omissions: [...input.omissions],
+    ...(input.emptyProof === undefined ? {} : {
+      emptyProof: {
+        artifactHash: input.emptyProof.artifactHash,
+        sourceEventIds: [...input.emptyProof.sourceEventIds]
+      }
+    })
   };
 }
 
@@ -245,6 +297,6 @@ function uniqueSorted(values: readonly string[]): readonly string[] {
 function sameStringSet(left: readonly string[], right: readonly string[]): boolean {
   const leftSet = new Set(left);
   const rightSet = new Set(right);
-  return leftSet.size === left.length && rightSet.size === right.length &&
-    leftSet.size === rightSet.size && [...leftSet].every((value) => rightSet.has(value));
+  return leftSet.size === left.length && leftSet.size === rightSet.size &&
+    [...leftSet].every((value) => rightSet.has(value));
 }

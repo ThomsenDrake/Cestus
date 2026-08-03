@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   createContextPackRegistry,
   serializeContextPackPayload
@@ -92,6 +92,7 @@ afterEach(async () => {
   for (const supervision of mountedSupervisions.splice(0)) await supervision.stop();
   for (const handle of mountedHandles.splice(0)) handle.close();
   for (const dir of mountedTempDirs.splice(0)) rmSync(dir, { recursive: true, force: true });
+  vi.useRealTimers();
 });
 
 describe("untrusted specialist runner", () => {
@@ -104,7 +105,10 @@ describe("untrusted specialist runner", () => {
       readonly evidenceIds: readonly string[];
     };
     type SourcedSuccess = {
-      readonly recorded: { readonly manifest: { readonly schemaVersion: string } };
+      readonly recorded: { readonly manifest: {
+        readonly schemaVersion: string;
+        readonly outputArtifacts: readonly { readonly artifactHash: `sha256:${string}` }[];
+      } };
       readonly replay: { readonly state: string; readonly diagnostics: readonly unknown[] };
       readonly cockpit: { readonly selectedRun?: {
         readonly runId: string;
@@ -151,6 +155,19 @@ describe("untrusted specialist runner", () => {
         handoff: { outputArtifacts: [{ artifactKind: "timeline-artifact" }] }
       } }
     });
+    const timelineArtifact = await readMountedSourcedOutputArtifact(
+      fixture.handle,
+      timeline.recorded.manifest.outputArtifacts[0]!.artifactHash
+    );
+    expect(timelineArtifact).toMatchObject({
+      schemaVersion: "sourced-timeline-artifact.v1",
+      items: [],
+      omittedSources: [{
+        sourceRef: fixture.evidenceId,
+        reason: expect.stringMatching(/structured canonical source date/i)
+      }],
+      unresolvedPrompts: [expect.stringMatching(/source date|date range/i)]
+    });
 
     const contradictionRequest = Object.freeze({
       taskId: fixture.contradictionTaskId,
@@ -189,12 +206,128 @@ describe("untrusted specialist runner", () => {
         handoff: { outputArtifacts: [{ artifactKind: "contradiction-candidate-dossier" }] }
       } }
     });
+    const contradictionArtifact = await readMountedSourcedOutputArtifact(
+      fixture.handle,
+      contradiction.recorded.manifest.outputArtifacts[0]!.artifactHash
+    );
+    expect(contradictionArtifact).toMatchObject({
+      schemaVersion: "contradiction-candidate-dossier.v1",
+      candidates: []
+    });
     const events = await fixture.handle.ledger.readAll();
     expect(events.filter((event) => event.type === "agent.task.orchestration.completed")).toHaveLength(2);
     expect(events.filter((event) => event.type === "agent.specialist-handoff.recorded")).toHaveLength(2);
     expect(events.filter((event) => event.type === "agent.wake.supervisor.lease.claimed.v1")).toHaveLength(2);
+    expect(events.filter((event) => event.type === "agent.model-invocation.requested" ||
+      event.type === "agent.model-invocation.completed")).toHaveLength(0);
     expect(JSON.stringify([timeline.cockpit, contradiction.cockpit]))
       .not.toMatch(/mounted resident sourced evidence bytes|authorization:|provider body/i);
+  });
+
+  it("grounds production timeline items only in exact assertion and PRR ledger history", async () => {
+    const fixture = await mountedSourcedResidentFactoryFixture({ canonicalDatedFacts: true });
+    if (fixture.canonicalDatedFacts === undefined) throw new Error("canonical dated facts are unavailable");
+    const response = await handleAgentHttpRoute({
+      request: {
+        method: "POST",
+        url: `/api/agent/tasks/${fixture.timelineTaskId}/sourced-investigation`,
+        body: JSON.stringify({
+          runId: fixture.timelineRunId,
+          runType: "timeline-builder",
+          evidenceIds: [fixture.evidenceId]
+        })
+      },
+      handle: fixture.handle,
+      actor: { id: "actor_sourced_grounded_http", kind: "system", label: "Sourced Grounded HTTP" },
+      now: fixture.now,
+      supervision: fixture.supervision
+    });
+    expect(response?.status).toBe(200);
+    const result = JSON.parse(response!.body) as {
+      readonly recorded: { readonly manifest: {
+        readonly outputArtifacts: readonly { readonly artifactHash: `sha256:${string}` }[];
+      } };
+    };
+    const artifact = await readMountedSourcedOutputArtifact(
+      fixture.handle,
+      result.recorded.manifest.outputArtifacts[0]!.artifactHash
+    );
+    expect(artifact).toMatchObject({
+      schemaVersion: "sourced-timeline-artifact.v1",
+      items: expect.arrayContaining([expect.objectContaining({
+        itemId: `timeline_assertion_${fixture.canonicalDatedFacts.assertionId}`,
+        date: "2026-04-03",
+        precision: "day",
+        summary: `Ledger history includes human review event ${fixture.canonicalDatedFacts.assertionAcceptedEventId} for assertion ${fixture.canonicalDatedFacts.assertionId}.`,
+        evidence: expect.arrayContaining([expect.objectContaining({ evidenceId: fixture.evidenceId })]),
+        assertions: expect.arrayContaining([expect.objectContaining({
+          assertionId: fixture.canonicalDatedFacts.assertionId,
+          acceptedByEventId: fixture.canonicalDatedFacts.assertionAcceptedEventId
+        })]),
+        prrEvents: []
+      }), expect.objectContaining({
+        itemId: `timeline_prr_${fixture.canonicalDatedFacts.prrProductionEventId}`,
+        date: "2026-04-05",
+        precision: "day",
+        summary: `PRR event ${fixture.canonicalDatedFacts.prrProductionEventId} (prr.production.received) occurred.`,
+        evidence: expect.arrayContaining([expect.objectContaining({ evidenceId: fixture.evidenceId })]),
+        assertions: [],
+        prrEvents: expect.arrayContaining([expect.objectContaining({
+          eventId: fixture.canonicalDatedFacts.prrProductionEventId
+        })])
+      })]),
+      omittedSources: [],
+      unresolvedPrompts: []
+    });
+    expect(JSON.stringify(artifact)).not.toContain("mounted resident sourced evidence bytes");
+    const events = await fixture.handle.ledger.readAll();
+    expect(events.filter((event) => event.type === "agent.model-invocation.requested" ||
+      event.type === "agent.model-invocation.completed")).toHaveLength(0);
+  });
+
+  it("uses a fresh one-shot authority after the normal lease poll replaces the consumed wake", async () => {
+    vi.useFakeTimers();
+    const fixture = await mountedSourcedResidentFactoryFixture();
+    await fixture.supervision.snapshot();
+    const timeline = await handleAgentHttpRoute({
+      request: {
+        method: "POST",
+        url: `/api/agent/tasks/${fixture.timelineTaskId}/sourced-investigation`,
+        body: JSON.stringify({
+          runId: fixture.timelineRunId,
+          runType: "timeline-builder",
+          evidenceIds: [fixture.evidenceId]
+        })
+      },
+      handle: fixture.handle,
+      actor: { id: "actor_sourced_poll_http", kind: "system", label: "Sourced Poll HTTP" },
+      now: fixture.now,
+      supervision: fixture.supervision
+    });
+    expect(timeline?.status).toBe(200);
+
+    fixture.advancePastLeaseExpiry();
+    await vi.advanceTimersByTimeAsync(300_001);
+    expect((await fixture.handle.ledger.readAll()).filter((event) =>
+      event.type === "agent.wake.supervisor.lease.claimed.v1"
+    )).toHaveLength(2);
+
+    const contradiction = await handleAgentHttpRoute({
+      request: {
+        method: "POST",
+        url: `/api/agent/tasks/${fixture.contradictionTaskId}/sourced-investigation`,
+        body: JSON.stringify({
+          runId: fixture.contradictionRunId,
+          runType: "contradiction-finder",
+          evidenceIds: [fixture.evidenceId]
+        })
+      },
+      handle: fixture.handle,
+      actor: { id: "actor_sourced_poll_http", kind: "system", label: "Sourced Poll HTTP" },
+      now: fixture.now,
+      supervision: fixture.supervision
+    });
+    expect(contradiction?.status).toBe(200);
   });
 
   it("dispatches through mounted authority and replays the handoff into the selected-run cockpit", async () => {
@@ -527,7 +660,21 @@ function mountedSourcedArtifactSnapshot(handle: LocalRuntimeHandle): readonly st
   return Object.freeze(files.sort());
 }
 
-async function mountedSourcedResidentFactoryFixture(): Promise<{
+async function readMountedSourcedOutputArtifact(
+  handle: LocalRuntimeHandle,
+  artifactHash: `sha256:${string}`
+): Promise<Record<string, unknown>> {
+  const mounted = handle.mountedWorkspace;
+  if (mounted === undefined) throw new Error("mounted sourced output requires a workspace");
+  const bytes = await new FileBlobStore(
+    join(mounted.paths.derivativeRoot, "specialist-handoff-material")
+  ).get(artifactHash);
+  return JSON.parse(bytes.toString("utf8")) as Record<string, unknown>;
+}
+
+async function mountedSourcedResidentFactoryFixture(options: {
+  readonly canonicalDatedFacts?: boolean;
+} = {}): Promise<{
   readonly handle: LocalRuntimeHandle;
   readonly supervision: ResidentSupervisionRuntime;
   readonly now: () => string;
@@ -537,6 +684,11 @@ async function mountedSourcedResidentFactoryFixture(): Promise<{
   readonly timelineRunId: string;
   readonly contradictionTaskId: string;
   readonly contradictionRunId: string;
+  readonly canonicalDatedFacts?: {
+    readonly assertionId: string;
+    readonly assertionAcceptedEventId: string;
+    readonly prrProductionEventId: string;
+  };
 }> {
   let authoritativeNow = sourcedNow;
   const now = () => authoritativeNow;
@@ -610,6 +762,107 @@ async function mountedSourcedResidentFactoryFixture(): Promise<{
       occurrenceIds: ["occ_sourced_factory"]
     }
   } satisfies AppendableKnowledgeEvent<"ingestion.evidence.linked">);
+  let canonicalDatedFacts: {
+    readonly assertionId: string;
+    readonly assertionAcceptedEventId: string;
+    readonly prrProductionEventId: string;
+  } | undefined;
+  const additionalTaskSourceEventIds: string[] = [];
+  if (options.canonicalDatedFacts === true) {
+    const assertionId = "as_sourced_factory_001";
+    const proposed = await handle.ledger.append({
+      type: "assertion.proposed",
+      version: 1,
+      streamId: `assertion_${assertionId}`,
+      context: {
+        actor,
+        occurredAt: "2026-04-02T09:00:00.000Z",
+        causationId: ingested.id,
+        correlationId: "corr_sourced_factory_assertion",
+        coreVersion: "0.1.0",
+        packVersions: { core: "0.1.0" }
+      },
+      payload: {
+        assertionId,
+        evidenceId,
+        subjectRef: "subject_sourced_factory",
+        predicate: "has-reviewed-record",
+        object: true,
+        confidence: 1,
+        reviewState: "proposed"
+      }
+    } satisfies AppendableKnowledgeEvent<"assertion.proposed">);
+    const reviewer = Object.freeze({
+      id: "actor_sourced_factory_reviewer",
+      kind: "human" as const,
+      label: "Sourced Factory Reviewer"
+    });
+    const accepted = await handle.ledger.append({
+      type: "assertion.accepted",
+      version: 1,
+      streamId: `assertion_${assertionId}`,
+      context: {
+        actor: reviewer,
+        occurredAt: "2026-04-03T10:15:00.000Z",
+        causationId: proposed.id,
+        correlationId: "corr_sourced_factory_assertion",
+        coreVersion: "0.1.0",
+        packVersions: { core: "0.1.0" }
+      },
+      payload: {
+        assertionId,
+        acceptedBy: reviewer.id,
+        rationale: "The exact local source was reviewed by a human."
+      }
+    } satisfies AppendableKnowledgeEvent<"assertion.accepted">);
+    const prrRequestId = "prr_sourced_factory_001";
+    const prrCreated = await handle.ledger.append({
+      type: "prr.request.created",
+      version: 1,
+      streamId: prrRequestId,
+      context: {
+        actor,
+        occurredAt: "2026-04-04T08:00:00.000Z",
+        correlationId: "corr_sourced_factory_prr",
+        coreVersion: "0.1.0",
+        packVersions: { core: "0.1.0", prr: "0.1.0" }
+      },
+      payload: {
+        prrRequestId,
+        jurisdictionPack: { name: "florida-public-records", version: "0.1.0" },
+        agency: { name: "Sourced Factory Records Office" },
+        requester: { name: "Sourced Factory Investigator" },
+        requestText: "Provide the selected source record.",
+        status: "draft"
+      }
+    } satisfies AppendableKnowledgeEvent<"prr.request.created">);
+    const prrProduction = await handle.ledger.append({
+      type: "prr.production.received",
+      version: 1,
+      streamId: prrRequestId,
+      context: {
+        actor,
+        occurredAt: "2026-04-05T11:30:00.000Z",
+        causationId: prrCreated.id,
+        correlationId: "corr_sourced_factory_prr",
+        coreVersion: "0.1.0",
+        packVersions: { core: "0.1.0", prr: "0.1.0" }
+      },
+      payload: {
+        prrRequestId,
+        productionId: "prod_sourced_factory_001",
+        label: "Selected source production",
+        receivedAt: "2026-04-05T11:30:00.000Z",
+        evidenceIds: [evidenceId]
+      }
+    } satisfies AppendableKnowledgeEvent<"prr.production.received">);
+    additionalTaskSourceEventIds.push(proposed.id, accepted.id, prrCreated.id, prrProduction.id);
+    canonicalDatedFacts = Object.freeze({
+      assertionId,
+      assertionAcceptedEventId: accepted.id,
+      prrProductionEventId: prrProduction.id
+    });
+  }
   const timelineTaskId = "task_sourced_factory_timeline";
   const contradictionTaskId = "task_sourced_factory_contradiction";
   for (const [taskId, title] of [
@@ -621,7 +874,7 @@ async function mountedSourcedResidentFactoryFixture(): Promise<{
       title,
       requestedBy: actor.id,
       priority: "normal",
-      sourceEventIds: [ingested.id, linked.id],
+      sourceEventIds: [ingested.id, linked.id, ...additionalTaskSourceEventIds],
       inputArtifactHashes: [source.contentHash]
     });
     if (!created.ok) throw new Error("sourced resident factory fixture task was not created");
@@ -654,7 +907,8 @@ async function mountedSourcedResidentFactoryFixture(): Promise<{
     timelineTaskId,
     timelineRunId: "run_sourced_factory_timeline",
     contradictionTaskId,
-    contradictionRunId: "run_sourced_factory_contradiction"
+    contradictionRunId: "run_sourced_factory_contradiction",
+    ...(canonicalDatedFacts === undefined ? {} : { canonicalDatedFacts })
   });
 }
 
