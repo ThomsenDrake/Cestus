@@ -1,7 +1,13 @@
 import {
   parseUntrustedSpecialistHandoffPreparation,
+  hashUntrustedSpecialistHandoffPreparation,
   type UntrustedSpecialistHandoffPreparationV1
 } from "../../agent/src/specialist-handoff-preparation.js";
+import { hashSpecialistHandoffMaterial } from "../../agent/src/specialist-handoff-manifest.js";
+import {
+  executeSourcedInvestigationWorkflow,
+  type ExecuteSourcedInvestigationWorkflowInput
+} from "../../agent/src/sourced-investigation-workflows.js";
 import type {
   TaskOrchestratorRunnerDispatchInput,
   TaskOrchestratorRunnerDispatchResult
@@ -65,6 +71,57 @@ export function createUntrustedSpecialistRunner(input: {
           schemaVersion: "agent.task-orchestrator.runner-preparation.v1" as const,
           preparation
         })
+      });
+    }
+  });
+}
+
+export interface SourcedInvestigationRunnerResolution extends Omit<
+  ExecuteSourcedInvestigationWorkflowInput,
+  "runType" | "runId" | "taskId"
+> {}
+
+/**
+ * Composes the timeline and contradiction local/fake workflow into the
+ * orchestrator's non-authoritative preparation boundary. The returned runner
+ * owns no handoff recording authority; mounted factory code must still replay
+ * and record the canonical preparation.
+ */
+export function createSourcedInvestigationSpecialistRunner(input: {
+  readonly resolve: (
+    dispatch: TaskOrchestratorRunnerDispatchInput
+  ) => Promise<SourcedInvestigationRunnerResolution> | SourcedInvestigationRunnerResolution;
+}): UntrustedSpecialistRunner {
+  const constructor = exactOwnDataObject(input, ["resolve"]);
+  if (typeof constructor.resolve !== "function") throw preparationError();
+  const resolve = constructor.resolve as (
+    dispatch: TaskOrchestratorRunnerDispatchInput
+  ) => Promise<SourcedInvestigationRunnerResolution> | SourcedInvestigationRunnerResolution;
+
+  return createUntrustedSpecialistRunner({
+    async delegate(dispatch) {
+      if (dispatch.runType !== "timeline-builder" && dispatch.runType !== "contradiction-finder") {
+        throw preparationError();
+      }
+      const resolved = await resolve(dispatch);
+      const result = await executeSourcedInvestigationWorkflow({
+        ...resolved,
+        runType: dispatch.runType,
+        runId: dispatch.approvedRunId,
+        taskId: dispatch.taskId
+      });
+      const unsigned = Object.freeze({
+        schemaVersion: "agent-specialist-handoff-preparation.v1" as const,
+        taskId: dispatch.taskId,
+        attemptId: dispatch.attemptId,
+        approvedRunId: dispatch.approvedRunId,
+        runType: dispatch.runType,
+        handoffMaterial: result.handoffMaterial,
+        handoffMaterialHash: hashSpecialistHandoffMaterial(result.handoffMaterial)
+      });
+      return Object.freeze({
+        ...unsigned,
+        preparationHash: hashUntrustedSpecialistHandoffPreparation(unsigned)
       });
     }
   });

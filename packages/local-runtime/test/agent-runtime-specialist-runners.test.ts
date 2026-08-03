@@ -1,4 +1,7 @@
+import { Buffer } from "node:buffer";
+import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
+import { buildResolvedContextPack } from "../../agent/src/context-packs.js";
 import {
   buildSpecialistHandoffMaterial,
   hashSpecialistHandoffMaterial
@@ -8,6 +11,7 @@ import {
   type UntrustedSpecialistHandoffPreparationV1
 } from "../../agent/src/specialist-handoff-preparation.js";
 import {
+  createSourcedInvestigationSpecialistRunner,
   createUntrustedSpecialistRunner,
   type UntrustedSpecialistRunner
 } from "../src/agent-runtime-specialist-runners.js";
@@ -107,6 +111,76 @@ describe("untrusted specialist runner", () => {
     expect(received).toEqual(dispatch);
     expect(Object.isFrozen(received)).toBe(true);
   });
+
+  it("composes deterministic local timeline execution into a canonical nonterminal preparation", async () => {
+    const store = sourcedStore();
+    let invocations = 0;
+    const runner = createSourcedInvestigationSpecialistRunner({
+      resolve: () => ({
+        contextPacks: sourcedContextPacks(),
+        ...sourcedPromptArtifact(),
+        artifactStore: store,
+        execution: {
+          mode: "fake" as const,
+          invoke: async () => {
+            invocations += 1;
+            return sourcedTimelineOutput();
+          }
+        }
+      })
+    });
+
+    const result = await runner.dispatch({
+      taskId: "task_timeline_runtime",
+      runType: "timeline-builder",
+      attemptId: "attempt_timeline_runtime",
+      approvedRunId: "run_timeline_runtime"
+    });
+
+    expect(invocations).toBe(1);
+    expect(store.putCount()).toBe(4);
+    expect(result.preparation?.preparation).toMatchObject({
+      taskId: "task_timeline_runtime",
+      attemptId: "attempt_timeline_runtime",
+      approvedRunId: "run_timeline_runtime",
+      runType: "timeline-builder",
+      handoffMaterial: {
+        status: "ready-for-review",
+        outputArtifacts: [{
+          artifactKind: "timeline-artifact",
+          schemaId: "timeline-builder-handoff.v1"
+        }]
+      }
+    });
+  });
+
+  it("keeps the sourced runner fail-closed for remote provider transfer", async () => {
+    const store = sourcedStore();
+    let invocations = 0;
+    const runner = createSourcedInvestigationSpecialistRunner({
+      resolve: () => ({
+        contextPacks: sourcedContextPacks(),
+        ...sourcedPromptArtifact(),
+        artifactStore: store,
+        execution: {
+          mode: "remote" as const,
+          invoke: async () => {
+            invocations += 1;
+            return sourcedTimelineOutput();
+          }
+        }
+      })
+    });
+
+    await expect(runner.dispatch({
+      taskId: "task_timeline_remote",
+      runType: "timeline-builder",
+      attemptId: "attempt_timeline_remote",
+      approvedRunId: "run_timeline_remote"
+    })).rejects.toThrow(/provider byte-transfer approval|remote.*blocked/i);
+    expect(invocations).toBe(0);
+    expect(store.putCount()).toBe(0);
+  });
 });
 
 function runnerFor(delegate: (input: {
@@ -160,4 +234,86 @@ function preparationFor(input: {
 
 function hash(character: string): `sha256:${string}` {
   return `sha256:${character.repeat(64)}`;
+}
+
+function sourcedContextPacks() {
+  const shared = {
+    version: 1,
+    generatedAt: "2026-08-03T12:00:00.000Z",
+    safeSummary: "Local sourced runner context.",
+    provenanceRefs: ["evt_timeline_source_001"],
+    sourceEventIds: ["evt_timeline_source_001", "evt_assertion_proposed_001", "evt_assertion_accepted_001"]
+  } as const;
+  return [
+    buildResolvedContextPack({
+      ...shared,
+      contextPackId: "evidence-summary.v1",
+      payload: { items: [{
+        evidenceId: "ev_timeline_source_001",
+        ingestionEventId: "evt_timeline_source_001",
+        contentHash: hash("a")
+      }] }
+    }),
+    buildResolvedContextPack({
+      ...shared,
+      contextPackId: "accepted-graph-projection.v1",
+      payload: { items: { assertions: [{
+        assertionId: "assertion_timeline_source_001",
+        evidenceId: "ev_timeline_source_001",
+        evidenceContentHash: hash("a"),
+        proposedByEventId: "evt_assertion_proposed_001",
+        acceptedByEventId: "evt_assertion_accepted_001",
+        sourceEventIds: ["evt_assertion_proposed_001", "evt_assertion_accepted_001"],
+        rowHash: hash("b")
+      }], entities: [], relationships: [] } }
+    })
+  ];
+}
+
+function sourcedTimelineOutput() {
+  return {
+    timelineItems: [{
+      itemId: "timeline_runtime_001",
+      date: "2026-03-01",
+      precision: "day" as const,
+      evidenceRefs: ["ev_timeline_source_001"],
+      assertionRefs: [],
+      prrEventRefs: [],
+      contentHashRefs: [hash("a")],
+      summary: "One exact local source anchors this advisory date.",
+      uncertaintyCategories: [],
+      uncertaintyNotes: [],
+      uncertaintySourceRefs: []
+    }],
+    omissionReasons: [],
+    omittedSources: [],
+    unresolvedPrompts: []
+  };
+}
+
+function sourcedStore() {
+  const values = new Map<string, Buffer>();
+  let puts = 0;
+  return Object.freeze({
+    async put(content: Buffer) {
+      puts += 1;
+      const contentHash = `sha256:${createHash("sha256").update(content).digest("hex")}` as `sha256:${string}`;
+      values.set(contentHash, Buffer.from(content));
+      return Object.freeze({ contentHash, sizeBytes: content.byteLength });
+    },
+    async get(contentHash: `sha256:${string}`) {
+      const value = values.get(contentHash);
+      if (value === undefined) throw new Error("artifact missing");
+      return Buffer.from(value);
+    },
+    putCount: () => puts
+  });
+}
+
+function sourcedPromptArtifact() {
+  const promptArtifactBytes = Buffer.from("canonical local sourced runner prompt", "utf8");
+  return Object.freeze({
+    promptArtifactBytes,
+    promptArtifactHash: `sha256:${createHash("sha256").update(promptArtifactBytes).digest("hex")}` as `sha256:${string}`
+  });
 }

@@ -162,17 +162,22 @@ const canonicalProductionPromptTemplateMaterial: CanonicalProductionPromptTempla
           evidenceRefs: ["ev_context_001"],
           assertionRefs: [],
           prrEventRefs: [],
+          contentHashRefs: ["sha256:1111111111111111111111111111111111111111111111111111111111111111"],
           summary: "Sourced timeline item is ready for review.",
-          uncertaintyCategories: []
+          uncertaintyCategories: [],
+          uncertaintyNotes: [],
+          uncertaintySourceRefs: []
         }],
         omissionReasons: [],
+        omittedSources: [],
         unresolvedPrompts: []
       },
       guidance: [
-        "timelineItems object shape requires itemId, date or dateRange, precision, evidenceRefs, assertionRefs, prrEventRefs, summary, and uncertaintyCategories.",
+        "timelineItems object shape requires itemId, date or dateRange, precision, evidenceRefs, assertionRefs, prrEventRefs, contentHashRefs, summary, uncertaintyCategories, uncertaintyNotes, and uncertaintySourceRefs.",
         "Identifier patterns: itemId timeline_...; refs must be canonical identifiers or sha256 hashes.",
         "Precision enum choices: year, month, day, range, unknown. Uncertainty enum choices: date-uncertain, source-conflict, incomplete-source, inference-required.",
-        "Use [] for timelineItems, omissionReasons, or unresolvedPrompts when verified context does not support grounded entries."
+        "Every item must cite at least one exact source and all contentHashRefs must come from those verified sources. Uncertainty must cite the exact item sources it qualifies.",
+        "omittedSources entries require sourceRef and reason. Use [] for timelineItems, omissionReasons, omittedSources, or unresolvedPrompts when verified context does not support grounded entries."
       ]
     }),
     "contradiction-finder": outputInstruction({
@@ -183,19 +188,24 @@ const canonicalProductionPromptTemplateMaterial: CanonicalProductionPromptTempla
           evidenceIds: ["ev_context_001"],
           evidenceContentHashes: ["sha256:1111111111111111111111111111111111111111111111111111111111111111"],
           assertionIds: [],
+          prrEventRefs: [],
           timelineItemIds: [],
           category: "direct-conflict",
           confidence: 0.5,
+          confidenceCaveat: "Confidence is limited to the exact compared sources.",
           rationale: "Sources require human contradiction review.",
-          alternativeExplanations: [],
+          uncertaintyRefs: ["ev_context_001"],
+          alternativeExplanations: ["The sources may use different scope or date precision."],
+          requestedFollowupEvidence: ["Request a source that resolves the differing statements."],
           requiredReviewerAction: "review"
         }]
       },
       guidance: [
-        "candidates object shape requires candidateId, comparedSourceRefs, evidenceIds, evidenceContentHashes, assertionIds, timelineItemIds, category, confidence, rationale, alternativeExplanations, and requiredReviewerAction.",
+        "candidates object shape requires candidateId, comparedSourceRefs, evidenceIds, evidenceContentHashes, assertionIds, prrEventRefs, timelineItemIds, category, confidence, confidenceCaveat, rationale, uncertaintyRefs, alternativeExplanations, requestedFollowupEvidence, and requiredReviewerAction.",
         "Identifier patterns: candidateId contradiction_..., evidenceIds ev_..., timelineItemIds timeline_..., hashes sha256:<64 lowercase hex>.",
         "Category enum choices: direct-conflict, timeline-conflict, attribution-conflict, quantitative-conflict, scope-conflict.",
-        "requiredReviewerAction enum choices: review, request-evidence, request-claim-link-review. candidates may be [] when no grounded conflict is present."
+        "Compare at least two distinct exact verified refs. Preserve exact evidence hashes, assertion refs, PRR event refs, uncertainty refs, confidence caveats, alternative explanations, and requested follow-up evidence.",
+        "requiredReviewerAction enum choices: review, request-evidence, request-claim-link-review. Candidates are advisory only and may be [] when no grounded conflict is present."
       ]
     }),
     "investigation-planner": outputInstruction({

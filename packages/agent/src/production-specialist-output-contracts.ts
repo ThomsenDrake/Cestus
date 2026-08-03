@@ -153,20 +153,35 @@ const timelineBuilderSourcedTimelineOutputSchema = z.object({
   timelineItems: z.array(z.object({
     itemId: id("timeline_"), date: normalizedDate.optional(), dateRange: z.object({ start: normalizedDate, end: normalizedDate }).strict().optional(),
     precision: z.enum(["year", "month", "day", "range", "unknown"]), evidenceRefs: z.array(ref).max(24), assertionRefs: z.array(ref).max(24), prrEventRefs: z.array(ref).max(24),
-    summary: shortSafeText("timeline item summary"), uncertaintyCategories: z.array(z.enum(["date-uncertain", "source-conflict", "incomplete-source", "inference-required"])).max(8)
+    contentHashRefs: z.array(hash).min(1).max(24), summary: shortSafeText("timeline item summary"),
+    uncertaintyCategories: z.array(z.enum(["date-uncertain", "source-conflict", "incomplete-source", "inference-required"])).max(8),
+    uncertaintyNotes: z.array(shortSafeText("timeline uncertainty note")).max(12),
+    uncertaintySourceRefs: z.array(ref).max(24)
   }).strict().superRefine((value, ctx) => {
     if (value.date === undefined && value.dateRange === undefined) ctx.addIssue({ code: "custom", message: "timeline item requires a date or date range" });
     if (value.evidenceRefs.length + value.assertionRefs.length + value.prrEventRefs.length === 0) ctx.addIssue({ code: "custom", message: "timeline item requires at least one source ref" });
+    if (value.uncertaintyCategories.length > 0 && (value.uncertaintyNotes.length === 0 || value.uncertaintySourceRefs.length === 0)) {
+      ctx.addIssue({ code: "custom", message: "timeline uncertainty requires notes and exact source refs" });
+    }
   })).max(100),
-  omissionReasons: z.array(shortSafeText("timeline omission reason")).max(24), unresolvedPrompts: z.array(shortSafeText("timeline unresolved prompt")).max(24)
+  omissionReasons: z.array(shortSafeText("timeline omission reason")).max(24),
+  omittedSources: z.array(z.object({ sourceRef: ref, reason: shortSafeText("timeline omitted-source reason") }).strict()).max(24),
+  unresolvedPrompts: z.array(shortSafeText("timeline unresolved prompt")).max(24)
 }).strict();
 
 const contradictionFinderCandidatesOutputSchema = z.object({
   candidates: z.array(z.object({
     candidateId: id("contradiction_"), comparedSourceRefs: z.array(ref).min(2).max(24), evidenceIds: z.array(id("ev_")).max(24), evidenceContentHashes: z.array(hash).max(24), assertionIds: z.array(ref).max(24), timelineItemIds: z.array(id("timeline_")).max(24),
-    category: z.enum(["direct-conflict", "timeline-conflict", "attribution-conflict", "quantitative-conflict", "scope-conflict"]), confidence: z.number().min(0).max(1), rationale: shortSafeText("contradiction rationale"),
-    alternativeExplanations: z.array(shortSafeText("alternative explanation")).max(12), requiredReviewerAction: z.enum(["review", "request-evidence", "request-claim-link-review"])
-  }).strict()).max(48)
+    prrEventRefs: z.array(ref).max(24), category: z.enum(["direct-conflict", "timeline-conflict", "attribution-conflict", "quantitative-conflict", "scope-conflict"]),
+    confidence: z.number().min(0).max(1), confidenceCaveat: shortSafeText("contradiction confidence caveat"), rationale: shortSafeText("contradiction rationale"),
+    uncertaintyRefs: z.array(ref).max(24), alternativeExplanations: z.array(shortSafeText("alternative explanation")).min(1).max(12),
+    requestedFollowupEvidence: z.array(shortSafeText("requested follow-up evidence")).min(1).max(24),
+    requiredReviewerAction: z.enum(["review", "request-evidence", "request-claim-link-review"])
+  }).strict().superRefine((value, ctx) => {
+    if (new Set(value.comparedSourceRefs).size < 2) {
+      ctx.addIssue({ code: "custom", message: "contradiction candidate requires two distinct exact source refs" });
+    }
+  })).max(48)
 }).strict();
 
 const investigationPlannerNextStepsOutputSchema = z.object({
