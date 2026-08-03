@@ -70,12 +70,54 @@ const assertionOrClaimSubject = /\b(?:assertions?|claims?)\b/;
 const assertionOrClaimEffect = /\b(?:accept(?:ed|ing|ance)?|reject(?:ed|ing|ion)?|contest(?:ed|ing|ation)?|supersed(?:e|ed|ing)|supersession|relink(?:ed|ing)?|final(?:ized)?|effective)\b/;
 const assertionOrClaimNominalEffect = /\b(?:rejection|contestation|supersession|relinking)\b/;
 const authorityCompletionSemantics = /\b(?:(?:has|have|had)\s+(?:occurred|taken place|been completed)|(?:is|are|was|were)\s+(?:(?:already|now)\s+)?(?:documented|recorded|complete|completed|final|finalized|effective)|became\s+(?:final|effective)|occurred|completed|took place|underwent)\b/;
+const authorityTailConnector = /\b(?:even though|because|since|although|though|while|whereas|given that|despite(?: the fact that)?|but|yet|however|and)\b/;
+const authorityConfirmationSource = /\b(?:records?|files?|dockets?|(?:signed\s+)?orders?|audit logs?|ledgers?|sources?|evidence|histories?|entries?)\b/;
+const authorityConfirmationVerb = /\b(?:confirm(?:s|ed)?|establish(?:es|ed)?|show(?:s|ed)?|say(?:s|said)?|record(?:s|ed)?|indicate(?:s|d)?|prove(?:s|d)?|document(?:s|ed)?|demonstrate(?:s|d)?)\b/;
+const authorityOutcomeReference = /\b(?:(?:that|the|this)\s+)?(?:outcome|result|status|action|change|decision|step)\b|\b(?:it|this|that)\s+(?:already\s+)?(?:happened|occurred|completed|took place|became\s+(?:final|effective))\b/;
 
-const countMatches = (value: string, pattern: RegExp) =>
-  [...value.matchAll(new RegExp(pattern.source, `${pattern.flags.replace("g", "")}g`))].length;
+const hasConfirmedAuthorityOutcome = (value: string): boolean => {
+  const sourceMatch = authorityConfirmationSource.exec(value);
+  if (sourceMatch === null) return false;
+  const afterSource = value.slice(sourceMatch.index + sourceMatch[0].length);
+  const verbMatch = authorityConfirmationVerb.exec(afterSource);
+  if (verbMatch === null) return false;
+  const confirmation = afterSource.slice(verbMatch.index + verbMatch[0].length);
+  return authorityOutcomeReference.test(confirmation) ||
+    (!/^\s*(?:whether|if)\b/.test(confirmation) &&
+      assertionOrClaimSubject.test(confirmation) && assertionOrClaimEffect.test(confirmation));
+};
+
+const hasCompletedAuthorityTailStatement = (value: string): boolean => {
+  const effect = assertionOrClaimEffect.source;
+  const subjectCompletion = new RegExp(
+    `^\\s*(?:(?:the|a|an)\\s+)?(?:assertions?|claims?)\\s+` +
+    `(?:is|are|was|were|has been|have been|had been|became)\\s+` +
+    `(?:(?:already|now)\\s+)?(?:${effect})\\b`
+  );
+  const anaphoricCompletion = new RegExp(
+    `^\\s*(?:it|this|that|they|these|those|` +
+    `(?:(?:the|this|that)\\s+)?(?:outcome|result|status|action|change|decision|step))\\s+` +
+    `(?:(?:is|are|was|were|has been|have been|had been|became)\\s+` +
+    `(?:(?:already|now)\\s+)?(?:${effect}|settled|complete|completed)\\b|` +
+    `(?:already\\s+)?(?:happened|occurred|completed|took place)\\b)`
+  );
+  const nominalCompletion = new RegExp(
+    `^\\s*(?:(?:the|a|an)\\s+)?(?:${assertionOrClaimNominalEffect.source})\\s+` +
+    `(?:${authorityCompletionSemantics.source})`
+  );
+  return subjectCompletion.test(value) || anaphoricCompletion.test(value) || nominalCompletion.test(value);
+};
+
+const hasCompletedOrConfirmedAuthorityTail = (value: string): boolean => {
+  const connectors = value.matchAll(new RegExp(authorityTailConnector.source, "g"));
+  for (const connector of connectors) {
+    const tail = value.slice((connector.index ?? 0) + connector[0].length);
+    if (hasConfirmedAuthorityOutcome(tail) || hasCompletedAuthorityTailStatement(tail)) return true;
+  }
+  return false;
+};
 
 const isPureAdvisoryAssertionOrClaimClause = (value: string): boolean => {
-  if (countMatches(value, assertionOrClaimEffect) !== 1) return false;
   if (value.trimEnd().endsWith("?")) return true;
   const effectIndex = value.search(assertionOrClaimEffect);
   const modalIndex = value.search(/\b(?:should|must|may|might|can|could|would|will)\b/);
@@ -94,6 +136,7 @@ const hasAssertionOrClaimAuthorityEffect = (value: string): boolean => {
     const hasSubject = assertionOrClaimSubject.test(clause);
     const hasEffect = assertionOrClaimEffect.test(clause);
     if (hasSubject && hasEffect) {
+      if (hasCompletedOrConfirmedAuthorityTail(clause)) return true;
       if (!isPureAdvisoryAssertionOrClaimClause(clause)) return true;
       carriesAssertionOrClaim = true;
       continue;
@@ -106,7 +149,8 @@ const hasAssertionOrClaimAuthorityEffect = (value: string): boolean => {
     }
     if (carriesAssertionOrClaim && (
       (hasEffect && authorityCompletionSemantics.test(clause)) ||
-      /\b(?:records?|evidence|sources?|history)\s+(?:confirm|confirms|show|shows|establish|establishes|indicate|indicates|prove|proves)\b.*\b(?:it|this|that)\s+(?:happened|occurred|was|is|became|took place)\b/.test(clause)
+      hasConfirmedAuthorityOutcome(clause) ||
+      hasCompletedAuthorityTailStatement(clause)
     )) {
       return true;
     }

@@ -771,6 +771,124 @@ describe("MVP specialist workflow descriptors", () => {
   });
 
   it.each([
+    {
+      label: "mixed rejection inquiry confirmed by a record",
+      outcome: "reject" as const,
+      value: "A reviewer should determine whether the assertion was rejected because the record confirms that outcome."
+    },
+    {
+      label: "mixed contestation advice followed by an established result",
+      outcome: "reject" as const,
+      value: "A reviewer may ask whether the assertion was contested, but the file establishes that result."
+    },
+    {
+      label: "mixed supersession inquiry contradicted by a completed docket statement",
+      outcome: "reject" as const,
+      value: "A reviewer should decide whether the claim was superseded even though the docket says this already happened."
+    },
+    {
+      label: "mixed relinking advice with an anaphoric completion tail",
+      outcome: "reject" as const,
+      value: "A reviewer should consider whether to relink the claim since the audit log shows the change already occurred."
+    },
+    {
+      label: "mixed finality question with a confirmed status",
+      outcome: "reject" as const,
+      value: "Could the assertion be final, although the signed order confirms that status?"
+    },
+    {
+      label: "mixed effectiveness inquiry with a settled outcome",
+      outcome: "reject" as const,
+      value: "A reviewer should assess whether the assertion is effective while the docket records the outcome as settled."
+    },
+    {
+      label: "pure rejection or contestation question",
+      outcome: "allow" as const,
+      value: "Should the assertion be rejected or contested?"
+    },
+    {
+      label: "pure supersession or relinking question",
+      outcome: "allow" as const,
+      value: "Could the claim be superseded or relinked?"
+    },
+    {
+      label: "pure finality or effectiveness question",
+      outcome: "allow" as const,
+      value: "Is the assertion final or effective?"
+    },
+    {
+      label: "pure reviewer advice with three candidate assertion actions",
+      outcome: "allow" as const,
+      value: "Should a reviewer decide whether to reject, contest, or supersede the assertion?"
+    },
+    {
+      label: "pure reviewer advice spanning relinking and finality",
+      outcome: "allow" as const,
+      value: "May a human reviewer ask whether to relink the claim or mark the assertion final?"
+    },
+    {
+      label: "pure reviewer inquiry spanning relinking and effectiveness",
+      outcome: "allow" as const,
+      value: "Could a reviewer determine whether the claim should be relinked and whether the assertion is effective?"
+    },
+    {
+      label: "plain completed rejection",
+      outcome: "reject" as const,
+      value: "The assertion was rejected after review."
+    },
+    {
+      label: "plain nominal contestation",
+      outcome: "reject" as const,
+      value: "Assertion contestation has occurred."
+    },
+    {
+      label: "plain completed supersession",
+      outcome: "reject" as const,
+      value: "The assertion was superseded by the later entry."
+    },
+    {
+      label: "plain completed relinking",
+      outcome: "reject" as const,
+      value: "Relinking of the claim is complete."
+    },
+    {
+      label: "plain assertion finality",
+      outcome: "reject" as const,
+      value: "The assertion is final."
+    },
+    {
+      label: "plain assertion effectiveness",
+      outcome: "reject" as const,
+      value: "The assertion became effective."
+    }
+  ])("classifies $label without granting authority", async ({ outcome, value }) => {
+    const store = memoryArtifactStore();
+    const output = sourcedContradictionOutput();
+    output.candidates[0] = { ...output.candidates[0]!, rationale: value };
+    const execution = executeSourcedInvestigationWorkflow({
+      runType: "contradiction-finder",
+      runId: "run_contradiction_authority_matrix_001",
+      taskId: "task_contradiction_authority_matrix_001",
+      ...await sourcedWorkflowAuthority({
+        runType: "contradiction-finder",
+        taskId: "task_contradiction_authority_matrix_001",
+        promptRunId: "run_contradiction_authority_matrix_001"
+      }),
+      artifactStore: store,
+      execution: { mode: "fake", invoke: async () => output }
+    });
+
+    if (outcome === "allow") {
+      await expect(execution).resolves.toMatchObject({
+        artifact: { candidates: [{ requiredReviewerAction: "request-evidence" }] }
+      });
+      return;
+    }
+    await expect(execution).rejects.toThrow(/authority|ontology|reject|contest|supersed|relink|final|effective/i);
+    expect(store.putCount()).toBe(0);
+  });
+
+  it.each([
     { label: "invalid calendar day", date: "2026-99-99", precision: "day" as const },
     { label: "non-leap February day", date: "2026-02-29", precision: "day" as const },
     { label: "non-leap century day", date: "1900-02-29", precision: "day" as const },
