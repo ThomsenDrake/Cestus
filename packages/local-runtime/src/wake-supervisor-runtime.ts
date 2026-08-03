@@ -38,6 +38,7 @@ import {
 } from "./mounted-provider-authority.js";
 import { createPortableWorkspaceLifecyclePorts } from "./portable-workspace-lifecycle.js";
 import {
+  type FactoryPortableMountedAgentHandoffProducerResultV1,
   type PortableMountedAgentHandoffBinding
 } from "./portable-mounted-agent-artifact-stores.js";
 import type { LocalRuntimeHandle } from "./runtime-factory.js";
@@ -89,6 +90,7 @@ export interface ResidentSupervisionRuntime {
   pause(): Promise<ResidentSupervisionSnapshot>;
   resume(): Promise<ResidentSupervisionSnapshot>;
   signalLocalAdmission(): void;
+  executeSourcedInvestigation(task: ResidentSourcedInvestigationTask): Promise<unknown>;
   quiesceTask(taskId: string): Promise<void>;
   stop(): Promise<void>;
 }
@@ -97,6 +99,23 @@ export interface ResidentAdmittedLocalTask {
   readonly taskId: string;
   readonly runId: string;
 }
+
+export interface ResidentSourcedInvestigationTask extends ResidentAdmittedLocalTask {
+  readonly runType: "timeline-builder" | "contradiction-finder";
+  readonly evidenceIds: readonly string[];
+}
+
+export interface ResidentSourcedInvestigationExecutionPort {
+  execute(
+    task: ResidentSourcedInvestigationTask,
+    handoff: FactoryPortableMountedAgentHandoffProducerResultV1
+  ): Promise<unknown>;
+}
+
+export type MountedSourcedInvestigationHandoffIssuer = (
+  wakeRuntime: WakeSupervisorRuntime,
+  task: ResidentSourcedInvestigationTask
+) => Promise<FactoryPortableMountedAgentHandoffProducerResultV1>;
 
 export interface MountedEvidenceTriageHandoffCapability {
   readonly binding: PortableMountedAgentHandoffBinding;
@@ -126,7 +145,23 @@ export interface ResidentSupervisionRuntimeInput {
   readonly createSupervisorOwnerId?: (() => string) | undefined;
   readonly backgroundExecution?: ResidentBackgroundExecutionPort | undefined;
   readonly issueMountedEvidenceTriageHandoff?: MountedEvidenceTriageHandoffIssuer | undefined;
+  readonly sourcedInvestigationExecution?: ResidentSourcedInvestigationExecutionPort | undefined;
+  readonly issueMountedSourcedInvestigationHandoff?: MountedSourcedInvestigationHandoffIssuer | undefined;
   readonly beforeLeaseExpiryPollForTest?: (() => void | Promise<void>) | undefined;
+}
+
+export class ResidentSourcedInvestigationLeaseUnavailableError extends Error {
+  readonly status = 409 as const;
+  readonly safeMessage = "The current resident wake lease has already issued its one-shot investigation authority.";
+  readonly allowedRepairActions = Object.freeze([
+    "retry after the current resident wake lease expires",
+    "inspect resident supervision status without invoking a provider"
+  ]);
+
+  constructor() {
+    super("resident-sourced-investigation-lease-unavailable");
+    this.name = "ResidentSourcedInvestigationLeaseUnavailableError";
+  }
 }
 
 /**
@@ -151,6 +186,7 @@ export function createResidentSupervisionRuntime(
   let backgroundRescanRequested = false;
   let activeCycle = false;
   let activeTaskId: string | undefined;
+  let sourcedHandoffIssuedInCurrentWake = false;
   let pausePending = false;
   let pendingPauseControls = 0;
   let supervisionControlTail: Promise<void> = Promise.resolve();
@@ -310,6 +346,46 @@ export function createResidentSupervisionRuntime(
       scheduleBackgroundCycle();
     },
 
+    async executeSourcedInvestigation(task: ResidentSourcedInvestigationTask) {
+      assertServiceRunning();
+      const execution = input.sourcedInvestigationExecution;
+      const issuer = input.issueMountedSourcedInvestigationHandoff;
+      if (execution === undefined || issuer === undefined) {
+        throw new Error("Mounted sourced-investigation execution is unavailable.");
+      }
+      return await serializeSupervisionControl(async () => {
+        assertServiceRunning();
+        requireCurrentWorkspace(input.runtimeHandle);
+        if (pausePending || activeCycle ||
+          (await durableSupervisionState(input.runtimeHandle, input.now())).mode === "paused") {
+          throw new Error("Resident supervision is not available for sourced investigation.");
+        }
+        if (sourcedHandoffIssuedInCurrentWake && !await retireExpiredSourcedWake()) {
+          throw new ResidentSourcedInvestigationLeaseUnavailableError();
+        }
+        const operationTimestamp = input.now();
+        const operationNow = () => operationTimestamp;
+        const issued = wakeRuntime ?? await issueWakeRuntime(`sourced_${task.runId}`, operationNow);
+        if (wakeStatus === undefined) {
+          const started = await issued.supervision.start();
+          wakeStatus = started.status;
+          if (started.outcome !== "accepted") {
+            throw new Error("Resident supervision lease is unavailable for sourced investigation.");
+          }
+        }
+        activeCycle = true;
+        activeTaskId = task.taskId;
+        try {
+          const handoff = await issuer(issued, task);
+          sourcedHandoffIssuedInCurrentWake = true;
+          return await execution.execute(task, handoff);
+        } finally {
+          activeCycle = false;
+          activeTaskId = undefined;
+        }
+      });
+    },
+
     async quiesceTask(taskId: string) {
       assertServiceRunning();
       while (activeTaskId === taskId) {
@@ -363,6 +439,34 @@ export function createResidentSupervisionRuntime(
       }
     });
     return wakeRuntime;
+  }
+
+  async function retireExpiredSourcedWake(): Promise<boolean> {
+    const issued = wakeRuntime;
+    if (issued === undefined || !sourcedHandoffIssuedInCurrentWake) return false;
+    requireCurrentWorkspace(input.runtimeHandle);
+    const observedAt = input.now();
+    const observedAtMs = Date.parse(observedAt);
+    const events = await input.runtimeHandle.ledger.readAll();
+    requireCurrentWorkspace(input.runtimeHandle);
+    const lease = events.findLast((event): event is Extract<KnowledgeEvent, {
+      readonly type: "agent.wake.supervisor.lease.claimed.v1";
+    }> => event.type === "agent.wake.supervisor.lease.claimed.v1" &&
+      event.payload.supervisorEpoch === supervisorEpoch
+    );
+    const expiresAtMs = lease === undefined ? Number.NaN : Date.parse(lease.payload.leaseExpiresAt);
+    if (!Number.isFinite(observedAtMs) || !Number.isFinite(expiresAtMs) || expiresAtMs > observedAtMs) {
+      return false;
+    }
+    await issued.stop();
+    requireCurrentWorkspace(input.runtimeHandle);
+    if (wakeRuntime !== issued) {
+      throw new Error("Resident sourced-investigation wake identity changed during expiry retirement.");
+    }
+    wakeRuntime = undefined;
+    wakeStatus = undefined;
+    sourcedHandoffIssuedInCurrentWake = false;
+    return true;
   }
 
   async function fenceOwnedLeaseForRecovery(): Promise<boolean> {

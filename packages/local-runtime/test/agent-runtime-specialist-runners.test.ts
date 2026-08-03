@@ -1,6 +1,6 @@
 import { Buffer } from "node:buffer";
 import { createHash } from "node:crypto";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -43,6 +43,7 @@ import type {
   WorkspaceAdmissionSnapshot
 } from "../../agent/src/wake-supervisor.js";
 import { FileBlobStore } from "../../ontology/src/blob-store.js";
+import type { AppendableKnowledgeEvent } from "../../ontology/src/contracts.js";
 import type { EventLedger } from "../../ontology/src/event-ledger.js";
 import { createPortableWorkspace } from "../../workspace/src/index.js";
 import {
@@ -52,6 +53,11 @@ import {
   type UntrustedSpecialistRunner
 } from "../src/agent-runtime-specialist-runners.js";
 import * as specialistRunnerSurface from "../src/agent-runtime-specialist-runners.js";
+import { handleAgentHttpRoute } from "../src/agent-http-routes.js";
+import {
+  bindMountedSourcedInvestigationHandoffForLocalAgentRuntimeFactory
+} from "../src/agent-runtime-factory.js";
+import { createMountedSourcedInvestigationExecutionPort } from "../src/agent-runtime-mounted-task.js";
 import { resolveLocalRuntimeConfig } from "../src/config.js";
 import {
   issueMountedArtifactAuthorityOperationForFactory,
@@ -67,6 +73,10 @@ import {
   type PortableWorkspaceLifecyclePorts
 } from "../src/portable-workspace-lifecycle.js";
 import { createSqlitePrrRuntime, type LocalRuntimeHandle } from "../src/runtime-factory.js";
+import {
+  createResidentSupervisionRuntime,
+  type ResidentSupervisionRuntime
+} from "../src/wake-supervisor-runtime.js";
 
 const dispatch = Object.freeze({
   taskId: "task_runtime",
@@ -76,13 +86,117 @@ const dispatch = Object.freeze({
 });
 const mountedTempDirs: string[] = [];
 const mountedHandles: LocalRuntimeHandle[] = [];
+const mountedSupervisions: ResidentSupervisionRuntime[] = [];
 
-afterEach(() => {
+afterEach(async () => {
+  for (const supervision of mountedSupervisions.splice(0)) await supervision.stop();
   for (const handle of mountedHandles.splice(0)) handle.close();
   for (const dir of mountedTempDirs.splice(0)) rmSync(dir, { recursive: true, force: true });
 });
 
 describe("untrusted specialist runner", () => {
+  it("reaches both sourced run types through the production mounted resident HTTP caller", async () => {
+    const fixture = await mountedSourcedResidentFactoryFixture();
+    type SourcedRequest = {
+      readonly taskId: string;
+      readonly runId: string;
+      readonly runType: "timeline-builder" | "contradiction-finder";
+      readonly evidenceIds: readonly string[];
+    };
+    type SourcedSuccess = {
+      readonly recorded: { readonly manifest: { readonly schemaVersion: string } };
+      readonly replay: { readonly state: string; readonly diagnostics: readonly unknown[] };
+      readonly cockpit: { readonly selectedRun?: {
+        readonly runId: string;
+        readonly runType: string;
+        readonly state: string;
+        readonly handoff?: { readonly outputArtifacts: readonly { readonly artifactKind: string }[] };
+      } };
+    };
+    const request = async (input: SourcedRequest) => await handleAgentHttpRoute({
+        request: {
+          method: "POST",
+          url: `/api/agent/tasks/${input.taskId}/sourced-investigation`,
+          body: JSON.stringify({
+            runId: input.runId,
+            runType: input.runType,
+            evidenceIds: input.evidenceIds
+          })
+        },
+        handle: fixture.handle,
+        actor: { id: "actor_sourced_factory_http", kind: "system", label: "Sourced Factory HTTP" },
+        now: fixture.now,
+        supervision: fixture.supervision
+      });
+    const success = (response: NonNullable<Awaited<ReturnType<typeof request>>>): SourcedSuccess => {
+      expect(response?.status).toBe(200);
+      return JSON.parse(response.body) as SourcedSuccess;
+    };
+
+    const timelineResponse = await request({
+      taskId: fixture.timelineTaskId,
+      runId: fixture.timelineRunId,
+      runType: "timeline-builder",
+      evidenceIds: [fixture.evidenceId]
+    });
+    if (timelineResponse === undefined) throw new Error("sourced timeline route was not reached");
+    const timeline = success(timelineResponse);
+    expect(timeline).toMatchObject({
+      recorded: { manifest: { schemaVersion: "agent-specialist-handoff-manifest.v2" } },
+      replay: { state: "task-completed", diagnostics: [] },
+      cockpit: { selectedRun: {
+        runId: fixture.timelineRunId,
+        runType: "timeline-builder",
+        state: "completed",
+        handoff: { outputArtifacts: [{ artifactKind: "timeline-artifact" }] }
+      } }
+    });
+
+    const contradictionRequest = Object.freeze({
+      taskId: fixture.contradictionTaskId,
+      runId: fixture.contradictionRunId,
+      runType: "contradiction-finder" as const,
+      evidenceIds: [fixture.evidenceId]
+    });
+    const eventsBeforeLiveLeaseRetry = await fixture.handle.ledger.readAll();
+    const artifactsBeforeLiveLeaseRetry = mountedSourcedArtifactSnapshot(fixture.handle);
+    const liveLeaseResponse = await request(contradictionRequest);
+    expect(liveLeaseResponse?.status).toBe(409);
+    expect(liveLeaseResponse === undefined ? undefined : JSON.parse(liveLeaseResponse.body)).toMatchObject({
+      ok: false,
+      diagnostic: {
+        message: "The current resident wake lease has already issued its one-shot investigation authority.",
+        allowedRepairActions: [
+          "retry after the current resident wake lease expires",
+          "inspect resident supervision status without invoking a provider"
+        ]
+      }
+    });
+    expect(await fixture.handle.ledger.readAll()).toEqual(eventsBeforeLiveLeaseRetry);
+    expect(mountedSourcedArtifactSnapshot(fixture.handle)).toEqual(artifactsBeforeLiveLeaseRetry);
+
+    fixture.advancePastLeaseExpiry();
+    const contradictionResponse = await request(contradictionRequest);
+    if (contradictionResponse === undefined) throw new Error("sourced contradiction route was not reached");
+    const contradiction = success(contradictionResponse);
+    expect(contradiction).toMatchObject({
+      recorded: { manifest: { schemaVersion: "agent-specialist-handoff-manifest.v2" } },
+      replay: { state: "task-completed", diagnostics: [] },
+      cockpit: { selectedRun: {
+        runId: fixture.contradictionRunId,
+        runType: "contradiction-finder",
+        state: "completed",
+        handoff: { outputArtifacts: [{ artifactKind: "contradiction-candidate-dossier" }] }
+      } }
+    });
+    const events = await fixture.handle.ledger.readAll();
+    expect(events.filter((event) => event.type === "agent.task.orchestration.completed")).toHaveLength(2);
+    expect(events.filter((event) => event.type === "agent.specialist-handoff.recorded")).toHaveLength(2);
+    expect(events.filter((event) => event.type === "agent.wake.supervisor.lease.claimed.v1")).toHaveLength(2);
+    expect(JSON.stringify([timeline.cockpit, contradiction.cockpit]))
+      .not.toMatch(/mounted resident sourced evidence bytes|authorization:|provider body/i);
+  });
+
   it("dispatches through mounted authority and replays the handoff into the selected-run cockpit", async () => {
     expect(Reflect.get(specialistRunnerSurface, "consumeMountedSourcedInvestigationDispatch"))
       .toBeTypeOf("function");
@@ -383,6 +497,165 @@ function hash(character: string): `sha256:${string}` {
 
 function hashBytes(bytes: Buffer): `sha256:${string}` {
   return `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
+}
+
+function mountedSourcedArtifactSnapshot(handle: LocalRuntimeHandle): readonly string[] {
+  const mounted = handle.mountedWorkspace;
+  if (mounted === undefined) throw new Error("mounted sourced artifact snapshot requires a workspace");
+  const files: string[] = [];
+  const visit = (root: string, label: string, relativePath = ""): void => {
+    const directory = relativePath.length === 0 ? root : join(root, relativePath);
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+      const child = relativePath.length === 0 ? entry.name : join(relativePath, entry.name);
+      if (entry.isDirectory()) {
+        visit(root, label, child);
+      } else if (entry.isFile()) {
+        files.push(`${label}/${child}:${hashBytes(readFileSync(join(root, child)))}`);
+      }
+    }
+  };
+  for (const [label, root] of [
+    ["blob", mounted.paths.blobRoot],
+    ["derivative", mounted.paths.derivativeRoot],
+    ["job", mounted.paths.jobRoot],
+    ["projection", mounted.paths.projectionRoot],
+    ["cache", mounted.paths.cacheRoot],
+    ["config", mounted.paths.configRoot]
+  ] as const) {
+    visit(root, label);
+  }
+  return Object.freeze(files.sort());
+}
+
+async function mountedSourcedResidentFactoryFixture(): Promise<{
+  readonly handle: LocalRuntimeHandle;
+  readonly supervision: ResidentSupervisionRuntime;
+  readonly now: () => string;
+  advancePastLeaseExpiry(): void;
+  readonly evidenceId: string;
+  readonly timelineTaskId: string;
+  readonly timelineRunId: string;
+  readonly contradictionTaskId: string;
+  readonly contradictionRunId: string;
+}> {
+  let authoritativeNow = sourcedNow;
+  const now = () => authoritativeNow;
+  const workspaceId = `ws_sourced_factory_${mountedTempDirs.length + 1}`;
+  const workspaceRoot = mkdtempSync(join(tmpdir(), "cestus-sourced-factory-"));
+  mountedTempDirs.push(workspaceRoot);
+  createPortableWorkspace({
+    rootDir: workspaceRoot,
+    workspaceId,
+    label: "Mounted sourced resident factory fixture",
+    createdAt: sourcedNow,
+    createdBy: "agent_default"
+  });
+  const handle = createSqlitePrrRuntime({
+    config: resolveLocalRuntimeConfig({
+      cwd: workspaceRoot,
+      env: { CESTUS_LOCAL_STORAGE: "portable-workspace", CESTUS_WORKSPACE_ROOT: workspaceRoot }
+    }),
+    actor: { id: "actor_sourced_factory_test", kind: "system", label: "Sourced Factory Test" },
+    now
+  });
+  mountedHandles.push(handle);
+  const actor = Object.freeze({ id: "agent_default" as const, kind: "agent" as const, label: "Cestus Agent" as const });
+  const setup = createAgentRuntime({ ledger: handle.ledger, actor, now, providers: [] });
+  await setup.initializeDefaultIdentity({
+    workspaceId,
+    allowedRunTypes: ["timeline-builder", "contradiction-finder"]
+  });
+  const mounted = handle.mountedWorkspace;
+  if (mounted === undefined) throw new Error("sourced resident factory fixture is not mounted");
+  const source = await new FileBlobStore(mounted.paths.blobRoot).put(
+    Buffer.from("mounted resident sourced evidence bytes", "utf8")
+  );
+  const evidenceId = "ev_sourced_factory_001";
+  const ingested = await handle.ledger.append({
+    type: "evidence.ingested",
+    version: 1,
+    streamId: `evidence_${evidenceId}`,
+    context: {
+      actor,
+      occurredAt: sourcedNow,
+      correlationId: "corr_sourced_factory_evidence",
+      coreVersion: "0.1.0",
+      packVersions: { core: "0.1.0", ingestion: "0.1.0" }
+    },
+    payload: {
+      evidenceId,
+      source: { kind: "file", label: "sourced-factory.txt" },
+      contentHash: source.contentHash,
+      mediaType: "text/plain",
+      sizeBytes: source.sizeBytes
+    }
+  } satisfies AppendableKnowledgeEvent<"evidence.ingested">);
+  const linked = await handle.ledger.append({
+    type: "ingestion.evidence.linked",
+    version: 1,
+    streamId: "ingestion_evidence_link_src_sourced_factory_imp_sourced_factory",
+    context: {
+      actor,
+      occurredAt: sourcedNow,
+      causationId: ingested.id,
+      correlationId: "corr_sourced_factory_evidence",
+      coreVersion: "0.1.0",
+      packVersions: { core: "0.1.0", ingestion: "0.1.0" }
+    },
+    payload: {
+      evidenceId,
+      sourceCollectionId: "src_sourced_factory",
+      importBatchId: "imp_sourced_factory",
+      contentHash: source.contentHash,
+      occurrenceIds: ["occ_sourced_factory"]
+    }
+  } satisfies AppendableKnowledgeEvent<"ingestion.evidence.linked">);
+  const timelineTaskId = "task_sourced_factory_timeline";
+  const contradictionTaskId = "task_sourced_factory_contradiction";
+  for (const [taskId, title] of [
+    [timelineTaskId, "Build the mounted sourced timeline"],
+    [contradictionTaskId, "Find mounted sourced contradictions"]
+  ] as const) {
+    const created = await setup.createTask({
+      taskId,
+      title,
+      requestedBy: actor.id,
+      priority: "normal",
+      sourceEventIds: [ingested.id, linked.id],
+      inputArtifactHashes: [source.contentHash]
+    });
+    if (!created.ok) throw new Error("sourced resident factory fixture task was not created");
+  }
+  const supervision = createResidentSupervisionRuntime({
+    runtimeHandle: handle,
+    actor,
+    now,
+    issueMountedSourcedInvestigationHandoff: async (wakeRuntime, task) =>
+      await bindMountedSourcedInvestigationHandoffForLocalAgentRuntimeFactory({
+        wakeRuntime,
+        taskId: task.taskId,
+        runId: task.runId,
+        runType: task.runType
+      }),
+    sourcedInvestigationExecution: createMountedSourcedInvestigationExecutionPort({
+      handle,
+      now
+    })
+  });
+  mountedSupervisions.push(supervision);
+  return Object.freeze({
+    handle,
+    supervision,
+    now,
+    advancePastLeaseExpiry() {
+      authoritativeNow = "2026-08-03T12:05:00.001Z";
+    },
+    evidenceId,
+    timelineTaskId,
+    timelineRunId: "run_sourced_factory_timeline",
+    contradictionTaskId,
+    contradictionRunId: "run_sourced_factory_contradiction"
+  });
 }
 
 async function mountedSourcedInvestigationFixture(): Promise<{

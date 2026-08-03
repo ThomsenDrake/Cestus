@@ -42,6 +42,7 @@ import {
 import type { LocalRuntimeHandle } from "./runtime-factory.js";
 import {
   inspectPortableWorkspaceCurrentness,
+  ResidentSourcedInvestigationLeaseUnavailableError,
   type ResidentSupervisionRuntime,
   type ResidentSupervisionSnapshot
 } from "./wake-supervisor-runtime.js";
@@ -99,6 +100,37 @@ export async function handleAgentHttpRoute(
     }
 
     const runtimeFactory = input.agentRuntimeFactory ?? defaultLocalAgentRuntimeFactory;
+    const mountedSourcedInvestigationRoute = matchMountedSourcedInvestigationRoute(path);
+    if (input.request.method === "POST" && mountedSourcedInvestigationRoute !== undefined) {
+      try {
+        const payload = parseJsonObjectBody(
+          input.request.body,
+          invalidMountedSourcedInvestigationBodyDiagnostic
+        );
+        if (!payload.ok) return json(400, payload.body);
+        const command = mountedSourcedInvestigationInputFromBody(payload.value);
+        if (command === undefined) {
+          return json(400, invalidMountedSourcedInvestigationBodyDiagnostic());
+        }
+        if (input.supervision === undefined) {
+          return json(503, diagnostic("Mounted sourced investigation supervision is unavailable.", [
+            "restart the local runtime with resident supervision enabled"
+          ]));
+        }
+        return json(200, await input.supervision.executeSourcedInvestigation({
+          taskId: mountedSourcedInvestigationRoute.taskId,
+          ...command
+        }));
+      } catch (error) {
+        if (error instanceof ResidentSourcedInvestigationLeaseUnavailableError) {
+          return json(error.status, diagnostic(error.safeMessage, error.allowedRepairActions));
+        }
+        if (error instanceof MountedResidentTaskError) {
+          return json(error.status, diagnostic(error.safeMessage, error.allowedRepairActions));
+        }
+        throw error;
+      }
+    }
     const mountedEvidenceTriageRoute = matchMountedEvidenceTriageRoute(path);
     if (mountedEvidenceTriageRoute !== undefined) {
       try {
@@ -878,6 +910,39 @@ function mountedEvidenceTriageInputFromBody(value: Record<string, unknown>): {
   });
 }
 
+function mountedSourcedInvestigationInputFromBody(value: Record<string, unknown>): {
+  readonly runId: string;
+  readonly runType: "timeline-builder" | "contradiction-finder";
+  readonly evidenceIds: readonly string[];
+} | undefined {
+  if (!hasOnlyKeys(value, ["runId", "runType", "evidenceIds"]) ||
+    typeof value.runId !== "string" || !/^run_[a-zA-Z0-9_-]+$/.test(value.runId) ||
+    (value.runType !== "timeline-builder" && value.runType !== "contradiction-finder") ||
+    !Array.isArray(value.evidenceIds) || value.evidenceIds.length === 0 ||
+    value.evidenceIds.some((evidenceId) =>
+      typeof evidenceId !== "string" || !/^ev_[a-zA-Z0-9_-]+$/.test(evidenceId)
+    ) || new Set(value.evidenceIds).size !== value.evidenceIds.length) {
+    return undefined;
+  }
+  return Object.freeze({
+    runId: value.runId,
+    runType: value.runType,
+    evidenceIds: Object.freeze([...value.evidenceIds] as string[])
+  });
+}
+
+function matchMountedSourcedInvestigationRoute(path: string):
+  | { readonly taskId: string }
+  | undefined {
+  const segments = path.split("/").filter(Boolean);
+  if (segments.length === 5 && segments[0] === "api" && segments[1] === "agent" &&
+    segments[2] === "tasks" && segments[4] === "sourced-investigation" &&
+    isAgentTaskId(segments[3])) {
+    return Object.freeze({ taskId: segments[3] });
+  }
+  return undefined;
+}
+
 function matchMountedEvidenceTriageRoute(path: string):
   | { readonly kind: "execute"; readonly taskId: string }
   | { readonly kind: "readback"; readonly taskId: string; readonly runId: string }
@@ -1041,6 +1106,18 @@ function invalidMountedEvidenceTriageBodyDiagnostic(): {
 } {
   return diagnostic("Mounted evidence triage body is invalid.", [
     "send runId, unique evidenceIds, and providerMode as a JSON object"
+  ]);
+}
+
+function invalidMountedSourcedInvestigationBodyDiagnostic(): {
+  readonly ok: false;
+  readonly diagnostic: {
+    readonly message: string;
+    readonly allowedRepairActions: readonly string[];
+  };
+} {
+  return diagnostic("Mounted sourced investigation body is invalid.", [
+    "send runId, timeline-builder or contradiction-finder runType, and unique evidenceIds"
   ]);
 }
 

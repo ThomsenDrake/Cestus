@@ -55,6 +55,20 @@ const hasAuthorityEffectUnlessInstruction = (
   );
 };
 
+const hasCompletedNominalizedAuthorityEffect = (
+  value: string,
+  subject: RegExp,
+  nominalization: RegExp
+) => {
+  const instructionModal = /\b(?:should|must|may|might|can|could|would|will)\b/;
+  const completionSemantics = /\b(?:(?:has|have|had)\s+(?:occurred|taken place|been completed)|(?:is|are|was|were)\s+(?:complete|completed|final|effective)|occurred|completed|took place)\b/;
+  return value.split(/[,;.!?]+/).some((clause) =>
+    hasSubjectAction(clause, subject, nominalization) &&
+    completionSemantics.test(clause) &&
+    !hasInstructionBeforeAction(clause, instructionModal, nominalization)
+  );
+};
+
 const hasCompletedPrrEffect = (value: string) =>
   hasSubjectAction(
     value,
@@ -84,6 +98,12 @@ const hasAuthorityClaim = (value: string) => {
       /\b(?:reject(?:ed)?|contest(?:ed)?|supersed(?:e|ed))\b/
     ) ||
     hasAuthorityEffectUnlessInstruction(normalized, /\bclaims?\b/, /\brelink(?:ed)?\b/) ||
+    hasCompletedNominalizedAuthorityEffect(
+      normalized,
+      /\bassertions?\b/,
+      /\b(?:rejection|contestation|supersession)\b/
+    ) ||
+    hasCompletedNominalizedAuthorityEffect(normalized, /\bclaims?\b/, /\brelinking\b/) ||
     hasAuthorityEffectUnlessInstruction(normalized, /\b(?:entity|entities|relationship)\b/, /\b(?:resolved|accepted)\b/) ||
     hasAuthorityEffectUnlessInstruction(normalized, /\b(?:legal|export|governance )?lock\b/, /\bcleared\b/)
   );

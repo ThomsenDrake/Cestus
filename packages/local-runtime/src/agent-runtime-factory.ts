@@ -181,6 +181,27 @@ export async function bindMountedEvidenceTriageHandoffForLocalAgentRuntimeFactor
   });
 }
 
+/** The mounted factory binds only the two approved local sourced-investigation runners. */
+export async function bindMountedSourcedInvestigationHandoffForLocalAgentRuntimeFactory(input: {
+  readonly wakeRuntime: WakeSupervisorRuntime;
+  readonly taskId: string;
+  readonly runId: string;
+  readonly runType: "timeline-builder" | "contradiction-finder";
+}): Promise<FactoryPortableMountedAgentHandoffProducerResultV1> {
+  const operation = issueMountedArtifactAuthorityOperationForFactory(input.wakeRuntime);
+  return await createPortableMountedAgentArtifactStoreProducer(operation).bind({
+    taskId: input.taskId,
+    attemptId: buildTaskAttemptId({
+      taskId: input.taskId,
+      runType: input.runType,
+      retryGeneration: 0
+    }),
+    approvedRunId: input.runId,
+    runType: input.runType,
+    retryGeneration: 0
+  });
+}
+
 /** Keeps supervised handoff issuance and controller consumption inside the authorized factory role. */
 export async function acquireMountedEvidenceTriageHandoffForLocalAgentRuntimeFactory(input: {
   readonly wakeRuntime: WakeSupervisorRuntime;
