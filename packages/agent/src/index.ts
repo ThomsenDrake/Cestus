@@ -103,6 +103,7 @@ export * from "./prr-negotiation-workflow.js";
 export * from "./investigation-planner-workflow.js";
 export * from "./evidence-triage-workflow.js";
 export * from "./sourced-investigation-workflows.js";
+export * from "./sourced-investigation-context-packs.js";
 export * from "./tool-gateway.js";
 export * from "./investigative-context-packs.js";
 export * from "./task-orchestrator-events.js";

@@ -78,6 +78,12 @@ const hasAuthorityClaim = (value: string) => {
     hasAuthorityEffectUnlessInstruction(normalized, /\b(?:report|packet|publication|export|evidence)\b/, /\b(?:exported|published)\b/, hasDirectOrFirstPersonSubjectAction) ||
     hasAuthorityEffectUnlessInstruction(normalized, /\b(?:repair|remediation)\b/, /\b(?:performed|executed|ran successfully)\b/) ||
     hasAuthorityEffectUnlessInstruction(normalized, /\b(?:graph|ontology|assertion|relationship)\b/, /\baccepted\b/) ||
+    hasAuthorityEffectUnlessInstruction(
+      normalized,
+      /\bassertions?\b/,
+      /\b(?:reject(?:ed)?|contest(?:ed)?|supersed(?:e|ed))\b/
+    ) ||
+    hasAuthorityEffectUnlessInstruction(normalized, /\bclaims?\b/, /\brelink(?:ed)?\b/) ||
     hasAuthorityEffectUnlessInstruction(normalized, /\b(?:entity|entities|relationship)\b/, /\b(?:resolved|accepted)\b/) ||
     hasAuthorityEffectUnlessInstruction(normalized, /\b(?:legal|export|governance )?lock\b/, /\bcleared\b/)
   );

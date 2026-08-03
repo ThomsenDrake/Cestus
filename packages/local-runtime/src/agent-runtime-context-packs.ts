@@ -6,6 +6,7 @@ import {
   lookupInvestigativeContextPackRegistrarEvidence,
   lookupOperationalContextPackRegistrarEvidence,
   lookupPrrContextPackRegistrarEvidence,
+  lookupSourcedInvestigationContextPackRegistrarEvidence,
   serializeContextPackPayload,
   type AgentContextPackJsonValue,
   type ContextPackDescriptor,
@@ -627,7 +628,8 @@ function lookupContextPackRegistrarEvidence(
   for (const candidate of [
     lookupPrrContextPackRegistrarEvidence(registry, contextPackId),
     lookupOperationalContextPackRegistrarEvidence(registry, contextPackId),
-    lookupInvestigativeContextPackRegistrarEvidence(registry, contextPackId)
+    lookupInvestigativeContextPackRegistrarEvidence(registry, contextPackId),
+    lookupSourcedInvestigationContextPackRegistrarEvidence(registry, contextPackId)
   ]) {
     if (candidate !== undefined) {
       candidates.push(candidate);

@@ -5,6 +5,7 @@ import {
   lookupInvestigativeContextPackRegistrarEvidence,
   lookupOperationalContextPackRegistrarEvidence,
   lookupPrrContextPackRegistrarEvidence,
+  lookupSourcedInvestigationContextPackRegistrarEvidence,
   renderProductionSpecialistPrompt,
   specialistWorkflowDescriptorFor,
   type AgentApprovedToolExecutorDescriptor,
@@ -201,7 +202,8 @@ export async function acquireMountedEvidenceTriageHandoffForLocalAgentRuntimeFac
 type FactoryHeldRegistrarEvidence =
   | NonNullable<ReturnType<typeof lookupPrrContextPackRegistrarEvidence>>
   | NonNullable<ReturnType<typeof lookupOperationalContextPackRegistrarEvidence>>
-  | NonNullable<ReturnType<typeof lookupInvestigativeContextPackRegistrarEvidence>>;
+  | NonNullable<ReturnType<typeof lookupInvestigativeContextPackRegistrarEvidence>>
+  | NonNullable<ReturnType<typeof lookupSourcedInvestigationContextPackRegistrarEvidence>>;
 
 /**
  * This closure is deliberately lexical to the factory. Task132A records the
@@ -250,7 +252,8 @@ function packageOwnedRegistrarEvidence(
   const evidence = [
     lookupPrrContextPackRegistrarEvidence(contextRegistry, contextPackId),
     lookupOperationalContextPackRegistrarEvidence(contextRegistry, contextPackId),
-    lookupInvestigativeContextPackRegistrarEvidence(contextRegistry, contextPackId)
+    lookupInvestigativeContextPackRegistrarEvidence(contextRegistry, contextPackId),
+    lookupSourcedInvestigationContextPackRegistrarEvidence(contextRegistry, contextPackId)
   ].filter((candidate): candidate is FactoryHeldRegistrarEvidence => candidate !== undefined);
   return evidence.length === 1 ? evidence[0] : undefined;
 }
