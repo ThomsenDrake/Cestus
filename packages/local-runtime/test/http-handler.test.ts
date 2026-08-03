@@ -20,9 +20,9 @@ const fixedNow = () => "2026-07-05T12:00:00.000Z";
 const tempDirs: string[] = [];
 const handlers: LocalRuntimeHttpHandler[] = [];
 
-afterEach(() => {
+afterEach(async () => {
   for (const handler of handlers.splice(0)) {
-    handler.close();
+    await handler.close();
   }
 
   for (const dir of tempDirs.splice(0)) {
@@ -82,7 +82,7 @@ describe("createLocalRuntimeHttpHandler", () => {
         (card: { prrRequestId: string }) => card.prrRequestId === "prr_http_city_budget"
       )
     ).toBe(true);
-    first.close();
+    await first.close();
     handlers.splice(handlers.indexOf(first), 1);
 
     const second = testHandler({ config, actor, now: fixedNow });
@@ -131,7 +131,7 @@ describe("createLocalRuntimeHttpHandler", () => {
         receivedAt: "2026-07-05T12:00:00.000Z"
       })
     });
-    first.close();
+    await first.close();
     handlers.splice(handlers.indexOf(first), 1);
 
     expect(health.status).toBe(200);
@@ -154,7 +154,7 @@ describe("createLocalRuntimeHttpHandler", () => {
 
     const second = testHandler({ config, actor, now: fixedNow });
     const reloaded = await second({ method: "GET", url: "/api/requests/workspace" });
-    second.close();
+    await second.close();
     handlers.splice(handlers.indexOf(second), 1);
 
     expect(JSON.parse(reloaded.body).cards.map((card: { prrRequestId: string }) => card.prrRequestId)).toContain(

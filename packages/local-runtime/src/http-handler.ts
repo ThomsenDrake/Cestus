@@ -4,10 +4,19 @@ import type { DeadlineCalculator, PrrRuntimeNow } from "../../prr/src/runtime.js
 import { prrWorkspaceSeedEvents } from "../../prr/src/workspace-seed.js";
 import type { IngestionWorkspaceMountResolver } from "../../ingestion/src/mount-contract.js";
 import {
+  acquireMountedEvidenceTriageHandoffForLocalAgentRuntimeFactory,
   contextFreeLocalAgentRuntimeFactory,
   type LocalAgentRuntimeFactory
 } from "./agent-runtime-factory.js";
 import { handleAgentHttpRoute } from "./agent-http-routes.js";
+import {
+  createMountedEvidenceTriageBackgroundExecutionPort,
+  type MountedTaskBackgroundExecutionObservation
+} from "./agent-runtime-mounted-task.js";
+import {
+  createResidentSupervisionRuntime,
+  type ResidentBackgroundExecutionPort
+} from "./wake-supervisor-runtime.js";
 import { authorizedLocalRuntimeRequest } from "./auth.js";
 import type { ResolvedLocalRuntimeConfig } from "./config.js";
 import { handleEvidenceHttpRoute } from "./evidence-http-routes.js";
@@ -37,7 +46,7 @@ export interface LocalRuntimeResponse {
 
 export interface LocalRuntimeHttpHandler {
   (request: LocalRuntimeRequest): Promise<LocalRuntimeResponse>;
-  close(): void;
+  close(): Promise<void>;
 }
 
 export interface CreateLocalRuntimeHttpHandlerInput {
@@ -52,6 +61,16 @@ export interface CreateLocalRuntimeHttpHandlerInput {
   readonly operatorStatusProviders?: OperatorStatusProviderSet;
   readonly agentRuntimeFactory?: LocalAgentRuntimeFactory;
   readonly residentIdentityBootstrapForTest?: ResidentIdentityBootstrapExecutor;
+  readonly mountedTaskAdmissionPrecommitForTest?: (() => void) | undefined;
+  readonly residentBackgroundExecutionForTest?: ResidentBackgroundExecutionPort | undefined;
+  readonly mountedTaskBeforeCompletionMemoryForTest?: (() => void | Promise<void>) | undefined;
+  readonly mountedTaskBeforeLocalEffectForTest?: (() => void | Promise<void>) | undefined;
+  readonly mountedTaskBeforeRunStartSnapshotForTest?: (() => void | Promise<void>) | undefined;
+  readonly mountedTaskBeforeTaskRunningForTest?: (() => void | Promise<void>) | undefined;
+  readonly mountedTaskAfterBackgroundExecutionForTest?: ((
+    observation: MountedTaskBackgroundExecutionObservation
+  ) => void) | undefined;
+  readonly mountedTaskBackgroundScanForTest?: ((taskCount: number) => void) | undefined;
 }
 
 export function createLocalRuntimeHttpHandler(
@@ -68,6 +87,45 @@ export function createLocalRuntimeHttpHandler(
       : { residentIdentityBootstrapForTest: input.residentIdentityBootstrapForTest })
   });
   const seedEvents = input.seedEvents ?? prrWorkspaceSeedEvents;
+  const runtimeNow = localRuntimeNow(input.now);
+  const residentSupervision = createResidentSupervisionRuntime({
+    runtimeHandle: handle,
+    actor: input.actor,
+    now: runtimeNow,
+    issueMountedEvidenceTriageHandoff: async (wakeRuntime, task) =>
+      await acquireMountedEvidenceTriageHandoffForLocalAgentRuntimeFactory({
+        wakeRuntime,
+        taskId: task.taskId,
+        runId: task.runId
+      }),
+    backgroundExecution: input.residentBackgroundExecutionForTest ??
+      createMountedEvidenceTriageBackgroundExecutionPort({
+        handle,
+        now: runtimeNow,
+        ...(input.mountedTaskBeforeCompletionMemoryForTest === undefined
+          ? {}
+          : { beforeCompletionMemoryForTest: input.mountedTaskBeforeCompletionMemoryForTest }),
+        ...(input.mountedTaskBeforeLocalEffectForTest === undefined
+          ? {}
+          : { beforeLocalEffectForTest: input.mountedTaskBeforeLocalEffectForTest }),
+        ...(input.mountedTaskBeforeRunStartSnapshotForTest === undefined
+          ? {}
+          : { beforeRunStartSnapshotForTest: input.mountedTaskBeforeRunStartSnapshotForTest }),
+        ...(input.mountedTaskBeforeTaskRunningForTest === undefined
+          ? {}
+          : { beforeTaskRunningForTest: input.mountedTaskBeforeTaskRunningForTest }),
+        ...(input.mountedTaskAfterBackgroundExecutionForTest === undefined
+          ? {}
+          : { afterExecutionSettledForTest: input.mountedTaskAfterBackgroundExecutionForTest }),
+        ...(input.mountedTaskBackgroundScanForTest === undefined
+          ? {}
+          : {
+              afterPendingScanForTest: (
+                tasks: readonly { readonly taskId: string; readonly runId: string }[]
+              ) => input.mountedTaskBackgroundScanForTest?.(tasks.length)
+            })
+      })
+  });
   const defaultOperatorStatusProviders = createDefaultOperatorStatusProviders({
     config: input.config,
     actor: input.actor,
@@ -127,7 +185,11 @@ export function createLocalRuntimeHttpHandler(
         handle,
         actor: input.actor,
         now: localRuntimeNow(input.now),
-        agentRuntimeFactory: input.agentRuntimeFactory ?? contextFreeLocalAgentRuntimeFactory
+        supervision: residentSupervision,
+        agentRuntimeFactory: input.agentRuntimeFactory ?? contextFreeLocalAgentRuntimeFactory,
+        ...(input.mountedTaskAdmissionPrecommitForTest === undefined
+          ? {}
+          : { mountedTaskAdmissionPrecommitForTest: input.mountedTaskAdmissionPrecommitForTest })
       });
       if (response !== undefined) {
         return response;
@@ -211,7 +273,11 @@ export function createLocalRuntimeHttpHandler(
     );
   }) as LocalRuntimeHttpHandler;
 
-  handler.close = () => handle.close();
+  let closePromise: Promise<void> | undefined;
+  handler.close = () => {
+    closePromise ??= residentSupervision.stop().finally(() => handle.close());
+    return closePromise;
+  };
   return handler;
 }
 

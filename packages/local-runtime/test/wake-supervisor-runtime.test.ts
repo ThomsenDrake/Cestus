@@ -1,11 +1,14 @@
 import { createHash } from "node:crypto";
+import { spawnSync } from "node:child_process";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AssertionService } from "../../ontology/src/assertion-service.js";
 import type { KnowledgeEvent, KnowledgeEventOf } from "../../ontology/src/contracts.js";
 import type { EventLedger } from "../../ontology/src/event-ledger.js";
+import { SQLiteEventLedger } from "../../ontology/src/sqlite-event-ledger.js";
 import { createPortableWorkspace } from "../../workspace/src/index.js";
 import dispatcherDefault from "../../agent/src/domain-execution-dispatcher.js";
 import { hashAgentToolPreview } from "../../agent/src/tool-gateway.js";
@@ -48,6 +51,7 @@ const directories: string[] = [];
 const handles: LocalRuntimeHandle[] = [];
 
 afterEach(() => {
+  vi.useRealTimers();
   for (const handle of handles.splice(0)) handle.close();
   for (const directory of directories.splice(0)) rmSync(directory, { recursive: true, force: true });
 });
@@ -121,6 +125,25 @@ describe("wake supervisor runtime", () => {
       pauseRequestEventId: requested?.id,
       causation: command.causation
     });
+    if (paused === undefined) throw new Error("durable pause evidence is required");
+    const resumeCommand = {
+      schemaVersion: "resident-wake-command.v1" as const,
+      commandId: "resume_wake_runtime",
+      sourceEventIds: [paused.id],
+      requestedAt: "2026-07-16T00:00:00.000Z",
+      causation: { causationId: paused.id, correlationId: "corr_resume_wake_runtime" }
+    };
+    await expect(runtime.supervision.resume(resumeCommand)).resolves.toMatchObject({ outcome: "accepted" });
+    const resumed = (await handle.ledger.readAll()).find((event) =>
+      event.type === "agent.wake.supervisor.resume.requested.v1" &&
+      event.payload.commandId === resumeCommand.commandId
+    );
+    expect(resumed?.payload).toMatchObject({
+      commandId: resumeCommand.commandId,
+      sourceEventIds: resumeCommand.sourceEventIds,
+      causation: resumeCommand.causation
+    });
+    expect(resumed?.context.causationId).toBe(resumeCommand.causation.causationId);
   });
 
   it("stopped runtime cannot issue or inspect an authority operation", async () => {
@@ -142,6 +165,246 @@ describe("wake supervisor runtime", () => {
     await second.runtime.supervision.start();
     const secondOperation = issueMountedArtifactAuthorityOperationForFactory(second.runtime);
     expect(secondOperation).not.toBe(firstOperation);
+  });
+
+  it("admits at most one unexpired resident supervision lease across isolated processes", async () => {
+    const { handle } = await fixture();
+    const workspaceRoot = handle.mountedWorkspace?.rootDir;
+    if (workspaceRoot === undefined) throw new Error("portable workspace fixture is required");
+    const sqlitePath = handle.config.storage.sqlitePath;
+    handle.close();
+    handles.splice(handles.indexOf(handle), 1);
+
+    const childScript = `
+      import { resolveLocalRuntimeConfig } from ${JSON.stringify(pathToFileURL(join(process.cwd(), "packages/local-runtime/src/config.ts")).href)};
+      import { createSqlitePrrRuntime } from ${JSON.stringify(pathToFileURL(join(process.cwd(), "packages/local-runtime/src/runtime-factory.ts")).href)};
+      import { createResidentSupervisionRuntime } from ${JSON.stringify(pathToFileURL(join(process.cwd(), "packages/local-runtime/src/wake-supervisor-runtime.ts")).href)};
+      const now = () => "2026-07-16T00:00:00.000Z";
+      const config = resolveLocalRuntimeConfig({
+        cwd: process.env.CESTUS_TEST_CWD,
+        env: {
+          CESTUS_LOCAL_STORAGE: "portable-workspace",
+          CESTUS_WORKSPACE_ROOT: process.env.CESTUS_TEST_WORKSPACE_ROOT
+        }
+      });
+      const handle = createSqlitePrrRuntime({
+        config,
+        actor: { id: "actor_isolated_supervision", kind: "human", label: "Isolated supervision" },
+        now
+      });
+      await handle.residentIdentity.ready();
+      const service = createResidentSupervisionRuntime({
+        runtimeHandle: handle,
+        actor: { id: "agent_isolated_supervision", kind: "agent", label: "Isolated supervision" },
+        now
+      });
+      const snapshot = await service.snapshot();
+      process.stdout.write(JSON.stringify(snapshot));
+      await service.stop();
+      handle.close();
+    `;
+    const runChild = () => spawnSync(
+      process.execPath,
+      ["--disable-warning=ExperimentalWarning", "--import", "tsx", "--input-type=module", "--eval", childScript],
+      {
+        cwd: process.cwd(),
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          CESTUS_TEST_CWD: join(workspaceRoot, ".."),
+          CESTUS_TEST_WORKSPACE_ROOT: workspaceRoot
+        }
+      }
+    );
+
+    const first = runChild();
+    expect(first.status, first.stderr).toBe(0);
+    const second = runChild();
+    expect(second.status, second.stderr).toBe(0);
+    const secondSnapshot = JSON.parse(second.stdout) as {
+      readonly diagnostics: readonly { readonly category: string }[];
+    };
+
+    const ledger = new SQLiteEventLedger(sqlitePath);
+    try {
+      const events = await ledger.readAll();
+      expect(events.filter((event) =>
+        event.type === "agent.wake.supervisor.lease.claimed.v1" &&
+        Date.parse(event.payload.leaseExpiresAt) > Date.parse("2026-07-16T00:00:00.000Z")
+      )).toHaveLength(1);
+    } finally {
+      ledger.close();
+    }
+    expect(secondSnapshot.diagnostics).toContainEqual(expect.objectContaining({
+      category: "supervisor-lease-held"
+    }));
+  });
+
+  it("reuses one live lease for a stable injected owner and blocks a distinct owner", async () => {
+    const { handle, runtime } = await fixture();
+    await runtime.stop();
+    const now = () => "2026-07-16T00:00:00.000Z";
+    const actor = { id: "agent_stable_supervision_owner", kind: "agent" as const, label: "Stable owner" };
+    const first = wakeRuntimeApi.createResidentSupervisionRuntime({
+      runtimeHandle: handle,
+      actor,
+      now,
+      createSupervisorOwnerId: () => "owner_stable"
+    });
+    await expect(first.snapshot()).resolves.toMatchObject({ supervisorState: "running" });
+    await first.stop();
+
+    const repeated = wakeRuntimeApi.createResidentSupervisionRuntime({
+      runtimeHandle: handle,
+      actor,
+      now,
+      createSupervisorOwnerId: () => "owner_stable"
+    });
+    await expect(repeated.snapshot()).resolves.toMatchObject({
+      supervisorState: "running",
+      diagnostics: []
+    });
+    expect((await handle.ledger.readAll()).filter((event) =>
+      event.type === "agent.wake.supervisor.lease.claimed.v1"
+    )).toHaveLength(1);
+    await repeated.stop();
+
+    const distinct = wakeRuntimeApi.createResidentSupervisionRuntime({
+      runtimeHandle: handle,
+      actor,
+      now,
+      createSupervisorOwnerId: () => "owner_distinct"
+    });
+    await expect(distinct.snapshot()).resolves.toMatchObject({
+      diagnostics: expect.arrayContaining([
+        expect.objectContaining({ category: "supervisor-lease-held" })
+      ])
+    });
+    expect((await handle.ledger.readAll()).filter((event) =>
+      event.type === "agent.wake.supervisor.lease.claimed.v1"
+    )).toHaveLength(1);
+    await distinct.stop();
+  });
+
+  it("preserves an admission signal that arrives while the active cycle is finishing", async () => {
+    const { handle } = await fixture();
+    const firstStarted = Promise.withResolvers<void>();
+    const releaseFirst = Promise.withResolvers<void>();
+    const secondExecuted = Promise.withResolvers<void>();
+    const queued: { taskId: string; runId: string }[] = [
+      { taskId: "task_rescan_first", runId: "run_rescan_first" }
+    ];
+    const executions: string[] = [];
+
+    const service = wakeRuntimeApi.createResidentSupervisionRuntime({
+      runtimeHandle: handle,
+      actor: { id: "agent_rescan", kind: "agent", label: "Rescan" },
+      now: () => "2026-07-16T00:00:00.000Z",
+      createSupervisorOwnerId: () => "owner_rescan",
+      backgroundExecution: {
+        async pendingLocalTasks() {
+          return queued.splice(0);
+        },
+        async execute(task) {
+          executions.push(task.taskId);
+          if (task.taskId === "task_rescan_first") {
+            firstStarted.resolve();
+            await releaseFirst.promise;
+          } else {
+            secondExecuted.resolve();
+          }
+        }
+      }
+    });
+
+    await firstStarted.promise;
+    queued.push({ taskId: "task_rescan_second", runId: "run_rescan_second" });
+    service.signalLocalAdmission();
+    releaseFirst.resolve();
+
+    await expect(Promise.race([
+      secondExecuted.promise.then(() => "executed" as const),
+      new Promise<"missed">((resolve) => setImmediate(() => resolve("missed")))
+    ])).resolves.toBe("executed");
+    expect(executions).toEqual(["task_rescan_first", "task_rescan_second"]);
+    await service.stop();
+  });
+
+  it("retries a local task after a foreign live lease becomes available", async () => {
+    vi.useFakeTimers();
+    let now = "2026-07-16T00:00:00.000Z";
+    const { handle } = await fixture({ now: () => now });
+    const holder = wakeRuntimeApi.createResidentSupervisionRuntime({
+      runtimeHandle: handle,
+      actor: { id: "agent_foreign_holder", kind: "agent", label: "Foreign holder" },
+      now: () => now,
+      createSupervisorOwnerId: () => "owner_foreign_holder"
+    });
+    await holder.snapshot();
+    await holder.stop();
+
+    const executed = vi.fn(async () => undefined);
+    const contender = wakeRuntimeApi.createResidentSupervisionRuntime({
+      runtimeHandle: handle,
+      actor: { id: "agent_local_contender", kind: "agent", label: "Local contender" },
+      now: () => now,
+      createSupervisorOwnerId: () => "owner_local_contender",
+      backgroundExecution: {
+        async pendingLocalTasks() {
+          return [{ taskId: "task_retry_after_lease", runId: "run_retry_after_lease" }];
+        },
+        execute: executed
+      }
+    });
+
+    await vi.advanceTimersByTimeAsync(0);
+    expect(executed).not.toHaveBeenCalled();
+    now = "2026-07-16T00:05:00.001Z";
+    await vi.advanceTimersByTimeAsync(101);
+
+    expect(executed).toHaveBeenCalledTimes(1);
+    await contender.stop();
+  });
+
+  it("waits for a fired lease poll and prevents lifecycle writes after stop", async () => {
+    vi.useFakeTimers();
+    let now = "2026-07-16T00:00:00.000Z";
+    const { handle } = await fixture({ now: () => now });
+    const pollEntered = Promise.withResolvers<void>();
+    const releasePoll = Promise.withResolvers<void>();
+    let didEnterPoll = false;
+    const service = wakeRuntimeApi.createResidentSupervisionRuntime({
+      runtimeHandle: handle,
+      actor: { id: "agent_poll_shutdown", kind: "agent", label: "Poll shutdown" },
+      now: () => now,
+      createSupervisorOwnerId: () => "owner_poll_shutdown",
+      beforeLeaseExpiryPollForTest: async () => {
+        didEnterPoll = true;
+        pollEntered.resolve();
+        await releasePoll.promise;
+      }
+    } as Parameters<typeof wakeRuntimeApi.createResidentSupervisionRuntime>[0]);
+
+    await service.snapshot();
+    const beforePoll = await handle.ledger.readAll();
+    now = "2026-07-16T00:05:00.001Z";
+    await vi.advanceTimersByTimeAsync(300_001);
+
+    let stopSettled = false;
+    const stopping = service.stop().then(() => {
+      stopSettled = true;
+    });
+    await Promise.resolve();
+    await Promise.resolve();
+    const settledBeforeRelease = stopSettled;
+    releasePoll.resolve();
+    await stopping;
+
+    expect({ pollEntered: didEnterPoll, settledBeforeRelease })
+      .toEqual({ pollEntered: true, settledBeforeRelease: false });
+    expect(await handle.ledger.readAll()).toEqual(beforePoll);
+    await vi.runAllTimersAsync();
+    expect(await handle.ledger.readAll()).toEqual(beforePoll);
   });
 
   it("exposes only supervision control and stop rather than authority internals", async () => {

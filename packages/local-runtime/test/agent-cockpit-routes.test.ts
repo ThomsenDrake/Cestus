@@ -32,9 +32,9 @@ const workspaceId = "ws_case_001";
 const inputArtifactHash = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 const now = () => "2026-07-09T02:00:00.000Z";
 
-afterEach(() => {
+afterEach(async () => {
   for (const handler of handlers.splice(0)) {
-    handler.close();
+    await handler.close();
   }
   for (const dir of tempDirs.splice(0)) {
     rmSync(dir, { recursive: true, force: true });

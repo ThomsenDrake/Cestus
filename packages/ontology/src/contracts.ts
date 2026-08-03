@@ -484,6 +484,34 @@ const agentTaskStatusChangedPayloadSchema = z.object({
   runId: agentRunIdSchema.optional()
 }).strict();
 
+const agentMountedTaskExecutionAdmittedPayloadSchema = z.object({
+  admissionId: agentSecretSafeIdSchema(/^admission_[a-f0-9]{64}$/),
+  admissionManifestHash: contentHashSchema,
+  workspaceId: agentWorkspaceIdSchema,
+  workspaceManifestHash: contentHashSchema,
+  residentAgentId: z.literal("agent_default"),
+  taskId: agentTaskIdSchema,
+  runId: agentRunIdSchema,
+  runType: z.literal("evidence-triage"),
+  providerMode: z.enum(["local-fake", "remote-gated"]),
+  sourceEventIds: z.array(eventIdSchema).min(2),
+  policyEventId: eventIdSchema,
+  policyId: agentPolicyIdSchema,
+  policyVersion: secretSafeStringSchema.min(1),
+  policyHash: contentHashSchema,
+  activeLocksHash: contentHashSchema,
+  admittedAt: z.string().datetime(),
+  admittedBy: z.literal("agent_default")
+}).strict().superRefine((value, ctx) => {
+  if (value.admissionId !== `admission_${value.admissionManifestHash.slice("sha256:".length)}`) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["admissionId"],
+      message: "admission id must be derived from the admission manifest hash"
+    });
+  }
+});
+
 const agentTaskOrchestrationAttemptIdSchema = agentSecretSafeIdSchema(/^attempt_[a-f0-9]{64}$/);
 
 const agentTaskOrchestrationOrderingPositionSchema = z.object({
@@ -3331,6 +3359,7 @@ export const payloadSchemas = {
   "agent.policy.installed": agentPolicyInstalledPayloadSchema,
   "agent.task.created": agentTaskCreatedPayloadSchema,
   "agent.task.status.changed": agentTaskStatusChangedPayloadSchema,
+  "agent.mounted-task.execution.admitted.v1": agentMountedTaskExecutionAdmittedPayloadSchema,
   "agent.task.orchestration.claimed": agentTaskOrchestrationClaimedPayloadSchema,
   "agent.task.orchestration.checkpointed": agentTaskOrchestrationCheckpointedPayloadSchema,
   "agent.provider.feasibility.observed.v1": agentProviderFeasibilityObservedPayloadSchema,
@@ -3553,6 +3582,18 @@ export const eventContracts = {
     description: "Records an append-only status transition for a resident-agent task.",
     agentGuidance: "Required provenance fields: taskId, status, changedBy, and optional runId when a run caused the transition. Forbidden autonomous effects: status changes must not stand in for approvals or domain events.",
     invariants: ["taskId must route the stream", "status must use the agent task status set", "terminal status does not delete task history"]
+  },
+  "agent.mounted-task.execution.admitted.v1": {
+    type: "agent.mounted-task.execution.admitted.v1",
+    version: 1,
+    description: "Records exact durable admission of one mounted evidence-triage execution by content-addressed input manifest.",
+    agentGuidance: "Bind the mounted workspace, current resident policy, exact task/run/provider mode, source events, and canonical admission-manifest hash before background work. Full evidence inputs stay in the strict mounted job checkpoint manifest. Local-fake admission permits only the bounded local path; remote-gated admission never permits background dispatch or provider transfer.",
+    invariants: [
+      "admission is append-only and exactly replayable",
+      "admission id is derived from the content-addressed input manifest hash",
+      "source and authority bindings match the strict mounted input manifest",
+      "remote-gated admission grants no provider or tool authority"
+    ]
   },
   "agent.task.orchestration.claimed": {
     type: "agent.task.orchestration.claimed",
@@ -4420,6 +4461,10 @@ function expectedAgentStreamId(type: KnowledgeEventType, payload: unknown): stri
       .update(canonicalResidentDomainJson(locator))
       .digest("hex");
     return `agent_resident_domain_${digest}`;
+  }
+
+  if (type === "agent.mounted-task.execution.admitted.v1") {
+    return `agent_mounted_task_execution_${agentPayload.taskId}_${agentPayload.runId}`;
   }
 
   if (type === "agent.trigger.requested.v1") {

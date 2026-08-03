@@ -10,9 +10,9 @@ import { createLocalRuntimeHttpHandler, type LocalRuntimeHttpHandler } from "../
 const handlers: LocalRuntimeHttpHandler[] = [];
 const tempDirs: string[] = [];
 
-afterEach(() => {
+afterEach(async () => {
   for (const handler of handlers.splice(0)) {
-    handler.close();
+    await handler.close();
   }
   for (const dir of tempDirs.splice(0)) {
     rmSync(dir, { recursive: true, force: true });
@@ -121,7 +121,7 @@ describe("agent memory HTTP routes", () => {
       ok: false,
       diagnostic: { message: "Agent memory body is invalid." }
     });
-    closeHandler(handler);
+    await closeHandler(handler);
     expect(await eventTypes(config)).toEqual([]);
   });
 
@@ -191,8 +191,8 @@ function portableConfig(workspaceId: string): ReturnType<typeof resolveLocalRunt
   });
 }
 
-function closeHandler(handler: LocalRuntimeHttpHandler): void {
-  handler.close();
+async function closeHandler(handler: LocalRuntimeHttpHandler): Promise<void> {
+  await handler.close();
   const index = handlers.indexOf(handler);
   if (index >= 0) {
     handlers.splice(index, 1);

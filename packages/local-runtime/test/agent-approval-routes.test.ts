@@ -19,9 +19,9 @@ const handlers: LocalRuntimeHttpHandler[] = [];
 const tempDirs: string[] = [];
 const now = () => "2026-07-08T14:30:00.000Z";
 
-afterEach(() => {
+afterEach(async () => {
   for (const handler of handlers.splice(0)) {
-    handler.close();
+    await handler.close();
   }
   for (const dir of tempDirs.splice(0)) {
     rmSync(dir, { recursive: true, force: true });
@@ -44,7 +44,7 @@ describe("agent approval routes", () => {
       executableByApproval: false
     });
     expect(response.body).not.toMatch(/synthetic-test-secret|authorization:\s*bearer|password|private key/i);
-    handler.close();
+    await handler.close();
     handlers.splice(handlers.indexOf(handler), 1);
     expect(await eventTypes(config)).toEqual(["agent.tool.requested"]);
   });
@@ -64,7 +64,7 @@ describe("agent approval routes", () => {
     expect(body.summary.pendingCount).toBe(1);
     expect(body.queue.pending.map((item) => item.toolRequestId)).toEqual(["toolreq_provider_transfer"]);
     expect(response.body).not.toContain("toolreq_read_only");
-    handler.close();
+    await handler.close();
     handlers.splice(handlers.indexOf(handler), 1);
     expect(await eventTypes(config)).toEqual(["agent.tool.requested", "agent.tool.requested"]);
   });
@@ -101,7 +101,7 @@ describe("agent approval routes", () => {
       ok: true,
       schemaVersion: "agent-approval-decision-result.v1"
     });
-    handler.close();
+    await handler.close();
     handlers.splice(handlers.indexOf(handler), 1);
     expect(await eventTypes(config)).toEqual(["agent.tool.requested", "agent.tool.approved"]);
     const approval = await eventByType(config, "agent.tool.approved");
@@ -124,7 +124,7 @@ describe("agent approval routes", () => {
     });
 
     expect(response.status).toBe(200);
-    handler.close();
+    await handler.close();
     handlers.splice(handlers.indexOf(handler), 1);
     expect(await eventTypes(config)).toEqual(["agent.tool.requested", "agent.tool.denied"]);
     const denial = await eventByType(config, "agent.tool.denied");
@@ -150,7 +150,7 @@ describe("agent approval routes", () => {
 
     expect(response.status).toBe(404);
     expect(response.body).not.toContain("toolreq_read_only");
-    handler.close();
+    await handler.close();
     handlers.splice(handlers.indexOf(handler), 1);
     expect(await eventTypes(config)).toEqual(["agent.tool.requested", "agent.tool.requested"]);
   });
@@ -218,7 +218,7 @@ describe("agent approval routes", () => {
 
     expect(response.status).toBe(409);
     expect(response.body).not.toMatch(/toolreq_locked_provider_transfer|lock_provider_byte_transfer/i);
-    handler.close();
+    await handler.close();
     handlers.splice(handlers.indexOf(handler), 1);
     expect(await eventTypes(config)).toEqual(["agent.tool.requested", "agent.lock.activated"]);
   });
@@ -240,7 +240,7 @@ describe("agent approval routes", () => {
 
     expect(response.status).toBe(409);
     expect(response.body).not.toMatch(/toolreq_missing_provenance_transfer/i);
-    handler.close();
+    await handler.close();
     handlers.splice(handlers.indexOf(handler), 1);
     expect(await eventTypes(config)).toEqual(["agent.tool.requested"]);
   });

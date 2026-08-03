@@ -215,7 +215,7 @@ async function seedLocalPrr(dependencies: LocalRuntimeCliDependencies): Promise<
     });
     return JSON.parse(response.body) as unknown;
   } finally {
-    handler.close();
+    await handler.close();
   }
 }
 
@@ -242,7 +242,7 @@ async function requestLocalAgent(
     }
     return body;
   } finally {
-    handler.close();
+    await handler.close();
   }
 }
 
