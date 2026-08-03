@@ -67,96 +67,72 @@ const hasAuthorityEffectUnlessInstruction = (
 };
 
 const assertionOrClaimSubject = /\b(?:assertions?|claims?)\b/;
-const assertionOrClaimEffect = /\b(?:accept(?:ed|ing|ance)?|reject(?:ed|ing|ion)?|contest(?:ed|ing|ation)?|supersed(?:e|ed|ing)|supersession|relink(?:ed|ing)?|final(?:ized)?|effective)\b/;
-const assertionOrClaimNominalEffect = /\b(?:rejection|contestation|supersession|relinking)\b/;
-const authorityCompletionSemantics = /\b(?:(?:has|have|had)\s+(?:occurred|taken place|been completed)|(?:is|are|was|were)\s+(?:(?:already|now)\s+)?(?:documented|recorded|complete|completed|final|finalized|effective)|became\s+(?:final|effective)|occurred|completed|took place|underwent)\b/;
-const authorityTailConnector = /\b(?:even though|because|since|although|though|while|whereas|given that|despite(?: the fact that)?|but|yet|however|and)\b/;
-const authorityConfirmationSource = /\b(?:records?|files?|dockets?|(?:signed\s+)?orders?|audit logs?|ledgers?|sources?|evidence|histories?|entries?)\b/;
-const authorityConfirmationVerb = /\b(?:confirm(?:s|ed)?|establish(?:es|ed)?|show(?:s|ed)?|say(?:s|said)?|record(?:s|ed)?|indicate(?:s|d)?|prove(?:s|d)?|document(?:s|ed)?|demonstrate(?:s|d)?)\b/;
-const authorityOutcomeReference = /\b(?:(?:that|the|this)\s+)?(?:outcome|result|status|action|change|decision|step)\b|\b(?:it|this|that)\s+(?:already\s+)?(?:happened|occurred|completed|took place|became\s+(?:final|effective))\b/;
+const assertionOrClaimEffect = /\b(?:accept(?:ed|ing|ance)?|reject(?:ed|ing|ion)?|contest(?:ed|ing|ation)?|supersed(?:e|ed|ing)|supersession|relink(?:ed|ing)?|final(?:ize[ds]?|izing|ization|ity)?|effective(?:ness)?)\b/;
 
-const hasConfirmedAuthorityOutcome = (value: string): boolean => {
-  const sourceMatch = authorityConfirmationSource.exec(value);
-  if (sourceMatch === null) return false;
-  const afterSource = value.slice(sourceMatch.index + sourceMatch[0].length);
-  const verbMatch = authorityConfirmationVerb.exec(afterSource);
-  if (verbMatch === null) return false;
-  const confirmation = afterSource.slice(verbMatch.index + verbMatch[0].length);
-  return authorityOutcomeReference.test(confirmation) ||
-    (!/^\s*(?:whether|if)\b/.test(confirmation) &&
-      assertionOrClaimSubject.test(confirmation) && assertionOrClaimEffect.test(confirmation));
+const authoritySubjectGrammar = "(?:(?:a|an|the|this|that)\\s+)?(?:assertions?|claims?)";
+const authorityStateGrammar = "(?:accepted|rejected|contested|superseded|relinked|final|finalized|effective)";
+const authorityActionGrammar = "(?:accept|reject|contest|supersede|relink|finalize)";
+const authorityNominalGrammar = "(?:acceptance|rejection|contestation|supersession|relinking|finality|effectiveness)";
+const authorityAnaphoricSubjectGrammar = "(?:it|this|that|they|these|those)";
+const authorityInquirySubjectGrammar = `(?:${authoritySubjectGrammar}|${authorityAnaphoricSubjectGrammar})`;
+const authorityReviewerGrammar = "(?:(?:a|the)\\s+)?(?:human\\s+)?reviewer";
+const authorityModalGrammar = "(?:should|must|may|might|can|could|would|will)";
+const authorityReviewVerbGrammar = "(?:determine|ask|decide|consider|review|verify|check|assess)";
+const authorityList = (item: string) =>
+  `${item}(?:\\s*,\\s*${item})*(?:\\s*,?\\s+(?:and|or)\\s+${item})?`;
+const authorityStateListGrammar = authorityList(authorityStateGrammar);
+const authorityActionListGrammar = authorityList(authorityActionGrammar);
+const authorityNominalListGrammar = authorityList(authorityNominalGrammar);
+const authorityActionUnitGrammar = `(?:${authorityActionGrammar}\\s+${authoritySubjectGrammar}|mark\\s+${authoritySubjectGrammar}\\s+${authorityStateListGrammar})`;
+const authorityActionExpressionGrammar = `(?:${authorityActionListGrammar}\\s+${authoritySubjectGrammar}|${authorityActionUnitGrammar}(?:\\s+(?:and|or)\\s+${authorityActionUnitGrammar})*)`;
+const authoritySubjectPredicateGrammar =
+  `(?:${authorityInquirySubjectGrammar}\\s+(?:(?:is|are|was|were|has been|have been|had been|${authorityModalGrammar}\\s+be)\\s+${authorityStateListGrammar}|` +
+  `(?:undergo|undergoes|underwent|undergone)\\s+${authorityNominalListGrammar}|${authorityNominalListGrammar}\\s+(?:occur|occurs|occurred)))`;
+const authorityInquiryPropositionGrammar = `(?:to\\s+${authorityActionExpressionGrammar}|${authoritySubjectPredicateGrammar})`;
+const authorityReviewInquiryGrammar =
+  `${authorityReviewVerbGrammar}\\s+(?:whether|if)\\s+${authorityInquiryPropositionGrammar}` +
+  `(?:\\s+(?:and|or)\\s+(?:whether|if)\\s+${authorityInquiryPropositionGrammar})*`;
+const authorityAdvisoryTailGrammar =
+  `(?:\\s+(?:(?:only\\s+)?after\\s+(?:[a-z]+ing\\s+(?:a|an|the)\\s+[a-z0-9]+(?:\\s+[a-z0-9]+){0,5}|(?:human\\s+)?review)|` +
+  `if\\s+(?:later|additional|new)\\s+evidence\\s+(?:warrants|supports|requires|justifies)\\s+(?:it|review|the\\s+action)))?`;
+const authorityReviewerBodyGrammar = `(?:${authorityReviewInquiryGrammar}|${authorityActionExpressionGrammar})${authorityAdvisoryTailGrammar}`;
+const assertionOrClaimNominalEffect = new RegExp(`\\b${authorityNominalGrammar}\\b`);
+const assertionOrClaimAnaphoricEffect = new RegExp(
+  `\\b${authorityAnaphoricSubjectGrammar}\\s+(?:(?:is|are|was|were|has been|have been|had been)\\s+${authorityStateGrammar}|became\\s+(?:final|effective))\\b`
+);
+
+const isCompletePureAuthoritySegment = (value: string): boolean => {
+  const segment = value.trim();
+  if (segment.length === 0) return false;
+  const terminator = /[;.!?]$/.exec(segment)?.[0] ?? "";
+  const body = terminator.length === 0 ? segment : segment.slice(0, -1).trimEnd();
+  const directQuestion = new RegExp(
+    `^(?:(?:is|are|was|were)\\s+${authorityInquirySubjectGrammar}\\s+${authorityStateListGrammar}|` +
+    `${authorityModalGrammar}\\s+${authorityInquirySubjectGrammar}\\s+be\\s+${authorityStateListGrammar}|` +
+    `(?:has|have|had)\\s+${authorityInquirySubjectGrammar}\\s+been\\s+${authorityStateListGrammar})$`
+  );
+  if (terminator === "?" && directQuestion.test(body)) return true;
+
+  const reviewerLed = new RegExp(
+    `^${authorityReviewerGrammar}\\s+${authorityModalGrammar}\\s+${authorityReviewerBodyGrammar}$`
+  );
+  if (reviewerLed.test(body)) return true;
+
+  const modalLed = new RegExp(
+    `^${authorityModalGrammar}\\s+${authorityReviewerGrammar}\\s+${authorityReviewerBodyGrammar}$`
+  );
+  return terminator === "?" && modalLed.test(body);
 };
 
-const hasCompletedAuthorityTailStatement = (value: string): boolean => {
-  const effect = assertionOrClaimEffect.source;
-  const subjectCompletion = new RegExp(
-    `^\\s*(?:(?:the|a|an)\\s+)?(?:assertions?|claims?)\\s+` +
-    `(?:is|are|was|were|has been|have been|had been|became)\\s+` +
-    `(?:(?:already|now)\\s+)?(?:${effect})\\b`
-  );
-  const anaphoricCompletion = new RegExp(
-    `^\\s*(?:it|this|that|they|these|those|` +
-    `(?:(?:the|this|that)\\s+)?(?:outcome|result|status|action|change|decision|step))\\s+` +
-    `(?:(?:is|are|was|were|has been|have been|had been|became)\\s+` +
-    `(?:(?:already|now)\\s+)?(?:${effect}|settled|complete|completed)\\b|` +
-    `(?:already\\s+)?(?:happened|occurred|completed|took place)\\b)`
-  );
-  const nominalCompletion = new RegExp(
-    `^\\s*(?:(?:the|a|an)\\s+)?(?:${assertionOrClaimNominalEffect.source})\\s+` +
-    `(?:${authorityCompletionSemantics.source})`
-  );
-  return subjectCompletion.test(value) || anaphoricCompletion.test(value) || nominalCompletion.test(value);
-};
-
-const hasCompletedOrConfirmedAuthorityTail = (value: string): boolean => {
-  const connectors = value.matchAll(new RegExp(authorityTailConnector.source, "g"));
-  for (const connector of connectors) {
-    const tail = value.slice((connector.index ?? 0) + connector[0].length);
-    if (hasConfirmedAuthorityOutcome(tail) || hasCompletedAuthorityTailStatement(tail)) return true;
-  }
-  return false;
-};
-
-const isPureAdvisoryAssertionOrClaimClause = (value: string): boolean => {
-  if (value.trimEnd().endsWith("?")) return true;
-  const effectIndex = value.search(assertionOrClaimEffect);
-  const modalIndex = value.search(/\b(?:should|must|may|might|can|could|would|will)\b/);
-  const reviewerInstruction = /\b(?:(?:a|the)\s+)?(?:human\s+)?reviewer\b/.test(value) &&
-    modalIndex >= 0 && modalIndex < effectIndex;
-  const passiveReviewInstruction = assertionOrClaimSubject.test(value) &&
-    /\b(?:should|must|may|might|can|could|would|will)\s+be\s+(?:reviewed|verified|checked|assessed)\b/.test(value);
-  return reviewerInstruction || passiveReviewInstruction;
+const isCompletePureAssertionOrClaimAuthorityValue = (value: string): boolean => {
+  const segments = value.match(/[^;.!?]+[;.!?]?/g);
+  return segments !== null && segments.length > 0 && segments.every(isCompletePureAuthoritySegment);
 };
 
 const hasAssertionOrClaimAuthorityEffect = (value: string): boolean => {
-  const clauses = value.match(/[^;.!?]+[;.!?]?/g) ?? [value];
-  let carriesAssertionOrClaim = false;
-  for (const rawClause of clauses) {
-    const clause = rawClause.trim();
-    const hasSubject = assertionOrClaimSubject.test(clause);
-    const hasEffect = assertionOrClaimEffect.test(clause);
-    if (hasSubject && hasEffect) {
-      if (hasCompletedOrConfirmedAuthorityTail(clause)) return true;
-      if (!isPureAdvisoryAssertionOrClaimClause(clause)) return true;
-      carriesAssertionOrClaim = true;
-      continue;
-    }
-    if (/\b(?:it|this|that|they|these|those)\s+(?:was|were|has been|have been|had been)\s+(?:accepted|rejected|contested|superseded|relinked|finalized)\b/.test(clause)) {
-      return true;
-    }
-    if (assertionOrClaimNominalEffect.test(clause) && authorityCompletionSemantics.test(clause)) {
-      return true;
-    }
-    if (carriesAssertionOrClaim && (
-      (hasEffect && authorityCompletionSemantics.test(clause)) ||
-      hasConfirmedAuthorityOutcome(clause) ||
-      hasCompletedAuthorityTailStatement(clause)
-    )) {
-      return true;
-    }
-    if (hasSubject) carriesAssertionOrClaim = true;
-  }
-  return false;
+  const hasExplicitEffect = assertionOrClaimSubject.test(value) && assertionOrClaimEffect.test(value);
+  const hasImplicitEffect = assertionOrClaimNominalEffect.test(value) || assertionOrClaimAnaphoricEffect.test(value);
+  return (hasExplicitEffect || hasImplicitEffect) && !isCompletePureAssertionOrClaimAuthorityValue(value);
 };
 
 const hasCompletedPrrEffect = (value: string) =>

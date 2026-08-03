@@ -1023,6 +1023,116 @@ describe("production specialist prompt registrations", () => {
     }
   });
 
+  it.each([
+    "A reviewer should determine whether the assertion was rejected—records confirm it happened.",
+    "Could the claim be superseded? The court certifies that outcome.",
+    "May a reviewer relink the claim? Nevertheless, correspondence reveals the change occurred.",
+    "Is the assertion final? An email acknowledges that status.",
+    "A reviewer should decide whether the assertion is effective—then the database reflects the outcome.",
+    "A reviewer should ask whether to contest the claim; minutes verify that it happened.",
+    "Should a reviewer reject or contest the assertion? The tribunal found both actions complete.",
+    "Was the assertion rejected? The minutes attest the outcome is complete.",
+    "A reviewer should decide whether the claim was relinked / the audit confirms the change."
+  ])("rejects a reviewer inquiry mixed with a declarative authority outcome: %s", (safeSummary) => {
+    expect(() => triageSafeSummary(safeSummary)).toThrow(/authority|external effect|ontology/i);
+  });
+
+  it.each([
+    {
+      label: "confirmation before a question with it",
+      safeSummary: "A clerk's chronology corroborates it. Should a reviewer reject the assertion?"
+    },
+    {
+      label: "confirmation before advice with this across a semicolon",
+      safeSummary: "The case summary memorializes this; could a reviewer contest the assertion?"
+    },
+    {
+      label: "confirmation before a question with that outcome",
+      safeSummary: "That outcome stands resolved. Should a reviewer supersede the claim?"
+    },
+    {
+      label: "confirmation before a question with that status across a slash",
+      safeSummary: "The archive notation substantiates that status / is the assertion final?"
+    },
+    {
+      label: "confirmation before advice with that change across an em dash",
+      safeSummary: "The filing journal memorializes that change—may a reviewer relink the claim?"
+    },
+    {
+      label: "confirmation before a question with that action",
+      safeSummary: "The hearing account treats that action as complete. Should a reviewer reject the assertion?"
+    },
+    {
+      label: "confirmation before a multi-effect question with both actions",
+      safeSummary: "The case narrative regards both actions as complete; should a reviewer reject or contest the assertion?"
+    },
+    {
+      label: "confirmation after an effectiveness question with this",
+      safeSummary: "Could the assertion be effective? A sworn declaration memorializes this."
+    },
+    {
+      label: "an unrelated declarative segment mixed with otherwise pure reviewer advice",
+      safeSummary: "The final chronology is documented separately. A human reviewer should reject the assertion only after reviewing the exact sources."
+    }
+  ])("rejects structurally mixed authority material: $label", ({ safeSummary }) => {
+    expect(() => triageSafeSummary(safeSummary)).toThrow(/authority|external effect|ontology/i);
+  });
+
+  it.each([
+    "It was accepted.",
+    "This was rejected.",
+    "That was contested.",
+    "They were superseded.",
+    "These were relinked.",
+    "Those were finalized.",
+    "It became effective."
+  ])("rejects a standalone anaphoric authority effect: %s", (safeSummary) => {
+    expect(() => triageSafeSummary(safeSummary)).toThrow(/authority|external effect|ontology/i);
+  });
+
+  it.each([
+    "Acceptance was completed.",
+    "Rejection was finalized.",
+    "Contestation is complete.",
+    "Supersession took place.",
+    "Relinking has occurred.",
+    "Finality was established.",
+    "Effectiveness was recorded."
+  ])("rejects a standalone nominal authority effect: %s", (safeSummary) => {
+    expect(() => triageSafeSummary(safeSummary)).toThrow(/authority|external effect|ontology/i);
+  });
+
+  it.each([
+    "A reviewer should reject the assertion after confirming it happened.",
+    "A reviewer may decide whether to relink the claim after corroborating that outcome."
+  ])("rejects a reviewer construction with a non-finite confirmation tail: %s", (safeSummary) => {
+    expect(() => triageSafeSummary(safeSummary)).toThrow(/authority|external effect|ontology/i);
+  });
+
+  it.each([
+    "Should the assertion be rejected?",
+    "Could the assertion be contested?",
+    "Could the claim be superseded?",
+    "May the claim be relinked?",
+    "Is the assertion final?",
+    "Is the assertion effective?",
+    "Was it rejected?",
+    "Could this be superseded?",
+    "Is that final or effective?",
+    "Should the assertion be rejected or contested?",
+    "Could a reviewer determine whether the claim should be superseded or relinked?",
+    "May a human reviewer decide whether the assertion is final or effective?",
+    "Should a reviewer reject the assertion and contest the claim?",
+    "Was the assertion rejected? Could the claim be superseded?",
+    "A human reviewer should reject or contest the assertion.",
+    "A reviewer may decide whether to supersede or relink the claim.",
+    "A reviewer should determine whether the assertion is final or effective.",
+    "A reviewer should determine whether it was rejected.",
+    "A human reviewer should reject the assertion. A human reviewer may contest the claim."
+  ])("allows a complete pure authority question or human-review advisory construction: %s", (safeSummary) => {
+    expect(triageSafeSummary(safeSummary).runType).toBe("evidence-triage");
+  });
+
   it("rejects active-voice publication authority claims", () => {
     expect(() => triageSafeSummary("I published the report.")).toThrow(/authority|external effect|ontology/i);
   });
