@@ -599,7 +599,19 @@ describe("MVP specialist workflow descriptors", () => {
     { field: "rationale" as const, value: "Assertion rejection should be reviewed; the rejection has occurred." },
     { field: "confidenceCaveat" as const, value: "Assertion contestation should be reviewed; the contestation has occurred." },
     { field: "alternativeExplanations" as const, value: "Assertion supersession should be reviewed; the supersession has occurred." },
-    { field: "requestedFollowupEvidence" as const, value: "Claim relinking should be reviewed; the relinking has occurred." }
+    { field: "requestedFollowupEvidence" as const, value: "Claim relinking should be reviewed; the relinking has occurred." },
+    { field: "rationale" as const, value: "The final rejection of the assertion is documented." },
+    { field: "confidenceCaveat" as const, value: "Rejection of the assertion became final." },
+    { field: "alternativeExplanations" as const, value: "The completed contestation of the assertion is documented." },
+    { field: "rationale" as const, value: "Contestation of the assertion became effective." },
+    { field: "confidenceCaveat" as const, value: "The finalized supersession of the assertion is documented." },
+    { field: "alternativeExplanations" as const, value: "Supersession of the assertion became final." },
+    { field: "requestedFollowupEvidence" as const, value: "Relinking of the claim became effective." },
+    { field: "requestedFollowupEvidence" as const, value: "The finalized relinking of the claim is documented." },
+    { field: "rationale" as const, value: "Rejection was finalized for the assertion." },
+    { field: "confidenceCaveat" as const, value: "Contestation was recorded for the assertion." },
+    { field: "alternativeExplanations" as const, value: "Supersession was finalized for the assertion." },
+    { field: "requestedFollowupEvidence" as const, value: "Relinking was recorded for the claim." }
   ])("rejects completed authority nominalization in $field", async ({ field, value }) => {
     const store = memoryArtifactStore();
     const output = sourcedContradictionOutput();
@@ -627,7 +639,7 @@ describe("MVP specialist workflow descriptors", () => {
     const output = sourcedContradictionOutput();
     output.candidates[0] = {
       ...output.candidates[0]!,
-      rationale: "A human reviewer should reject the assertion only after reviewing the exact sources.",
+      rationale: "The final chronology is documented separately. A human reviewer should reject the assertion only after reviewing the exact sources.",
       confidenceCaveat: "A human reviewer may contest the assertion after resolving the date uncertainty.",
       alternativeExplanations: ["A human reviewer could supersede the assertion if later evidence warrants it."],
       requestedFollowupEvidence: ["A human reviewer must decide whether to relink the claim after obtaining the source."]
@@ -647,6 +659,92 @@ describe("MVP specialist workflow descriptors", () => {
     });
 
     expect(result.artifact).toMatchObject({ candidates: [{ requiredReviewerAction: "request-evidence" }] });
+  });
+
+  it.each([
+    { label: "invalid calendar day", date: "2026-99-99", precision: "day" as const },
+    { label: "non-leap February day", date: "2026-02-29", precision: "day" as const },
+    { label: "non-leap century day", date: "1900-02-29", precision: "day" as const },
+    { label: "invalid month day", date: "2026-04-31", precision: "day" as const },
+    { label: "day with month precision", date: "2026-04-30", precision: "month" as const },
+    { label: "month with year precision", date: "2026-04", precision: "year" as const },
+    { label: "year with day precision", date: "2026", precision: "day" as const }
+  ])("rejects timeline $label before artifact storage", async ({ date, precision }) => {
+    const store = memoryArtifactStore();
+    const output = sourcedTimelineOutput();
+    const { dateRange: _dateRange, ...base } = output.timelineItems[0]!;
+    output.timelineItems[0] = { ...base, date, precision };
+
+    await expect(executeSourcedInvestigationWorkflow({
+      runType: "timeline-builder",
+      runId: "run_timeline_invalid_date_001",
+      taskId: "task_timeline_invalid_date_001",
+      ...await sourcedWorkflowAuthority({
+        runType: "timeline-builder",
+        taskId: "task_timeline_invalid_date_001",
+        promptRunId: "run_timeline_invalid_date_001"
+      }),
+      artifactStore: store,
+      execution: { mode: "fake", invoke: async () => output }
+    })).rejects.toThrow(/date|precision|calendar/i);
+    expect(store.putCount()).toBe(0);
+  });
+
+  it.each([
+    {
+      label: "both date and range",
+      values: { date: "2026-03-01", dateRange: { start: "2026-03-01", end: "2026-03-31" }, precision: "range" as const }
+    },
+    {
+      label: "reversed range",
+      values: { dateRange: { start: "2026-03-31", end: "2026-03-01" }, precision: "range" as const }
+    },
+    {
+      label: "range with day precision",
+      values: { dateRange: { start: "2026-03-01", end: "2026-03-31" }, precision: "day" as const }
+    }
+  ])("rejects timeline $label before artifact storage", async ({ values }) => {
+    const store = memoryArtifactStore();
+    const output = sourcedTimelineOutput();
+    output.timelineItems[0] = { ...output.timelineItems[0]!, ...values };
+
+    await expect(executeSourcedInvestigationWorkflow({
+      runType: "timeline-builder",
+      runId: "run_timeline_invalid_range_001",
+      taskId: "task_timeline_invalid_range_001",
+      ...await sourcedWorkflowAuthority({
+        runType: "timeline-builder",
+        taskId: "task_timeline_invalid_range_001",
+        promptRunId: "run_timeline_invalid_range_001"
+      }),
+      artifactStore: store,
+      execution: { mode: "fake", invoke: async () => output }
+    })).rejects.toThrow(/date|range|precision/i);
+    expect(store.putCount()).toBe(0);
+  });
+
+  it.each([
+    { date: "2026", precision: "year" as const },
+    { date: "2026-02", precision: "month" as const },
+    { date: "2024-02-29", precision: "day" as const },
+    { date: "2000-02-29", precision: "day" as const }
+  ])("preserves a valid $precision timeline date", async ({ date, precision }) => {
+    const output = sourcedTimelineOutput();
+    const { dateRange: _dateRange, ...base } = output.timelineItems[0]!;
+    output.timelineItems[0] = { ...base, date, precision };
+    const result = await executeSourcedInvestigationWorkflow({
+      runType: "timeline-builder",
+      runId: `run_timeline_valid_${precision}_001`,
+      taskId: `task_timeline_valid_${precision}_001`,
+      ...await sourcedWorkflowAuthority({
+        runType: "timeline-builder",
+        taskId: `task_timeline_valid_${precision}_001`,
+        promptRunId: `run_timeline_valid_${precision}_001`
+      }),
+      artifactStore: memoryArtifactStore(),
+      execution: { mode: "fake", invoke: async () => output }
+    });
+    expect(result.artifact).toMatchObject({ items: [{ date, precision }] });
   });
 
   it("blocks remote context transfer before executor or store access", async () => {

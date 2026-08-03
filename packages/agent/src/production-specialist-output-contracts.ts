@@ -60,10 +60,20 @@ const hasCompletedNominalizedAuthorityEffect = (
   subject: RegExp,
   nominalization: RegExp
 ) => {
-  const completionSemantics = /\b(?:(?:has|have|had)\s+(?:occurred|taken place|been completed)|(?:is|are|was|were)\s+(?:complete|completed|final|effective)|occurred|completed|took place)\b/;
-  const effectMatch = nominalization.exec(value);
-  if (!subject.test(value) || effectMatch === null) return false;
-  return completionSemantics.test(value.slice(effectMatch.index + effectMatch[0].length));
+  const clauses = value.split(/[,;.!?]+/);
+  const completionSemantics = /\b(?:(?:has|have|had)\s+(?:occurred|taken place|been completed)|(?:is|are|was|were)\s+(?:documented|recorded|complete|completed|final|finalized|effective)|became\s+(?:final|effective)|occurred|completed|took place)\b/;
+  const completedModifier = /\b(?:completed|final|finalized)\b/;
+
+  return clauses.some((clause, index) => {
+    const effectMatch = nominalization.exec(clause);
+    if (effectMatch === null) return false;
+    const sameClauseSubject = subject.test(clause);
+    const carriedSubject = index > 0 && subject.test(clauses[index - 1]!);
+    if (!sameClauseSubject && !carriedSubject) return false;
+    const beforeEffect = clause.slice(0, effectMatch.index);
+    const afterEffect = clause.slice(effectMatch.index + effectMatch[0].length);
+    return completionSemantics.test(afterEffect) || completedModifier.test(beforeEffect);
+  });
 };
 
 const hasCompletedPrrEffect = (value: string) =>
@@ -145,7 +155,28 @@ const ref = safeText("provider output reference").max(200).superRefine((value, c
   }
 });
 const hash = z.string().regex(/^sha256:[a-f0-9]{64}$/);
-const normalizedDate = safeText("timeline date").regex(/^\d{4}(?:-\d{2}(?:-\d{2})?)?$/);
+type TimelineDatePrecision = "year" | "month" | "day";
+
+const timelineDatePrecision = (value: string): TimelineDatePrecision | undefined => {
+  const match = /^(\d{4})(?:-(\d{2})(?:-(\d{2}))?)?$/.exec(value);
+  if (match === null) return undefined;
+  const year = Number(match[1]);
+  const month = match[2] === undefined ? undefined : Number(match[2]);
+  const day = match[3] === undefined ? undefined : Number(match[3]);
+  if (year < 1) return undefined;
+  if (month === undefined) return "year";
+  if (month < 1 || month > 12) return undefined;
+  if (day === undefined) return "month";
+  const leapYear = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const daysInMonth = [31, leapYear ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1]!;
+  return day >= 1 && day <= daysInMonth ? "day" : undefined;
+};
+
+const normalizedDate = safeText("timeline date").superRefine((value, ctx) => {
+  if (timelineDatePrecision(value) === undefined) {
+    ctx.addIssue({ code: "custom", message: "timeline date must be a real normalized calendar year, month, or day" });
+  }
+});
 
 const prrNegotiationReviewOutputSchema = z.object({
   draftSummary: shortSafeText("PRR negotiation draft summary"),
@@ -181,7 +212,20 @@ const timelineBuilderSourcedTimelineOutputSchema = z.object({
     uncertaintyNotes: z.array(shortSafeText("timeline uncertainty note")).max(12),
     uncertaintySourceRefs: z.array(ref).max(24)
   }).strict().superRefine((value, ctx) => {
-    if (value.date === undefined && value.dateRange === undefined) ctx.addIssue({ code: "custom", message: "timeline item requires a date or date range" });
+    if ((value.date === undefined) === (value.dateRange === undefined)) {
+      ctx.addIssue({ code: "custom", message: "timeline item requires exactly one date or date range" });
+    }
+    if (value.date !== undefined && timelineDatePrecision(value.date) !== value.precision) {
+      ctx.addIssue({ code: "custom", message: "timeline date precision must match its normalized date" });
+    }
+    if (value.dateRange !== undefined) {
+      if (value.precision !== "range") {
+        ctx.addIssue({ code: "custom", message: "timeline date range requires range precision" });
+      }
+      if (value.dateRange.start > value.dateRange.end) {
+        ctx.addIssue({ code: "custom", message: "timeline date range must be ordered" });
+      }
+    }
     if (value.evidenceRefs.length + value.assertionRefs.length + value.prrEventRefs.length === 0) ctx.addIssue({ code: "custom", message: "timeline item requires at least one source ref" });
     if (value.uncertaintyCategories.length > 0 && (value.uncertaintyNotes.length === 0 || value.uncertaintySourceRefs.length === 0)) {
       ctx.addIssue({ code: "custom", message: "timeline uncertainty requires notes and exact source refs" });

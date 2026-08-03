@@ -186,6 +186,10 @@ export function createResidentSupervisionRuntime(
   let backgroundRescanRequested = false;
   let activeCycle = false;
   let activeTaskId: string | undefined;
+  let sourcedExecutionCycle: {
+    readonly taskId: string;
+    readonly promise: Promise<unknown>;
+  } | undefined;
   let sourcedHandoffWakeRuntime: WakeSupervisorRuntime | undefined;
   let pausePending = false;
   let pendingPauseControls = 0;
@@ -377,16 +381,25 @@ export function createResidentSupervisionRuntime(
           const started = await issued.supervision.start();
           wakeStatus = started.status;
           if (started.outcome !== "accepted") {
+            await issued.stop().catch(() => undefined);
+            wakeStatus = undefined;
+            forgetWakeRuntime(issued);
             throw new Error("Resident supervision lease is unavailable for sourced investigation.");
           }
         }
         activeCycle = true;
         activeTaskId = task.taskId;
-        try {
+        const cycle = (async () => {
           const handoff = await issuer(issued, task);
           sourcedHandoffWakeRuntime = issued;
           return await execution.execute(task, handoff);
+        })();
+        const trackedCycle = Object.freeze({ taskId: task.taskId, promise: cycle });
+        sourcedExecutionCycle = trackedCycle;
+        try {
+          return await cycle;
         } finally {
+          if (sourcedExecutionCycle === trackedCycle) sourcedExecutionCycle = undefined;
           activeCycle = false;
           activeTaskId = undefined;
         }
@@ -396,6 +409,11 @@ export function createResidentSupervisionRuntime(
     async quiesceTask(taskId: string) {
       assertServiceRunning();
       while (activeTaskId === taskId) {
+        const sourcedCycle = sourcedExecutionCycle;
+        if (sourcedCycle !== undefined && sourcedCycle.taskId === taskId) {
+          await sourcedCycle.promise.catch(() => undefined);
+          continue;
+        }
         const cycle = backgroundCycle;
         if (cycle === undefined) return;
         await cycle.catch(() => undefined);

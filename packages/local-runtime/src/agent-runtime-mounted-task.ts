@@ -720,6 +720,7 @@ export interface RunMountedSourcedInvestigationTaskInput {
   readonly runId: string;
   readonly runType: MountedSourcedInvestigationRunType;
   readonly evidenceIds: readonly string[];
+  readonly beforePromptArtifactWriteForTest?: (() => void | Promise<void>) | undefined;
 }
 
 interface MountedTimelineDraftContext {
@@ -744,6 +745,7 @@ interface MountedTimelineDraftContext {
 export function createMountedSourcedInvestigationExecutionPort(input: {
   readonly handle: LocalRuntimeHandle;
   readonly now: () => string;
+  readonly beforePromptArtifactWriteForTest?: (() => void | Promise<void>) | undefined;
 }): ResidentSourcedInvestigationExecutionPort {
   return Object.freeze({
     async execute(
@@ -756,7 +758,10 @@ export function createMountedSourcedInvestigationExecutionPort(input: {
         taskId: task.taskId,
         runId: task.runId,
         runType: task.runType,
-        evidenceIds: task.evidenceIds
+        evidenceIds: task.evidenceIds,
+        ...(input.beforePromptArtifactWriteForTest === undefined ? {} : {
+          beforePromptArtifactWriteForTest: input.beforePromptArtifactWriteForTest
+        })
       }, Object.freeze({ handoff }));
     }
   });
@@ -847,7 +852,7 @@ async function runMountedSourcedInvestigationTaskInternal(
 
     const contextEvents = Object.freeze(await input.handle.ledger.readAll());
     const timelineDraft = input.runType === "contradiction-finder"
-      ? await readMountedTimelineDraftContext(authority, contextEvents)
+      ? await readMountedTimelineDraftContext(authority, contextEvents, evidence)
       : undefined;
     const associatedPrrRequestId = exactAssociatedPrrRequestId(contextEvents, evidence);
     const contextRegistry = createMountedSourcedInvestigationContextRegistry({
@@ -881,8 +886,17 @@ async function runMountedSourcedInvestigationTaskInternal(
       scope,
       resolvedContextPacks: contextPacks
     });
-    await authority.revalidate();
     const promptStore = await createMountedPromptArtifactStore({ handle: input.handle });
+    await authority.revalidate();
+    await input.beforePromptArtifactWriteForTest?.();
+    await authority.revalidate();
+    await assertMountedTaskEffectAllowed(
+      input.handle,
+      input.taskId,
+      input.runId,
+      ["running"],
+      ["running"]
+    );
     await promptStore.put(promptArtifact);
     const promptReadback = await promptStore.read({
       inputArtifactHash: promptArtifact.manifest.inputArtifactHash as ContentHash,
@@ -2557,65 +2571,266 @@ async function seedContextProvenanceArtifacts(
 
 async function readMountedTimelineDraftContext(
   authority: MountedTaskAuthority,
-  events: readonly KnowledgeEvent[]
+  events: readonly KnowledgeEvent[],
+  evidence: readonly EvidenceBinding[]
 ): Promise<MountedTimelineDraftContext> {
-  const recorded = events.findLast((event): event is KnowledgeEventOf<"agent.specialist-handoff.recorded"> =>
+  const recordedHandoffs = events.filter((event): event is KnowledgeEventOf<"agent.specialist-handoff.recorded"> =>
     event.type === "agent.specialist-handoff.recorded" && event.payload.runType === "timeline-builder"
   );
-  if (recorded === undefined) {
+  if (recordedHandoffs.length === 0) {
     throw mountedConflict("Contradiction review requires a prior replayable sourced timeline.");
   }
   return await authority.withHandoffReadSnapshot({}, async (reader) => {
-    const replay = await buildSpecialistHandoffProjection({
-      events,
-      manifestReader: reader,
-      runId: recorded.payload.runId,
-      ...(recorded.payload.taskId === undefined ? {} : { taskId: recorded.payload.taskId })
-    });
-    const outputArtifacts = replay.selectedHandoff?.outputArtifacts.filter((artifact) =>
-      artifact.artifactKind === "timeline-artifact" && artifact.schemaId === "timeline-builder-handoff.v1"
-    ) ?? [];
-    if (replay.state !== "task-completed" || replay.diagnostics.length !== 0 ||
-      replay.selectedHandoff?.runType !== "timeline-builder" || outputArtifacts.length !== 1) {
-      throw mountedConflict("Prior sourced timeline handoff does not replay exactly.");
-    }
-    const output = outputArtifacts[0]!;
-    const artifactHash = requireContentHash(output.artifactHash);
-    const bytes = await reader.get(artifactHash);
-    if (hashBytes(bytes) !== artifactHash) {
-      throw mountedConflict("Prior sourced timeline artifact hash readback failed.");
-    }
-    const artifactRecord = plainRecord(parseJson(bytes));
-    if (artifactRecord?.schemaVersion !== "sourced-timeline-artifact.v1" ||
-      artifactRecord.runId !== recorded.payload.runId || artifactRecord.taskId !== recorded.payload.taskId ||
-      !Array.isArray(artifactRecord.items)) {
-      throw mountedConflict("Prior sourced timeline artifact does not match its recorded handoff.");
-    }
-    const artifact = artifactRecord as unknown as SourcedTimelineArtifact;
-    const sourceEventIds = uniqueStrings(recorded.payload.sourceEventIds);
-    if (sourceEventIds.length === 0 || sourceEventIds.length !== recorded.payload.sourceEventIds.length ||
-      sourceEventIds.some((eventId) => !/^evt_[a-zA-Z0-9_-]+$/.test(eventId))) {
-      throw mountedConflict("Prior sourced timeline event provenance is incomplete.");
-    }
-    const items = artifact.items.map((item) => {
-      if (!/^timeline_[a-zA-Z0-9_-]+$/.test(item.itemId) || item.summary.length === 0 ||
-        !Array.isArray(item.uncertainty.categories)) {
-        throw mountedConflict("Prior sourced timeline item is invalid.");
-      }
-      return Object.freeze({
-        itemId: item.itemId,
-        artifactHash,
-        summary: item.summary,
-        uncertaintyCategories: Object.freeze([...item.uncertainty.categories]),
-        sourceEventIds
+    const relevant: MountedTimelineDraftContext[] = [];
+    for (const recorded of recordedHandoffs) {
+      const candidate = await replayMountedTimelineDraftCandidate({
+        reader,
+        events,
+        evidence,
+        recorded
       });
-    });
-    return Object.freeze({
-      sourceEventIds,
-      artifacts: Object.freeze([{ contentHash: artifactHash, bytes: Buffer.from(bytes) }]),
-      items: Object.freeze(items)
-    });
+      if (candidate !== undefined) relevant.push(candidate);
+    }
+    if (relevant.length !== 1) {
+      throw mountedConflict(relevant.length === 0
+        ? "Contradiction review requires exactly one replayable timeline relevant to the selected evidence."
+        : "Contradiction review found ambiguous replayable timelines for the selected evidence.");
+    }
+    return relevant[0]!;
   });
+}
+
+async function replayMountedTimelineDraftCandidate(input: {
+  readonly reader: SpecialistHandoffManifestStore;
+  readonly events: readonly KnowledgeEvent[];
+  readonly evidence: readonly EvidenceBinding[];
+  readonly recorded: KnowledgeEventOf<"agent.specialist-handoff.recorded">;
+}): Promise<MountedTimelineDraftContext | undefined> {
+  const replay = await buildSpecialistHandoffProjection({
+    events: input.events,
+    manifestReader: input.reader,
+    runId: input.recorded.payload.runId,
+    ...(input.recorded.payload.taskId === undefined ? {} : { taskId: input.recorded.payload.taskId })
+  });
+  const outputArtifacts = replay.selectedHandoff?.outputArtifacts.filter((artifact) =>
+    artifact.artifactKind === "timeline-artifact" && artifact.schemaId === "timeline-builder-handoff.v1"
+  ) ?? [];
+  if (replay.state !== "task-completed" || replay.diagnostics.length !== 0 ||
+    replay.selectedHandoff?.runType !== "timeline-builder" || outputArtifacts.length !== 1) {
+    throw mountedConflict("Prior sourced timeline handoff does not replay exactly.");
+  }
+  const artifactHash = requireContentHash(outputArtifacts[0]!.artifactHash);
+  const bytes = await input.reader.get(artifactHash);
+  if (hashBytes(bytes) !== artifactHash) {
+    throw mountedConflict("Prior sourced timeline artifact hash readback failed.");
+  }
+  const artifactRecord = plainRecord(parseJson(bytes));
+  if (artifactRecord?.schemaVersion !== "sourced-timeline-artifact.v1" ||
+    artifactRecord.runId !== input.recorded.payload.runId ||
+    artifactRecord.taskId !== input.recorded.payload.taskId ||
+    !Array.isArray(artifactRecord.items) || !Array.isArray(artifactRecord.omittedSources) ||
+    !Array.isArray(artifactRecord.contextPackRefs)) {
+    throw mountedConflict("Prior sourced timeline artifact does not match its recorded handoff.");
+  }
+  const artifact = artifactRecord as unknown as SourcedTimelineArtifact;
+  const eventById = new Map(input.events.map((event) => [event.id, event] as const));
+  const aggregateEventIds = uniqueStrings(input.recorded.payload.sourceEventIds);
+  const aggregateEventIdSet = new Set(aggregateEventIds);
+  if (aggregateEventIds.length === 0 ||
+    aggregateEventIds.length !== input.recorded.payload.sourceEventIds.length ||
+    aggregateEventIds.some((eventId) => !/^evt_[a-zA-Z0-9_-]+$/.test(eventId) || !eventById.has(eventId))) {
+    throw mountedConflict("Prior sourced timeline event provenance is incomplete.");
+  }
+  const selectedById = new Map(input.evidence.map((binding) => [binding.evidenceId, binding] as const));
+
+  if (artifact.items.length === 0) {
+    const omittedSourceIds = artifact.omittedSources.map((omission) => omission.sourceRef);
+    const selectedIds = input.evidence.map((binding) => binding.evidenceId);
+    if (uniqueStrings(omittedSourceIds).length !== omittedSourceIds.length ||
+      !sameStringSet(omittedSourceIds, selectedIds)) {
+      return undefined;
+    }
+    for (const binding of input.evidence) {
+      if (!aggregateEventIdSet.has(binding.evidenceEventId) ||
+        !aggregateEventIdSet.has(binding.linkEventId)) return undefined;
+      const contextRefs = artifact.contextPackRefs.filter((ref) =>
+        ref.artifactHashes?.includes(binding.contentHash) === true &&
+        ref.sourceEventIds?.includes(binding.evidenceEventId) === true
+      );
+      let replayedExactContext = false;
+      for (const ref of contextRefs) {
+        if (typeof ref.contentHash !== "string" || !isContentHash(ref.contentHash)) continue;
+        const contextBytes = await input.reader.get(ref.contentHash);
+        if (hashBytes(contextBytes) !== ref.contentHash) continue;
+        const contextPayload = parseJson(contextBytes);
+        if (mountedTimelineJsonContains(contextPayload, binding.evidenceId) &&
+          mountedTimelineJsonContains(contextPayload, binding.contentHash)) {
+          replayedExactContext = true;
+          break;
+        }
+      }
+      if (!replayedExactContext) return undefined;
+    }
+    const sourceEventIds = [...uniqueStrings(sourceEventIdsFor(input.evidence))].sort();
+    return Object.freeze({
+      sourceEventIds: Object.freeze(sourceEventIds),
+      artifacts: Object.freeze([{ contentHash: artifactHash, bytes: Buffer.from(bytes) }]),
+      items: Object.freeze([])
+    });
+  }
+
+  const candidateCitedEvidenceIds = new Set<string>();
+  for (const item of artifact.items) {
+    if (!Array.isArray(item.evidence) || !Array.isArray(item.assertions)) {
+      throw mountedConflict("Prior sourced timeline item citations are invalid.");
+    }
+    for (const citation of item.evidence) candidateCitedEvidenceIds.add(citation.evidenceId);
+    for (const citation of item.assertions) candidateCitedEvidenceIds.add(citation.evidenceId);
+  }
+  if (candidateCitedEvidenceIds.size === 0 ||
+    [...candidateCitedEvidenceIds].some((evidenceId) => !selectedById.has(evidenceId))) {
+    return undefined;
+  }
+
+  const citedEvidenceIds = new Set<string>();
+  const items: MountedTimelineDraftContext["items"][number][] = [];
+  for (const item of artifact.items) {
+    if (!/^timeline_[a-zA-Z0-9_-]+$/.test(item.itemId) || typeof item.summary !== "string" ||
+      item.summary.length === 0 || !Array.isArray(item.evidence) || !Array.isArray(item.assertions) ||
+      !Array.isArray(item.prrEvents) || !Array.isArray(item.contentHashRefs) ||
+      !Array.isArray(item.uncertainty?.categories) || item.evidence.length === 0) {
+      throw mountedConflict("Prior sourced timeline item is invalid.");
+    }
+    const itemEventIds: string[] = [];
+    const itemHashes: ContentHash[] = [];
+    const evidenceCitationIds = new Set<string>();
+    for (const citation of item.evidence) {
+      const binding = selectedById.get(citation.evidenceId);
+      const ingested = eventById.get(citation.ingestionEventId);
+      if (binding === undefined || evidenceCitationIds.has(citation.evidenceId) ||
+        citation.contentHash !== binding.contentHash || citation.ingestionEventId !== binding.evidenceEventId ||
+        ingested?.type !== "evidence.ingested" || ingested.payload.evidenceId !== citation.evidenceId ||
+        ingested.payload.contentHash !== citation.contentHash) {
+        throw mountedConflict("Prior sourced timeline evidence citation is not current and exact.");
+      }
+      evidenceCitationIds.add(citation.evidenceId);
+      citedEvidenceIds.add(citation.evidenceId);
+      itemEventIds.push(citation.ingestionEventId);
+      itemHashes.push(citation.contentHash);
+    }
+    const assertionIds = new Set<string>();
+    for (const citation of item.assertions) {
+      const binding = selectedById.get(citation.evidenceId);
+      const proposed = eventById.get(citation.proposedByEventId);
+      const accepted = eventById.get(citation.acceptedByEventId);
+      const sourceEventIds = uniqueStrings(citation.sourceEventIds);
+      if (binding === undefined || assertionIds.has(citation.assertionId) ||
+        citation.evidenceContentHash !== binding.contentHash ||
+        sourceEventIds.length !== citation.sourceEventIds.length ||
+        !sameStringSet(sourceEventIds, [citation.proposedByEventId, citation.acceptedByEventId]) ||
+        proposed?.type !== "assertion.proposed" ||
+        proposed.payload.assertionId !== citation.assertionId ||
+        proposed.payload.evidenceId !== citation.evidenceId ||
+        accepted?.type !== "assertion.accepted" || accepted.payload.assertionId !== citation.assertionId ||
+        accepted.context.causationId !== citation.proposedByEventId ||
+        accepted.context.actor.kind !== "human" ||
+        accepted.payload.acceptedBy !== accepted.context.actor.id) {
+        throw mountedConflict("Prior sourced timeline assertion citation is not current and exact.");
+      }
+      if (citation.rowHash !== undefined) {
+        const rowHash = requireContentHash(citation.rowHash);
+        const rowBytes = await input.reader.get(rowHash);
+        const row = plainRecord(parseJson(rowBytes));
+        if (hashBytes(rowBytes) !== rowHash || row?.assertionId !== citation.assertionId ||
+          row.evidenceId !== citation.evidenceId || row.evidenceContentHash !== citation.evidenceContentHash ||
+          row.proposedByEventId !== citation.proposedByEventId ||
+          row.acceptedByEventId !== citation.acceptedByEventId ||
+          !Array.isArray(row.sourceEventIds) ||
+          !sameStringSet(row.sourceEventIds as string[], citation.sourceEventIds)) {
+          throw mountedConflict("Prior sourced timeline assertion row hash is not replayable.");
+        }
+      }
+      assertionIds.add(citation.assertionId);
+      citedEvidenceIds.add(citation.evidenceId);
+      itemEventIds.push(citation.proposedByEventId, citation.acceptedByEventId, ...sourceEventIds);
+      itemHashes.push(citation.evidenceContentHash);
+    }
+    const prrEventIds = new Set<string>();
+    for (const citation of item.prrEvents) {
+      const event = eventById.get(citation.eventId);
+      const ledgerHashes = event === undefined
+        ? []
+        : mountedTimelineEventContentHashes(event, input.evidence);
+      if (event === undefined || !event.type.startsWith("prr.") || prrEventIds.has(citation.eventId) ||
+        (citation.type !== undefined && citation.type !== event.type) ||
+        (citation.occurredAt !== undefined && citation.occurredAt !== event.context.occurredAt) ||
+        citation.contentHashes.some((contentHash) =>
+          !isContentHash(contentHash) || !ledgerHashes.includes(contentHash)
+        )) {
+        throw mountedConflict("Prior sourced timeline PRR citation is not current and exact.");
+      }
+      prrEventIds.add(citation.eventId);
+      itemEventIds.push(citation.eventId);
+      itemHashes.push(...citation.contentHashes);
+    }
+    const exactItemEventIds = [...uniqueStrings(itemEventIds)].sort();
+    const exactItemHashes = [...uniqueHashes(itemHashes)].sort();
+    if (exactItemEventIds.some((eventId) => !aggregateEventIdSet.has(eventId)) ||
+      !sameStringSet(exactItemHashes, item.contentHashRefs)) {
+      throw mountedConflict("Prior sourced timeline item escaped its aggregate handoff provenance.");
+    }
+    items.push(Object.freeze({
+      itemId: item.itemId,
+      artifactHash,
+      summary: item.summary,
+      uncertaintyCategories: Object.freeze([...item.uncertainty.categories]),
+      sourceEventIds: Object.freeze(exactItemEventIds)
+    }));
+  }
+  if (citedEvidenceIds.size === 0 || [...citedEvidenceIds].some((evidenceId) => !selectedById.has(evidenceId))) {
+    return undefined;
+  }
+  const sourceEventIds = [...uniqueStrings(items.flatMap((item) => item.sourceEventIds))].sort();
+  return Object.freeze({
+    sourceEventIds: Object.freeze(sourceEventIds),
+    artifacts: Object.freeze([{ contentHash: artifactHash, bytes: Buffer.from(bytes) }]),
+    items: Object.freeze(items)
+  });
+}
+
+function mountedTimelineEventContentHashes(
+  event: KnowledgeEvent,
+  evidence: readonly EvidenceBinding[]
+): readonly ContentHash[] {
+  const hashes = new Set<ContentHash>();
+  const evidenceById = new Map(evidence.map((binding) => [binding.evidenceId, binding] as const));
+  const visit = (value: unknown): void => {
+    if (typeof value === "string") {
+      if (isContentHash(value)) hashes.add(value);
+      const binding = evidenceById.get(value);
+      if (binding !== undefined) hashes.add(binding.contentHash);
+      return;
+    }
+    if (Array.isArray(value)) {
+      for (const item of value) visit(item);
+      return;
+    }
+    const record = plainRecord(value);
+    if (record !== undefined) {
+      for (const item of Object.values(record)) visit(item);
+    }
+  };
+  visit(event.payload);
+  return Object.freeze([...hashes].sort());
+}
+
+function mountedTimelineJsonContains(value: unknown, expected: string): boolean {
+  if (value === expected) return true;
+  if (Array.isArray(value)) return value.some((item) => mountedTimelineJsonContains(item, expected));
+  const record = plainRecord(value);
+  return record !== undefined && Object.values(record).some((item) =>
+    mountedTimelineJsonContains(item, expected)
+  );
 }
 
 function createMountedSourcedInvestigationContextRegistry(input: {
