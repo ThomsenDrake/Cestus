@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { Buffer } from "node:buffer";
 import { createHash } from "node:crypto";
-import { buildResolvedContextPack } from "../src/context-packs.js";
+import {
+  buildResolvedContextPack,
+  createContextPackRegistry,
+  serializeContextPackPayload
+} from "../src/context-packs.js";
 import { createResidentAgentDomainAdapterRegistry } from "../src/domain-execution-adapter-registry.js";
 import { approvalClassForSideEffect } from "../src/permission-policy.js";
 import { createAgentRuntime } from "../src/runtime.js";
@@ -14,6 +18,32 @@ import {
   executeSourcedInvestigationWorkflow,
   type SourcedInvestigationArtifactStore
 } from "../src/sourced-investigation-workflows.js";
+import {
+  buildSelectionManifestHash,
+  investigativeRegistrationIdentity,
+  registerInvestigativeContextPacks,
+  type InvestigativeContextPackDependencies,
+  type InvestigativeEvidenceRow,
+  type InvestigativeSelectionManifestBody
+} from "../src/investigative-context-packs.js";
+import {
+  registerOperationalContextPackBuilders,
+  type OperationalContextPackProvider
+} from "../src/operational-context-packs.js";
+import {
+  buildJurisdictionPackSummaryContextPack,
+  buildPrrReadModelContextPack,
+  jurisdictionPackSummaryPayloadParser,
+  prrReadModelPayloadParser,
+  registerPrrContextPackBuilders,
+  type PrrContextPackRegistrationEntry
+} from "../src/prr-context-packs.js";
+import { registerTimelineDraftSummaryContextPack } from "../src/sourced-investigation-context-packs.js";
+import {
+  productionSpecialistPromptRegistrationFor,
+  renderProductionSpecialistPrompt
+} from "../src/production-specialist-prompts.js";
+import type { ProductionRunScope } from "../src/production-specialist-registration-metadata.js";
 import { parseSpecialistHandoffMaterial } from "../src/specialist-handoff-manifest.js";
 import { InMemoryEventLedger } from "../../ontology/src/event-ledger.js";
 import { buildGraphProjection } from "../../ontology/src/graph-projection.js";
@@ -234,8 +264,11 @@ describe("MVP specialist workflow descriptors", () => {
       runType: "timeline-builder",
       runId: "run_timeline_source_001",
       taskId: "task_timeline_source_001",
-      contextPacks: sourcedContextPacks(),
-      ...promptArtifact(),
+      ...await sourcedWorkflowAuthority({
+        runType: "timeline-builder",
+        taskId: "task_timeline_source_001",
+        promptRunId: "run_timeline_source_001"
+      }),
       artifactStore: store,
       execution: { mode: "fake", invoke: async () => sourcedTimelineOutput() }
     });
@@ -311,8 +344,11 @@ describe("MVP specialist workflow descriptors", () => {
       runType: "timeline-builder",
       runId: "run_timeline_unsourced_001",
       taskId: "task_timeline_unsourced_001",
-      contextPacks: sourcedContextPacks(),
-      ...promptArtifact(),
+      ...await sourcedWorkflowAuthority({
+        runType: "timeline-builder",
+        taskId: "task_timeline_unsourced_001",
+        promptRunId: "run_timeline_unsourced_001"
+      }),
       artifactStore: store,
       execution: { mode: "fake", invoke: async () => output }
     })).rejects.toThrow(/source ref|citation|unsourced/i);
@@ -325,8 +361,11 @@ describe("MVP specialist workflow descriptors", () => {
       runType: "contradiction-finder",
       runId: "run_contradiction_source_001",
       taskId: "task_contradiction_source_001",
-      contextPacks: sourcedContextPacks(),
-      ...promptArtifact(),
+      ...await sourcedWorkflowAuthority({
+        runType: "contradiction-finder",
+        taskId: "task_contradiction_source_001",
+        promptRunId: "run_contradiction_source_001"
+      }),
       artifactStore: store,
       execution: { mode: "local", invoke: async () => sourcedContradictionOutput() }
     });
@@ -360,6 +399,152 @@ describe("MVP specialist workflow descriptors", () => {
     });
   });
 
+  it("rejects a contradiction when a compared source omits its exact typed citation binding", async () => {
+    const store = memoryArtifactStore();
+    const output = sourcedContradictionOutput();
+    output.candidates[0] = {
+      ...output.candidates[0]!,
+      timelineItemIds: []
+    };
+
+    await expect(executeSourcedInvestigationWorkflow({
+      runType: "contradiction-finder",
+      runId: "run_contradiction_missing_binding_001",
+      taskId: "task_contradiction_missing_binding_001",
+      ...await sourcedWorkflowAuthority({
+        runType: "contradiction-finder",
+        taskId: "task_contradiction_missing_binding_001",
+        promptRunId: "run_contradiction_missing_binding_001"
+      }),
+      artifactStore: store,
+      execution: { mode: "fake", invoke: async () => output }
+    })).rejects.toThrow(/compared.*(?:binding|citation)|exact.*source/i);
+    expect(store.putCount()).toBe(0);
+  });
+
+  it("rejects nonempty contradiction comparisons when every typed citation array is empty", async () => {
+    const store = memoryArtifactStore();
+    const output = sourcedContradictionOutput();
+    output.candidates[0] = {
+      ...output.candidates[0]!,
+      evidenceIds: [],
+      evidenceContentHashes: [],
+      assertionIds: [],
+      prrEventRefs: [],
+      timelineItemIds: []
+    };
+
+    await expect(executeSourcedInvestigationWorkflow({
+      runType: "contradiction-finder",
+      runId: "run_contradiction_empty_bindings_001",
+      taskId: "task_contradiction_empty_bindings_001",
+      ...await sourcedWorkflowAuthority({
+        runType: "contradiction-finder",
+        taskId: "task_contradiction_empty_bindings_001",
+        promptRunId: "run_contradiction_empty_bindings_001"
+      }),
+      artifactStore: store,
+      execution: { mode: "fake", invoke: async () => output }
+    })).rejects.toThrow(/compared.*(?:binding|citation)|exact.*source/i);
+    expect(store.putCount()).toBe(0);
+  });
+
+  it("retains every artifact hash for a timeline-only contradiction comparison", async () => {
+    const store = memoryArtifactStore();
+    const result = await executeSourcedInvestigationWorkflow({
+      runType: "contradiction-finder",
+      runId: "run_contradiction_timeline_only_001",
+      taskId: "task_contradiction_timeline_only_001",
+      ...await sourcedWorkflowAuthority({
+        runType: "contradiction-finder",
+        taskId: "task_contradiction_timeline_only_001",
+        promptRunId: "run_contradiction_timeline_only_001"
+      }),
+      artifactStore: store,
+      execution: { mode: "fake", invoke: async () => ({
+        candidates: [{
+          candidateId: "contradiction_timeline_only_001",
+          comparedSourceRefs: ["timeline_source_001", "timeline_source_002"],
+          evidenceIds: [],
+          evidenceContentHashes: [],
+          assertionIds: [],
+          prrEventRefs: [],
+          timelineItemIds: ["timeline_source_001", "timeline_source_002"],
+          category: "timeline-conflict",
+          confidence: 0.52,
+          confidenceCaveat: "Confidence is limited to two advisory timeline artifacts.",
+          rationale: "The two sourced timeline items carry incompatible dates.",
+          uncertaintyRefs: ["timeline_source_001", "timeline_source_002"],
+          alternativeExplanations: ["The items may describe different phases of the same event."],
+          requestedFollowupEvidence: ["Request a dated source that distinguishes the phases."],
+          requiredReviewerAction: "request-evidence"
+        }]
+      }) }
+    });
+
+    expect(result.artifact).toMatchObject({
+      candidates: [{
+        timelineItems: [
+          { itemId: "timeline_source_001", artifactHashes: [hash("d")] },
+          { itemId: "timeline_source_002", artifactHashes: [hash("e")] }
+        ],
+        contentHashRefs: [hash("d"), hash("e")]
+      }]
+    });
+  });
+
+  it("rejects completed reject, contest, supersede, and relink claims in contradiction narratives", async () => {
+    const store = memoryArtifactStore();
+    const output = sourcedContradictionOutput();
+    output.candidates[0] = {
+      ...output.candidates[0]!,
+      rationale: "The assertion was rejected.",
+      confidenceCaveat: "The assertion has been contested.",
+      alternativeExplanations: ["The assertion was superseded."],
+      requestedFollowupEvidence: ["The claim was relinked."]
+    };
+
+    await expect(executeSourcedInvestigationWorkflow({
+      runType: "contradiction-finder",
+      runId: "run_contradiction_forbidden_claims_001",
+      taskId: "task_contradiction_forbidden_claims_001",
+      ...await sourcedWorkflowAuthority({
+        runType: "contradiction-finder",
+        taskId: "task_contradiction_forbidden_claims_001",
+        promptRunId: "run_contradiction_forbidden_claims_001"
+      }),
+      artifactStore: store,
+      execution: { mode: "fake", invoke: async () => output }
+    })).rejects.toThrow(/authority|ontology|reject|contest|supersed|relink/i);
+    expect(store.putCount()).toBe(0);
+  });
+
+  it("permits modal requests for human review of reject, contest, supersede, and relink actions", async () => {
+    const output = sourcedContradictionOutput();
+    output.candidates[0] = {
+      ...output.candidates[0]!,
+      rationale: "A human reviewer should reject the assertion only after reviewing the exact sources.",
+      confidenceCaveat: "A human reviewer may contest the assertion after resolving the date uncertainty.",
+      alternativeExplanations: ["A human reviewer could supersede the assertion if later evidence warrants it."],
+      requestedFollowupEvidence: ["A human reviewer must decide whether to relink the claim after obtaining the source."]
+    };
+
+    const result = await executeSourcedInvestigationWorkflow({
+      runType: "contradiction-finder",
+      runId: "run_contradiction_modal_review_001",
+      taskId: "task_contradiction_modal_review_001",
+      ...await sourcedWorkflowAuthority({
+        runType: "contradiction-finder",
+        taskId: "task_contradiction_modal_review_001",
+        promptRunId: "run_contradiction_modal_review_001"
+      }),
+      artifactStore: memoryArtifactStore(),
+      execution: { mode: "fake", invoke: async () => output }
+    });
+
+    expect(result.artifact).toMatchObject({ candidates: [{ requiredReviewerAction: "request-evidence" }] });
+  });
+
   it("blocks remote context transfer before executor or store access", async () => {
     let executorCalls = 0;
     const store = memoryArtifactStore();
@@ -367,8 +552,11 @@ describe("MVP specialist workflow descriptors", () => {
       runType: "timeline-builder",
       runId: "run_timeline_remote_001",
       taskId: "task_timeline_remote_001",
-      contextPacks: sourcedContextPacks(),
-      ...promptArtifact(),
+      ...await sourcedWorkflowAuthority({
+        runType: "timeline-builder",
+        taskId: "task_timeline_remote_001",
+        promptRunId: "run_timeline_remote_001"
+      }),
       artifactStore: store,
       execution: {
         mode: "remote",
@@ -378,6 +566,101 @@ describe("MVP specialist workflow descriptors", () => {
         }
       }
     })).rejects.toThrow(/provider byte-transfer approval|remote.*blocked/i);
+    expect(executorCalls).toBe(0);
+    expect(store.putCount()).toBe(0);
+  });
+
+  it("rejects self-authored packs and a noncanonical prompt before executor or store access", async () => {
+    let executorCalls = 0;
+    const store = memoryArtifactStore();
+    const directPacks = sourcedContextPacks();
+    await expect(executeSourcedInvestigationWorkflow({
+      runType: "timeline-builder",
+      runId: "run_timeline_untrusted_context_001",
+      taskId: "task_timeline_untrusted_context_001",
+      contextPacks: directPacks,
+      contextRegistry: {
+        async buildResolved(contextPackId: string) {
+          const pack = directPacks.find((candidate) => candidate.ref.contextPackId === contextPackId);
+          if (pack === undefined) throw new Error("missing pack");
+          return pack;
+        },
+        getDescriptor() {
+          return undefined;
+        }
+      },
+      scope: { kind: "task", refs: ["task_timeline_untrusted_context_001"] },
+      promptArtifact: Object.freeze({ manifest: {}, text: "self-authored prompt" }),
+      promptRunId: "run_timeline_untrusted_context_001",
+      artifactStore: store,
+      execution: {
+        mode: "fake",
+        invoke: async () => {
+          executorCalls += 1;
+          return sourcedTimelineOutput();
+        }
+      }
+    } as never)).rejects.toThrow(/registrar|parser authority|canonical prompt|production prompt|context.*authority/i);
+    expect(executorCalls).toBe(0);
+    expect(store.putCount()).toBe(0);
+  });
+
+  it("rejects a noncanonical prompt even when every context pack has package-owned authority", async () => {
+    let executorCalls = 0;
+    const store = memoryArtifactStore();
+    const authority = await sourcedWorkflowAuthority({
+      runType: "timeline-builder",
+      taskId: "task_timeline_noncanonical_prompt_001",
+      promptRunId: "run_timeline_noncanonical_prompt_001"
+    });
+    const promptArtifact = Object.freeze({
+      ...authority.promptArtifact,
+      text: `${authority.promptArtifact.text}\nSelf-authored instruction.`
+    });
+
+    await expect(executeSourcedInvestigationWorkflow({
+      runType: "timeline-builder",
+      runId: "run_timeline_noncanonical_prompt_001",
+      taskId: "task_timeline_noncanonical_prompt_001",
+      ...authority,
+      promptArtifact,
+      artifactStore: store,
+      execution: {
+        mode: "fake",
+        invoke: async () => {
+          executorCalls += 1;
+          return sourcedTimelineOutput();
+        }
+      }
+    })).rejects.toThrow(/production.*prompt|rendered prompt|prompt.*hash/i);
+    expect(executorCalls).toBe(0);
+    expect(store.putCount()).toBe(0);
+  });
+
+  it("rejects a canonical prompt reused under a different exact production scope", async () => {
+    let executorCalls = 0;
+    const store = memoryArtifactStore();
+    const authority = await sourcedWorkflowAuthority({
+      runType: "timeline-builder",
+      taskId: "task_timeline_scope_binding_001",
+      promptRunId: "run_timeline_scope_binding_001"
+    });
+
+    await expect(executeSourcedInvestigationWorkflow({
+      runType: "timeline-builder",
+      runId: "run_timeline_scope_binding_001",
+      taskId: "task_timeline_scope_binding_001",
+      ...authority,
+      scope: { kind: "investigation", refs: ["investigation_wrong_scope_001"] },
+      artifactStore: store,
+      execution: {
+        mode: "fake",
+        invoke: async () => {
+          executorCalls += 1;
+          return sourcedTimelineOutput();
+        }
+      }
+    })).rejects.toThrow(/scope.*(?:hash|applicability)|production.*prompt/i);
     expect(executorCalls).toBe(0);
     expect(store.putCount()).toBe(0);
   });
@@ -405,15 +688,39 @@ describe("MVP specialist workflow descriptors", () => {
     const sourceEventIds = existingEvents.slice(0, 3).map((event) => event.id);
     if (sourceEventIds.length < 3) throw new Error("timeline replay source events are unavailable");
     const store = memoryArtifactStore();
+    const authority = await sourcedWorkflowAuthority({
+      runType: "timeline-builder",
+      taskId: "task_timeline_replay_001",
+      promptRunId: "run_timeline_replay_001",
+      replaySourceEventIds: sourceEventIds as [string, string, string]
+    });
     const result = await executeSourcedInvestigationWorkflow({
       runType: "timeline-builder",
       runId: "run_timeline_replay_001",
       taskId: "task_timeline_replay_001",
-      contextPacks: replayContextPacks(sourceEventIds as [string, string, string]),
-      ...promptArtifact(),
+      ...authority,
       artifactStore: store,
       execution: { mode: "fake", invoke: async () => replayTimelineOutput() }
     });
+    await store.put(replayEvidenceArtifactBytes);
+    await store.put(replayAssertionRowArtifactBytes);
+    const replayEvidencePack = await authority.contextRegistry.buildResolved("evidence-summary.v1");
+    const selectionManifest = (replayEvidencePack.payload as unknown as {
+      readonly selectionManifest: Readonly<Record<string, unknown>>;
+    }).selectionManifest;
+    const { manifestHash: _manifestHash, ...selectionManifestBody } = selectionManifest;
+    await store.put(Buffer.from(serializeContextPackPayload(selectionManifestBody)));
+    for (const artifactHash of [
+      ...result.handoffMaterial.contextPackRefs.flatMap((ref) => ref.artifactHashes ?? []),
+      result.handoffMaterial.promptArtifactHash,
+      ...result.handoffMaterial.outputArtifacts.map((artifact) => artifact.artifactHash)
+    ]) {
+      try {
+        expect(await store.get(artifactHash as `sha256:${string}`)).toBeInstanceOf(Buffer);
+      } catch {
+        throw new Error(`missing replay material ${artifactHash}`);
+      }
+    }
     const graphBefore = buildGraphProjection(await ledger.readAll());
     await appendSpecialistFinalOutputStep({
       ledger,
@@ -507,7 +814,7 @@ function replayTimelineOutput() {
       evidenceRefs: ["ev_replay_001"],
       assertionRefs: ["assertion_replay_001"],
       prrEventRefs: [],
-      contentHashRefs: [hash("a")],
+      contentHashRefs: [replayEvidenceArtifactHash],
       summary: "Exact replay sources anchor this advisory date.",
       uncertaintyCategories: ["inference-required" as const],
       uncertaintyNotes: ["The date depends on a reviewed source statement."],
@@ -519,40 +826,408 @@ function replayTimelineOutput() {
   };
 }
 
-function replayContextPacks(sourceEventIds: readonly [string, string, string]) {
-  const common = {
-    version: 1,
-    generatedAt: "2026-08-03T12:00:00.000Z",
-    safeSummary: "Exact replay source context.",
-    provenanceRefs: [...sourceEventIds],
-    sourceEventIds: [...sourceEventIds]
-  };
-  return [
-    buildResolvedContextPack({
-      ...common,
-      contextPackId: "evidence-summary.v1",
-      payload: { items: [{
-        evidenceId: "ev_replay_001",
-        ingestionEventId: sourceEventIds[0],
-        contentHash: hash("a")
-      }] }
-    }),
-    buildResolvedContextPack({
-      ...common,
-      contextPackId: "accepted-graph-projection.v1",
-      payload: { items: { assertions: [{
-        assertionId: "assertion_replay_001",
-        evidenceId: "ev_replay_001",
-        evidenceContentHash: hash("a"),
-        proposedByEventId: sourceEventIds[1],
-        acceptedByEventId: sourceEventIds[2],
-        sourceEventIds: [sourceEventIds[1], sourceEventIds[2]],
-        rowHash: hash("b"),
-        safeStatement: "The replay source has a reviewed date."
-      }], entities: [], relationships: [] } }
-    })
-  ];
+async function sourcedWorkflowAuthority(input: {
+  readonly runType: "timeline-builder" | "contradiction-finder";
+  readonly taskId: string;
+  readonly promptRunId: string;
+  readonly replaySourceEventIds?: readonly [string, string, string];
+}) {
+  const registry = createContextPackRegistry();
+  const source = input.replaySourceEventIds === undefined
+    ? Object.freeze({
+        evidenceIngested: "evt_evidence_ingested_001",
+        secondEvidenceIngested: "evt_evidence_ingested_002",
+        assertionProposed: "evt_assertion_proposed_001",
+        assertionAccepted: "evt_assertion_accepted_001"
+      })
+    : Object.freeze({
+        evidenceIngested: input.replaySourceEventIds[0],
+        secondEvidenceIngested: input.replaySourceEventIds[0],
+        assertionProposed: input.replaySourceEventIds[1],
+        assertionAccepted: input.replaySourceEventIds[2]
+      });
+  const replay = input.replaySourceEventIds !== undefined;
+  const evidenceId = replay ? "ev_replay_001" : "ev_source_001";
+  const assertionId = replay ? "assertion_replay_001" : "assertion_source_001";
+  registerInvestigativeContextPacks(registry, investigativeSourcedRegistration({
+    source,
+    evidenceId,
+    assertionId,
+    replay
+  }));
+  registerOperationalContextPackBuilders(registry, sourcedOperationalProvider());
+
+  const includePrr = !replay;
+  if (includePrr) registerSourcedPrrContextPacks(registry);
+  if (input.runType === "contradiction-finder") {
+    registerTimelineDraftSummaryContextPack(registry, {
+      scope: { kind: "investigation", id: "investigation_source_001" },
+      generatedAt: sourcedGeneratedAt,
+      safeSummary: "Prior advisory timeline items with exact artifact and event provenance.",
+      sourceEventIds: ["evt_assertion_accepted_001", "evt_prr_reply_001"],
+      items: [{
+        itemId: "timeline_source_001",
+        summary: "A prior sourced timeline item.",
+        artifactHash: hash("d"),
+        uncertaintyCategories: ["source-conflict"],
+        sourceEventIds: ["evt_assertion_accepted_001"]
+      }, {
+        itemId: "timeline_source_002",
+        summary: "A second prior sourced timeline item.",
+        artifactHash: hash("e"),
+        uncertaintyCategories: ["date-precision"],
+        sourceEventIds: ["evt_prr_reply_001"]
+      }],
+      omissions: []
+    });
+  }
+
+  const scope: ProductionRunScope = includePrr
+    ? {
+        kind: "investigation",
+        refs: ["investigation_source_001", sourcedPrrRequestId],
+        associatedPrrRequestId: sourcedPrrRequestId
+      }
+    : { kind: "investigation", refs: ["investigation_replay_001"] };
+  const requirements = productionSpecialistPromptRegistrationFor(input.runType).contextRequirements
+    .filter((requirement) => requirement.requirementMode === "always" || includePrr);
+  const resolvedContextPacks = await Promise.all(
+    requirements.map((requirement) => registry.buildResolved(requirement.contextPackId))
+  );
+  const promptArtifact = renderProductionSpecialistPrompt({
+    runType: input.runType,
+    runId: input.promptRunId,
+    taskId: input.taskId,
+    generatedAt: sourcedGeneratedAt,
+    scope,
+    resolvedContextPacks,
+    omissions: []
+  });
+  return Object.freeze({
+    contextRegistry: registry,
+    scope,
+    promptRunId: input.promptRunId,
+    promptArtifact
+  });
 }
+
+function investigativeSourcedRegistration(input: {
+  readonly source: {
+    readonly evidenceIngested: string;
+    readonly secondEvidenceIngested: string;
+    readonly assertionProposed: string;
+    readonly assertionAccepted: string;
+  };
+  readonly evidenceId: string;
+  readonly assertionId: string;
+  readonly replay: boolean;
+}) {
+  const evidenceContentHash = input.replay ? replayEvidenceArtifactHash : hash("a");
+  const assertionRowHash = input.replay ? replayAssertionRowArtifactHash : hash("c");
+  const scope = { kind: "investigation" as const, id: input.replay ? "investigation_replay_001" : "investigation_source_001" };
+  const evidenceRows: readonly InvestigativeEvidenceRow[] = Object.freeze([{
+    evidenceId: input.evidenceId,
+    ingestionEventId: input.source.evidenceIngested,
+    contentHash: evidenceContentHash,
+    occurrenceIds: [],
+    parseJobs: [],
+    governanceTags: [],
+    safeNarrative: input.replay ? "A replay-bound date-bearing local record." : "A date-bearing local record."
+  }, ...(input.replay ? [] : [{
+    evidenceId: "ev_source_002",
+    ingestionEventId: input.source.secondEvidenceIngested,
+    contentHash: hash("b"),
+    occurrenceIds: [],
+    parseJobs: [],
+    governanceTags: [],
+    safeNarrative: "A local record without a usable date."
+  } satisfies InvestigativeEvidenceRow])]);
+  const includedRefs: InvestigativeSelectionManifestBody["includedRefs"] = Object.freeze([
+    {
+      refKind: "assertion" as const,
+      refId: input.assertionId,
+      sortKey: `assertion/${input.assertionId}/${assertionRowHash}`,
+      rowHash: assertionRowHash,
+      sourceEventIds: [input.source.assertionProposed, input.source.assertionAccepted],
+      mandatory: true
+    },
+    ...evidenceRows.map((row) => ({
+      refKind: "evidence" as const,
+      refId: row.evidenceId,
+      sortKey: `evidence/${row.evidenceId}/${row.contentHash}`,
+      contentHash: row.contentHash,
+      sourceEventIds: [row.ingestionEventId],
+      mandatory: true
+    }))
+  ].sort((left, right) => left.sortKey.localeCompare(right.sortKey)));
+  const body: InvestigativeSelectionManifestBody = {
+    manifestVersion: "investigative-selection-manifest.v1",
+    scope,
+    sourceProjectionHighWaterMarks: { ingestion: 42, graph: 41, governance: 40, agent: 39 },
+    ordering: "ref-kind-ref-id-content-hash-v1",
+    window: { cursor: "cursor_sourced_001", offset: 0, limit: 10, stableSort: "ref-kind-ref-id-content-hash-v1" },
+    totalEligibleCount: includedRefs.length,
+    includedRefs,
+    aggregateOmissions: []
+  };
+  const manifest = Object.freeze({ ...body, manifestHash: buildSelectionManifestHash(body) });
+  const deps: InvestigativeContextPackDependencies = {
+    selection: { capabilityVersion: "investigative-selection.v1", select: async () => manifest },
+    evidenceReader: {
+      readEvidenceByIds: async ({ evidenceIds }) => evidenceRows.filter((row) => evidenceIds.includes(row.evidenceId))
+    },
+    graphReader: {
+      readAcceptedGraphByIds: async ({ assertionIds }) => ({
+        assertions: assertionIds.includes(input.assertionId) ? [{
+          assertionId: input.assertionId,
+          evidenceId: input.evidenceId,
+          evidenceContentHash,
+          proposedByEventId: input.source.assertionProposed,
+          acceptedByEventId: input.source.assertionAccepted,
+          sourceEventIds: [input.source.assertionProposed, input.source.assertionAccepted],
+          rowHash: assertionRowHash,
+          safeStatement: input.replay
+            ? "The replay source has a reviewed date."
+            : "The record carries a March date."
+        }] : [],
+        entities: [],
+        relationships: [],
+        relationshipProjectionAvailable: true
+      })
+    },
+    governanceReader: { readActiveRestrictionsByIds: async () => [] },
+    agentLockReader: { readActiveLocksByIds: async () => [] },
+    eventReader: { readEventsByIds: async () => [] },
+    evidenceSourcePosture: {
+      postureVersion: "ingestion-current-source-posture.v1",
+      checkEvidence: async ({ evidenceId, contentHash }) => ({
+        ok: true as const,
+        stalenessInputs: [{ kind: "source-byte-current-hash", ref: evidenceId, value: contentHash }]
+      })
+    },
+    now: () => sourcedGeneratedAt,
+    policyVersion: sourcedPolicyVersion,
+    ontologyCoreVersion: "ontology.v1",
+    packVersions: { ingestion: "ingestion.v1" },
+    registrationIdentity: investigativeRegistrationIdentity
+  };
+  return { deps, scope, window: body.window };
+}
+
+function sourcedOperationalProvider(): OperationalContextPackProvider {
+  const scope = { kind: "workspace", id: "ws_sourced_fixture" } as const;
+  return {
+    providerId: "sourced-workflow-test-provider",
+    capabilities: ["workspace-runtime-status", "task-run-history", "agent-memory-summary"],
+    policyVersion: sourcedPolicyVersion,
+    generatedAt: sourcedGeneratedAt,
+    scope,
+    sizeBudgets: { workspaceRuntimeStatus: 16_384, taskRunHistory: 32_768, agentMemorySummary: 16_384 },
+    async workspaceRuntimeStatus() {
+      return {
+        runtimeHighWaterMark: 42,
+        workspaceMounted: true,
+        workspaceId: scope.id,
+        storageStrategy: "repo-local",
+        bindPosture: "loopback",
+        authPosture: "local-disabled",
+        providerStates: [],
+        diagnostics: [],
+        projectionHighWaterMarks: { agent: 42 },
+        omissionCodes: []
+      };
+    },
+    async taskRunHistorySnapshot() {
+      return {
+        projectionHighWaterMark: 42,
+        projectionSourceRef: "agent.projection.task-run-history",
+        tasks: [],
+        runs: [],
+        modelInvocations: [],
+        toolRequests: [],
+        aggregateCounts: { total: 0 },
+        sourceEventIds: [],
+        artifactHashes: [],
+        window: { order: "updatedAt:desc", limit: 25, hasMore: false, totalCount: 0, omissionCodes: [] },
+        emptyProof: {
+          projectionName: "agent.projection.task-run-history",
+          scope,
+          projectionHighWaterMark: 42,
+          sourceEventCount: 0,
+          generatedAt: sourcedGeneratedAt,
+          emptyReasonCode: "empty"
+        }
+      };
+    },
+    async agentMemorySnapshot() {
+      return {
+        projectionHighWaterMark: 42,
+        projectionSourceRef: "agent.projection.memory",
+        activeMemory: [],
+        aggregateCounts: { active: 0, totalCount: 0 },
+        sourceEventIds: [],
+        artifactHashes: [],
+        window: { order: "createdAt:asc", limit: 25, hasMore: false, totalCount: 0, omissionCodes: [] },
+        emptyProof: {
+          projectionName: "agent.projection.memory",
+          scope,
+          projectionHighWaterMark: 42,
+          sourceEventCount: 0,
+          generatedAt: sourcedGeneratedAt,
+          emptyReasonCode: "empty"
+        }
+      };
+    }
+  };
+}
+
+function registerSourcedPrrContextPacks(registry: ReturnType<typeof createContextPackRegistry>): void {
+  registerPrrContextPackBuilders({
+    registry,
+    prrReadModel: sourcedPrrRegistration(),
+    jurisdictionPackSummary: sourcedJurisdictionRegistration()
+  });
+}
+
+function sourcedPrrRegistration(): PrrContextPackRegistrationEntry {
+  const descriptor = Object.freeze({
+    contextPackId: "prr-read-model.v1",
+    version: 1,
+    label: "Selected request PRR read model",
+    maxBytes: 32_768,
+    requiredProvenanceKinds: ["event-id", "content-hash"],
+    redactionPolicy: "safe-normalized-summary",
+    sourceProjection: "prr.projection.selected-request"
+  });
+  return Object.freeze({
+    descriptor,
+    payloadParser: prrReadModelPayloadParser,
+    registrationIdentity: "packages/agent/prr-context-packs:prr-read-model.v1@1:sourced-workflow-test",
+    builder: Object.freeze({ descriptor, build: () => buildSourcedPrrPack() })
+  });
+}
+
+function sourcedJurisdictionRegistration(): PrrContextPackRegistrationEntry {
+  const descriptor = Object.freeze({
+    contextPackId: "jurisdiction-pack-summary.v1",
+    version: 1,
+    label: "Selected request jurisdiction pack summary",
+    maxBytes: 16_384,
+    requiredProvenanceKinds: ["event-id", "content-hash"],
+    redactionPolicy: "safe-normalized-summary",
+    sourceProjection: "prr.jurisdiction-pack.selected-request"
+  });
+  return Object.freeze({
+    descriptor,
+    payloadParser: jurisdictionPackSummaryPayloadParser,
+    registrationIdentity: "packages/agent/prr-context-packs:jurisdiction-pack-summary.v1@1:sourced-workflow-test",
+    builder: Object.freeze({
+      descriptor,
+      build: () => buildJurisdictionPackSummaryContextPack({
+        generatedAt: sourcedGeneratedAt,
+        policyVersion: sourcedPolicyVersion,
+        scope: { kind: "prr-request", id: sourcedPrrRequestId },
+        selectedRequestEventId: "evt_prr_created_001",
+        selectedRequestJurisdictionPack: { name: "us-federal-foia", version: "0.1.0" },
+        jurisdictionPack: {
+          name: "us-federal-foia",
+          version: "0.1.0",
+          jurisdiction: "US Federal",
+          description: "Federal FOIA starter jurisdiction pack.",
+          agentGuidance: "Use cited rules as advisory workflow guidance.",
+          rules: [{
+            id: "federal-determination-20-working-days",
+            label: "20 working days determination estimate",
+            kind: "deadline",
+            description: "Federal timing guidance.",
+            citations: [{
+              label: "5 U.S.C. 552(a)(6)(A)(i)",
+              citation: "5 U.S.C. 552(a)(6)(A)(i)",
+              url: "https://www.justice.gov/oip/freedom-information-act-5-usc-552"
+            }],
+            agentWarning: "Confirm tolling facts before legal escalation language."
+          }]
+        },
+        jurisdictionArtifactHash: hash("f"),
+        projectionHighWaterMark: 77,
+        sizeBudgetBytes: 16_384
+      })
+    })
+  });
+}
+
+function buildSourcedPrrPack() {
+  return buildPrrReadModelContextPack({
+    generatedAt: sourcedGeneratedAt,
+    policyVersion: sourcedPolicyVersion,
+    scope: { kind: "prr-request", id: sourcedPrrRequestId },
+    request: {
+      prrRequestId: sourcedPrrRequestId,
+      status: "sent",
+      agencyName: "Selected Agency",
+      jurisdictionPack: { name: "us-federal-foia", version: "0.1.0" },
+      agency: { name: "Selected Agency", email: "foia@example.gov" },
+      requester: { name: "Investigator", email: "investigator@example.org" },
+      requestText: "Safe request summary.",
+      latestOutboundCorrespondence: {
+        correspondenceId: "corr_source_001",
+        provider: "gmail",
+        providerMessageId: "msg_source_001",
+        subject: "Selected PRR follow-up",
+        occurredAt: sourcedGeneratedAt,
+        bodyHash: hash("9"),
+        evidenceIds: ["ev_source_001"],
+        attachmentEvidenceIds: ["ev_source_001"],
+        approvedBy: "actor_investigator"
+      },
+      productionBatches: [],
+      productionEvidenceIds: [],
+      exemptions: [],
+      possibleStalling: false,
+      confirmedStalling: false,
+      stallingSignals: []
+    },
+    timeline: [{
+      eventId: "evt_prr_created_001",
+      type: "prr.request.created",
+      occurredAt: "2026-03-01T00:00:00.000Z",
+      payload: { prrRequestId: sourcedPrrRequestId }
+    }, {
+      eventId: "evt_prr_reply_001",
+      type: "prr.correspondence.received",
+      occurredAt: "2026-04-01T00:00:00.000Z",
+      payload: { prrRequestId: sourcedPrrRequestId }
+    }] as never,
+    requestStream: {
+      requestCreatedEventId: "evt_prr_created_001",
+      streamHeadEventId: "evt_prr_reply_001",
+      streamHighWaterMark: 9,
+      sourceEventIds: ["evt_prr_created_001", "evt_prr_reply_001"]
+    },
+    projectionHighWaterMark: 77,
+    workspace: { totalPrrRequestCount: 1 },
+    correspondenceHashes: [{
+      id: "corr_source_001",
+      contentHash: hash("9"),
+      sourceEventId: "evt_prr_created_001"
+    }],
+    evidenceHashes: [{
+      id: "ev_source_001",
+      contentHash: hash("a"),
+      sourceEventId: "evt_prr_reply_001"
+    }],
+    gates: [],
+    sizeBudgetBytes: 32_768
+  });
+}
+
+const sourcedGeneratedAt = "2026-08-03T12:00:00.000Z";
+const sourcedPolicyVersion = "policy.sourced-workflow.v1";
+const sourcedPrrRequestId = "prr_source_001";
+const replayEvidenceArtifactBytes = Buffer.from("replay evidence source bytes", "utf8");
+const replayEvidenceArtifactHash = hashBytes(replayEvidenceArtifactBytes);
+const replayAssertionRowArtifactBytes = Buffer.from("replay accepted assertion row bytes", "utf8");
+const replayAssertionRowArtifactHash = hashBytes(replayAssertionRowArtifactBytes);
 
 function sourcedContextPacks() {
   const common = {
@@ -611,7 +1286,10 @@ function sourcedContextPacks() {
     buildResolvedContextPack({
       ...common,
       contextPackId: "timeline-draft-summary.v1",
-      payload: { items: [{ itemId: "timeline_source_001", summary: "A prior sourced timeline item.", artifactHash: hash("d") }], omissions: [] }
+      payload: { items: [
+        { itemId: "timeline_source_001", summary: "A prior sourced timeline item.", artifactHash: hash("d") },
+        { itemId: "timeline_source_002", summary: "A second prior sourced timeline item.", artifactHash: hash("e") }
+      ], omissions: [] }
     })
   ];
 }
@@ -637,14 +1315,6 @@ function memoryArtifactStore(): SourcedInvestigationArtifactStore & { readonly p
 
 function hash(character: string): `sha256:${string}` {
   return `sha256:${character.repeat(64)}`;
-}
-
-function promptArtifact() {
-  const promptArtifactBytes = Buffer.from("canonical sourced investigation prompt", "utf8");
-  return Object.freeze({
-    promptArtifactBytes,
-    promptArtifactHash: hashBytes(promptArtifactBytes)
-  });
 }
 
 function hashBytes(bytes: Buffer): `sha256:${string}` {

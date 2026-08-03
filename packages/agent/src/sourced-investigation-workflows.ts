@@ -2,10 +2,20 @@ import { Buffer } from "node:buffer";
 import { createHash } from "node:crypto";
 import {
   serializeContextPackPayload,
-  verifyResolvedContextPack,
   type ContextPackRef,
-  type ResolvedContextPack
+  type ContextPackRegistry,
+  type VerifiedResolvedContextPack
 } from "./context-packs.js";
+import { lookupInvestigativeContextPackRegistrarEvidence } from "./investigative-context-packs.js";
+import { lookupOperationalContextPackRegistrarEvidence } from "./operational-context-packs.js";
+import { lookupPrrContextPackRegistrarEvidence } from "./prr-context-packs.js";
+import { lookupSourcedInvestigationContextPackRegistrarEvidence } from "./sourced-investigation-context-packs.js";
+import {
+  productionSpecialistPromptRegistrationFor,
+  verifyProductionSpecialistPromptArtifact
+} from "./production-specialist-prompts.js";
+import type { PromptArtifactEnvelope } from "./prompt-artifacts.js";
+import type { ProductionRunScope } from "./production-specialist-registration-metadata.js";
 import {
   buildSpecialistHandoffMaterial,
   canonicalSpecialistHandoffMaterialBytes,
@@ -43,9 +53,10 @@ export interface ExecuteSourcedInvestigationWorkflowInput {
   readonly runType: SourcedInvestigationRunType;
   readonly runId: string;
   readonly taskId: string;
-  readonly contextPacks: readonly ResolvedContextPack[];
-  readonly promptArtifactHash: ContentHash;
-  readonly promptArtifactBytes: Buffer;
+  readonly contextRegistry: ContextPackRegistry;
+  readonly scope: ProductionRunScope;
+  readonly promptRunId: string;
+  readonly promptArtifact: PromptArtifactEnvelope;
   readonly artifactStore: SourcedInvestigationArtifactStore;
   readonly execution: SourcedInvestigationExecution;
 }
@@ -110,7 +121,9 @@ export interface ContradictionCandidateArtifact {
   readonly assertions: readonly AssertionCitation[];
   readonly prrEvents: readonly PrrEventCitation[];
   readonly timelineItemIds: readonly string[];
+  readonly timelineItems: readonly TimelineCitation[];
   readonly evidenceContentHashes: readonly ContentHash[];
+  readonly contentHashRefs: readonly ContentHash[];
   readonly category: string;
   readonly rationale: string;
   readonly confidence: number;
@@ -168,6 +181,12 @@ interface SourceCatalog {
   readonly allRefs: ReadonlySet<string>;
 }
 
+type ExactSourceResolution =
+  | { readonly kind: "evidence"; readonly citation: EvidenceCitation }
+  | { readonly kind: "assertion"; readonly citation: AssertionCitation }
+  | { readonly kind: "prr-event"; readonly citation: PrrEventCitation }
+  | { readonly kind: "timeline-item"; readonly citation: TimelineCitation };
+
 export async function executeSourcedInvestigationWorkflow(
   rawInput: ExecuteSourcedInvestigationWorkflowInput
 ): Promise<ExecuteSourcedInvestigationWorkflowResult> {
@@ -178,9 +197,18 @@ export async function executeSourcedInvestigationWorkflow(
     );
   }
 
-  const contextPacks = Object.freeze(input.contextPacks.map((pack) => verifyResolvedContextPack(pack)));
+  const contextPacks = await resolveAuthorityBoundContextPacks(input);
   const contextPackRefs = Object.freeze(contextPacks.map((pack) => pack.ref));
-  assertExactContextPackIdentities(input.runType, contextPackRefs);
+  const promptArtifact = verifyProductionSpecialistPromptArtifact({
+    runType: input.runType,
+    runId: input.promptRunId,
+    taskId: input.taskId,
+    generatedAt: input.promptArtifact.manifest.generatedAt,
+    scope: input.scope,
+    resolvedContextPacks: contextPacks,
+    artifact: input.promptArtifact
+  });
+  const promptArtifactHash = promptArtifact.manifest.inputArtifactHash as ContentHash;
   const catalog = buildSourceCatalog(contextPacks);
   if (catalog.sourceEventIds.length === 0) {
     throw new Error("Sourced investigation context requires exact source-event provenance.");
@@ -199,7 +227,7 @@ export async function executeSourcedInvestigationWorkflow(
       Buffer.from(serializeContextPackPayload(pack.payload))
     );
   }
-  await putAndReadExact(input.artifactStore, input.promptArtifactHash, input.promptArtifactBytes);
+  await putAndReadExact(input.artifactStore, promptArtifactHash, promptArtifactReferenceBytes(promptArtifact));
   await putAndReadExact(input.artifactStore, artifactHash, artifactBytes);
 
   const outputArtifact = input.runType === "timeline-builder"
@@ -223,7 +251,7 @@ export async function executeSourcedInvestigationWorkflow(
       ? "A sourced local timeline is ready for human review."
       : "A local contradiction-candidate dossier is ready for human review.",
     contextPackRefs,
-    promptArtifactHash: input.promptArtifactHash,
+    promptArtifactHash,
     outputArtifacts: [outputArtifact],
     toolRequestIds: [],
     approvalRequirements: [],
@@ -255,21 +283,27 @@ function normalizeInput(input: ExecuteSourcedInvestigationWorkflowInput): Execut
     runType: input.runType,
     runId: input.runId,
     taskId: input.taskId,
-    promptArtifactHash: input.promptArtifactHash
+    promptRunId: input.promptRunId,
+    scope: input.scope
   }, "Sourced investigation identity") as Record<string, unknown>;
   if (
     (normalized.runType !== "timeline-builder" && normalized.runType !== "contradiction-finder") ||
     typeof normalized.runId !== "string" || normalized.runId.length === 0 ||
     typeof normalized.taskId !== "string" || normalized.taskId.length === 0 ||
-    typeof normalized.promptArtifactHash !== "string" || !isHash(normalized.promptArtifactHash)
+    typeof normalized.promptRunId !== "string" || normalized.promptRunId.length === 0
   ) {
     throw new Error("Sourced investigation workflow identity is invalid.");
   }
-  if (!Buffer.isBuffer(input.promptArtifactBytes) || hashBytes(input.promptArtifactBytes) !== normalized.promptArtifactHash) {
-    throw new Error("Sourced investigation prompt bytes do not match the exact prompt artifact hash.");
+  if (
+    input.contextRegistry === null ||
+    typeof input.contextRegistry !== "object" ||
+    typeof input.contextRegistry.buildResolved !== "function" ||
+    typeof input.contextRegistry.getDescriptor !== "function"
+  ) {
+    throw new Error("Sourced investigation workflow requires an authority-bearing context registry.");
   }
-  if (!Array.isArray(input.contextPacks) || input.contextPacks.length === 0) {
-    throw new Error("Sourced investigation workflow requires resolved context packs.");
+  if (input.promptArtifact === null || typeof input.promptArtifact !== "object") {
+    throw new Error("Sourced investigation workflow requires a canonical production prompt artifact.");
   }
   if (typeof input.artifactStore?.put !== "function" || typeof input.artifactStore?.get !== "function") {
     throw new Error("Sourced investigation workflow requires exact content-addressed artifact storage.");
@@ -285,33 +319,40 @@ function normalizeInput(input: ExecuteSourcedInvestigationWorkflowInput): Execut
     runType: normalized.runType,
     runId: normalized.runId,
     taskId: normalized.taskId,
-    promptArtifactHash: normalized.promptArtifactHash,
-    promptArtifactBytes: Buffer.from(input.promptArtifactBytes),
-    contextPacks: Object.freeze([...input.contextPacks]),
+    contextRegistry: input.contextRegistry,
+    scope: normalized.scope as ProductionRunScope,
+    promptRunId: normalized.promptRunId,
+    promptArtifact: input.promptArtifact,
     artifactStore: input.artifactStore,
     execution: input.execution
   }) as ExecuteSourcedInvestigationWorkflowInput;
 }
 
-function assertExactContextPackIdentities(
-  runType: SourcedInvestigationRunType,
-  refs: readonly ContextPackRef[]
-): void {
-  const ids = refs.map((ref) => ref.contextPackId);
-  if (new Set(ids).size !== ids.length) {
-    throw new Error("Sourced investigation context contains a duplicate context-pack identity.");
-  }
-  for (const required of ["evidence-summary.v1", "accepted-graph-projection.v1"] as const) {
-    if (!ids.includes(required)) {
-      throw new Error(`Sourced investigation context is missing ${required}.`);
+async function resolveAuthorityBoundContextPacks(
+  input: ExecuteSourcedInvestigationWorkflowInput
+): Promise<readonly VerifiedResolvedContextPack[]> {
+  const registration = productionSpecialistPromptRegistrationFor(input.runType);
+  const associatedPrr = input.scope.associatedPrrRequestId !== undefined;
+  const requiredIds = registration.contextRequirements
+    .filter((requirement) => requirement.requirementMode === "always" || associatedPrr)
+    .map((requirement) => requirement.contextPackId);
+  const resolved: VerifiedResolvedContextPack[] = [];
+  for (const contextPackId of requiredIds) {
+    const evidence = [
+      lookupInvestigativeContextPackRegistrarEvidence(input.contextRegistry, contextPackId),
+      lookupOperationalContextPackRegistrarEvidence(input.contextRegistry, contextPackId),
+      lookupPrrContextPackRegistrarEvidence(input.contextRegistry, contextPackId),
+      lookupSourcedInvestigationContextPackRegistrarEvidence(input.contextRegistry, contextPackId)
+    ].filter((candidate) => candidate !== undefined);
+    if (evidence.length !== 1) {
+      throw new Error(`Sourced investigation context ${contextPackId} has no unique package-owned registrar authority.`);
     }
+    resolved.push(await input.contextRegistry.buildResolved(contextPackId));
   }
-  if (runType === "contradiction-finder" && !ids.includes("timeline-draft-summary.v1")) {
-    throw new Error("Contradiction context is missing timeline-draft-summary.v1.");
-  }
+  return Object.freeze(resolved);
 }
 
-function buildSourceCatalog(contextPacks: readonly ResolvedContextPack[]): SourceCatalog {
+function buildSourceCatalog(contextPacks: readonly VerifiedResolvedContextPack[]): SourceCatalog {
   const evidence = new Map<string, EvidenceCitation>();
   const assertions = new Map<string, AssertionCitation>();
   const prrEvents = new Map<string, PrrEventCitation>();
@@ -381,10 +422,9 @@ function buildSourceCatalog(contextPacks: readonly ResolvedContextPack[]): Sourc
     if (pack.ref.contextPackId === "timeline-draft-summary.v1") {
       for (const value of optionalArray(payload.items, "timeline summary items")) {
         const item = record(value, "timeline summary item");
-        const hashes = [
-          ...(item.artifactHash === undefined ? [] : [contentHash(item.artifactHash, "timeline artifactHash")]),
-          ...(pack.ref.artifactHashes ?? [])
-        ];
+        const hashes = item.artifactHash === undefined
+          ? []
+          : [contentHash(item.artifactHash, "timeline artifactHash")];
         const citation = Object.freeze({
           itemId: text(item.itemId, "timeline itemId"),
           artifactHashes: uniqueSorted(hashes)
@@ -400,6 +440,10 @@ function buildSourceCatalog(contextPacks: readonly ResolvedContextPack[]): Sourc
     ...prrEvents.keys(),
     ...timelineItems.keys()
   ]);
+  const catalogEntryCount = evidence.size + assertions.size + prrEvents.size + timelineItems.size;
+  if (allRefs.size !== catalogEntryCount) {
+    throw new Error("Sourced investigation context contains an ambiguous cross-catalog source identity.");
+  }
   return Object.freeze({
     evidence,
     assertions,
@@ -505,17 +549,33 @@ function buildContradictionDossier(
     for (const ref of comparedSourceRefs) {
       if (!catalog.allRefs.has(ref)) throw new Error("Contradiction comparison references an unknown exact source.");
     }
-    const compared = new Set(comparedSourceRefs);
-    const evidence = candidate.evidenceIds.map((ref) => requiredComparedRef(catalog.evidence, compared, ref, "contradiction evidence"));
-    const assertions = candidate.assertionIds.map((ref) => requiredComparedRef(catalog.assertions, compared, ref, "contradiction assertion"));
-    const prrEvents = candidate.prrEventRefs.map((ref) => requiredComparedRef(catalog.prrEvents, compared, ref, "contradiction PRR event"));
-    const timelineItems = candidate.timelineItemIds.map((ref) => requiredComparedRef(catalog.timelineItems, compared, ref, "contradiction timeline item"));
+    const resolutions = comparedSourceRefs.map((ref) => resolveExactSource(catalog, ref));
+    const evidence = resolutions
+      .filter((resolution): resolution is Extract<ExactSourceResolution, { readonly kind: "evidence" }> => resolution.kind === "evidence")
+      .map((resolution) => resolution.citation);
+    const assertions = resolutions
+      .filter((resolution): resolution is Extract<ExactSourceResolution, { readonly kind: "assertion" }> => resolution.kind === "assertion")
+      .map((resolution) => resolution.citation);
+    const prrEvents = resolutions
+      .filter((resolution): resolution is Extract<ExactSourceResolution, { readonly kind: "prr-event" }> => resolution.kind === "prr-event")
+      .map((resolution) => resolution.citation);
+    const timelineItems = resolutions
+      .filter((resolution): resolution is Extract<ExactSourceResolution, { readonly kind: "timeline-item" }> => resolution.kind === "timeline-item")
+      .map((resolution) => resolution.citation);
+    if (
+      !sameStringSet(candidate.evidenceIds, evidence.map((citation) => citation.evidenceId)) ||
+      !sameStringSet(candidate.assertionIds, assertions.map((citation) => citation.assertionId)) ||
+      !sameStringSet(candidate.prrEventRefs, prrEvents.map((citation) => citation.eventId)) ||
+      !sameStringSet(candidate.timelineItemIds, timelineItems.map((citation) => citation.itemId))
+    ) {
+      throw new Error("Every contradiction compared source requires exactly one matching typed citation binding.");
+    }
     const expectedEvidenceHashes = uniqueSorted(evidence.map((citation) => citation.contentHash));
     if (!sameStringSet(candidate.evidenceContentHashes, expectedEvidenceHashes)) {
       throw new Error("Contradiction evidence content hashes must exactly match cited evidence.");
     }
     for (const ref of candidate.uncertaintyRefs) {
-      if (!compared.has(ref)) throw new Error("Contradiction uncertainty ref is not one of the exact compared sources.");
+      if (!comparedSourceRefs.includes(ref)) throw new Error("Contradiction uncertainty ref is not one of the exact compared sources.");
     }
     if (candidate.alternativeExplanations.length === 0 || candidate.requestedFollowupEvidence.length === 0) {
       throw new Error("Contradiction candidates require alternative explanations and requested follow-up evidence.");
@@ -527,7 +587,17 @@ function buildContradictionDossier(
       assertions,
       prrEvents,
       timelineItemIds: timelineItems.map((item) => item.itemId),
+      timelineItems,
       evidenceContentHashes: expectedEvidenceHashes,
+      contentHashRefs: uniqueSorted([
+        ...evidence.map((citation) => citation.contentHash),
+        ...assertions.flatMap((citation) => [
+          citation.evidenceContentHash,
+          ...(citation.rowHash === undefined ? [] : [citation.rowHash])
+        ]),
+        ...prrEvents.flatMap((citation) => citation.contentHashes),
+        ...timelineItems.flatMap((citation) => citation.artifactHashes)
+      ]),
       category: candidate.category,
       rationale: candidate.rationale,
       confidence: candidate.confidence,
@@ -578,6 +648,14 @@ async function putAndReadExact(
   }
 }
 
+function promptArtifactReferenceBytes(promptArtifact: PromptArtifactEnvelope): Buffer {
+  const { inputArtifactHash: _inputArtifactHash, ...manifestWithoutHash } = promptArtifact.manifest;
+  return Buffer.from(serializeContextPackPayload({
+    manifest: manifestWithoutHash,
+    text: promptArtifact.text
+  }));
+}
+
 function mergePrrEvent(map: Map<string, PrrEventCitation>, value: PrrEventCitation): void {
   const existing = map.get(value.eventId);
   if (existing === undefined) {
@@ -614,14 +692,20 @@ function requiredCatalogRef<T>(map: ReadonlyMap<string, T>, ref: string, label: 
   return value;
 }
 
-function requiredComparedRef<T>(
-  map: ReadonlyMap<string, T>,
-  compared: ReadonlySet<string>,
-  ref: string,
-  label: string
-): T {
-  if (!compared.has(ref)) throw new Error(`${label} must be included in comparedSourceRefs.`);
-  return requiredCatalogRef(map, ref, label);
+function resolveExactSource(catalog: SourceCatalog, ref: string): ExactSourceResolution {
+  const matches: ExactSourceResolution[] = [];
+  const evidence = catalog.evidence.get(ref);
+  if (evidence !== undefined) matches.push({ kind: "evidence", citation: evidence });
+  const assertion = catalog.assertions.get(ref);
+  if (assertion !== undefined) matches.push({ kind: "assertion", citation: assertion });
+  const prrEvent = catalog.prrEvents.get(ref);
+  if (prrEvent !== undefined) matches.push({ kind: "prr-event", citation: prrEvent });
+  const timelineItem = catalog.timelineItems.get(ref);
+  if (timelineItem !== undefined) matches.push({ kind: "timeline-item", citation: timelineItem });
+  if (matches.length !== 1) {
+    throw new Error("Contradiction compared source must resolve exactly once into citation data.");
+  }
+  return Object.freeze(matches[0]!);
 }
 
 function record(value: unknown, label: string): Record<string, unknown> {
