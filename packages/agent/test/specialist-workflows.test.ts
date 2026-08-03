@@ -716,7 +716,7 @@ describe("MVP specialist workflow descriptors", () => {
     const output = sourcedContradictionOutput();
     output.candidates[0] = {
       ...output.candidates[0]!,
-      rationale: "The final chronology is documented separately. A human reviewer should reject the assertion only after reviewing the exact sources. A human reviewer should determine whether the assertion was rejected. A reviewer should verify whether the assertion underwent rejection.",
+      rationale: "A human reviewer should reject the assertion only after reviewing the exact sources. A human reviewer should determine whether the assertion was rejected. A reviewer should verify whether the assertion underwent rejection.",
       confidenceCaveat: "A human reviewer may contest the assertion after resolving the date uncertainty. A human reviewer should verify whether assertion contestation occurred.",
       alternativeExplanations: [
         "A human reviewer could supersede the assertion if later evidence warrants it.",
