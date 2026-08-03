@@ -1407,10 +1407,14 @@ describe("production specialist prompt registrations", () => {
           evidenceRefs: ["ev_report_001"],
           assertionRefs: [],
           prrEventRefs: [],
+          contentHashRefs: ["sha256:1111111111111111111111111111111111111111111111111111111111111111"],
           summary: "The date range remains subject to source review.",
-          uncertaintyCategories: []
+          uncertaintyCategories: [],
+          uncertaintyNotes: [],
+          uncertaintySourceRefs: []
         }],
         omissionReasons: [],
+        omittedSources: [],
         unresolvedPrompts: []
       }
     });

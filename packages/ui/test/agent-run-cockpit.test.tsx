@@ -140,7 +140,121 @@ describe("AgentRunCockpit", () => {
     expect(within(region).queryByText("Draft report outline ready for human review.")).not.toBeInTheDocument();
     expect(within(region).queryByText("artifact_report_outline")).not.toBeInTheDocument();
   });
+
+  it("renders browser-safe sourced timeline and contradiction handoffs for the exact selected run", () => {
+    for (const runType of ["timeline-builder", "contradiction-finder"] as const) {
+      const { unmount } = render(<AgentRunCockpit cockpit={sourcedSelectedRunCockpit(runType)} />);
+      const region = screen.getByRole("region", { name: "Agent run cockpit" });
+      fireEvent.click(within(region).getByRole("tab", { name: "Handoff" }));
+
+      const timeline = runType === "timeline-builder";
+      expect(within(region).getByText(timeline
+        ? "Sourced timeline with exact citations is ready for review."
+        : "Contradiction candidates with exact paired sources are ready for review."
+      )).toBeInTheDocument();
+      expect(within(region).getByText(timeline
+        ? "timeline-artifact | timeline-builder-handoff.v1"
+        : "contradiction-candidate-dossier | contradiction-finder-handoff.v1"
+      )).toBeInTheDocument();
+      expect(within(region).getAllByText("evidence-summary.v1").length).toBeGreaterThan(0);
+      expect(within(region).getByText(timeline
+        ? "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        : "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      )).toBeInTheDocument();
+      expect(within(region).queryByText(/raw source|provider body|authorization:/i)).not.toBeInTheDocument();
+      unmount();
+    }
+  });
 });
+
+function sourcedSelectedRunCockpit(runType: "timeline-builder" | "contradiction-finder"): AgentCockpitDto {
+  const base = cockpitFixture();
+  const timeline = runType === "timeline-builder";
+  const runId = timeline ? "run_timeline_browser_001" : "run_contradiction_browser_001";
+  const taskId = timeline ? "task_timeline_browser_001" : "task_contradiction_browser_001";
+  const artifactId = timeline ? "artifact_timeline_browser_001" : "artifact_contradiction_browser_001";
+  const artifactHash = timeline
+    ? "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    : "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc";
+  const selectedRun = {
+    runId,
+    taskId,
+    runType,
+    state: "completed",
+    startedAt: "2026-08-03T12:00:00.000Z",
+    summary: timeline ? "Sourced timeline prepared." : "Contradiction candidates prepared.",
+    currentStepCount: 1,
+    modelInvocationCount: 1,
+    pendingApprovalCount: 0,
+    blockedReasonCount: 0,
+    stepIds: [`step_${runId}_final_output`],
+    pendingApprovalIds: [],
+    blockedReasons: [],
+    modelInvocations: [],
+    contextPacks: [],
+    planHistory: [],
+    observationHistory: [],
+    handoff: {
+      schemaVersion: "agent-specialist-handoff.v1",
+      handoffId: `handoff_${runId}_0123456789abcdef`,
+      handoffRevision: 1,
+      runType,
+      runId,
+      taskId,
+      residentAgentId: "agent_default",
+      generatedAt: "2026-08-03T12:01:00.000Z",
+      status: "ready-for-review",
+      safeSummary: timeline
+        ? "Sourced timeline with exact citations is ready for review."
+        : "Contradiction candidates with exact paired sources are ready for review.",
+      contextPackRefs: [{
+        contextPackId: "evidence-summary.v1",
+        version: 1,
+        contentHash: "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        sizeBytes: 128,
+        generatedAt: "2026-08-03T12:00:00.000Z",
+        safeSummary: "Exact evidence identities and content hashes.",
+        provenanceRefs: ["evt_browser_source_001"],
+        sourceEventIds: ["evt_browser_source_001"]
+      }],
+      promptArtifactHash: "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      outputArtifacts: [{
+        artifactId,
+        artifactKind: timeline ? "timeline-artifact" : "contradiction-candidate-dossier",
+        schemaId: timeline ? "timeline-builder-handoff.v1" : "contradiction-finder-handoff.v1",
+        artifactHash,
+        safeSummary: timeline
+          ? "Local sourced timeline; advisory only."
+          : "Local contradiction candidates; advisory only."
+      }],
+      toolRequestIds: [],
+      approvalRequirements: [],
+      nextSafeActions: [{
+        actionId: `action_${runId}_review`,
+        label: timeline ? "Review the sourced timeline" : "Review the contradiction candidates",
+        kind: "review",
+        effect: "none",
+        artifactId
+      }]
+    }
+  };
+  return agentCockpitFromJson({
+    ...base,
+    runQueue: [{
+      runId,
+      taskId,
+      runType,
+      state: "completed",
+      startedAt: "2026-08-03T12:00:00.000Z",
+      summary: selectedRun.summary,
+      currentStepCount: 1,
+      modelInvocationCount: 1,
+      pendingApprovalCount: 0,
+      blockedReasonCount: 0
+    }],
+    selectedRun
+  });
+}
 
 function cockpitFixture(input: {
   readonly includeSelectedRun?: boolean;
