@@ -519,6 +519,34 @@ describe("MVP specialist workflow descriptors", () => {
     expect(store.putCount()).toBe(0);
   });
 
+  it.each([
+    { field: "rationale" as const, value: "Assertion rejection has occurred." },
+    { field: "confidenceCaveat" as const, value: "Assertion contestation has occurred." },
+    { field: "alternativeExplanations" as const, value: "Assertion supersession has occurred." },
+    { field: "requestedFollowupEvidence" as const, value: "Claim relinking has occurred." }
+  ])("rejects completed authority nominalization in $field", async ({ field, value }) => {
+    const store = memoryArtifactStore();
+    const output = sourcedContradictionOutput();
+    const candidate = output.candidates[0]!;
+    output.candidates[0] = field === "alternativeExplanations" || field === "requestedFollowupEvidence"
+      ? { ...candidate, [field]: [value] }
+      : { ...candidate, [field]: value };
+
+    await expect(executeSourcedInvestigationWorkflow({
+      runType: "contradiction-finder",
+      runId: "run_contradiction_forbidden_nominalizations_001",
+      taskId: "task_contradiction_forbidden_nominalizations_001",
+      ...await sourcedWorkflowAuthority({
+        runType: "contradiction-finder",
+        taskId: "task_contradiction_forbidden_nominalizations_001",
+        promptRunId: "run_contradiction_forbidden_nominalizations_001"
+      }),
+      artifactStore: store,
+      execution: { mode: "fake", invoke: async () => output }
+    })).rejects.toThrow(/authority|ontology|reject|contest|supersess|relink/i);
+    expect(store.putCount()).toBe(0);
+  });
+
   it("permits modal requests for human review of reject, contest, supersede, and relink actions", async () => {
     const output = sourcedContradictionOutput();
     output.candidates[0] = {
