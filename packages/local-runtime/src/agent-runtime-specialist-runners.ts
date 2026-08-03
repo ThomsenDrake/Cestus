@@ -8,7 +8,8 @@ import {
 import { hashSpecialistHandoffMaterial } from "../../agent/src/specialist-handoff-manifest.js";
 import {
   appendSpecialistFinalOutputStep,
-  recordAuthorityBoundSpecialistHandoff
+  recordAuthorityBoundSpecialistHandoff,
+  type SpecialistHandoffManifestStore
 } from "../../agent/src/specialist-runner-kernel.js";
 import { taskOrchestrationStreamId } from "../../agent/src/task-orchestrator-events.js";
 import {
@@ -99,6 +100,10 @@ export interface ConsumeMountedSourcedInvestigationDispatchInput {
   readonly dispatch: TaskOrchestratorRunnerDispatchInput;
   readonly retryGeneration: number;
   readonly handoff: FactoryPortableMountedAgentHandoffProducerResultV1;
+  readonly stores: {
+    readonly material: SpecialistHandoffManifestStore;
+    readonly manifest: SpecialistHandoffManifestStore;
+  };
   readonly ledger: EventLedger;
   readonly actor: ActorRef;
   readonly now: () => string;
@@ -135,15 +140,15 @@ export async function consumeMountedSourcedInvestigationDispatch(
   ]);
   for (const contentHash of dependencyHashes) {
     await copyExactArtifact(
-      input.handoff.binding.materialStore,
-      input.handoff.binding.manifestStore,
+      input.stores.material,
+      input.stores.manifest,
       contentHash
     );
   }
 
   const finalOutput = await appendSpecialistFinalOutputStep({
     ledger: input.ledger,
-    materialStore: input.handoff.binding.materialStore,
+    materialStore: input.stores.material,
     actor: input.actor,
     now: input.now,
     runId: input.dispatch.approvedRunId,
@@ -154,14 +159,14 @@ export async function consumeMountedSourcedInvestigationDispatch(
     throw preparationError();
   }
   await copyExactArtifact(
-    input.handoff.binding.materialStore,
-    input.handoff.binding.manifestStore,
+    input.stores.material,
+    input.stores.manifest,
     preparation.handoffMaterialHash
   );
 
   const recorded = await recordAuthorityBoundSpecialistHandoff({
     ledger: input.ledger,
-    manifestStore: input.handoff.binding.manifestStore,
+    manifestStore: input.stores.manifest,
     actor: input.actor,
     now: input.now,
     runId: input.dispatch.approvedRunId,

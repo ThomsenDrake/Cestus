@@ -1,8 +1,8 @@
 import { Buffer } from "node:buffer";
 import { createHash } from "node:crypto";
-import { mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   createContextPackRegistry,
@@ -45,6 +45,7 @@ import type {
 import { FileBlobStore } from "../../ontology/src/blob-store.js";
 import type { AppendableKnowledgeEvent, KnowledgeEvent } from "../../ontology/src/contracts.js";
 import type { EventLedger } from "../../ontology/src/event-ledger.js";
+import { SQLiteEventLedger } from "../../ontology/src/sqlite-event-ledger.js";
 import { createPortableWorkspace } from "../../workspace/src/index.js";
 import {
   consumeMountedSourcedInvestigationDispatch,
@@ -271,7 +272,7 @@ describe("untrusted specialist runner", () => {
         date: "2026-04-05",
         precision: "day",
         summary: `PRR event ${fixture.canonicalDatedFacts.prrProductionEventId} (prr.production.received) occurred.`,
-        evidence: expect.arrayContaining([expect.objectContaining({ evidenceId: fixture.evidenceId })]),
+        evidence: [],
         assertions: [],
         prrEvents: expect.arrayContaining([expect.objectContaining({
           eventId: fixture.canonicalDatedFacts.prrProductionEventId
@@ -406,6 +407,37 @@ describe("untrusted specialist runner", () => {
         requiredReviewerAction: "review"
       })]
     });
+  });
+
+  it("rejects a mounted contradiction comparison whose distinct evidence IDs resolve to the same exact source bytes", async () => {
+    const fixture = await mountedSourcedResidentFactoryFixture({
+      canonicalDatedFacts: true,
+      secondEvidence: "conflicting-assertion",
+      secondEvidenceSameSourceBytes: true
+    });
+    if (fixture.secondEvidenceId === undefined) throw new Error("same-byte evidence fixture is unavailable");
+    const selectedEvidenceIds = [fixture.evidenceId, fixture.secondEvidenceId];
+    const timeline = await runMountedSourcedResidentRequest(fixture, {
+      taskId: fixture.timelineTaskId,
+      runId: fixture.timelineRunId,
+      runType: "timeline-builder",
+      evidenceIds: selectedEvidenceIds
+    });
+    expect(timeline.status, timeline.body).toBe(200);
+
+    fixture.advancePastLeaseExpiry();
+    const contradiction = await runMountedSourcedResidentRequest(fixture, {
+      taskId: fixture.contradictionTaskId,
+      runId: fixture.contradictionRunId,
+      runType: "contradiction-finder",
+      evidenceIds: selectedEvidenceIds
+    });
+
+    expect(contradiction.status, contradiction.body).toBe(409);
+    expect((await fixture.handle.ledger.readAll()).some((event) =>
+      event.type === "agent.specialist-handoff.recorded" &&
+      event.payload.runId === fixture.contradictionRunId
+    )).toBe(false);
   });
 
   it("does not emit a contradiction for semantically identical numeric zero values", async () => {
@@ -772,6 +804,176 @@ describe("untrusted specialist runner", () => {
     }
   });
 
+  it("uses one mounted task gate across a real portable-workspace symlink alias", async () => {
+    const promptBoundaryEntered = Promise.withResolvers<void>();
+    const releasePromptBoundary = Promise.withResolvers<void>();
+    const fixture = await mountedSourcedResidentFactoryFixture({
+      beforePromptArtifactWriteForTest: async () => {
+        promptBoundaryEntered.resolve();
+        await releasePromptBoundary.promise;
+      }
+    });
+    const aliasParent = mkdtempSync(join(tmpdir(), "cestus-sourced-alias-"));
+    mountedTempDirs.push(aliasParent);
+    const aliasParentLink = join(aliasParent, "portable-parent-alias");
+    symlinkSync(dirname(fixture.workspaceRoot), aliasParentLink, "dir");
+    const aliasRoot = join(aliasParentLink, basename(fixture.workspaceRoot));
+    const controller = createMountedSourcedCancellationController({
+      ...fixture,
+      workspaceRoot: aliasRoot
+    }, "symlink_alias");
+    const writeEntered = Promise.withResolvers<void>();
+    const releaseWrite = Promise.withResolvers<void>();
+    const originalPut = FileBlobStore.prototype.put;
+    let interceptNextPut = true;
+    const execution = runMountedSourcedResidentRequest(fixture, {
+      taskId: fixture.timelineTaskId,
+      runId: fixture.timelineRunId,
+      runType: "timeline-builder",
+      evidenceIds: [fixture.evidenceId]
+    });
+    await promptBoundaryEntered.promise;
+    const putSpy = vi.spyOn(FileBlobStore.prototype, "put").mockImplementation(async function (
+      this: FileBlobStore,
+      content: Buffer
+    ) {
+      if (interceptNextPut) {
+        interceptNextPut = false;
+        writeEntered.resolve();
+        await releaseWrite.promise;
+      }
+      return await originalPut.call(this, content);
+    });
+    releasePromptBoundary.resolve();
+    await writeEntered.promise;
+    const cancellation = cancelMountedSourcedTask(fixture, controller);
+    try {
+      const canceledBeforeRelease = await Promise.race([
+        waitForMountedLedgerEvent(controller.handle, (event) =>
+          event.type === "agent.task.status.changed" &&
+          event.payload.taskId === fixture.timelineTaskId && event.payload.status === "canceled"
+        ).then(() => true),
+        new Promise<false>((resolve) => setTimeout(() => resolve(false), 25))
+      ]);
+      expect(canceledBeforeRelease).toBe(false);
+      releaseWrite.resolve();
+      const [canceled, sourced] = await Promise.all([cancellation, execution]);
+      expect(canceled?.status, canceled?.body).toBe(200);
+      expect(sourced.status, sourced.body).toBe(409);
+    } finally {
+      releaseWrite.resolve();
+      putSpy.mockRestore();
+    }
+  });
+
+  it("serializes a direct terminal handoff-store write before sourced cancellation", async () => {
+    const promptBoundaryEntered = Promise.withResolvers<void>();
+    const releasePromptBoundary = Promise.withResolvers<void>();
+    const fixture = await mountedSourcedResidentFactoryFixture({
+      beforePromptArtifactWriteForTest: async () => {
+        promptBoundaryEntered.resolve();
+        await releasePromptBoundary.promise;
+      }
+    });
+    const controller = createMountedSourcedCancellationController(fixture, "terminal_store");
+    const terminalWriteEntered = Promise.withResolvers<void>();
+    const releaseTerminalWrite = Promise.withResolvers<void>();
+    const originalPut = FileBlobStore.prototype.put;
+    let intercepted = false;
+    const execution = runMountedSourcedResidentRequest(fixture, {
+      taskId: fixture.timelineTaskId,
+      runId: fixture.timelineRunId,
+      runType: "timeline-builder",
+      evidenceIds: [fixture.evidenceId]
+    });
+    await promptBoundaryEntered.promise;
+    const putSpy = vi.spyOn(FileBlobStore.prototype, "put").mockImplementation(async function (
+      this: FileBlobStore,
+      content: Buffer
+    ) {
+      const rootDir = Reflect.get(this, "rootDir");
+      if (!intercepted && typeof rootDir === "string" && rootDir.endsWith("specialist-handoff-manifest")) {
+        intercepted = true;
+        terminalWriteEntered.resolve();
+        await releaseTerminalWrite.promise;
+      }
+      return await originalPut.call(this, content);
+    });
+    releasePromptBoundary.resolve();
+    await terminalWriteEntered.promise;
+    const cancellation = cancelMountedSourcedTask(fixture, controller);
+    try {
+      const canceledBeforeRelease = await Promise.race([
+        waitForMountedLedgerEvent(controller.handle, (event) =>
+          event.type === "agent.task.status.changed" &&
+          event.payload.taskId === fixture.timelineTaskId && event.payload.status === "canceled"
+        ).then(() => true),
+        new Promise<false>((resolve) => setTimeout(() => resolve(false), 25))
+      ]);
+      expect(canceledBeforeRelease).toBe(false);
+      releaseTerminalWrite.resolve();
+      const [canceled, sourced] = await Promise.all([cancellation, execution]);
+      expect(canceled?.status, canceled?.body).toBe(200);
+      expect(sourced.status, sourced.body).toBe(409);
+    } finally {
+      releaseTerminalWrite.resolve();
+      putSpy.mockRestore();
+    }
+  });
+
+  it("fences the pre-run orchestration claim and checkpoint against sourced cancellation", async () => {
+    const fixture = await mountedSourcedResidentFactoryFixture();
+    const controller = createMountedSourcedCancellationController(fixture, "pre_run_ledger");
+    const checkpointEntered = Promise.withResolvers<void>();
+    const releaseCheckpoint = Promise.withResolvers<void>();
+    const originalGuardedAppend = SQLiteEventLedger.prototype.appendWithPrecommitGuard;
+    let intercepted = false;
+    SQLiteEventLedger.prototype.appendWithPrecommitGuard = async function (event, options, guard) {
+      if (!intercepted && event.type === "agent.task.orchestration.checkpointed" &&
+        event.payload.taskId === fixture.timelineTaskId) {
+        intercepted = true;
+        checkpointEntered.resolve();
+        await releaseCheckpoint.promise;
+      }
+      return await originalGuardedAppend.call(this, event, options, guard);
+    };
+    const execution = runMountedSourcedResidentRequest(fixture, {
+      taskId: fixture.timelineTaskId,
+      runId: fixture.timelineRunId,
+      runType: "timeline-builder",
+      evidenceIds: [fixture.evidenceId]
+    });
+    await checkpointEntered.promise;
+    const claimEvents = await controller.handle.ledger.readAll();
+    expect(claimEvents.some((event) => event.type === "agent.task.orchestration.claimed" &&
+      event.payload.taskId === fixture.timelineTaskId)).toBe(true);
+    const cancellation = cancelMountedSourcedTask(fixture, controller);
+    try {
+      const canceledBeforeRelease = await Promise.race([
+        waitForMountedLedgerEvent(controller.handle, (event) =>
+          event.type === "agent.task.status.changed" &&
+          event.payload.taskId === fixture.timelineTaskId && event.payload.status === "canceled"
+        ).then(() => true),
+        new Promise<false>((resolve) => setTimeout(() => resolve(false), 25))
+      ]);
+      expect(canceledBeforeRelease).toBe(false);
+      releaseCheckpoint.resolve();
+      const [canceled, sourced] = await Promise.all([cancellation, execution]);
+      expect(canceled?.status, canceled?.body).toBe(200);
+      expect(sourced.status, sourced.body).toBe(409);
+      const events = await controller.handle.ledger.readAll();
+      const canceledIndex = events.findIndex((event) => event.type === "agent.task.status.changed" &&
+        event.payload.taskId === fixture.timelineTaskId && event.payload.status === "canceled");
+      expect(events.slice(canceledIndex + 1).some((event) =>
+        event.type === "agent.task.orchestration.checkpointed" &&
+        event.payload.taskId === fixture.timelineTaskId
+      )).toBe(false);
+    } finally {
+      releaseCheckpoint.resolve();
+      SQLiteEventLedger.prototype.appendWithPrecommitGuard = originalGuardedAppend;
+    }
+  });
+
   it("forgets a sourced wake identity whose startup is blocked before a later retry", async () => {
     const fixture = await mountedSourcedResidentFactoryFixture();
     await fixture.supervision.snapshot();
@@ -899,6 +1101,10 @@ describe("untrusted specialist runner", () => {
       dispatch: fixture.dispatch,
       retryGeneration: 0,
       handoff: fixture.handoff,
+      stores: {
+        material: fixture.handoff.binding.materialStore,
+        manifest: fixture.handoff.binding.manifestStore
+      },
       ledger: fixture.handle.ledger,
       actor: fixture.actor,
       now: () => sourcedNow
@@ -1321,6 +1527,7 @@ async function mountedSourcedResidentFactoryFixture(options: {
   readonly canonicalDatedFacts?: boolean;
   readonly canonicalAssertionObject?: string | number | boolean | null;
   readonly secondEvidence?: "undated" | "accepted-assertion" | "conflicting-assertion";
+  readonly secondEvidenceSameSourceBytes?: boolean;
   readonly secondAssertionObject?: string | number | boolean | null;
   readonly contradictionIncludesSecondEvidence?: boolean;
   readonly unrelatedTimelineIncludesFirstEvidence?: boolean;
@@ -1548,7 +1755,9 @@ async function mountedSourcedResidentFactoryFixture(options: {
   if (options.secondEvidence !== undefined) {
     secondEvidenceId = "ev_sourced_factory_002";
     const secondSource = await new FileBlobStore(mounted.paths.blobRoot).put(
-      Buffer.from("mounted resident second sourced evidence bytes", "utf8")
+      options.secondEvidenceSameSourceBytes === true
+        ? Buffer.from("mounted resident sourced evidence bytes", "utf8")
+        : Buffer.from("mounted resident second sourced evidence bytes", "utf8")
     );
     secondSourceHash = secondSource.contentHash;
     const secondIngested = await handle.ledger.append({

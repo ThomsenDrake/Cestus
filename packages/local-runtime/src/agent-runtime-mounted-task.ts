@@ -934,6 +934,12 @@ async function runMountedSourcedInvestigationTaskInternal(
       input.taskId,
       input.runId
     );
+    const manifestStore = taskFencedManifestStore(
+      issued.handoff.binding.manifestStore,
+      input.handle,
+      input.taskId,
+      input.runId
+    );
     for (const binding of evidence) {
       await putMountedSourcedDependencyExact(
         materialStore,
@@ -993,6 +999,7 @@ async function runMountedSourcedInvestigationTaskInternal(
       dispatch,
       retryGeneration,
       handoff: issued.handoff,
+      stores: { material: materialStore, manifest: manifestStore },
       ledger: executionLedger,
       actor: residentActor,
       now: operationNow
@@ -1488,75 +1495,93 @@ async function appendMountedSourcedInvestigationAttemptBinding(input: {
   readonly now: () => string;
   readonly dispatch: TaskOrchestratorRunnerDispatchInput;
 }): Promise<void> {
-  const retryGeneration = 0;
-  const leaseClaimGeneration = 1;
-  const ledger = revalidatingMountedLedger(input.handle, input.authority);
-  const taskStream = await ledger.readStream(`agent_task_${input.dispatch.taskId}`);
-  const causationEventId = taskStream.at(-1)?.id;
-  if (causationEventId === undefined) {
-    throw mountedConflict("Mounted sourced-investigation task provenance is unavailable.");
-  }
-  const streamId = taskOrchestrationStreamId(input.dispatch.taskId, input.dispatch.runType);
-  const orchestrationStream = await ledger.readStream(streamId);
-  if (orchestrationStream.length !== 0) {
-    throw mountedConflict("Mounted sourced-investigation orchestration is not untouched.");
-  }
-  const claimedAt = input.now();
-  const claim = await ledger.append({
-    type: "agent.task.orchestration.claimed",
-    version: 1,
-    streamId,
-    context: agentEventContext(input.now, `corr_${input.dispatch.taskId}`, causationEventId),
-    payload: {
-      taskId: input.dispatch.taskId,
-      runType: input.dispatch.runType,
-      attemptId: input.dispatch.attemptId,
-      retryGeneration,
-      leaseClaimGeneration,
-      workerId: residentAgentId,
-      claimedAt,
-      leaseExpiresAt: new Date(Date.parse(claimedAt) + 60 * 60 * 1_000).toISOString(),
-      idempotencyKey: `task-orchestrator:${input.dispatch.taskId}:${input.dispatch.runType}:0:${input.dispatch.attemptId}:claim`,
-      selectedOrderingPosition: {
-        priorityRank: 0,
-        queuedAt: claimedAt,
-        taskId: input.dispatch.taskId,
-        runType: input.dispatch.runType,
-        retryGeneration
-      },
-      activeBudgetSnapshot: {
-        maxProviderInvocations: 1,
-        remainingProviderInvocations: 1,
-        contextByteBudget: 65_536,
-        promptByteBudget: 65_536,
-        derivativeArtifactByteBudget: 65_536,
-        wallClockBudgetMs: 120_000
-      },
-      causationEventId
+  return await serializeMountedTaskArtifactEffect({
+    handle: input.handle,
+    taskId: input.dispatch.taskId,
+    effect: async () => {
+      await input.authority.revalidate();
+      await assertMountedTaskPreRunEffectAllowed(
+        input.handle,
+        input.dispatch.taskId,
+        input.dispatch.approvedRunId
+      );
+      const retryGeneration = 0;
+      const leaseClaimGeneration = 1;
+      const ledger = revalidatingMountedLedger(input.handle, input.authority);
+      const taskStream = await ledger.readStream(`agent_task_${input.dispatch.taskId}`);
+      const causationEventId = taskStream.at(-1)?.id;
+      if (causationEventId === undefined) {
+        throw mountedConflict("Mounted sourced-investigation task provenance is unavailable.");
+      }
+      const streamId = taskOrchestrationStreamId(input.dispatch.taskId, input.dispatch.runType);
+      const orchestrationStream = await ledger.readStream(streamId);
+      if (orchestrationStream.length !== 0) {
+        throw mountedConflict("Mounted sourced-investigation orchestration is not untouched.");
+      }
+      const claimedAt = input.now();
+      const claim = await ledger.append({
+        type: "agent.task.orchestration.claimed",
+        version: 1,
+        streamId,
+        context: agentEventContext(input.now, `corr_${input.dispatch.taskId}`, causationEventId),
+        payload: {
+          taskId: input.dispatch.taskId,
+          runType: input.dispatch.runType,
+          attemptId: input.dispatch.attemptId,
+          retryGeneration,
+          leaseClaimGeneration,
+          workerId: residentAgentId,
+          claimedAt,
+          leaseExpiresAt: new Date(Date.parse(claimedAt) + 60 * 60 * 1_000).toISOString(),
+          idempotencyKey: `task-orchestrator:${input.dispatch.taskId}:${input.dispatch.runType}:0:${input.dispatch.attemptId}:claim`,
+          selectedOrderingPosition: {
+            priorityRank: 0,
+            queuedAt: claimedAt,
+            taskId: input.dispatch.taskId,
+            runType: input.dispatch.runType,
+            retryGeneration
+          },
+          activeBudgetSnapshot: {
+            maxProviderInvocations: 1,
+            remainingProviderInvocations: 1,
+            contextByteBudget: 65_536,
+            promptByteBudget: 65_536,
+            derivativeArtifactByteBudget: 65_536,
+            wallClockBudgetMs: 120_000
+          },
+          causationEventId
+        }
+      } satisfies AppendableKnowledgeEvent<"agent.task.orchestration.claimed">, {
+        expectedNextSequence: 1
+      });
+      await ledger.append({
+        type: "agent.task.orchestration.checkpointed",
+        version: 1,
+        streamId,
+        context: agentEventContext(input.now, `corr_${input.dispatch.taskId}`, claim.id),
+        payload: {
+          taskId: input.dispatch.taskId,
+          runType: input.dispatch.runType,
+          attemptId: input.dispatch.attemptId,
+          retryGeneration,
+          leaseClaimGeneration,
+          checkpointKind: "runner-dispatching",
+          checkpointedAt: input.now(),
+          runId: input.dispatch.approvedRunId,
+          resumeIdempotencyKey: `task-orchestrator:${input.dispatch.taskId}:${input.dispatch.runType}:0:${input.dispatch.attemptId}:runner-dispatching`,
+          contextBindings: [],
+          safeNextActions: ["wait for durable specialist handoff readback"]
+        }
+      } satisfies AppendableKnowledgeEvent<"agent.task.orchestration.checkpointed">, {
+        expectedNextSequence: 2
+      });
+      await assertMountedTaskPreRunEffectAllowed(
+        input.handle,
+        input.dispatch.taskId,
+        input.dispatch.approvedRunId
+      );
+      await input.authority.revalidate();
     }
-  } satisfies AppendableKnowledgeEvent<"agent.task.orchestration.claimed">, {
-    expectedNextSequence: 1
-  });
-  await ledger.append({
-    type: "agent.task.orchestration.checkpointed",
-    version: 1,
-    streamId,
-    context: agentEventContext(input.now, `corr_${input.dispatch.taskId}`, claim.id),
-    payload: {
-      taskId: input.dispatch.taskId,
-      runType: input.dispatch.runType,
-      attemptId: input.dispatch.attemptId,
-      retryGeneration,
-      leaseClaimGeneration,
-      checkpointKind: "runner-dispatching",
-      checkpointedAt: input.now(),
-      runId: input.dispatch.approvedRunId,
-      resumeIdempotencyKey: `task-orchestrator:${input.dispatch.taskId}:${input.dispatch.runType}:0:${input.dispatch.attemptId}:runner-dispatching`,
-      contextBindings: [],
-      safeNextActions: ["wait for durable specialist handoff readback"]
-    }
-  } satisfies AppendableKnowledgeEvent<"agent.task.orchestration.checkpointed">, {
-    expectedNextSequence: 2
   });
 }
 
@@ -2737,7 +2762,8 @@ async function replayMountedTimelineDraftCandidate(input: {
     if (!/^timeline_[a-zA-Z0-9_-]+$/.test(item.itemId) || typeof item.summary !== "string" ||
       item.summary.length === 0 || !Array.isArray(item.evidence) || !Array.isArray(item.assertions) ||
       !Array.isArray(item.prrEvents) || !Array.isArray(item.contentHashRefs) ||
-      !Array.isArray(item.uncertainty?.categories) || item.evidence.length === 0) {
+      !Array.isArray(item.uncertainty?.categories) ||
+      (item.evidence.length === 0 && item.assertions.length === 0 && item.prrEvents.length === 0)) {
       throw mountedConflict("Prior sourced timeline item is invalid.");
     }
     const itemEventIds: string[] = [];
@@ -2945,6 +2971,12 @@ function groundedMountedSourcedInvestigationOutput(input: {
     throw mountedConflict("Mounted sourced investigation requires evidence.");
   }
   if (input.runType === "contradiction-finder") {
+    if (input.evidence.length > 1 &&
+      new Set(input.evidence.map((binding) => binding.contentHash)).size < 2) {
+      throw mountedConflict(
+        "Mounted contradiction review requires at least two distinct exact source-byte hashes."
+      );
+    }
     return { candidates: groundedMountedContradictionCandidates(input) };
   }
 
@@ -3075,7 +3107,8 @@ function groundedMountedContradictionCandidates(input: {
     const left = assertions[leftIndex]!;
     for (let rightIndex = leftIndex + 1; rightIndex < assertions.length; rightIndex += 1) {
       const right = assertions[rightIndex]!;
-      if (left.evidenceId === right.evidenceId || left.subjectRef !== right.subjectRef ||
+      if (left.evidenceId === right.evidenceId || left.evidenceContentHash === right.evidenceContentHash ||
+        left.subjectRef !== right.subjectRef ||
         left.predicate !== right.predicate || left.object === right.object) continue;
       if (candidates.length === 48) {
         throw mountedConflict("Mounted contradiction candidates exceed the bounded advisory output capacity.");
@@ -3161,11 +3194,12 @@ function appendAcceptedAssertionTimelineItems(input: {
       throw mountedConflict("Accepted assertion timeline identities are ambiguous.");
     }
     itemIds.add(itemId);
+    const directEvidenceRefs = input.datedEvidenceIds.has(evidenceId) ? [] : [evidenceId];
     input.timelineItems.push({
       itemId,
       date: exactLedgerDate(accepted),
       precision: "day",
-      evidenceRefs: [evidenceId],
+      evidenceRefs: directEvidenceRefs,
       assertionRefs: [assertionId],
       prrEventRefs: [],
       contentHashRefs: [binding.contentHash],
@@ -3174,7 +3208,7 @@ function appendAcceptedAssertionTimelineItems(input: {
       uncertaintyNotes: [],
       uncertaintySourceRefs: []
     });
-    input.datedEvidenceIds.add(evidenceId);
+    if (directEvidenceRefs.length !== 0) input.datedEvidenceIds.add(evidenceId);
   }
 }
 
@@ -3244,6 +3278,9 @@ function appendPrrTimelineItems(input: {
       throw mountedConflict("Associated PRR event does not match its exact ledger evidence binding.");
     }
     const evidenceIds = refs.map((ref) => ref.evidenceId).sort();
+    const directEvidenceIds = evidenceIds.filter((evidenceId) =>
+      !input.datedEvidenceIds.has(evidenceId)
+    );
     const contentHashes = [...uniqueHashes(refs.map((ref) => ref.contentHash))].sort();
     const itemId = `timeline_prr_${sourceEventId}`;
     if (input.timelineItems.some((item) => item.itemId === itemId)) {
@@ -3253,7 +3290,7 @@ function appendPrrTimelineItems(input: {
       itemId,
       date: exactLedgerDate(event),
       precision: "day",
-      evidenceRefs: evidenceIds,
+      evidenceRefs: directEvidenceIds,
       assertionRefs: [],
       prrEventRefs: [sourceEventId],
       contentHashRefs: contentHashes,
@@ -3262,7 +3299,7 @@ function appendPrrTimelineItems(input: {
       uncertaintyNotes: [],
       uncertaintySourceRefs: []
     });
-    for (const evidenceId of evidenceIds) input.datedEvidenceIds.add(evidenceId);
+    for (const evidenceId of directEvidenceIds) input.datedEvidenceIds.add(evidenceId);
   }
 }
 
@@ -3868,6 +3905,26 @@ async function assertMountedTaskEffectAllowed(
   return Object.freeze(events);
 }
 
+async function assertMountedTaskPreRunEffectAllowed(
+  handle: LocalRuntimeHandle,
+  taskId: string,
+  runId: string
+): Promise<readonly KnowledgeEvent[]> {
+  const before = inspectPortableWorkspaceCurrentness(handle);
+  if (!before.ok) throw mountedConflict("Mounted pre-run effect boundary lost portable workspace currentness.");
+  const events = await handle.ledger.readAll();
+  const projection = buildAgentProjection(events);
+  const task = projection.tasks.get(taskId);
+  const taskRuns = [...projection.runs.values()].filter((run) => run.taskId === taskId);
+  const after = inspectPortableWorkspaceCurrentness(handle);
+  if (!after.ok || mountedResidentSupervisionIsPaused(events) || task === undefined ||
+    task.residentAgentId !== residentAgentId || task.status !== "queued" || task.runId !== undefined ||
+    taskRuns.length !== 0 || projection.runs.has(runId)) {
+    throw mountedConflict("Mounted task is no longer current for pre-run effects.");
+  }
+  return Object.freeze(events);
+}
+
 function mountedResidentSupervisionIsPaused(events: readonly KnowledgeEvent[]): boolean {
   const latestPause = events.findLastIndex((event) => event.type === "agent.wake.supervisor.paused.v1");
   const latestResume = events.findLastIndex((event) =>
@@ -4290,27 +4347,63 @@ async function storeMountedTaskExecutionInputManifest(input: {
   readonly bytes: Buffer;
   readonly expectedHash: ContentHash;
 }): Promise<MountedTaskExecutionInputManifest> {
-  await input.authority.revalidate();
-  requireCurrentMountedTaskAdmissionWorkspace(input.handle);
-  let storedHash: ContentHash;
-  try {
-    const stored = await mountedTaskExecutionInputStore(input.handle).put(input.bytes);
-    storedHash = stored.contentHash;
-  } catch {
-    throw mountedConflict("Mounted task admission manifest could not be stored safely.");
+  return await serializeMountedTaskArtifactEffect({
+    handle: input.handle,
+    taskId: input.manifest.taskId,
+    effect: async () => {
+      await input.authority.revalidate();
+      await assertMountedTaskAdmissionStorageAllowed(
+        input.handle,
+        input.manifest.taskId,
+        input.manifest.runId
+      );
+      requireCurrentMountedTaskAdmissionWorkspace(input.handle);
+      let storedHash: ContentHash;
+      try {
+        const stored = await mountedTaskExecutionInputStore(input.handle).put(input.bytes);
+        storedHash = stored.contentHash;
+      } catch {
+        throw mountedConflict("Mounted task admission manifest could not be stored safely.");
+      }
+      requireCurrentMountedTaskAdmissionWorkspace(input.handle);
+      await input.authority.revalidate();
+      if (storedHash !== input.expectedHash) {
+        throw mountedConflict("Mounted task admission manifest hash does not match its canonical bytes.");
+      }
+      const readback = await readMountedTaskExecutionInputBytes(input.handle, input.expectedHash);
+      if (!readback.equals(input.bytes)) {
+        throw mountedConflict("Mounted task admission manifest did not read back exactly.");
+      }
+      const parsed = parseMountedTaskExecutionInputManifest(readback);
+      assertMountedTaskExecutionInputManifestEquality(parsed, input.manifest, input.expectedHash);
+      await assertMountedTaskAdmissionStorageAllowed(
+        input.handle,
+        input.manifest.taskId,
+        input.manifest.runId
+      );
+      return parsed;
+    }
+  });
+}
+
+async function assertMountedTaskAdmissionStorageAllowed(
+  handle: LocalRuntimeHandle,
+  taskId: string,
+  runId: string
+): Promise<void> {
+  requireCurrentMountedTaskAdmissionWorkspace(handle);
+  const events = await handle.ledger.readAll();
+  const projection = buildAgentProjection(events);
+  const task = projection.tasks.get(taskId);
+  const taskRuns = [...projection.runs.values()].filter((run) => run.taskId === taskId);
+  const taskAttempts = [...projection.taskOrchestrator.attempts.values()]
+    .filter((attempt) => attempt.taskId === taskId);
+  requireCurrentMountedTaskAdmissionWorkspace(handle);
+  if (task === undefined || task.residentAgentId !== residentAgentId || task.status !== "queued" ||
+    task.runId !== undefined || taskRuns.length !== 0 || taskAttempts.length !== 0 ||
+    projection.runs.has(runId)) {
+    throw mountedConflict("Mounted task is no longer current for admission-manifest storage.");
   }
-  requireCurrentMountedTaskAdmissionWorkspace(input.handle);
-  await input.authority.revalidate();
-  if (storedHash !== input.expectedHash) {
-    throw mountedConflict("Mounted task admission manifest hash does not match its canonical bytes.");
-  }
-  const readback = await readMountedTaskExecutionInputBytes(input.handle, input.expectedHash);
-  if (!readback.equals(input.bytes)) {
-    throw mountedConflict("Mounted task admission manifest did not read back exactly.");
-  }
-  const parsed = parseMountedTaskExecutionInputManifest(readback);
-  assertMountedTaskExecutionInputManifestEquality(parsed, input.manifest, input.expectedHash);
-  return parsed;
 }
 
 async function readMountedTaskExecutionInputBytes(
