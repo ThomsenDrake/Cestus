@@ -4,11 +4,15 @@ import type { DeadlineCalculator, PrrRuntimeNow } from "../../prr/src/runtime.js
 import { prrWorkspaceSeedEvents } from "../../prr/src/workspace-seed.js";
 import type { IngestionWorkspaceMountResolver } from "../../ingestion/src/mount-contract.js";
 import {
+  acquireMountedEvidenceTriageHandoffForLocalAgentRuntimeFactory,
   contextFreeLocalAgentRuntimeFactory,
   type LocalAgentRuntimeFactory
 } from "./agent-runtime-factory.js";
 import { handleAgentHttpRoute } from "./agent-http-routes.js";
-import { createMountedEvidenceTriageBackgroundExecutionPort } from "./agent-runtime-mounted-task.js";
+import {
+  createMountedEvidenceTriageBackgroundExecutionPort,
+  type MountedTaskBackgroundExecutionObservation
+} from "./agent-runtime-mounted-task.js";
 import {
   createResidentSupervisionRuntime,
   type ResidentBackgroundExecutionPort
@@ -63,6 +67,9 @@ export interface CreateLocalRuntimeHttpHandlerInput {
   readonly mountedTaskBeforeLocalEffectForTest?: (() => void | Promise<void>) | undefined;
   readonly mountedTaskBeforeRunStartSnapshotForTest?: (() => void | Promise<void>) | undefined;
   readonly mountedTaskBeforeTaskRunningForTest?: (() => void | Promise<void>) | undefined;
+  readonly mountedTaskAfterBackgroundExecutionForTest?: ((
+    observation: MountedTaskBackgroundExecutionObservation
+  ) => void) | undefined;
   readonly mountedTaskBackgroundScanForTest?: ((taskCount: number) => void) | undefined;
 }
 
@@ -85,6 +92,12 @@ export function createLocalRuntimeHttpHandler(
     runtimeHandle: handle,
     actor: input.actor,
     now: runtimeNow,
+    issueMountedEvidenceTriageHandoff: async (wakeRuntime, task) =>
+      await acquireMountedEvidenceTriageHandoffForLocalAgentRuntimeFactory({
+        wakeRuntime,
+        taskId: task.taskId,
+        runId: task.runId
+      }),
     backgroundExecution: input.residentBackgroundExecutionForTest ??
       createMountedEvidenceTriageBackgroundExecutionPort({
         handle,
@@ -101,6 +114,9 @@ export function createLocalRuntimeHttpHandler(
         ...(input.mountedTaskBeforeTaskRunningForTest === undefined
           ? {}
           : { beforeTaskRunningForTest: input.mountedTaskBeforeTaskRunningForTest }),
+        ...(input.mountedTaskAfterBackgroundExecutionForTest === undefined
+          ? {}
+          : { afterExecutionSettledForTest: input.mountedTaskAfterBackgroundExecutionForTest }),
         ...(input.mountedTaskBackgroundScanForTest === undefined
           ? {}
           : {
