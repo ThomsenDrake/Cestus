@@ -1,3 +1,4 @@
+import { realpathSync } from "node:fs";
 import type { LocalRuntimeHandle } from "./runtime-factory.js";
 
 interface MountedTaskEffectGate {
@@ -21,7 +22,8 @@ export async function serializeMountedTaskArtifactEffect<T>(input: {
   if (mounted === undefined) {
     throw new Error("Mounted task artifact effect coordination requires a portable workspace.");
   }
-  const key = `${mounted.workspaceId}\u0000${mounted.rootDir}\u0000${input.taskId}`;
+  const canonicalRoot = realpathSync.native(mounted.rootDir);
+  const key = `${mounted.workspaceId}\u0000${canonicalRoot}\u0000${input.taskId}`;
   const gate = mountedTaskEffectGates.get(key) ?? { tail: Promise.resolve(), queued: 0 };
   if (!mountedTaskEffectGates.has(key)) mountedTaskEffectGates.set(key, gate);
   const preceding = gate.tail;

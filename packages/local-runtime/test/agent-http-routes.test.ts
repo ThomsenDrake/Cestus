@@ -2,7 +2,7 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import { cpSync, existsSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import {
   buildTaskAttemptId,
   createAgentToolGateway,
@@ -249,6 +249,82 @@ describe("agent HTTP routes", () => {
       taskId: "task_route_001",
       description: "Check readiness before handing work to the resident agent."
     }));
+  });
+
+  it("serializes ordinary mounted admission-manifest storage before durable task cancellation", async () => {
+    const config = portableConfig("ws_admission_manifest_cancel_fence");
+    await seedMountedEvidenceTriageSource(config);
+    const handler = testHandler({
+      config,
+      residentBackgroundExecutionForTest: {
+        async pendingLocalTasks() { return []; },
+        async execute() { throw new Error("Admission race fixture must not execute background work."); }
+      }
+    });
+    const taskId = "task_admission_manifest_cancel_fence";
+    const runId = "run_admission_manifest_cancel_fence";
+    await createMountedEvidenceTriageTask(handler, taskId);
+    const manifestWriteEntered = Promise.withResolvers<void>();
+    const releaseManifestWrite = Promise.withResolvers<void>();
+    const originalPut = FileBlobStore.prototype.put;
+    let intercepted = false;
+    const putSpy = vi.spyOn(FileBlobStore.prototype, "put").mockImplementation(async function (
+      this: FileBlobStore,
+      content: Buffer
+    ) {
+      let parsed: Record<string, unknown> | undefined;
+      try {
+        parsed = JSON.parse(content.toString("utf8")) as Record<string, unknown>;
+      } catch {
+        parsed = undefined;
+      }
+      if (!intercepted && parsed?.schemaVersion === "agent-mounted-task-execution-input.v1" &&
+        parsed.taskId === taskId) {
+        intercepted = true;
+        manifestWriteEntered.resolve();
+        await releaseManifestWrite.promise;
+      }
+      return await originalPut.call(this, content);
+    });
+    const admission = handler({
+      method: "POST",
+      url: `/api/agent/tasks/${taskId}/evidence-triage`,
+      body: JSON.stringify({
+        runId,
+        evidenceIds: ["ev_route_mounted_triage"],
+        providerMode: "local-fake"
+      })
+    });
+    await manifestWriteEntered.promise;
+    let cancelSettled = false;
+    const cancellation = handler({
+      method: "POST",
+      url: `/api/agent/tasks/${taskId}/cancel`
+    }).then((response) => {
+      cancelSettled = true;
+      return response;
+    });
+    try {
+      await Promise.race([
+        cancellation.then(() => undefined),
+        new Promise<void>((resolve) => setTimeout(resolve, 25))
+      ]);
+      expect(cancelSettled).toBe(false);
+      releaseManifestWrite.resolve();
+      const [admitted, canceled] = await Promise.all([admission, cancellation]);
+      expect([202, 409]).toContain(admitted.status);
+      expect(canceled.status, canceled.body).toBe(200);
+      const events = await allEvents(config);
+      const canceledIndex = events.findIndex((event) => event.type === "agent.task.status.changed" &&
+        event.payload.taskId === taskId && event.payload.status === "canceled");
+      expect(canceledIndex).toBeGreaterThanOrEqual(0);
+      expect(events.slice(canceledIndex + 1).some((event) =>
+        event.type === "agent.mounted-task.execution.admitted.v1" && event.payload.taskId === taskId
+      )).toBe(false);
+    } finally {
+      releaseManifestWrite.resolve();
+      putSpy.mockRestore();
+    }
   });
 
   it("continues an admitted local-fake mounted task after the browser closes and reconstructs it after restart", async () => {

@@ -356,6 +356,66 @@ describe("MVP specialist workflow descriptors", () => {
     expect(store.putCount()).toBe(0);
   });
 
+  it.each([
+    {
+      label: "a selected evidence ID is absent",
+      mutate(output: TimelineBuilderSourcedTimelineOutput) {
+        output.omittedSources = [];
+      }
+    },
+    {
+      label: "a selected evidence ID is cited twice",
+      mutate(output: TimelineBuilderSourcedTimelineOutput) {
+        output.timelineItems[0] = {
+          ...output.timelineItems[0]!,
+          evidenceRefs: ["ev_source_001", "ev_source_001"]
+        };
+      }
+    },
+    {
+      label: "a selected evidence ID is omitted twice",
+      mutate(output: TimelineBuilderSourcedTimelineOutput) {
+        output.omittedSources = [
+          ...output.omittedSources,
+          { sourceRef: "ev_source_002", reason: "A duplicate omission must not be accepted." }
+        ];
+      }
+    },
+    {
+      label: "cited and omitted selected-evidence sets overlap",
+      mutate(output: TimelineBuilderSourcedTimelineOutput) {
+        output.omittedSources = [
+          ...output.omittedSources,
+          { sourceRef: "ev_source_001", reason: "A cited source cannot also be omitted." }
+        ];
+      }
+    },
+    {
+      label: "an omission names an unknown evidence ID",
+      mutate(output: TimelineBuilderSourcedTimelineOutput) {
+        output.omittedSources = [{ sourceRef: "ev_source_unknown", reason: "Unknown source." }];
+      }
+    }
+  ])("rejects timeline creation when $label", async ({ mutate }) => {
+    const store = memoryArtifactStore();
+    const output = sourcedTimelineOutput();
+    mutate(output);
+
+    await expect(executeSourcedInvestigationWorkflow({
+      runType: "timeline-builder",
+      runId: "run_timeline_exact_coverage_001",
+      taskId: "task_timeline_exact_coverage_001",
+      ...await sourcedWorkflowAuthority({
+        runType: "timeline-builder",
+        taskId: "task_timeline_exact_coverage_001",
+        promptRunId: "run_timeline_exact_coverage_001"
+      }),
+      artifactStore: store,
+      execution: { mode: "fake", invoke: async () => output }
+    })).rejects.toThrow(/selected evidence|coverage|exactly once|duplicate|overlap|unknown/i);
+    expect(store.putCount()).toBe(0);
+  });
+
   it("builds an advisory contradiction dossier from distinct exact refs with caveats and follow-up evidence", async () => {
     const store = memoryArtifactStore();
     const result = await executeSourcedInvestigationWorkflow({
@@ -620,6 +680,14 @@ describe("MVP specialist workflow descriptors", () => {
     {
       field: "rationale" as const,
       value: "A reviewer should determine whether the assertion was rejected and it was rejected."
+    },
+    {
+      field: "rationale" as const,
+      value: "After human review, it was rejected. The assertion is final."
+    },
+    {
+      field: "rationale" as const,
+      value: "A reviewer should determine whether the assertion was rejected; records confirm it happened."
     }
   ])("rejects completed authority nominalization in $field", async ({ field, value }) => {
     const store = memoryArtifactStore();
@@ -656,7 +724,8 @@ describe("MVP specialist workflow descriptors", () => {
       ],
       requestedFollowupEvidence: [
         "A human reviewer must decide whether to relink the claim after obtaining the source.",
-        "The reviewer may ask whether the claim was relinked."
+        "The reviewer may ask whether the claim was relinked.",
+        "Should a reviewer relink the claim?"
       ]
     };
 
@@ -674,6 +743,31 @@ describe("MVP specialist workflow descriptors", () => {
     });
 
     expect(result.artifact).toMatchObject({ candidates: [{ requiredReviewerAction: "request-evidence" }] });
+  });
+
+  it.each([
+    "Was the assertion rejected?",
+    "Could the assertion be contested?",
+    "Is the assertion final?",
+    "A reviewer should determine whether the assertion was superseded."
+  ])("permits the pure advisory authority inquiry: %s", async (rationale) => {
+    const output = sourcedContradictionOutput();
+    output.candidates[0] = { ...output.candidates[0]!, rationale };
+
+    await expect(executeSourcedInvestigationWorkflow({
+      runType: "contradiction-finder",
+      runId: "run_contradiction_pure_inquiry_001",
+      taskId: "task_contradiction_pure_inquiry_001",
+      ...await sourcedWorkflowAuthority({
+        runType: "contradiction-finder",
+        taskId: "task_contradiction_pure_inquiry_001",
+        promptRunId: "run_contradiction_pure_inquiry_001"
+      }),
+      artifactStore: memoryArtifactStore(),
+      execution: { mode: "fake", invoke: async () => output }
+    })).resolves.toMatchObject({
+      artifact: { candidates: [{ requiredReviewerAction: "request-evidence" }] }
+    });
   });
 
   it.each([

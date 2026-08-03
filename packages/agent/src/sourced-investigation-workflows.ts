@@ -507,11 +507,32 @@ function buildTimelineArtifact(
     }) as SourcedTimelineArtifactItem;
   });
   const omittedSources = output.omittedSources.map((omission) => {
-    if (!catalog.allRefs.has(omission.sourceRef)) {
-      throw new Error("Timeline omitted-source reason references an unknown source.");
+    if (!catalog.evidence.has(omission.sourceRef)) {
+      throw new Error("Timeline omitted-source reason references unknown selected evidence.");
     }
     return Object.freeze({ ...omission });
   });
+  const selectedEvidenceIds = [...catalog.evidence.keys()];
+  const directEvidenceCitations = output.timelineItems.flatMap((item) => item.evidenceRefs);
+  const omittedEvidenceIds = output.omittedSources.map((omission) => omission.sourceRef);
+  const citedCounts = new Map<string, number>();
+  for (const evidenceId of directEvidenceCitations) {
+    citedCounts.set(evidenceId, (citedCounts.get(evidenceId) ?? 0) + 1);
+  }
+  const omittedCounts = new Map<string, number>();
+  for (const evidenceId of omittedEvidenceIds) {
+    omittedCounts.set(evidenceId, (omittedCounts.get(evidenceId) ?? 0) + 1);
+  }
+  if (
+    [...citedCounts.values()].some((count) => count !== 1) ||
+    [...omittedCounts.values()].some((count) => count !== 1) ||
+    [...citedCounts.keys()].some((evidenceId) => omittedCounts.has(evidenceId)) ||
+    !sameStringSet([...citedCounts.keys(), ...omittedCounts.keys()], selectedEvidenceIds)
+  ) {
+    throw new Error(
+      "Timeline selected evidence coverage must cite or explicitly omit every selected evidence ID exactly once."
+    );
+  }
   return deepFreeze({
     schemaVersion: "sourced-timeline-artifact.v1",
     runId: input.runId,

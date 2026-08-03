@@ -48,22 +48,6 @@ const isFullHumanReviewActionInquiry = (value: string, subject: RegExp, action: 
     action.flags
   ).test(value);
 
-const isFullHumanReviewNominalInquiry = (value: string, subject: RegExp, nominalization: RegExp) => {
-  const prefix = `^\\s*(?:(?:a|the)\\s+)?(?:human\\s+)?reviewer\\s+` +
-    `(?:should|must|may|might|can|could|would|will)\\s+` +
-    `(?:determine|ask|decide|consider|review|verify|check)\\s+(?:whether|if)\\s+`;
-  const completion = `(?:(?:has|have|had)\\s+(?:occurred|taken place)|` +
-    `(?:is|are|was|were)\\s+(?:(?:already|now)\\s+)?(?:documented|recorded|complete|completed|final|finalized|effective)|` +
-    `became\\s+(?:final|effective)|occurred|completed|took place)`;
-  return new RegExp(
-    `${prefix}(?:(?:(?:a|an|the)\\s+)?(?:${subject.source})\\s+` +
-    `(?:underwent\\s+(?:${nominalization.source})|(?:${nominalization.source})\\s+${completion})|` +
-    `(?:${nominalization.source})\\s+of\\s+(?:(?:a|an|the)\\s+)?` +
-    `(?:${subject.source})\\s+${completion})\\s*$`,
-    nominalization.flags
-  ).test(value);
-};
-
 const hasAuthorityEffectUnlessInstruction = (
   value: string,
   subject: RegExp,
@@ -82,27 +66,53 @@ const hasAuthorityEffectUnlessInstruction = (
   });
 };
 
-const hasCompletedNominalizedAuthorityEffect = (
-  value: string,
-  subject: RegExp,
-  nominalization: RegExp
-) => {
-  const clauses = value.split(/[,;.!?]+/);
-  const completionSemantics = /\b(?:(?:has|have|had)\s+(?:occurred|taken place|been completed)|(?:is|are|was|were)\s+(?:(?:already|now)\s+)?(?:documented|recorded|complete|completed|final|finalized|effective)|became\s+(?:final|effective)|occurred|completed|took place)\b/;
-  const completedModifier = /\b(?:completed|final|finalized)\b/;
+const assertionOrClaimSubject = /\b(?:assertions?|claims?)\b/;
+const assertionOrClaimEffect = /\b(?:accept(?:ed|ing|ance)?|reject(?:ed|ing|ion)?|contest(?:ed|ing|ation)?|supersed(?:e|ed|ing)|supersession|relink(?:ed|ing)?|final(?:ized)?|effective)\b/;
+const assertionOrClaimNominalEffect = /\b(?:rejection|contestation|supersession|relinking)\b/;
+const authorityCompletionSemantics = /\b(?:(?:has|have|had)\s+(?:occurred|taken place|been completed)|(?:is|are|was|were)\s+(?:(?:already|now)\s+)?(?:documented|recorded|complete|completed|final|finalized|effective)|became\s+(?:final|effective)|occurred|completed|took place|underwent)\b/;
 
-  return clauses.some((clause, index) => {
-    if (isFullHumanReviewNominalInquiry(clause, subject, nominalization)) return false;
-    const effectMatch = nominalization.exec(clause);
-    if (effectMatch === null) return false;
-    const sameClauseSubject = subject.test(clause);
-    const carriedSubject = index > 0 && subject.test(clauses[index - 1]!);
-    if (!sameClauseSubject && !carriedSubject) return false;
-    const beforeEffect = clause.slice(0, effectMatch.index);
-    const afterEffect = clause.slice(effectMatch.index + effectMatch[0].length);
-    return completionSemantics.test(afterEffect) || completedModifier.test(beforeEffect) ||
-      /\bunderwent\s*$/.test(beforeEffect);
-  });
+const countMatches = (value: string, pattern: RegExp) =>
+  [...value.matchAll(new RegExp(pattern.source, `${pattern.flags.replace("g", "")}g`))].length;
+
+const isPureAdvisoryAssertionOrClaimClause = (value: string): boolean => {
+  if (countMatches(value, assertionOrClaimEffect) !== 1) return false;
+  if (value.trimEnd().endsWith("?")) return true;
+  const effectIndex = value.search(assertionOrClaimEffect);
+  const modalIndex = value.search(/\b(?:should|must|may|might|can|could|would|will)\b/);
+  const reviewerInstruction = /\b(?:(?:a|the)\s+)?(?:human\s+)?reviewer\b/.test(value) &&
+    modalIndex >= 0 && modalIndex < effectIndex;
+  const passiveReviewInstruction = assertionOrClaimSubject.test(value) &&
+    /\b(?:should|must|may|might|can|could|would|will)\s+be\s+(?:reviewed|verified|checked|assessed)\b/.test(value);
+  return reviewerInstruction || passiveReviewInstruction;
+};
+
+const hasAssertionOrClaimAuthorityEffect = (value: string): boolean => {
+  const clauses = value.match(/[^;.!?]+[;.!?]?/g) ?? [value];
+  let carriesAssertionOrClaim = false;
+  for (const rawClause of clauses) {
+    const clause = rawClause.trim();
+    const hasSubject = assertionOrClaimSubject.test(clause);
+    const hasEffect = assertionOrClaimEffect.test(clause);
+    if (hasSubject && hasEffect) {
+      if (!isPureAdvisoryAssertionOrClaimClause(clause)) return true;
+      carriesAssertionOrClaim = true;
+      continue;
+    }
+    if (/\b(?:it|this|that|they|these|those)\s+(?:was|were|has been|have been|had been)\s+(?:accepted|rejected|contested|superseded|relinked|finalized)\b/.test(clause)) {
+      return true;
+    }
+    if (assertionOrClaimNominalEffect.test(clause) && authorityCompletionSemantics.test(clause)) {
+      return true;
+    }
+    if (carriesAssertionOrClaim && (
+      (hasEffect && authorityCompletionSemantics.test(clause)) ||
+      /\b(?:records?|evidence|sources?|history)\s+(?:confirm|confirms|show|shows|establish|establishes|indicate|indicates|prove|proves)\b.*\b(?:it|this|that)\s+(?:happened|occurred|was|is|became|took place)\b/.test(clause)
+    )) {
+      return true;
+    }
+    if (hasSubject) carriesAssertionOrClaim = true;
+  }
+  return false;
 };
 
 const hasCompletedPrrEffect = (value: string) =>
@@ -127,19 +137,8 @@ const hasAuthorityClaim = (value: string) => {
     hasAuthorityEffectUnlessInstruction(normalized, /\b(?:portal|sites?)\b/, /\b(?:crawled|scraped)\b/, hasDirectOrFirstPersonSubjectAction) ||
     hasAuthorityEffectUnlessInstruction(normalized, /\b(?:report|packet|publication|export|evidence)\b/, /\b(?:exported|published)\b/, hasDirectOrFirstPersonSubjectAction) ||
     hasAuthorityEffectUnlessInstruction(normalized, /\b(?:repair|remediation)\b/, /\b(?:performed|executed|ran successfully)\b/) ||
-    hasAuthorityEffectUnlessInstruction(normalized, /\b(?:graph|ontology|assertion|relationship)\b/, /\baccepted\b/) ||
-    hasAuthorityEffectUnlessInstruction(
-      normalized,
-      /\bassertions?\b/,
-      /\b(?:reject(?:ed)?|contest(?:ed)?|supersed(?:e|ed))\b/
-    ) ||
-    hasAuthorityEffectUnlessInstruction(normalized, /\bclaims?\b/, /\brelink(?:ed)?\b/) ||
-    hasCompletedNominalizedAuthorityEffect(
-      normalized,
-      /\bassertions?\b/,
-      /\b(?:rejection|contestation|supersession|rejecting|contesting|superseding)\b/
-    ) ||
-    hasCompletedNominalizedAuthorityEffect(normalized, /\bclaims?\b/, /\b(?:relinking|relinked)\b/) ||
+    hasAuthorityEffectUnlessInstruction(normalized, /\b(?:graph|ontology|relationship)\b/, /\baccepted\b/) ||
+    hasAssertionOrClaimAuthorityEffect(normalized) ||
     hasAuthorityEffectUnlessInstruction(normalized, /\b(?:entity|entities|relationship)\b/, /\b(?:resolved|accepted)\b/) ||
     hasAuthorityEffectUnlessInstruction(normalized, /\b(?:legal|export|governance )?lock\b/, /\bcleared\b/)
   );
