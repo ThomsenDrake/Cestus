@@ -43,6 +43,7 @@ import {
   productionSpecialistPromptRegistrationFor,
   renderProductionSpecialistPrompt
 } from "../src/production-specialist-prompts.js";
+import type { TimelineBuilderSourcedTimelineOutput } from "../src/production-specialist-output-contracts.js";
 import type { ProductionRunScope } from "../src/production-specialist-registration-metadata.js";
 import { parseSpecialistHandoffMaterial } from "../src/specialist-handoff-manifest.js";
 import { InMemoryEventLedger } from "../../ontology/src/event-ledger.js";
@@ -611,7 +612,15 @@ describe("MVP specialist workflow descriptors", () => {
     { field: "rationale" as const, value: "Rejection was finalized for the assertion." },
     { field: "confidenceCaveat" as const, value: "Contestation was recorded for the assertion." },
     { field: "alternativeExplanations" as const, value: "Supersession was finalized for the assertion." },
-    { field: "requestedFollowupEvidence" as const, value: "Relinking was recorded for the claim." }
+    { field: "requestedFollowupEvidence" as const, value: "Relinking was recorded for the claim." },
+    { field: "rationale" as const, value: "The assertion rejection is now final." },
+    { field: "confidenceCaveat" as const, value: "The assertion underwent rejection." },
+    { field: "alternativeExplanations" as const, value: "Supersession of the assertion is already effective." },
+    { field: "requestedFollowupEvidence" as const, value: "The claim underwent relinking." },
+    {
+      field: "rationale" as const,
+      value: "A reviewer should determine whether the assertion was rejected and it was rejected."
+    }
   ])("rejects completed authority nominalization in $field", async ({ field, value }) => {
     const store = memoryArtifactStore();
     const output = sourcedContradictionOutput();
@@ -639,10 +648,16 @@ describe("MVP specialist workflow descriptors", () => {
     const output = sourcedContradictionOutput();
     output.candidates[0] = {
       ...output.candidates[0]!,
-      rationale: "The final chronology is documented separately. A human reviewer should reject the assertion only after reviewing the exact sources.",
-      confidenceCaveat: "A human reviewer may contest the assertion after resolving the date uncertainty.",
-      alternativeExplanations: ["A human reviewer could supersede the assertion if later evidence warrants it."],
-      requestedFollowupEvidence: ["A human reviewer must decide whether to relink the claim after obtaining the source."]
+      rationale: "The final chronology is documented separately. A human reviewer should reject the assertion only after reviewing the exact sources. A human reviewer should determine whether the assertion was rejected. A reviewer should verify whether the assertion underwent rejection.",
+      confidenceCaveat: "A human reviewer may contest the assertion after resolving the date uncertainty. A human reviewer should verify whether assertion contestation occurred.",
+      alternativeExplanations: [
+        "A human reviewer could supersede the assertion if later evidence warrants it.",
+        "A reviewer should verify if assertion supersession occurred."
+      ],
+      requestedFollowupEvidence: [
+        "A human reviewer must decide whether to relink the claim after obtaining the source.",
+        "The reviewer may ask whether the claim was relinked."
+      ]
     };
 
     const result = await executeSourcedInvestigationWorkflow({
@@ -961,7 +976,7 @@ describe("MVP specialist workflow descriptors", () => {
   });
 });
 
-function sourcedTimelineOutput() {
+function sourcedTimelineOutput(): TimelineBuilderSourcedTimelineOutput {
   return {
     timelineItems: [{
       itemId: "timeline_source_001",

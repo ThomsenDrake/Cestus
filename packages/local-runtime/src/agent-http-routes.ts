@@ -40,6 +40,7 @@ import {
   type MountedEvidenceTriageProviderMode
 } from "./agent-runtime-mounted-task.js";
 import type { LocalRuntimeHandle } from "./runtime-factory.js";
+import { serializeMountedTaskArtifactEffect } from "./mounted-task-effect-coordination.js";
 import {
   inspectPortableWorkspaceCurrentness,
   ResidentSourcedInvestigationLeaseUnavailableError,
@@ -334,7 +335,15 @@ export async function handleAgentHttpRoute(
         return json(409, taskControlUnavailableDiagnostic(taskControlRoute.kind));
       }
       try {
-        await appendTaskControlStatus(input, taskControlRoute);
+        if (taskControlRoute.kind === "cancel" && input.handle.mountedWorkspace !== undefined) {
+          await serializeMountedTaskArtifactEffect({
+            handle: input.handle,
+            taskId: taskControlRoute.taskId,
+            effect: async () => await appendTaskControlStatus(input, taskControlRoute)
+          });
+        } else {
+          await appendTaskControlStatus(input, taskControlRoute);
+        }
         if (taskControlRoute.kind === "cancel") {
           await input.supervision?.quiesceTask(taskControlRoute.taskId);
         }

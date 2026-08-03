@@ -38,6 +38,32 @@ const hasDirectOrFirstPersonSubjectAction = (value: string, subject: RegExp, act
   hasDirectSubjectAction(value, subject, action) ||
   new RegExp(`\\b(?:i|we)\\s+(?:${action.source})\\s+(?:(?:the|a|an|this|that|one|two|three|several|multiple|\\d+)\\s+)?(?:${subject.source})`, action.flags).test(value);
 
+const isFullHumanReviewActionInquiry = (value: string, subject: RegExp, action: RegExp) =>
+  new RegExp(
+    `^\\s*(?:(?:a|the)\\s+)?(?:human\\s+)?reviewer\\s+` +
+    `(?:should|must|may|might|can|could|would|will)\\s+` +
+    `(?:determine|ask|decide|consider|review|verify|check)\\s+(?:whether|if)\\s+` +
+    `(?:(?:a|an|the)\\s+)?(?:${subject.source})\\s+` +
+    `(?:(?:is|are|was|were|has been|have been|had been)\\s+)?(?:${action.source})\\s*$`,
+    action.flags
+  ).test(value);
+
+const isFullHumanReviewNominalInquiry = (value: string, subject: RegExp, nominalization: RegExp) => {
+  const prefix = `^\\s*(?:(?:a|the)\\s+)?(?:human\\s+)?reviewer\\s+` +
+    `(?:should|must|may|might|can|could|would|will)\\s+` +
+    `(?:determine|ask|decide|consider|review|verify|check)\\s+(?:whether|if)\\s+`;
+  const completion = `(?:(?:has|have|had)\\s+(?:occurred|taken place)|` +
+    `(?:is|are|was|were)\\s+(?:(?:already|now)\\s+)?(?:documented|recorded|complete|completed|final|finalized|effective)|` +
+    `became\\s+(?:final|effective)|occurred|completed|took place)`;
+  return new RegExp(
+    `${prefix}(?:(?:(?:a|an|the)\\s+)?(?:${subject.source})\\s+` +
+    `(?:underwent\\s+(?:${nominalization.source})|(?:${nominalization.source})\\s+${completion})|` +
+    `(?:${nominalization.source})\\s+of\\s+(?:(?:a|an|the)\\s+)?` +
+    `(?:${subject.source})\\s+${completion})\\s*$`,
+    nominalization.flags
+  ).test(value);
+};
+
 const hasAuthorityEffectUnlessInstruction = (
   value: string,
   subject: RegExp,
@@ -47,12 +73,13 @@ const hasAuthorityEffectUnlessInstruction = (
   const instructionModal = /\b(?:should|must|may|might|can|could|would|will)\b/;
   const clauses = value.split(/[,;.!?]+/);
 
-  return clauses.some((clause, index) =>
-    hasCompletedPassiveAction(clause, subject, action) ||
-    (index > 0 && subject.test(clauses[index - 1]!) && hasPronounCompletedPassiveAction(clause, action)) ||
-    (actionMatcher(clause, subject, completionTerm) && !hasInstructionBeforeAction(clause, instructionModal, completionTerm)) ||
-    (actionMatcher(clause, subject, action) && !hasInstructionBeforeAction(clause, instructionModal, action))
-  );
+  return clauses.some((clause, index) => {
+    if (isFullHumanReviewActionInquiry(clause, subject, action)) return false;
+    return hasCompletedPassiveAction(clause, subject, action) ||
+      (index > 0 && subject.test(clauses[index - 1]!) && hasPronounCompletedPassiveAction(clause, action)) ||
+      (actionMatcher(clause, subject, completionTerm) && !hasInstructionBeforeAction(clause, instructionModal, completionTerm)) ||
+      (actionMatcher(clause, subject, action) && !hasInstructionBeforeAction(clause, instructionModal, action));
+  });
 };
 
 const hasCompletedNominalizedAuthorityEffect = (
@@ -61,10 +88,11 @@ const hasCompletedNominalizedAuthorityEffect = (
   nominalization: RegExp
 ) => {
   const clauses = value.split(/[,;.!?]+/);
-  const completionSemantics = /\b(?:(?:has|have|had)\s+(?:occurred|taken place|been completed)|(?:is|are|was|were)\s+(?:documented|recorded|complete|completed|final|finalized|effective)|became\s+(?:final|effective)|occurred|completed|took place)\b/;
+  const completionSemantics = /\b(?:(?:has|have|had)\s+(?:occurred|taken place|been completed)|(?:is|are|was|were)\s+(?:(?:already|now)\s+)?(?:documented|recorded|complete|completed|final|finalized|effective)|became\s+(?:final|effective)|occurred|completed|took place)\b/;
   const completedModifier = /\b(?:completed|final|finalized)\b/;
 
   return clauses.some((clause, index) => {
+    if (isFullHumanReviewNominalInquiry(clause, subject, nominalization)) return false;
     const effectMatch = nominalization.exec(clause);
     if (effectMatch === null) return false;
     const sameClauseSubject = subject.test(clause);
@@ -72,7 +100,8 @@ const hasCompletedNominalizedAuthorityEffect = (
     if (!sameClauseSubject && !carriedSubject) return false;
     const beforeEffect = clause.slice(0, effectMatch.index);
     const afterEffect = clause.slice(effectMatch.index + effectMatch[0].length);
-    return completionSemantics.test(afterEffect) || completedModifier.test(beforeEffect);
+    return completionSemantics.test(afterEffect) || completedModifier.test(beforeEffect) ||
+      /\bunderwent\s*$/.test(beforeEffect);
   });
 };
 

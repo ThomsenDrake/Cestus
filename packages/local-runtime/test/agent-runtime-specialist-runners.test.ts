@@ -75,6 +75,7 @@ import {
 import { createSqlitePrrRuntime, type LocalRuntimeHandle } from "../src/runtime-factory.js";
 import {
   createResidentSupervisionRuntime,
+  type ResidentBackgroundExecutionPort,
   type ResidentSupervisionRuntime
 } from "../src/wake-supervisor-runtime.js";
 
@@ -339,6 +340,110 @@ describe("untrusted specialist runner", () => {
       : first.sourceEventIds.filter((eventId) => second.sourceEventIds.includes(eventId))).toEqual([]);
   });
 
+  it("produces an advisory contradiction candidate from two exact conflicting ledger assertions", async () => {
+    const fixture = await mountedSourcedResidentFactoryFixture({
+      canonicalDatedFacts: true,
+      secondEvidence: "conflicting-assertion"
+    });
+    if (fixture.canonicalDatedFacts === undefined || fixture.secondEvidenceId === undefined ||
+      fixture.secondEvidenceFacts?.assertionId === undefined) {
+      throw new Error("exact conflicting assertion histories are unavailable");
+    }
+    const selectedEvidenceIds = [fixture.evidenceId, fixture.secondEvidenceId];
+    const timeline = await runMountedSourcedResidentRequest(fixture, {
+      taskId: fixture.timelineTaskId,
+      runId: fixture.timelineRunId,
+      runType: "timeline-builder",
+      evidenceIds: selectedEvidenceIds
+    });
+    expect(timeline.status, timeline.body).toBe(200);
+
+    fixture.advancePastLeaseExpiry();
+    const contradiction = await runMountedSourcedResidentRequest(fixture, {
+      taskId: fixture.contradictionTaskId,
+      runId: fixture.contradictionRunId,
+      runType: "contradiction-finder",
+      evidenceIds: selectedEvidenceIds
+    });
+    expect(contradiction.status, contradiction.body).toBe(200);
+    const response = JSON.parse(contradiction.body) as {
+      readonly recorded: { readonly manifest: {
+        readonly outputArtifacts: readonly { readonly artifactHash: `sha256:${string}` }[];
+      } };
+    };
+    const artifact = await readMountedSourcedOutputArtifact(
+      fixture.handle,
+      response.recorded.manifest.outputArtifacts[0]!.artifactHash
+    );
+    expect(artifact).toMatchObject({
+      schemaVersion: "contradiction-candidate-dossier.v1",
+      candidates: [expect.objectContaining({
+        category: "direct-conflict",
+        comparedSourceRefs: expect.arrayContaining([
+          fixture.evidenceId,
+          fixture.secondEvidenceId,
+          fixture.canonicalDatedFacts.assertionId,
+          fixture.secondEvidenceFacts.assertionId,
+          `timeline_assertion_${fixture.canonicalDatedFacts.assertionId}`,
+          `timeline_assertion_${fixture.secondEvidenceFacts.assertionId}`
+        ]),
+        evidence: expect.arrayContaining([
+          expect.objectContaining({ evidenceId: fixture.evidenceId }),
+          expect.objectContaining({ evidenceId: fixture.secondEvidenceId })
+        ]),
+        assertions: expect.arrayContaining([
+          expect.objectContaining({ assertionId: fixture.canonicalDatedFacts.assertionId }),
+          expect.objectContaining({ assertionId: fixture.secondEvidenceFacts.assertionId })
+        ]),
+        timelineItems: expect.arrayContaining([
+          expect.objectContaining({ itemId: `timeline_assertion_${fixture.canonicalDatedFacts.assertionId}` }),
+          expect.objectContaining({ itemId: `timeline_assertion_${fixture.secondEvidenceFacts.assertionId}` })
+        ]),
+        confidenceCaveat: expect.stringMatching(/advisory|review|scope|date/i),
+        rationale: expect.stringMatching(/different|conflict/i),
+        alternativeExplanations: [expect.any(String)],
+        requestedFollowupEvidence: [expect.any(String)],
+        requiredReviewerAction: "review"
+      })]
+    });
+  });
+
+  it("does not emit a contradiction for semantically identical numeric zero values", async () => {
+    const fixture = await mountedSourcedResidentFactoryFixture({
+      canonicalDatedFacts: true,
+      canonicalAssertionObject: 0,
+      secondEvidence: "conflicting-assertion",
+      secondAssertionObject: -0
+    });
+    if (fixture.secondEvidenceId === undefined) throw new Error("numeric assertion fixture is unavailable");
+    const selectedEvidenceIds = [fixture.evidenceId, fixture.secondEvidenceId];
+    const timeline = await runMountedSourcedResidentRequest(fixture, {
+      taskId: fixture.timelineTaskId,
+      runId: fixture.timelineRunId,
+      runType: "timeline-builder",
+      evidenceIds: selectedEvidenceIds
+    });
+    expect(timeline.status, timeline.body).toBe(200);
+
+    fixture.advancePastLeaseExpiry();
+    const contradiction = await runMountedSourcedResidentRequest(fixture, {
+      taskId: fixture.contradictionTaskId,
+      runId: fixture.contradictionRunId,
+      runType: "contradiction-finder",
+      evidenceIds: selectedEvidenceIds
+    });
+    expect(contradiction.status, contradiction.body).toBe(200);
+    const response = JSON.parse(contradiction.body) as {
+      readonly recorded: { readonly manifest: {
+        readonly outputArtifacts: readonly { readonly artifactHash: `sha256:${string}` }[];
+      } };
+    };
+    await expect(readMountedSourcedOutputArtifact(
+      fixture.handle,
+      response.recorded.manifest.outputArtifacts[0]!.artifactHash
+    )).resolves.toMatchObject({ candidates: [] });
+  });
+
   it("selects the replayable timeline relevant to current evidence when a newer unrelated timeline exists", async () => {
     const fixture = await mountedSourcedResidentFactoryFixture({
       canonicalDatedFacts: true,
@@ -379,10 +484,41 @@ describe("untrusted specialist runner", () => {
     })]));
   });
 
+  it("rejects a prior timeline that does not exactly account for every currently selected source", async () => {
+    const fixture = await mountedSourcedResidentFactoryFixture({
+      canonicalDatedFacts: true,
+      secondEvidence: "undated",
+      contradictionIncludesSecondEvidence: true
+    });
+    if (fixture.secondEvidenceId === undefined) {
+      throw new Error("strict selected-source coverage fixture is unavailable");
+    }
+    const timeline = await runMountedSourcedResidentRequest(fixture, {
+      taskId: fixture.timelineTaskId,
+      runId: fixture.timelineRunId,
+      runType: "timeline-builder",
+      evidenceIds: [fixture.evidenceId]
+    });
+    expect(timeline.status, timeline.body).toBe(200);
+
+    fixture.advancePastLeaseExpiry();
+    const contradiction = await runMountedSourcedResidentRequest(fixture, {
+      taskId: fixture.contradictionTaskId,
+      runId: fixture.contradictionRunId,
+      runType: "contradiction-finder",
+      evidenceIds: [fixture.evidenceId, fixture.secondEvidenceId]
+    });
+    expect(contradiction.status).toBe(409);
+    expect(JSON.parse(contradiction.body)).toMatchObject({
+      diagnostic: { message: expect.stringMatching(/exactly one replayable timeline relevant/i) }
+    });
+  });
+
   it("fails closed when two replayable timelines are relevant to the selected evidence", async () => {
     const fixture = await mountedSourcedResidentFactoryFixture({
       canonicalDatedFacts: true,
-      secondEvidence: "accepted-assertion"
+      secondEvidence: "accepted-assertion",
+      unrelatedTimelineIncludesFirstEvidence: true
     });
     if (fixture.secondEvidenceId === undefined || fixture.unrelatedTimelineTaskId === undefined ||
       fixture.unrelatedTimelineRunId === undefined) {
@@ -402,7 +538,7 @@ describe("untrusted specialist runner", () => {
       taskId: fixture.unrelatedTimelineTaskId,
       runId: fixture.unrelatedTimelineRunId,
       runType: "timeline-builder",
-      evidenceIds: [fixture.secondEvidenceId]
+      evidenceIds: selectedEvidenceIds
     });
     expect(overlapping.status, overlapping.body).toBe(200);
 
@@ -506,6 +642,134 @@ describe("untrusted specialist runner", () => {
         event.payload.status !== "canceled")
     )).toBe(false);
     expect(mountedSourcedArtifactSnapshot(fixture.handle)).toEqual(artifactsAtFence);
+  });
+
+  it("does not admit an ordinary background execution over an active sourced cancellation fence", async () => {
+    const promptBoundaryEntered = Promise.withResolvers<void>();
+    const releasePromptBoundary = Promise.withResolvers<void>();
+    const backgroundScanEntered = Promise.withResolvers<void>();
+    const releaseOrdinary = Promise.withResolvers<void>();
+    let offerOrdinary = false;
+    let ordinaryOffered = false;
+    let ordinaryEntered = false;
+    const backgroundExecution: ResidentBackgroundExecutionPort = {
+      async pendingLocalTasks() {
+        if (!offerOrdinary || ordinaryOffered) return [];
+        ordinaryOffered = true;
+        backgroundScanEntered.resolve();
+        return [{ taskId: "task_sourced_factory_ordinary_race", runId: "run_sourced_factory_ordinary_race" }];
+      },
+      async execute() {
+        ordinaryEntered = true;
+        await releaseOrdinary.promise;
+      }
+    };
+    const fixture = await mountedSourcedResidentFactoryFixture({
+      backgroundExecution,
+      beforePromptArtifactWriteForTest: async () => {
+        promptBoundaryEntered.resolve();
+        await releasePromptBoundary.promise;
+      }
+    });
+    const controller = createMountedSourcedCancellationController(fixture, "ordinary_race");
+    const execution = runMountedSourcedResidentRequest(fixture, {
+      taskId: fixture.timelineTaskId,
+      runId: fixture.timelineRunId,
+      runType: "timeline-builder",
+      evidenceIds: [fixture.evidenceId]
+    });
+    await promptBoundaryEntered.promise;
+    offerOrdinary = true;
+    fixture.supervision.signalLocalAdmission();
+    await Promise.race([
+      backgroundScanEntered.promise,
+      new Promise<void>((resolve) => setTimeout(resolve, 25))
+    ]);
+    await new Promise<void>((resolve) => setImmediate(resolve));
+
+    let cancelSettled = false;
+    const cancellation = cancelMountedSourcedTask(fixture, controller).then((response) => {
+      cancelSettled = true;
+      return response;
+    });
+    await waitForMountedLedgerEvent(controller.handle, (event) =>
+      event.type === "agent.task.status.changed" &&
+      event.payload.taskId === fixture.timelineTaskId && event.payload.status === "canceled"
+    );
+    await Promise.resolve();
+    const observedBeforeRelease = { ordinaryEntered, cancelSettled };
+    releaseOrdinary.resolve();
+    releasePromptBoundary.resolve();
+    const [canceled, sourced] = await Promise.all([cancellation, execution]);
+
+    expect(observedBeforeRelease).toEqual({ ordinaryEntered: false, cancelSettled: false });
+    expect(canceled?.status, canceled?.body).toBe(200);
+    expect(sourced.status).toBe(409);
+  });
+
+  it("serializes an in-flight mounted artifact write before the durable cancellation fence", async () => {
+    const promptBoundaryEntered = Promise.withResolvers<void>();
+    const releasePromptBoundary = Promise.withResolvers<void>();
+    const fixture = await mountedSourcedResidentFactoryFixture({
+      beforePromptArtifactWriteForTest: async () => {
+        promptBoundaryEntered.resolve();
+        await releasePromptBoundary.promise;
+      }
+    });
+    const controller = createMountedSourcedCancellationController(fixture, "inflight_write");
+    const writeEntered = Promise.withResolvers<void>();
+    const releaseWrite = Promise.withResolvers<void>();
+    const originalPut = FileBlobStore.prototype.put;
+    let interceptNextPut = true;
+    const execution = runMountedSourcedResidentRequest(fixture, {
+      taskId: fixture.timelineTaskId,
+      runId: fixture.timelineRunId,
+      runType: "timeline-builder",
+      evidenceIds: [fixture.evidenceId]
+    });
+    await promptBoundaryEntered.promise;
+    const putSpy = vi.spyOn(FileBlobStore.prototype, "put").mockImplementation(async function (
+      this: FileBlobStore,
+      content: Buffer
+    ) {
+      if (interceptNextPut) {
+        interceptNextPut = false;
+        writeEntered.resolve();
+        await releaseWrite.promise;
+      }
+      return await originalPut.call(this, content);
+    });
+    releasePromptBoundary.resolve();
+    await writeEntered.promise;
+    const cancellation = cancelMountedSourcedTask(fixture, controller);
+    let snapshotAtCancellation: readonly string[] | undefined;
+    try {
+      const canceledBeforeRelease = await Promise.race([
+        waitForMountedLedgerEvent(controller.handle, (event) =>
+          event.type === "agent.task.status.changed" &&
+          event.payload.taskId === fixture.timelineTaskId && event.payload.status === "canceled"
+        ).then(() => true),
+        new Promise<false>((resolve) => setTimeout(() => resolve(false), 25))
+      ]);
+      if (canceledBeforeRelease) {
+        snapshotAtCancellation = mountedSourcedArtifactSnapshot(fixture.handle);
+      }
+      releaseWrite.resolve();
+      if (!canceledBeforeRelease) {
+        await waitForMountedLedgerEvent(controller.handle, (event) =>
+          event.type === "agent.task.status.changed" &&
+          event.payload.taskId === fixture.timelineTaskId && event.payload.status === "canceled"
+        );
+        snapshotAtCancellation = mountedSourcedArtifactSnapshot(fixture.handle);
+      }
+      const [canceled, sourced] = await Promise.all([cancellation, execution]);
+      expect(canceled?.status, canceled?.body).toBe(200);
+      expect(mountedSourcedArtifactSnapshot(fixture.handle)).toEqual(snapshotAtCancellation);
+      expect(sourced.status, sourced.body).toBe(409);
+    } finally {
+      releaseWrite.resolve();
+      putSpy.mockRestore();
+    }
   });
 
   it("forgets a sourced wake identity whose startup is blocked before a later retry", async () => {
@@ -967,6 +1231,60 @@ async function runMountedSourcedResidentRequest(
   return response;
 }
 
+function createMountedSourcedCancellationController(
+  fixture: { readonly workspaceRoot: string; readonly now: () => string },
+  suffix: string
+): {
+  readonly handle: LocalRuntimeHandle;
+  readonly runtime: ReturnType<typeof createAgentRuntime>;
+} {
+  const handle = createSqlitePrrRuntime({
+    config: resolveLocalRuntimeConfig({
+      cwd: fixture.workspaceRoot,
+      env: {
+        CESTUS_LOCAL_STORAGE: "portable-workspace",
+        CESTUS_WORKSPACE_ROOT: fixture.workspaceRoot
+      }
+    }),
+    actor: { id: `actor_sourced_cancel_${suffix}`, kind: "human", label: "Sourced Cancellation Reviewer" },
+    now: fixture.now
+  });
+  mountedHandles.push(handle);
+  return Object.freeze({
+    handle,
+    runtime: createAgentRuntime({
+      ledger: handle.ledger,
+      actor: { id: "agent_default", kind: "agent", label: "Cestus Agent" },
+      now: fixture.now,
+      providers: []
+    })
+  });
+}
+
+async function cancelMountedSourcedTask(
+  fixture: {
+    readonly timelineTaskId: string;
+    readonly supervision: ResidentSupervisionRuntime;
+    readonly now: () => string;
+  },
+  controller: {
+    readonly handle: LocalRuntimeHandle;
+    readonly runtime: ReturnType<typeof createAgentRuntime>;
+  }
+) {
+  return await handleAgentHttpRoute({
+    request: {
+      method: "POST",
+      url: `/api/agent/tasks/${fixture.timelineTaskId}/cancel`
+    },
+    handle: controller.handle,
+    actor: { id: "actor_sourced_cancel", kind: "human", label: "Sourced Cancellation Reviewer" },
+    now: fixture.now,
+    supervision: fixture.supervision,
+    agentRuntimeFactory: () => controller.runtime
+  });
+}
+
 async function readTimelineContextFromSourcedResponse(
   handle: LocalRuntimeHandle,
   responseBody: string
@@ -1001,7 +1319,12 @@ async function waitForMountedLedgerEvent(
 
 async function mountedSourcedResidentFactoryFixture(options: {
   readonly canonicalDatedFacts?: boolean;
-  readonly secondEvidence?: "undated" | "accepted-assertion";
+  readonly canonicalAssertionObject?: string | number | boolean | null;
+  readonly secondEvidence?: "undated" | "accepted-assertion" | "conflicting-assertion";
+  readonly secondAssertionObject?: string | number | boolean | null;
+  readonly contradictionIncludesSecondEvidence?: boolean;
+  readonly unrelatedTimelineIncludesFirstEvidence?: boolean;
+  readonly backgroundExecution?: ResidentBackgroundExecutionPort;
   readonly beforePromptArtifactWriteForTest?: (() => void | Promise<void>) | undefined;
 } = {}): Promise<{
   readonly handle: LocalRuntimeHandle;
@@ -1134,7 +1457,7 @@ async function mountedSourcedResidentFactoryFixture(options: {
         evidenceId,
         subjectRef: "subject_sourced_factory",
         predicate: "has-reviewed-record",
-        object: true,
+        object: options.canonicalAssertionObject === undefined ? true : options.canonicalAssertionObject,
         confidence: 1,
         reviewState: "proposed"
       }
@@ -1268,7 +1591,7 @@ async function mountedSourcedResidentFactoryFixture(options: {
       }
     } satisfies AppendableKnowledgeEvent<"ingestion.evidence.linked">);
     secondTaskSourceEventIds.push(secondIngested.id, secondLinked.id);
-    if (options.secondEvidence === "accepted-assertion") {
+    if (options.secondEvidence === "accepted-assertion" || options.secondEvidence === "conflicting-assertion") {
       const assertionId = "as_sourced_factory_002";
       const proposed = await handle.ledger.append({
         type: "assertion.proposed",
@@ -1285,9 +1608,13 @@ async function mountedSourcedResidentFactoryFixture(options: {
         payload: {
           assertionId,
           evidenceId: secondEvidenceId,
-          subjectRef: "subject_sourced_factory_second",
+          subjectRef: options.secondEvidence === "conflicting-assertion"
+            ? "subject_sourced_factory"
+            : "subject_sourced_factory_second",
           predicate: "has-reviewed-record",
-          object: true,
+          object: options.secondEvidence === "conflicting-assertion"
+            ? (options.secondAssertionObject === undefined ? false : options.secondAssertionObject)
+            : true,
           confidence: 1,
           reviewState: "proposed"
         }
@@ -1342,8 +1669,11 @@ async function mountedSourcedResidentFactoryFixture(options: {
       ? []
       : [[unrelatedTimelineTaskId, "Build an unrelated mounted sourced timeline"] as const])
   ]) {
-    const secondOnly = taskId === unrelatedTimelineTaskId;
-    const includeSecond = secondOnly || options.secondEvidence === "accepted-assertion";
+    const secondOnly = taskId === unrelatedTimelineTaskId &&
+      options.unrelatedTimelineIncludesFirstEvidence !== true;
+    const includeSecond = secondOnly || options.secondEvidence === "accepted-assertion" ||
+      options.secondEvidence === "conflicting-assertion" ||
+      (taskId === contradictionTaskId && options.contradictionIncludesSecondEvidence === true);
     const created = await setup.createTask({
       taskId,
       title,
@@ -1364,6 +1694,7 @@ async function mountedSourcedResidentFactoryFixture(options: {
     runtimeHandle: handle,
     actor,
     now,
+    ...(options.backgroundExecution === undefined ? {} : { backgroundExecution: options.backgroundExecution }),
     issueMountedSourcedInvestigationHandoff: async (wakeRuntime, task) =>
       await bindMountedSourcedInvestigationHandoffForLocalAgentRuntimeFactory({
         wakeRuntime,
@@ -1394,10 +1725,10 @@ async function mountedSourcedResidentFactoryFixture(options: {
     contradictionTaskId,
     contradictionRunId: "run_sourced_factory_contradiction",
     ...(canonicalDatedFacts === undefined ? {} : { canonicalDatedFacts }),
-    ...(secondEvidenceId === undefined ? {} : {
+    ...(secondEvidenceId === undefined || secondEvidenceFacts === undefined ? {} : {
       secondEvidenceId,
       secondEvidenceFacts,
-      unrelatedTimelineTaskId,
+      unrelatedTimelineTaskId: unrelatedTimelineTaskId!,
       unrelatedTimelineRunId: "run_sourced_factory_unrelated_timeline"
     })
   });
