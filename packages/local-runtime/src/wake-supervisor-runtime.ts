@@ -194,6 +194,7 @@ export function createResidentSupervisionRuntime(
   let pausePending = false;
   let pendingPauseControls = 0;
   let supervisionControlTail: Promise<void> = Promise.resolve();
+  let residentExecutionTail: Promise<void> = Promise.resolve();
   let stopPromise: Promise<void> | undefined;
 
   const supervision: ResidentSupervisionRuntime = Object.freeze({
@@ -374,35 +375,43 @@ export function createResidentSupervisionRuntime(
             throw new ResidentSourcedInvestigationLeaseUnavailableError();
           }
         }
-        const operationTimestamp = input.now();
-        const operationNow = () => operationTimestamp;
-        const issued = wakeRuntime ?? await issueWakeRuntime(`sourced_${task.runId}`, operationNow);
-        if (wakeStatus === undefined) {
-          const started = await issued.supervision.start();
-          wakeStatus = started.status;
-          if (started.outcome !== "accepted") {
-            await issued.stop().catch(() => undefined);
-            wakeStatus = undefined;
-            forgetWakeRuntime(issued);
-            throw new Error("Resident supervision lease is unavailable for sourced investigation.");
+        return await serializeResidentExecution(async () => {
+          assertServiceRunning();
+          requireCurrentWorkspace(input.runtimeHandle);
+          if (pausePending || activeCycle ||
+            (await durableSupervisionState(input.runtimeHandle, input.now())).mode === "paused") {
+            throw new Error("Resident supervision is not available for sourced investigation.");
           }
-        }
-        activeCycle = true;
-        activeTaskId = task.taskId;
-        const cycle = (async () => {
-          const handoff = await issuer(issued, task);
-          sourcedHandoffWakeRuntime = issued;
-          return await execution.execute(task, handoff);
-        })();
-        const trackedCycle = Object.freeze({ taskId: task.taskId, promise: cycle });
-        sourcedExecutionCycle = trackedCycle;
-        try {
-          return await cycle;
-        } finally {
-          if (sourcedExecutionCycle === trackedCycle) sourcedExecutionCycle = undefined;
-          activeCycle = false;
-          activeTaskId = undefined;
-        }
+          const operationTimestamp = input.now();
+          const operationNow = () => operationTimestamp;
+          const issued = wakeRuntime ?? await issueWakeRuntime(`sourced_${task.runId}`, operationNow);
+          if (wakeStatus === undefined) {
+            const started = await issued.supervision.start();
+            wakeStatus = started.status;
+            if (started.outcome !== "accepted") {
+              await issued.stop().catch(() => undefined);
+              wakeStatus = undefined;
+              forgetWakeRuntime(issued);
+              throw new Error("Resident supervision lease is unavailable for sourced investigation.");
+            }
+          }
+          activeCycle = true;
+          activeTaskId = task.taskId;
+          const cycle = (async () => {
+            const handoff = await issuer(issued, task);
+            sourcedHandoffWakeRuntime = issued;
+            return await execution.execute(task, handoff);
+          })();
+          const trackedCycle = Object.freeze({ taskId: task.taskId, promise: cycle });
+          sourcedExecutionCycle = trackedCycle;
+          try {
+            return await cycle;
+          } finally {
+            if (sourcedExecutionCycle === trackedCycle) sourcedExecutionCycle = undefined;
+            activeCycle = false;
+            activeTaskId = undefined;
+          }
+        });
       });
     },
 
@@ -644,34 +653,42 @@ export function createResidentSupervisionRuntime(
         pausePending = true;
         return;
       }
-      const operationTimestamp = input.now();
-      const operationNow = () => operationTimestamp;
-      const issued = wakeRuntime ?? await issueWakeRuntime(`task_${task.runId}`, operationNow);
-      if (wakeStatus === undefined) {
-        const started = await issued.supervision.start();
-        wakeStatus = started.status;
-        if (started.outcome !== "accepted") {
+      await serializeResidentExecution(async () => {
+        if (stopped || pausePending) return;
+        requireCurrentWorkspace(input.runtimeHandle);
+        if ((await durableSupervisionState(input.runtimeHandle, input.now())).mode === "paused") {
+          pausePending = true;
+          return;
+        }
+        const operationTimestamp = input.now();
+        const operationNow = () => operationTimestamp;
+        const issued = wakeRuntime ?? await issueWakeRuntime(`task_${task.runId}`, operationNow);
+        if (wakeStatus === undefined) {
+          const started = await issued.supervision.start();
+          wakeStatus = started.status;
+          if (started.outcome !== "accepted") {
+            await issued.stop().catch(() => undefined);
+            forgetWakeRuntime(issued);
+            wakeStatus = undefined;
+            throw new Error("Resident supervision lease is not available for the local task.");
+          }
+        }
+        activeCycle = true;
+        activeTaskId = task.taskId;
+        try {
+          await port.execute(task, mountedEvidenceTriageHandoffAcquirer(
+            issued,
+            task,
+            input.issueMountedEvidenceTriageHandoff
+          ));
+        } finally {
+          activeCycle = false;
+          activeTaskId = undefined;
           await issued.stop().catch(() => undefined);
           forgetWakeRuntime(issued);
           wakeStatus = undefined;
-          throw new Error("Resident supervision lease is not available for the local task.");
         }
-      }
-      activeCycle = true;
-      activeTaskId = task.taskId;
-      try {
-        await port.execute(task, mountedEvidenceTriageHandoffAcquirer(
-          issued,
-          task,
-          input.issueMountedEvidenceTriageHandoff
-        ));
-      } finally {
-        activeCycle = false;
-        activeTaskId = undefined;
-        await issued.stop().catch(() => undefined);
-        forgetWakeRuntime(issued);
-        wakeStatus = undefined;
-      }
+      });
     }
   }
 
@@ -693,6 +710,16 @@ export function createResidentSupervisionRuntime(
     const previous = supervisionControlTail;
     const current = previous.then(operation);
     supervisionControlTail = current.then(
+      () => undefined,
+      () => undefined
+    );
+    return current;
+  }
+
+  function serializeResidentExecution<T>(operation: () => Promise<T>): Promise<T> {
+    const previous = residentExecutionTail;
+    const current = previous.then(operation);
+    residentExecutionTail = current.then(
       () => undefined,
       () => undefined
     );

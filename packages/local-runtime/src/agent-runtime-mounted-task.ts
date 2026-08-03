@@ -94,6 +94,7 @@ import {
   type UntrustedSpecialistRunner
 } from "./agent-runtime-specialist-runners.js";
 import { registerLocalRuntimeSelectedPrrContextPacks } from "./agent-prr-context-packs.js";
+import { serializeMountedTaskArtifactEffect } from "./mounted-task-effect-coordination.js";
 
 const mountedTaskSchemaVersion = "agent-mounted-task-result.v1" as const;
 const mountedTaskAdmissionSchemaVersion = "agent-mounted-task-admission.v1" as const;
@@ -823,6 +824,7 @@ async function runMountedSourcedInvestigationTaskInternal(
     approvedRunId: input.runId
   });
   const issued = factoryIssued;
+  let primaryError: unknown;
   try {
     await preflightPortableMountedAgentHandoffBinding({
       binding: issued.handoff.binding,
@@ -889,15 +891,28 @@ async function runMountedSourcedInvestigationTaskInternal(
     const promptStore = await createMountedPromptArtifactStore({ handle: input.handle });
     await authority.revalidate();
     await input.beforePromptArtifactWriteForTest?.();
-    await authority.revalidate();
-    await assertMountedTaskEffectAllowed(
-      input.handle,
-      input.taskId,
-      input.runId,
-      ["running"],
-      ["running"]
-    );
-    await promptStore.put(promptArtifact);
+    await serializeMountedTaskArtifactEffect({
+      handle: input.handle,
+      taskId: input.taskId,
+      effect: async () => {
+        await authority.revalidate();
+        await assertMountedTaskEffectAllowed(
+          input.handle,
+          input.taskId,
+          input.runId,
+          ["running"],
+          ["running"]
+        );
+        await promptStore.put(promptArtifact);
+        await assertMountedTaskEffectAllowed(
+          input.handle,
+          input.taskId,
+          input.runId,
+          ["running"],
+          ["running"]
+        );
+      }
+    });
     const promptReadback = await promptStore.read({
       inputArtifactHash: promptArtifact.manifest.inputArtifactHash as ContentHash,
       authoritativeResolvedContextPacks: contextPacks
@@ -1013,8 +1028,18 @@ async function runMountedSourcedInvestigationTaskInternal(
       replay,
       cockpit
     });
+  } catch (error) {
+    const currentTask = buildAgentProjection(await input.handle.ledger.readAll()).tasks.get(input.taskId);
+    primaryError = currentTask?.status === "canceled"
+      ? mountedConflict("Mounted sourced investigation was canceled before its effects completed.")
+      : error;
+    throw primaryError;
   } finally {
-    await authority.revalidate();
+    try {
+      await authority.revalidate();
+    } catch (revalidationError) {
+      if (primaryError === undefined) throw revalidationError;
+    }
   }
 }
 
@@ -1208,10 +1233,17 @@ export async function runMountedEvidenceTriageTask(
     });
     await authority.revalidate();
     await input.beforeLocalEffectForTest?.();
-    await assertMountedTaskEffectAllowed(input.handle, input.taskId, input.runId, ["running"]);
     const promptStore = await createMountedPromptArtifactStore({ handle: input.handle });
-    await promptStore.put(promptArtifact);
-    await assertMountedTaskEffectAllowed(input.handle, input.taskId, input.runId, ["running"]);
+    await serializeMountedTaskArtifactEffect({
+      handle: input.handle,
+      taskId: input.taskId,
+      effect: async () => {
+        await assertMountedTaskEffectAllowed(input.handle, input.taskId, input.runId, ["running"]);
+        await authority.revalidate();
+        await promptStore.put(promptArtifact);
+        await assertMountedTaskEffectAllowed(input.handle, input.taskId, input.runId, ["running"]);
+      }
+    });
     await authority.revalidate();
     const promptReadback = await promptStore.read({
       inputArtifactHash: promptArtifact.manifest.inputArtifactHash as ContentHash,
@@ -2691,6 +2723,13 @@ async function replayMountedTimelineDraftCandidate(input: {
     [...candidateCitedEvidenceIds].some((evidenceId) => !selectedById.has(evidenceId))) {
     return undefined;
   }
+  const omittedSourceIds = artifact.omittedSources.map((omission) => omission.sourceRef);
+  const selectedEvidenceIds = [...selectedById.keys()];
+  if (uniqueStrings(omittedSourceIds).length !== omittedSourceIds.length ||
+    omittedSourceIds.some((evidenceId) => candidateCitedEvidenceIds.has(evidenceId)) ||
+    !sameStringSet([...candidateCitedEvidenceIds, ...omittedSourceIds], selectedEvidenceIds)) {
+    return undefined;
+  }
 
   const citedEvidenceIds = new Set<string>();
   const items: MountedTimelineDraftContext["items"][number][] = [];
@@ -2741,7 +2780,7 @@ async function replayMountedTimelineDraftCandidate(input: {
         const rowHash = requireContentHash(citation.rowHash);
         const rowBytes = await input.reader.get(rowHash);
         const row = plainRecord(parseJson(rowBytes));
-        if (hashBytes(rowBytes) !== rowHash || row?.assertionId !== citation.assertionId ||
+        if (row === undefined || hashBytes(rowBytes) !== rowHash || row.assertionId !== citation.assertionId ||
           row.evidenceId !== citation.evidenceId || row.evidenceContentHash !== citation.evidenceContentHash ||
           row.proposedByEventId !== citation.proposedByEventId ||
           row.acceptedByEventId !== citation.acceptedByEventId ||
@@ -2764,7 +2803,7 @@ async function replayMountedTimelineDraftCandidate(input: {
       if (event === undefined || !event.type.startsWith("prr.") || prrEventIds.has(citation.eventId) ||
         (citation.type !== undefined && citation.type !== event.type) ||
         (citation.occurredAt !== undefined && citation.occurredAt !== event.context.occurredAt) ||
-        citation.contentHashes.some((contentHash) =>
+        citation.contentHashes.some((contentHash: string) =>
           !isContentHash(contentHash) || !ledgerHashes.includes(contentHash)
         )) {
         throw mountedConflict("Prior sourced timeline PRR citation is not current and exact.");
@@ -2906,7 +2945,7 @@ function groundedMountedSourcedInvestigationOutput(input: {
     throw mountedConflict("Mounted sourced investigation requires evidence.");
   }
   if (input.runType === "contradiction-finder") {
-    return { candidates: [] };
+    return { candidates: groundedMountedContradictionCandidates(input) };
   }
 
   const evidenceById = new Map(input.evidence.map((binding) => [binding.evidenceId, binding]));
@@ -2949,6 +2988,133 @@ function groundedMountedSourcedInvestigationOutput(input: {
       `Record an exact source date or date range for ${binding.evidenceId} before adding a timeline item.`
     )
   };
+}
+
+function groundedMountedContradictionCandidates(input: {
+  readonly evidence: readonly EvidenceBinding[];
+  readonly events: readonly KnowledgeEvent[];
+  readonly contextPacks: readonly VerifiedResolvedContextPack[];
+}): ContradictionFinderCandidatesOutput["candidates"] {
+  const graphPack = exactResolvedContextPack(input.contextPacks, "accepted-graph-projection.v1");
+  const graphItems = plainRecord(plainRecord(graphPack.payload)?.items);
+  const graphRows = Array.isArray(graphItems?.assertions) ? graphItems.assertions : [];
+  const timelinePack = exactResolvedContextPack(input.contextPacks, "timeline-draft-summary.v1");
+  const timelineRows = Array.isArray(plainRecord(timelinePack.payload)?.items)
+    ? plainRecord(timelinePack.payload)!.items as readonly unknown[]
+    : [];
+  const timelineItemIds = new Set<string>();
+  for (const value of timelineRows) {
+    const itemId = plainRecord(value)?.itemId;
+    if (typeof itemId !== "string" || !/^timeline_[a-zA-Z0-9_-]+$/.test(itemId) ||
+      timelineItemIds.has(itemId)) {
+      throw mountedConflict("Mounted contradiction timeline context is not exact and unique.");
+    }
+    timelineItemIds.add(itemId);
+  }
+  const evidenceById = new Map(input.evidence.map((binding) => [binding.evidenceId, binding] as const));
+  const assertions: {
+    readonly assertionId: string;
+    readonly evidenceId: string;
+    readonly evidenceContentHash: ContentHash;
+    readonly timelineItemId: string;
+    readonly subjectRef: string;
+    readonly predicate: string;
+    readonly object: string | number | boolean | null;
+  }[] = [];
+  for (const value of graphRows) {
+    const row = plainRecord(value);
+    const assertionId = row?.assertionId;
+    const evidenceId = row?.evidenceId;
+    const evidenceContentHash = row?.evidenceContentHash;
+    const proposedByEventId = row?.proposedByEventId;
+    const acceptedByEventId = row?.acceptedByEventId;
+    const sourceEventIds = stringArray(row?.sourceEventIds);
+    if (typeof assertionId !== "string" || typeof evidenceId !== "string" ||
+      typeof evidenceContentHash !== "string" || !isContentHash(evidenceContentHash) ||
+      typeof proposedByEventId !== "string" || typeof acceptedByEventId !== "string" ||
+      sourceEventIds === undefined) {
+      throw mountedConflict("Mounted contradiction assertion context is not exact and replayable.");
+    }
+    const binding = evidenceById.get(evidenceId);
+    if (binding === undefined) continue;
+    const proposed = exactEvent(input.events, proposedByEventId, "assertion.proposed");
+    const accepted = exactEvent(input.events, acceptedByEventId, "assertion.accepted");
+    const proposedPayload = plainRecord(proposed.payload);
+    const subjectRef = proposedPayload?.subjectRef;
+    const predicate = proposedPayload?.predicate;
+    const object = proposedPayload?.object;
+    const timelineItemId = `timeline_assertion_${assertionId}`;
+    if (evidenceContentHash !== binding.contentHash ||
+      proposedPayload?.assertionId !== assertionId || proposedPayload.evidenceId !== evidenceId ||
+      typeof predicate !== "string" || predicate.length === 0 ||
+      !(object === null || typeof object === "string" || typeof object === "number" || typeof object === "boolean") ||
+      plainRecord(accepted.payload)?.assertionId !== assertionId ||
+      accepted.context.causationId !== proposed.id || accepted.context.actor.kind !== "human" ||
+      plainRecord(accepted.payload)?.acceptedBy !== accepted.context.actor.id ||
+      !sameExactStringSet(sourceEventIds, [proposed.id, accepted.id]) ||
+      (subjectRef !== undefined && typeof subjectRef !== "string")) {
+      throw mountedConflict("Mounted contradiction assertion history does not match exact ledger and timeline provenance.");
+    }
+    if (typeof subjectRef !== "string" || subjectRef.length === 0) continue;
+    if (!timelineItemIds.has(timelineItemId)) {
+      throw mountedConflict("Mounted contradiction assertion history does not match exact ledger and timeline provenance.");
+    }
+    assertions.push(Object.freeze({
+      assertionId,
+      evidenceId,
+      evidenceContentHash,
+      timelineItemId,
+      subjectRef,
+      predicate,
+      object
+    }));
+  }
+  assertions.sort((left, right) => left.assertionId.localeCompare(right.assertionId));
+  const candidates: ContradictionFinderCandidatesOutput["candidates"][number][] = [];
+  for (let leftIndex = 0; leftIndex < assertions.length; leftIndex += 1) {
+    const left = assertions[leftIndex]!;
+    for (let rightIndex = leftIndex + 1; rightIndex < assertions.length; rightIndex += 1) {
+      const right = assertions[rightIndex]!;
+      if (left.evidenceId === right.evidenceId || left.subjectRef !== right.subjectRef ||
+        left.predicate !== right.predicate || left.object === right.object) continue;
+      if (candidates.length === 48) {
+        throw mountedConflict("Mounted contradiction candidates exceed the bounded advisory output capacity.");
+      }
+      const comparedSourceRefs = [...uniqueStrings([
+        left.evidenceId,
+        right.evidenceId,
+        left.assertionId,
+        right.assertionId,
+        left.timelineItemId,
+        right.timelineItemId
+      ])].sort();
+      const digest = createHash("sha256")
+        .update(`${left.assertionId}\u0000${right.assertionId}`)
+        .digest("hex")
+        .slice(0, 24);
+      candidates.push({
+        candidateId: `contradiction_ledger_${digest}`,
+        comparedSourceRefs,
+        evidenceIds: [left.evidenceId, right.evidenceId].sort(),
+        evidenceContentHashes: [...uniqueHashes([
+          left.evidenceContentHash,
+          right.evidenceContentHash
+        ])].sort(),
+        assertionIds: [left.assertionId, right.assertionId].sort(),
+        timelineItemIds: [left.timelineItemId, right.timelineItemId].sort(),
+        prrEventRefs: [],
+        category: "direct-conflict",
+        confidence: 0.75,
+        confidenceCaveat: "This comparison is advisory; a human reviewer must evaluate source scope and dates.",
+        rationale: "Two exact ledger assertion records use different values for the same subject and predicate.",
+        uncertaintyRefs: [],
+        alternativeExplanations: ["The records may refer to different dates, scopes, or definitions."],
+        requestedFollowupEvidence: ["Review the exact cited sources for date, scope, and definition differences."],
+        requiredReviewerAction: "review"
+      });
+    }
+  }
+  return candidates;
 }
 
 function appendAcceptedAssertionTimelineItems(input: {
@@ -3726,10 +3892,16 @@ function taskFencedManifestStore(
   );
   return Object.freeze({
     async put(content: Buffer) {
-      await assertCurrent();
-      const stored = await store.put(content);
-      await assertCurrent();
-      return stored;
+      return await serializeMountedTaskArtifactEffect({
+        handle,
+        taskId,
+        effect: async () => {
+          await assertCurrent();
+          const stored = await store.put(content);
+          await assertCurrent();
+          return stored;
+        }
+      });
     },
     async get(contentHash: ContentHash) {
       await assertCurrent();
