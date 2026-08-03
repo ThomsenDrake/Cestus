@@ -8,7 +8,9 @@ export type {
   AgentCockpitRunCardDto,
   AgentCockpitSelectedRunDto,
   AgentCockpitSpecialistsDto,
-  AgentCockpitTaskCardDto
+  AgentCockpitTaskCardDto,
+  AgentSupervisionCockpitDto,
+  AgentSupervisionControlDto
 } from "../../../agent/src/cockpit.js";
 export type {
   AgentApprovalCockpitDto,
@@ -90,4 +92,15 @@ export interface AgentTaskCreateResultDto {
   readonly ok: true;
   readonly taskId: string;
   readonly eventIds: readonly string[];
+}
+
+export interface AgentSupervisionCommandResultDto {
+  readonly schemaVersion: "agent-supervision-command-result.v1";
+  readonly supervision: import("../../../agent/src/cockpit.js").AgentSupervisionCockpitDto;
+}
+
+export interface AgentTaskSupervisionResultDto {
+  readonly schemaVersion: "agent-task-supervision-result.v1";
+  readonly task: RuntimeAgentStatusDto["tasks"][number];
+  readonly supervision?: import("../../../agent/src/cockpit.js").AgentSupervisionCockpitDto;
 }

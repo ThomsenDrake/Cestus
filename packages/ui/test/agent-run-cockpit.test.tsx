@@ -48,22 +48,21 @@ describe("AgentRunCockpit", () => {
     }
   });
 
-  it("renders active queue run details when selected run data is absent", () => {
+  it("shows an explicit missing-data diagnostic without substituting the active queue run", () => {
     render(<AgentRunCockpit cockpit={cockpitFixture({ includeSelectedRun: false })} />);
 
     const region = screen.getByRole("region", { name: "Agent run cockpit" });
 
     fireEvent.click(within(region).getByRole("tab", { name: "Audit" }));
-    expect(within(region).getByRole("region", { name: "Active queued run" })).toBeInTheDocument();
-    expect(within(region).getByText("run_report_done")).toBeInTheDocument();
-    expect(within(region).getByText("report-builder")).toBeInTheDocument();
-    expect(within(region).getByText("completed")).toBeInTheDocument();
-    expect(within(region).getByText(/detailed selected-run audit is unavailable yet/i)).toBeInTheDocument();
+    expect(within(region).queryByRole("region", { name: "Active queued run" })).not.toBeInTheDocument();
+    expect(within(region).queryByText("run_report_done")).not.toBeInTheDocument();
+    expect(within(region).queryByText("report-builder")).not.toBeInTheDocument();
+    expect(within(region).getByText(/selected-run data is unavailable; queue summary was not substituted/i)).toBeInTheDocument();
     expect(within(region).getByText(/no selected-run audit details are available yet/i)).toBeInTheDocument();
 
     fireEvent.click(within(region).getByRole("tab", { name: "Handoff" }));
-    expect(within(region).getByRole("region", { name: "Active queued run" })).toBeInTheDocument();
-    expect(within(region).getByText(/detailed selected-run handoff is unavailable yet/i)).toBeInTheDocument();
+    expect(within(region).queryByRole("region", { name: "Active queued run" })).not.toBeInTheDocument();
+    expect(within(region).getByText(/selected-run data is unavailable; queue summary was not substituted/i)).toBeInTheDocument();
     expect(within(region).getByText(/no selected-run handoff artifacts are available yet/i)).toBeInTheDocument();
   });
 
@@ -86,8 +85,14 @@ describe("AgentRunCockpit", () => {
 
     fireEvent.click(within(region).getByRole("tab", { name: "Run" }));
     expect(within(region).getByText("step_report_draft")).toBeInTheDocument();
-    expect(within(region).getByText("toolreq_provider_review")).toBeInTheDocument();
+    expect(within(region).getAllByText("toolreq_provider_review").length).toBeGreaterThan(0);
     expect(within(region).getByText("lock_provider_review")).toBeInTheDocument();
+    expect(within(region).getAllByText(/plan_report_done \| revision 0/).length).toBe(2);
+    expect(within(region).getByText("evt_resident_plan_report")).toBeInTheDocument();
+    expect(within(region).getByText(/1\. local\.report-outline/)).toBeInTheDocument();
+    expect(within(region).getByText(/observation_report_done \| tool-result/)).toBeInTheDocument();
+    expect(within(region).getByText("Draft outline artifact recorded for human review.")).toBeInTheDocument();
+    expect(within(region).getByText("evt_resident_observation_report")).toBeInTheDocument();
 
     fireEvent.click(within(region).getByRole("tab", { name: "Audit" }));
     expect(within(region).getAllByText("provider_fake_local").length).toBeGreaterThan(0);
@@ -114,7 +119,7 @@ describe("AgentRunCockpit", () => {
     expect(within(region).getByText("Review draft report outline")).toBeInTheDocument();
   });
 
-  it("selects run cards without showing another run's selected detail, audit, or handoff", () => {
+  it("selects run cards without substituting either run's detail, audit, or handoff", () => {
     render(<AgentRunCockpit cockpit={cockpitFixture()} />);
 
     const region = screen.getByRole("region", { name: "Agent run cockpit" });
@@ -122,15 +127,16 @@ describe("AgentRunCockpit", () => {
     fireEvent.click(within(region).getByRole("button", { name: "Select run run_provider_review" }));
     fireEvent.click(within(region).getByRole("tab", { name: "Audit" }));
 
-    expect(within(region).getByRole("region", { name: "Active queued run" })).toBeInTheDocument();
-    expect(within(region).getByText("run_provider_review")).toBeInTheDocument();
-    expect(within(region).getByText("evidence-triage")).toBeInTheDocument();
+    expect(within(region).queryByRole("region", { name: "Active queued run" })).not.toBeInTheDocument();
+    expect(within(region).queryByText("run_provider_review")).not.toBeInTheDocument();
+    expect(within(region).queryByText("evidence-triage")).not.toBeInTheDocument();
+    expect(within(region).getByText(/selected-run data is unavailable; queue summary was not substituted/i)).toBeInTheDocument();
     expect(within(region).queryByText("inv_report_done")).not.toBeInTheDocument();
     expect(within(region).queryByText("sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")).not.toBeInTheDocument();
 
     fireEvent.click(within(region).getByRole("tab", { name: "Handoff" }));
-    expect(within(region).getByRole("region", { name: "Active queued run" })).toBeInTheDocument();
-    expect(within(region).getByText("run_provider_review")).toBeInTheDocument();
+    expect(within(region).queryByRole("region", { name: "Active queued run" })).not.toBeInTheDocument();
+    expect(within(region).queryByText("run_provider_review")).not.toBeInTheDocument();
     expect(within(region).queryByText("Draft report outline ready for human review.")).not.toBeInTheDocument();
     expect(within(region).queryByText("artifact_report_outline")).not.toBeInTheDocument();
   });
@@ -194,6 +200,42 @@ function cockpitFixtureWithOptions(input: {
         stalenessInputCount: 3,
         sourceEventIds: ["evt_task_history_001"],
         artifactHashes: ["sha256:9999999999999999999999999999999999999999999999999999999999999999"]
+      }
+    ],
+    planHistory: [
+      {
+        eventId: "evt_resident_plan_report",
+        runId: selectedRunId,
+        taskId: "task_unstarted",
+        attemptId: "attempt_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        planId: "plan_report_done",
+        planRevision: 0,
+        recordedAt: "2026-07-09T12:01:31.000Z",
+        steps: [
+          {
+            ordinal: 1,
+            purpose: "Prepare a local draft outline.",
+            toolId: "local.report-outline",
+            expectedSafeOutputClass: "derivative"
+          }
+        ]
+      }
+    ],
+    observationHistory: [
+      {
+        eventId: "evt_resident_observation_report",
+        runId: selectedRunId,
+        taskId: "task_unstarted",
+        attemptId: "attempt_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        observationId: "observation_report_done",
+        planId: "plan_report_done",
+        planRevision: 0,
+        stepOrdinal: 1,
+        kind: "tool-result",
+        safeSummary: "Draft outline artifact recorded for human review.",
+        artifactHashes: ["sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"],
+        toolRequestId: "toolreq_provider_review",
+        recordedAt: "2026-07-09T12:01:40.000Z"
       }
     ],
     handoff: {

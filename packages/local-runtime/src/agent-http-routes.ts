@@ -1,6 +1,8 @@
+import { join } from "node:path";
 import {
   agentApprovalDecisionResultDtoSchema,
   buildAgentCockpit,
+  buildAgentSupervisionCockpit,
   buildAgentApprovalCockpit,
   buildAgentProjection,
   buildTaskOrchestratorProjection,
@@ -10,10 +12,18 @@ import {
   type AgentMemoryKind,
   type AgentMemoryScope,
   type AgentMemoryState,
+  type AgentCockpitResidentObservationDto,
+  type AgentCockpitResidentPlanDto,
+  type AgentStatusDto,
   type AgentTaskPriority,
-  type ResidentIdentityLifecycleDto
+  type ResidentIdentityLifecycleDto,
+  type SpecialistWorkflowHandoffDto
 } from "../../agent/src/index.js";
-import type { ActorRef, KnowledgeEvent } from "../../ontology/src/contracts.js";
+import { buildResidentPlanObservationProjectionV2 } from "../../agent/src/plan-observation-projection.js";
+import type { ActorRef, AppendableKnowledgeEvent, KnowledgeEvent } from "../../ontology/src/contracts.js";
+import { FileBlobStore } from "../../ontology/src/blob-store.js";
+import { hasPrecommitGuardedAppend } from "../../ontology/src/sqlite-event-ledger.js";
+import { buildSpecialistHandoffProjection } from "../../agent/src/specialist-handoff-projection.js";
 import type { LocalRuntimeRequest, LocalRuntimeResponse } from "./http-handler.js";
 import {
   defaultLocalAgentRuntimeFactory,
@@ -24,11 +34,17 @@ import { buildLocalAgentProviderReadiness } from "./agent-provider-readiness.js"
 import { handleAgentOntologyBootstrapRoute } from "./agent-ontology-bootstrap-routes.js";
 import {
   MountedResidentTaskError,
+  admitMountedEvidenceTriageTask,
   reconstructMountedEvidenceTriageTask,
   runMountedEvidenceTriageTask,
   type MountedEvidenceTriageProviderMode
 } from "./agent-runtime-mounted-task.js";
 import type { LocalRuntimeHandle } from "./runtime-factory.js";
+import {
+  inspectPortableWorkspaceCurrentness,
+  type ResidentSupervisionRuntime,
+  type ResidentSupervisionSnapshot
+} from "./wake-supervisor-runtime.js";
 
 const approvalDetailSchemaVersion = "agent-approval-detail.v1" as const;
 const localSpecialistContractIds = Object.freeze([
@@ -52,7 +68,9 @@ export interface HandleAgentHttpRouteInput {
   readonly handle: LocalRuntimeHandle;
   readonly actor: ActorRef;
   readonly now: () => string;
+  readonly supervision?: ResidentSupervisionRuntime | undefined;
   readonly agentRuntimeFactory?: LocalAgentRuntimeFactory;
+  readonly mountedTaskAdmissionPrecommitForTest?: (() => void) | undefined;
 }
 
 export async function handleAgentHttpRoute(
@@ -64,6 +82,15 @@ export async function handleAgentHttpRoute(
   }
 
   try {
+    if (input.request.method === "POST" && input.handle.mountedWorkspace !== undefined) {
+      const currentness = inspectPortableWorkspaceCurrentness(input.handle);
+      if (!currentness.ok) {
+        return json(409, workspaceCurrentnessDiagnostic(
+          currentness.category ?? "workspace-unavailable"
+        ));
+      }
+    }
+
     if (input.request.method === "GET" && path === "/api/agent/providers/readiness") {
       return json(200, await buildLocalAgentProviderReadiness({
         cwd: input.handle.config.cwd,
@@ -85,13 +112,22 @@ export async function handleAgentHttpRoute(
           if (!payload.ok) return json(400, payload.body);
           const command = mountedEvidenceTriageInputFromBody(payload.value);
           if (command === undefined) return json(400, invalidMountedEvidenceTriageBodyDiagnostic());
-          return json(200, await runMountedEvidenceTriageTask({
+          const executionInput = {
             handle: input.handle,
             runtime: mountedRuntime,
             now: input.now,
             taskId: mountedEvidenceTriageRoute.taskId,
-            ...command
-          }));
+            ...command,
+            ...(input.mountedTaskAdmissionPrecommitForTest === undefined
+              ? {}
+              : { beforeAdmissionPrecommitForTest: input.mountedTaskAdmissionPrecommitForTest })
+          } as const;
+          const admission = await admitMountedEvidenceTriageTask(executionInput);
+          if (command.providerMode === "local-fake") {
+            input.supervision?.signalLocalAdmission();
+            return json(202, admission);
+          }
+          return json(200, await runMountedEvidenceTriageTask(executionInput));
         }
         if (input.request.method === "GET" && mountedEvidenceTriageRoute.kind === "readback") {
           return json(200, await reconstructMountedEvidenceTriageTask({
@@ -207,12 +243,92 @@ export async function handleAgentHttpRoute(
     if (input.request.method === "GET" && path === "/api/agent/cockpit") {
       const status = await statusWithProviderReadiness(runtime, input);
       const approvalCockpit = buildAgentApprovalCockpit({ status });
+      const supervisionSnapshot = await input.supervision?.snapshot();
+      const events = await input.handle.ledger.readAll();
+      const retryableTaskIds = retryableTaskIdsFromEvents(events);
+      const residentHistory = projectResidentCockpitHistory(events);
+      const specialistHandoffs = await projectMountedCockpitHandoffs(input.handle, status, events);
       return json(200, buildAgentCockpit({
         status,
         approvalCockpit,
+        residentPlans: residentHistory.plans,
+        residentObservations: residentHistory.observations,
+        specialistHandoffs,
+        ...(supervisionSnapshot === undefined ? {} : {
+          supervision: buildSupervisionCockpit(status, input.now(), supervisionSnapshot, retryableTaskIds)
+        }),
         availableSpecialistContracts: localSpecialistContractIds,
         availableDomainAdapterFamilies: localDomainAdapterFamilies
       }));
+    }
+
+    if (
+      input.request.method === "POST" &&
+      (path === "/api/agent/supervision/pause" || path === "/api/agent/supervision/resume")
+    ) {
+      if (!emptyPostBody(input.request.body)) {
+        return json(400, invalidSupervisionControlBodyDiagnostic());
+      }
+      if (input.actor.kind !== "human") {
+        return json(403, humanSupervisionActorDiagnostic());
+      }
+      if (input.supervision === undefined) {
+        return json(503, supervisionUnavailableDiagnostic());
+      }
+      const snapshot = path.endsWith("/pause")
+        ? await input.supervision.pause()
+        : await input.supervision.resume();
+      const status = await statusWithProviderReadiness(runtime, input);
+      const retryableTaskIds = retryableTaskIdsFromEvents(await input.handle.ledger.readAll());
+      return json(200, {
+        schemaVersion: "agent-supervision-command-result.v1",
+        supervision: buildSupervisionCockpit(status, input.now(), snapshot, retryableTaskIds)
+      });
+    }
+
+    const taskControlRoute = matchTaskControlRoute(path);
+    if (input.request.method === "POST" && taskControlRoute !== undefined) {
+      if (!emptyPostBody(input.request.body)) {
+        return json(400, invalidSupervisionControlBodyDiagnostic());
+      }
+      if (input.actor.kind !== "human") {
+        return json(403, humanSupervisionActorDiagnostic());
+      }
+      const before = await runtime.status();
+      const task = before.tasks.find((candidate) => candidate.taskId === taskControlRoute.taskId);
+      if (task === undefined) return json(404, missingTaskDiagnostic());
+      const controlEvents = await input.handle.ledger.readAll();
+      if (!taskControlAllowed(before, taskControlRoute, retryableTaskIdsFromEvents(controlEvents))) {
+        return json(409, taskControlUnavailableDiagnostic(taskControlRoute.kind));
+      }
+      try {
+        await appendTaskControlStatus(input, taskControlRoute);
+        if (taskControlRoute.kind === "cancel") {
+          await input.supervision?.quiesceTask(taskControlRoute.taskId);
+        }
+      } catch (error) {
+        if (error instanceof PortableWorkspaceCurrentnessError) {
+          return json(409, workspaceCurrentnessDiagnostic(error.category));
+        }
+        if (error instanceof TaskControlWriteBoundaryUnavailableError) {
+          return json(503, diagnostic(
+            "Task control cannot be recorded through the required mounted write boundary.",
+            ["restart the local runtime", "inspect agent diagnostics"]
+          ));
+        }
+        throw error;
+      }
+      const status = await statusWithProviderReadiness(runtime, input);
+      const updatedTask = status.tasks.find((candidate) => candidate.taskId === taskControlRoute.taskId);
+      const snapshot = await input.supervision?.snapshot();
+      const retryableTaskIds = retryableTaskIdsFromEvents(await input.handle.ledger.readAll());
+      return json(200, {
+        schemaVersion: "agent-task-supervision-result.v1",
+        task: updatedTask,
+        ...(snapshot === undefined ? {} : {
+          supervision: buildSupervisionCockpit(status, input.now(), snapshot, retryableTaskIds)
+        })
+      });
     }
 
     if (input.request.method === "GET" && path === "/api/agent/tool-requests") {
@@ -443,6 +559,239 @@ export async function handleAgentHttpRoute(
 }
 
 type LocalAgentRuntime = ReturnType<LocalAgentRuntimeFactory>;
+
+type TaskControlRoute = {
+  readonly kind: "retry" | "cancel";
+  readonly taskId: string;
+};
+
+function buildSupervisionCockpit(
+  status: AgentStatusDto,
+  observedAt: string,
+  snapshot: ResidentSupervisionSnapshot,
+  retryableTaskIds: readonly string[]
+) {
+  return buildAgentSupervisionCockpit({
+    status,
+    observedAt,
+    supervisorState: snapshot.supervisorState,
+    workspaceState: snapshot.workspaceState,
+    ...(snapshot.workspaceId === undefined ? {} : { workspaceId: snapshot.workspaceId }),
+    ...(snapshot.nextWakeAt === undefined ? {} : { nextWakeAt: snapshot.nextWakeAt }),
+    activeCycle: snapshot.activeCycle,
+    provenanceEventIds: snapshot.provenanceEventIds,
+    retryableTaskIds,
+    diagnostics: snapshot.diagnostics.map((diagnostic) => ({
+      category: diagnostic.category,
+      safeMessage: diagnostic.safeMessage,
+      allowedRepairActions: [...diagnostic.allowedRepairActions]
+    }))
+  });
+}
+
+function matchTaskControlRoute(path: string): TaskControlRoute | undefined {
+  const segments = path.split("/").filter(Boolean);
+  if (
+    segments.length !== 5 ||
+    segments[0] !== "api" ||
+    segments[1] !== "agent" ||
+    segments[2] !== "tasks" ||
+    !isAgentTaskId(segments[3]) ||
+    (segments[4] !== "retry" && segments[4] !== "cancel")
+  ) {
+    return undefined;
+  }
+  return Object.freeze({ kind: segments[4], taskId: segments[3] });
+}
+
+function taskControlAllowed(
+  status: AgentStatusDto,
+  route: TaskControlRoute,
+  retryableTaskIds: readonly string[]
+): boolean {
+  const task = status.tasks.find((candidate) => candidate.taskId === route.taskId);
+  if (task === undefined) return false;
+  if (route.kind === "cancel") {
+    return task.status === "queued" ||
+      task.status === "running" ||
+      task.status === "waiting-for-approval" ||
+      task.status === "blocked";
+  }
+  const run = task.runId === undefined ? undefined : status.runs.find((candidate) => candidate.runId === task.runId);
+  return (task.status === "failed" || task.status === "blocked") &&
+    (run?.retryable === true || retryableTaskIds.includes(task.taskId));
+}
+
+function retryableTaskIdsFromEvents(events: readonly KnowledgeEvent[]): readonly string[] {
+  const retryable = new Set<string>();
+  const latestFailureByTask = new Map<string, KnowledgeEvent>();
+  for (const event of events) {
+    if (event.type === "agent.task.orchestration.failed") {
+      latestFailureByTask.set(event.payload.taskId, event);
+    }
+  }
+  for (const [taskId, event] of latestFailureByTask) {
+    if (event.type === "agent.task.orchestration.failed" && event.payload.retryable) retryable.add(taskId);
+  }
+  return Object.freeze([...retryable].sort());
+}
+
+function projectResidentCockpitHistory(events: readonly KnowledgeEvent[]): {
+  readonly plans: readonly AgentCockpitResidentPlanDto[];
+  readonly observations: readonly AgentCockpitResidentObservationDto[];
+} {
+  const projection = buildResidentPlanObservationProjectionV2(events);
+  if (projection.state !== "ready") {
+    return Object.freeze({ plans: Object.freeze([]), observations: Object.freeze([]) });
+  }
+  return {
+    plans: projection.plans.map((event) => ({
+      eventId: event.id,
+      runId: event.payload.runId,
+      taskId: event.payload.taskId,
+      attemptId: event.payload.attemptId,
+      planId: event.payload.planId,
+      planRevision: event.payload.planRevision,
+      recordedAt: event.context.occurredAt,
+      steps: event.payload.steps.map((step) => ({
+        ordinal: step.ordinal,
+        purpose: step.purpose,
+        toolId: step.toolId,
+        expectedSafeOutputClass: step.expectedSafeOutputClass
+      }))
+    })),
+    observations: projection.observations.map((event) => ({
+      eventId: event.id,
+      runId: event.payload.runId,
+      taskId: event.payload.taskId,
+      attemptId: event.payload.attemptId,
+      observationId: event.payload.observationId,
+      planId: event.payload.planId,
+      planRevision: event.payload.planRevision,
+      stepOrdinal: event.payload.stepOrdinal,
+      kind: event.payload.kind,
+      safeSummary: event.payload.safeSummary,
+      artifactHashes: [...event.payload.artifactHashes],
+      ...(event.payload.toolRequestId === undefined ? {} : { toolRequestId: event.payload.toolRequestId }),
+      ...(event.payload.modelInvocationEventId === undefined
+        ? {}
+        : { modelInvocationEventId: event.payload.modelInvocationEventId }),
+      recordedAt: event.context.occurredAt
+    }))
+  };
+}
+
+async function projectMountedCockpitHandoffs(
+  handle: LocalRuntimeHandle,
+  status: AgentStatusDto,
+  events: readonly KnowledgeEvent[]
+): Promise<readonly SpecialistWorkflowHandoffDto[]> {
+  const mounted = handle.mountedWorkspace;
+  if (mounted === undefined || !inspectPortableWorkspaceCurrentness(handle).ok) return Object.freeze([]);
+  const stores = [
+    new FileBlobStore(join(mounted.paths.derivativeRoot, "specialist-handoff-manifest")),
+    new FileBlobStore(join(mounted.paths.derivativeRoot, "specialist-handoff-material"))
+  ] as const;
+  const manifestReader = Object.freeze({
+    async get(contentHash: `sha256:${string}`) {
+      for (const store of stores) {
+        requirePortableWorkspaceCurrent(handle);
+        try {
+          const bytes = await store.get(contentHash);
+          requirePortableWorkspaceCurrent(handle);
+          return bytes;
+        } catch {
+          if (!inspectPortableWorkspaceCurrentness(handle).ok) {
+            throw new Error("Portable workspace became unavailable during handoff replay.");
+          }
+        }
+      }
+      throw new Error("Mounted handoff artifact is unavailable by its durable content hash.");
+    }
+  });
+  const handoffs: SpecialistWorkflowHandoffDto[] = [];
+  for (const run of status.runs) {
+    const projection = await buildSpecialistHandoffProjection({
+      events,
+      manifestReader,
+      runId: run.runId,
+      ...(run.taskId === undefined ? {} : { taskId: run.taskId })
+    });
+    const handoff = projection.selectedHandoff;
+    if (
+      projection.state !== "legacy-unbound" &&
+      projection.diagnostics.length === 0 &&
+      handoff !== undefined &&
+      handoff.runId === run.runId &&
+      handoff.taskId === run.taskId
+    ) {
+      handoffs.push(handoff);
+    }
+  }
+  return Object.freeze(handoffs);
+}
+
+function requirePortableWorkspaceCurrent(handle: LocalRuntimeHandle): void {
+  const currentness = inspectPortableWorkspaceCurrentness(handle);
+  if (!currentness.ok) {
+    throw new PortableWorkspaceCurrentnessError(
+      currentness.category ?? "workspace-unavailable"
+    );
+  }
+}
+
+class PortableWorkspaceCurrentnessError extends Error {
+  constructor(readonly category: "workspace-unavailable" | "workspace-identity-mismatch") {
+    super(category);
+    this.name = "PortableWorkspaceCurrentnessError";
+  }
+}
+
+class TaskControlWriteBoundaryUnavailableError extends Error {
+  constructor() {
+    super("Task control requires a precommit-guarded event ledger.");
+    this.name = "TaskControlWriteBoundaryUnavailableError";
+  }
+}
+
+async function appendTaskControlStatus(
+  input: HandleAgentHttpRouteInput,
+  route: TaskControlRoute
+): Promise<void> {
+  const events = await input.handle.ledger.readAll();
+  const currentness = inspectPortableWorkspaceCurrentness(input.handle);
+  if (!currentness.ok) throw new Error(currentness.category ?? "workspace-unavailable");
+  const streamId = `agent_task_${route.taskId}`;
+  const taskEvents = events.filter((event) => event.streamId === streamId);
+  const causation = taskEvents.at(-1);
+  if (causation === undefined) throw new Error("Agent task control lacks durable task provenance.");
+  const event: AppendableKnowledgeEvent<"agent.task.status.changed"> = {
+    type: "agent.task.status.changed",
+    version: 1,
+    streamId,
+    context: {
+      actor: input.actor,
+      occurredAt: input.now(),
+      causationId: causation.id,
+      correlationId: `corr_${route.kind}_${route.taskId}_${taskEvents.length + 1}`,
+      coreVersion: "0.1.0",
+      packVersions: { core: "0.1.0", agent: "0.1.0" }
+    },
+    payload: {
+      taskId: route.taskId,
+      status: route.kind === "retry" ? "queued" : "canceled",
+      changedBy: input.actor.id,
+      reason: route.kind === "retry" ? "Human requested a retry." : "Human canceled resident work."
+    }
+  };
+  if (!hasPrecommitGuardedAppend(input.handle.ledger)) {
+    throw new TaskControlWriteBoundaryUnavailableError();
+  }
+  await input.handle.ledger.appendWithPrecommitGuard(event, {
+    expectedGlobalEventCount: events.length,
+    expectedNextSequence: taskEvents.length + 1
+  }, () => requirePortableWorkspaceCurrent(input.handle));
+}
 
 async function requireResidentIdentityReady(input: HandleAgentHttpRouteInput): Promise<boolean> {
   return (await input.handle.residentIdentity.ready()).state === "ready";
@@ -732,6 +1081,74 @@ function invalidRuntimeWakeBodyDiagnostic(): {
     "send an empty POST body to wake task orchestration and approved-tool scheduling",
     "use approval routes to append human decisions"
   ]);
+}
+
+function emptyPostBody(body: string | undefined): boolean {
+  if (body === undefined || body.trim().length === 0) return true;
+  const parsed = parseJsonObjectBody(body, invalidSupervisionControlBodyDiagnostic);
+  return parsed.ok && Object.keys(parsed.value).length === 0;
+}
+
+function invalidSupervisionControlBodyDiagnostic(): {
+  readonly ok: false;
+  readonly diagnostic: {
+    readonly message: string;
+    readonly allowedRepairActions: readonly string[];
+  };
+} {
+  return diagnostic("Resident supervision controls do not accept effect input.", [
+    "send an empty POST body",
+    "refresh agent status"
+  ]);
+}
+
+function humanSupervisionActorDiagnostic() {
+  return diagnostic("Resident supervision controls require a human actor.", [
+    "sign in with a human local runtime session"
+  ]);
+}
+
+function supervisionUnavailableDiagnostic() {
+  return diagnostic("Resident supervision is unavailable in this local runtime.", [
+    "restart the local runtime",
+    "refresh agent status"
+  ]);
+}
+
+function missingTaskDiagnostic() {
+  return diagnostic("Agent task was not found.", ["refresh agent status"]);
+}
+
+function taskControlUnavailableDiagnostic(kind: TaskControlRoute["kind"]) {
+  return diagnostic(`Agent task ${kind} is not available for the current durable state.`, [
+    "refresh agent status",
+    "inspect the selected task and run"
+  ]);
+}
+
+function workspaceCurrentnessDiagnostic(
+  category: "workspace-unavailable" | "workspace-identity-mismatch"
+): {
+  readonly ok: false;
+  readonly diagnostic: {
+    readonly category: "workspace-unavailable" | "workspace-identity-mismatch";
+    readonly message: string;
+    readonly allowedRepairActions: readonly string[];
+  };
+} {
+  return {
+    ok: false,
+    diagnostic: {
+      category,
+      message: category === "workspace-identity-mismatch"
+        ? "The connected portable workspace identity does not match the admitted workspace."
+        : "The portable workspace is unavailable; resident work and writes remain stopped.",
+      allowedRepairActions: [
+        "reconnect the same portable workspace",
+        "refresh agent status"
+      ]
+    }
+  };
 }
 
 function invalidMemoryBodyDiagnostic(): {

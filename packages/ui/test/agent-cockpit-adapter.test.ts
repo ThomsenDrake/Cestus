@@ -296,6 +296,8 @@ function cockpitDto(overrides: Partial<Record<string, unknown>> = {}) {
         sourceEventIds: ["evt_task_created"],
         artifactHashes: ["sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"]
       }],
+      planHistory: [],
+      observationHistory: [],
     },
     needsNext: [{
       kind: "approval",

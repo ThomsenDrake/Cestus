@@ -18,12 +18,14 @@ import { createLocalAgentProviderConfiguration } from "./agent-provider-readines
 import { issueMountedArtifactAuthorityOperationForFactory } from "./mounted-artifact-authority-operation.js";
 import { createMountedPromptArtifactStore } from "./mounted-prompt-artifact-store.js";
 import {
+  consumeMountedHandoffAuthorityController,
   createPortableMountedAgentArtifactStoreProducer,
   type FactoryPortableMountedAgentHandoffProducerResultV1
 } from "./portable-mounted-agent-artifact-stores.js";
 import type { LocalRuntimeHandle } from "./runtime-factory.js";
 import {
   createWakeSupervisorRuntime,
+  type MountedEvidenceTriageHandoffCapability,
   type WakeSupervisorRuntime
 } from "./wake-supervisor-runtime.js";
 import type { MountedProductionPromptReadbackWitness } from "../../agent/src/production-prompt-readback.js";
@@ -175,6 +177,24 @@ export async function bindMountedEvidenceTriageHandoffForLocalAgentRuntimeFactor
     approvedRunId: input.runId,
     runType: "evidence-triage",
     retryGeneration: 0
+  });
+}
+
+/** Keeps supervised handoff issuance and controller consumption inside the authorized factory role. */
+export async function acquireMountedEvidenceTriageHandoffForLocalAgentRuntimeFactory(input: {
+  readonly wakeRuntime: WakeSupervisorRuntime;
+  readonly taskId: string;
+  readonly runId: string;
+}): Promise<MountedEvidenceTriageHandoffCapability> {
+  const prepared = await bindMountedEvidenceTriageHandoffForLocalAgentRuntimeFactory(input);
+  let consumed = false;
+  return Object.freeze({
+    binding: prepared.binding,
+    async consume(eventIds: readonly string[]) {
+      if (consumed) throw new Error("Mounted task handoff capability is already consumed.");
+      await consumeMountedHandoffAuthorityController(prepared.controller, eventIds);
+      consumed = true;
+    }
   });
 }
 

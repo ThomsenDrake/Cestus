@@ -250,9 +250,15 @@ export function createPortableMountedAgentArtifactStoreProducer(
 
       let cursor: CursorState | undefined;
       try {
-        const authorityBinding = deriveHandoffAuthorityBinding(state.origin.snapshot);
+        const normalizedBinding = normalizeBinding(input);
+        const currentAuthorityBinding = deriveHandoffAuthorityBinding(state.origin.snapshot);
+        const authorityBinding = await selectDurableRecoveryAuthorityBinding(
+          state.origin,
+          normalizedBinding,
+          currentAuthorityBinding
+        );
         const binding = Object.freeze({
-          ...normalizeBinding(input),
+          ...normalizedBinding,
           authorityBinding
         });
         const createdCursor: CursorState = {
@@ -347,6 +353,88 @@ export function createPortableMountedAgentArtifactStoreProducer(
   });
   producerStates.set(producer, { authorityOperation, origin, bound: false });
   return producer;
+}
+
+async function selectDurableRecoveryAuthorityBinding(
+  origin: CapturedOrigin,
+  binding: RunBinding,
+  current: HandoffAuthorityBinding
+): Promise<HandoffAuthorityBinding> {
+  const events = normalizeLedgerEvents(await origin.ledger.readAll());
+  const prepared = events.filter((event) => {
+    const record = normalizedOwnDataRecord(event);
+    if (record.type !== "agent.specialist-handoff.prepared") return false;
+    const payload = normalizedOwnDataRecord(record.payload);
+    return payload.taskId === binding.taskId && payload.runId === binding.approvedRunId &&
+      payload.manifestSchemaVersion === "agent-specialist-handoff-manifest.v2";
+  });
+  if (prepared.length === 0) return current;
+  if (prepared.length !== 1) throw authorityError();
+  const durablePrepared = prepared[0]!;
+  const preparedIndex = events.indexOf(durablePrepared);
+  const payload = normalizedOwnDataRecord(normalizedOwnDataRecord(durablePrepared).payload);
+  if (payload.authorityBinding === undefined) throw authorityError();
+  const durable = normalizeDurableAuthorityBinding(payload.authorityBinding);
+  const recorded = events.filter((event) => {
+    const record = normalizedOwnDataRecord(event);
+    if (record.type !== "agent.specialist-handoff.recorded") return false;
+    const recordedPayload = normalizedOwnDataRecord(record.payload);
+    return recordedPayload.taskId === binding.taskId && recordedPayload.runId === binding.approvedRunId &&
+      recordedPayload.preparedEventId === normalizedOwnDataRecord(durablePrepared).id;
+  });
+  const historicalHighWaterIndex = events.findIndex((event) =>
+    normalizedOwnDataRecord(event).id === durable.ledgerHighWaterEventId
+  );
+  if (
+    recorded.length !== 1 ||
+    durable.workspaceIdentityHash !== current.workspaceIdentityHash ||
+    durable.ledgerStoreIdentity !== current.ledgerStoreIdentity ||
+    durable.artifactStoreIdentity !== current.artifactStoreIdentity ||
+    durable.policyHash !== current.policyHash ||
+    durable.activeLocksHash !== current.activeLocksHash ||
+    historicalHighWaterIndex < 0 || historicalHighWaterIndex >= preparedIndex
+  ) {
+    throw authorityError();
+  }
+  const replay = deriveInitialState(events, Object.freeze({
+    ...binding,
+    authorityBinding: durable
+  }));
+  if (
+    replay.phase !== "handoff-recorded" &&
+    replay.phase !== "run-terminal" &&
+    replay.phase !== "orchestration-completed" &&
+    replay.phase !== "task-status"
+  ) {
+    throw authorityError();
+  }
+  return durable;
+}
+
+function normalizeDurableAuthorityBinding(value: NormalizedJson): HandoffAuthorityBinding {
+  const record = normalizedOwnDataRecord(value);
+  const fields = [
+    "workspaceIdentityHash",
+    "mountGeneration",
+    "ledgerStoreIdentity",
+    "artifactStoreIdentity",
+    "ledgerHighWaterEventId",
+    "policyHash",
+    "activeLocksHash"
+  ] as const;
+  if (Object.getOwnPropertyNames(record).length !== fields.length ||
+    !Object.getOwnPropertyNames(record).every((field) => fields.includes(field as typeof fields[number]))) {
+    throw authorityError();
+  }
+  return Object.freeze({
+    workspaceIdentityHash: requiredHash(record.workspaceIdentityHash) as `sha256:${string}`,
+    mountGeneration: requiredText(record.mountGeneration),
+    ledgerStoreIdentity: requiredText(record.ledgerStoreIdentity),
+    artifactStoreIdentity: requiredText(record.artifactStoreIdentity),
+    ledgerHighWaterEventId: requiredEventId(record.ledgerHighWaterEventId),
+    policyHash: requiredHash(record.policyHash) as `sha256:${string}`,
+    activeLocksHash: requiredHash(record.activeLocksHash) as `sha256:${string}`
+  });
 }
 
 export async function beforeMountedHandoffAuthorityEffect(
@@ -1083,6 +1171,25 @@ function advanceDispatchPrelude(
 ): DispatchPreludeCursor | undefined {
   const record = normalizedOwnDataRecord(event);
   const payload = normalizedOwnDataRecord(record.payload);
+  if (record.type === "agent.mounted-task.execution.admitted.v1") {
+    const context = normalizedOwnDataRecord(record.context);
+    const actor = normalizedOwnDataRecord(context.actor);
+    const isCandidate = payload.taskId === binding.taskId || payload.runId === binding.approvedRunId;
+    if (!isCandidate) return undefined;
+    if (
+      (phase !== "task-created" && phase !== "task-queued") ||
+      !validateKnowledgeEvent(record).success ||
+      record.version !== 1 ||
+      record.streamId !== `agent_mounted_task_execution_${binding.taskId}_${binding.approvedRunId}` ||
+      actor.kind !== "agent" || actor.id !== "agent_default" ||
+      payload.taskId !== binding.taskId || payload.runId !== binding.approvedRunId ||
+      payload.runType !== binding.runType || payload.providerMode !== "local-fake" ||
+      predecessor === undefined || context.causationId !== predecessor
+    ) {
+      throw authorityError();
+    }
+    return Object.freeze({ ...prior });
+  }
   if (
     record.type !== "agent.task.orchestration.claimed" &&
     record.type !== "agent.task.orchestration.checkpointed"
@@ -1657,6 +1764,11 @@ function requiredText(value: unknown): string {
 
 function requiredHash(value: unknown): string {
   if (!isHash(value)) throw authorityError();
+  return value;
+}
+
+function requiredEventId(value: unknown): string {
+  if (typeof value !== "string" || !/^evt_[a-zA-Z0-9_-]+$/.test(value)) throw authorityError();
   return value;
 }
 

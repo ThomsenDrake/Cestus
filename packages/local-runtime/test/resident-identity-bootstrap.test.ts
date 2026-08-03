@@ -24,8 +24,8 @@ const now = () => "2026-07-10T13:00:00.000Z";
 const tempDirs: string[] = [];
 const handlers: LocalRuntimeHttpHandler[] = [];
 
-afterEach(() => {
-  for (const handler of handlers.splice(0)) handler.close();
+afterEach(async () => {
+  for (const handler of handlers.splice(0)) await handler.close();
   for (const dir of tempDirs.splice(0)) rmSync(dir, { recursive: true, force: true });
 });
 

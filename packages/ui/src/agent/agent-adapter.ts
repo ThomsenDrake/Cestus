@@ -1,6 +1,7 @@
 import { z } from "zod";
 import {
   agentCockpitDtoSchema as canonicalAgentCockpitDtoSchema,
+  agentSupervisionCockpitDtoSchema as canonicalAgentSupervisionCockpitDtoSchema,
   buildAgentCockpit
 } from "../../../agent/src/cockpit.js";
 import { providerReadinessDtoSchema } from "../../../agent/src/provider-readiness.js";
@@ -14,7 +15,9 @@ import type {
   AgentMemoryMutationResultDto,
   AgentRuntimeDiagnosticDto,
   AgentStatusDto,
+  AgentSupervisionCommandResultDto,
   AgentTaskCreateResultDto,
+  AgentTaskSupervisionResultDto,
   CreateAgentTaskInput,
   OntologyBootstrapRouteDto,
   RecordMemoryInput,
@@ -28,6 +31,10 @@ export interface AgentAdapter {
   loadApprovalCockpit(): Promise<AgentApprovalCockpitDto>;
   loadOntologyBootstrapRoute(runId: string): Promise<OntologyBootstrapRouteDto>;
   createTask(input: CreateAgentTaskInput): Promise<AgentTaskCreateResultDto>;
+  pauseResidentWork(): Promise<AgentSupervisionCommandResultDto>;
+  resumeResidentWork(): Promise<AgentSupervisionCommandResultDto>;
+  retryTask(taskId: string): Promise<AgentTaskSupervisionResultDto>;
+  cancelTask(taskId: string): Promise<AgentTaskSupervisionResultDto>;
   loadMemory(filters?: AgentMemoryFiltersDto): Promise<AgentMemoryListDto>;
   loadMemoryDetail(memoryId: string): Promise<AgentMemoryDetailDto>;
   recordMemory(input: RecordMemoryInput): Promise<AgentMemoryMutationResultDto>;
@@ -59,6 +66,10 @@ export interface StaticAgentAdapterOptions {
   readonly cockpit?: AgentCockpitDto;
   readonly loadOntologyBootstrapRoute?: (runId: string) => Promise<OntologyBootstrapRouteDto>;
   readonly createTask?: (input: CreateAgentTaskInput) => Promise<AgentTaskCreateResultDto>;
+  readonly pauseResidentWork?: () => Promise<AgentSupervisionCommandResultDto>;
+  readonly resumeResidentWork?: () => Promise<AgentSupervisionCommandResultDto>;
+  readonly retryTask?: (taskId: string) => Promise<AgentTaskSupervisionResultDto>;
+  readonly cancelTask?: (taskId: string) => Promise<AgentTaskSupervisionResultDto>;
   readonly approveToolRequest?: (input: ApproveToolRequestInput) => Promise<AgentApprovalDecisionResultDto>;
   readonly denyToolRequest?: (input: DenyToolRequestInput) => Promise<AgentApprovalDecisionResultDto>;
 }
@@ -760,6 +771,17 @@ const agentTaskCreateResultDtoSchema = z.object({
   eventIds: eventIdsSchema
 }).strict();
 
+const agentSupervisionCommandResultDtoSchema = z.object({
+  schemaVersion: z.literal("agent-supervision-command-result.v1"),
+  supervision: canonicalAgentSupervisionCockpitDtoSchema
+}).strict();
+
+const agentTaskSupervisionResultDtoSchema = z.object({
+  schemaVersion: z.literal("agent-task-supervision-result.v1"),
+  task: taskSchema,
+  supervision: canonicalAgentSupervisionCockpitDtoSchema.optional()
+}).strict();
+
 export function createHttpAgentAdapter(options: HttpAgentAdapterOptions = {}): AgentAdapter {
   const baseUrl = options.baseUrl ?? "";
   const credentials = options.credentials ?? "same-origin";
@@ -913,6 +935,54 @@ export function createHttpAgentAdapter(options: HttpAgentAdapterOptions = {}): A
       return readRouteDto(response, "Agent task creation", agentTaskCreateResultFromJson);
     },
 
+    async pauseResidentWork() {
+      const response = await fetchAgentRoute({
+        path: `${baseUrl}/api/agent/supervision/pause`,
+        credentials,
+        fetcher,
+        ...(options.authToken === undefined ? {} : { authToken: options.authToken }),
+        method: "POST",
+        body: {}
+      });
+      return readRouteDto(response, "Resident supervision pause", agentSupervisionCommandResultFromJson);
+    },
+
+    async resumeResidentWork() {
+      const response = await fetchAgentRoute({
+        path: `${baseUrl}/api/agent/supervision/resume`,
+        credentials,
+        fetcher,
+        ...(options.authToken === undefined ? {} : { authToken: options.authToken }),
+        method: "POST",
+        body: {}
+      });
+      return readRouteDto(response, "Resident supervision resume", agentSupervisionCommandResultFromJson);
+    },
+
+    async retryTask(taskId: string) {
+      const response = await fetchAgentRoute({
+        path: `${baseUrl}/api/agent/tasks/${encodeURIComponent(taskId)}/retry`,
+        credentials,
+        fetcher,
+        ...(options.authToken === undefined ? {} : { authToken: options.authToken }),
+        method: "POST",
+        body: {}
+      });
+      return readRouteDto(response, "Agent task retry", agentTaskSupervisionResultFromJson);
+    },
+
+    async cancelTask(taskId: string) {
+      const response = await fetchAgentRoute({
+        path: `${baseUrl}/api/agent/tasks/${encodeURIComponent(taskId)}/cancel`,
+        credentials,
+        fetcher,
+        ...(options.authToken === undefined ? {} : { authToken: options.authToken }),
+        method: "POST",
+        body: {}
+      });
+      return readRouteDto(response, "Agent task cancel", agentTaskSupervisionResultFromJson);
+    },
+
     async approveToolRequest(input: ApproveToolRequestInput) {
       const response = await fetchAgentRoute({
         path: `${baseUrl}/api/agent/approvals/${encodeURIComponent(input.toolRequestId)}/approve`,
@@ -1015,6 +1085,34 @@ export function createStaticAgentAdapter(
       throw new Error("Static agent adapter cannot create tasks.");
     },
 
+    async pauseResidentWork() {
+      if (options.pauseResidentWork !== undefined) {
+        return deepFreeze(deepClone(await options.pauseResidentWork()));
+      }
+      throw new Error("Static agent adapter cannot pause resident work.");
+    },
+
+    async resumeResidentWork() {
+      if (options.resumeResidentWork !== undefined) {
+        return deepFreeze(deepClone(await options.resumeResidentWork()));
+      }
+      throw new Error("Static agent adapter cannot resume resident work.");
+    },
+
+    async retryTask(taskId: string) {
+      if (options.retryTask !== undefined) {
+        return deepFreeze(deepClone(await options.retryTask(taskId)));
+      }
+      throw new Error("Static agent adapter cannot retry tasks.");
+    },
+
+    async cancelTask(taskId: string) {
+      if (options.cancelTask !== undefined) {
+        return deepFreeze(deepClone(await options.cancelTask(taskId)));
+      }
+      throw new Error("Static agent adapter cannot cancel tasks.");
+    },
+
     async loadMemory(filters: AgentMemoryFiltersDto = {}) {
       return deepFreeze(deepClone(filterMemoryList(storedMemoryList, filters)));
     },
@@ -1084,6 +1182,22 @@ export function agentApprovalCockpitFromJson(value: unknown): AgentApprovalCockp
 export function agentTaskCreateResultFromJson(value: unknown): AgentTaskCreateResultDto {
   return deepFreeze(
     agentTaskCreateResultDtoSchema.parse(safeAgentValue(value)) as AgentTaskCreateResultDto
+  );
+}
+
+export function agentSupervisionCommandResultFromJson(value: unknown): AgentSupervisionCommandResultDto {
+  return deepFreeze(
+    agentSupervisionCommandResultDtoSchema.parse(
+      safeAgentValueForCockpit(value)
+    ) as AgentSupervisionCommandResultDto
+  );
+}
+
+export function agentTaskSupervisionResultFromJson(value: unknown): AgentTaskSupervisionResultDto {
+  return deepFreeze(
+    agentTaskSupervisionResultDtoSchema.parse(
+      safeAgentValueForCockpit(value)
+    ) as AgentTaskSupervisionResultDto
   );
 }
 
