@@ -48,7 +48,7 @@ import type {
   WorkspaceAdmissionSnapshot
 } from "../../agent/src/wake-supervisor.js";
 import { FileBlobStore } from "../../ontology/src/blob-store.js";
-import type { AppendableKnowledgeEvent, KnowledgeEvent } from "../../ontology/src/contracts.js";
+import type { AppendableKnowledgeEvent, KnowledgeEvent, KnowledgeEventOf } from "../../ontology/src/contracts.js";
 import type { EventLedger } from "../../ontology/src/event-ledger.js";
 import { SQLiteEventLedger } from "../../ontology/src/sqlite-event-ledger.js";
 import { createPortableWorkspace } from "../../workspace/src/index.js";
@@ -345,16 +345,33 @@ describe("untrusted specialist runner", () => {
     });
     if (fixture.secondEvidenceId === undefined) throw new Error("second planner evidence is unavailable");
     const evidenceIds = [fixture.evidenceId, fixture.secondEvidenceId];
+    const invalidScopedTimeline = await runMountedAdvisoryResidentRequest(fixture, fixture.timelineTaskId, {
+      runId: fixture.timelineRunId,
+      runType: "timeline-builder",
+      investigationId: "inv_sourced_factory_001",
+      evidenceIds,
+      prrRequestId: "prr_req_extraneous"
+    });
+    expect(invalidScopedTimeline.status).toBe(400);
     const timelineResponse = await runMountedSourcedResidentRequest(fixture, {
       taskId: fixture.timelineTaskId,
       runId: fixture.timelineRunId,
       runType: "timeline-builder",
+      investigationId: "inv_sourced_factory_001",
       evidenceIds
     });
     expect(timelineResponse.status, timelineResponse.body).toBe(200);
     const timelineEnvelope = JSON.parse(timelineResponse.body) as {
-      readonly recorded: { readonly manifest: { readonly outputArtifacts: readonly { readonly artifactHash: `sha256:${string}` }[] } };
+      readonly recorded: {
+        readonly manifest: {
+          readonly investigationId?: string;
+          readonly outputArtifacts: readonly { readonly artifactHash: `sha256:${string}` }[];
+        };
+        readonly handoff: { readonly investigationId?: string };
+      };
     };
+    expect(timelineEnvelope.recorded.manifest.investigationId).toBe("inv_sourced_factory_001");
+    expect(timelineEnvelope.recorded.handoff.investigationId).toBe("inv_sourced_factory_001");
     const timelineArtifact = await readMountedSourcedOutputArtifact(
       fixture.handle,
       timelineEnvelope.recorded.manifest.outputArtifacts[0]!.artifactHash
@@ -364,12 +381,21 @@ describe("untrusted specialist runner", () => {
       taskId: fixture.contradictionTaskId,
       runId: fixture.contradictionRunId,
       runType: "contradiction-finder",
+      investigationId: "inv_sourced_factory_001",
       evidenceIds
     });
     expect(contradictionResponse.status, contradictionResponse.body).toBe(200);
     const contradictionEnvelope = JSON.parse(contradictionResponse.body) as {
-      readonly recorded: { readonly manifest: { readonly outputArtifacts: readonly { readonly artifactHash: `sha256:${string}` }[] } };
+      readonly recorded: {
+        readonly manifest: {
+          readonly investigationId?: string;
+          readonly outputArtifacts: readonly { readonly artifactHash: `sha256:${string}` }[];
+        };
+        readonly handoff: { readonly investigationId?: string };
+      };
     };
+    expect(contradictionEnvelope.recorded.manifest.investigationId).toBe("inv_sourced_factory_001");
+    expect(contradictionEnvelope.recorded.handoff.investigationId).toBe("inv_sourced_factory_001");
     const contradictionArtifact = await readMountedSourcedOutputArtifact(
       fixture.handle,
       contradictionEnvelope.recorded.manifest.outputArtifacts[0]!.artifactHash
@@ -392,12 +418,119 @@ describe("untrusted specialist runner", () => {
     const timelineIds = (timelineArtifact.items as readonly { readonly itemId: string }[]).map((item) => item.itemId);
     const contradictionIds = (contradictionArtifact.candidates as readonly { readonly candidateId: string }[])
       .map((candidate) => candidate.candidateId);
+    expect(timelineArtifact.investigationId).toBe("inv_sourced_factory_001");
+    expect(contradictionArtifact.investigationId).toBe("inv_sourced_factory_001");
+    const sourcedRunStarts = (await fixture.handle.ledger.readAll()).filter((event):
+      event is KnowledgeEventOf<"agent.specialist-run.started"> =>
+      event.type === "agent.specialist-run.started" &&
+      (event.payload.runId === fixture.timelineRunId || event.payload.runId === fixture.contradictionRunId)
+    );
+    expect(sourcedRunStarts).toHaveLength(2);
+    expect(sourcedRunStarts.every((event) => event.payload.investigationId === "inv_sourced_factory_001")).toBe(true);
     expect(timelineIds.length).toBeGreaterThan(0);
     expect(contradictionIds.length).toBeGreaterThan(0);
     expect(plan).toMatchObject({
       prioritizedGaps: [expect.objectContaining({
         timelineRefs: expect.arrayContaining(timelineIds),
         contradictionRefs: expect.arrayContaining(contradictionIds)
+      })]
+    });
+  }, mountedSourcedMultiWorkflowTimeoutMs);
+
+  it("does not relabel exact-evidence timeline or contradiction artifacts across investigations", async () => {
+    const fixture = await mountedSourcedResidentFactoryFixture({
+      canonicalDatedFacts: true,
+      secondEvidence: "conflicting-assertion",
+      contradictionIncludesSecondEvidence: true
+    });
+    if (fixture.secondEvidenceId === undefined) throw new Error("second planner evidence is unavailable");
+    const evidenceIds = [fixture.evidenceId, fixture.secondEvidenceId];
+    const timeline = await runMountedSourcedResidentRequest(fixture, {
+      taskId: fixture.timelineTaskId,
+      runId: fixture.timelineRunId,
+      runType: "timeline-builder",
+      investigationId: "inv_sourced_factory_001",
+      evidenceIds
+    });
+    expect(timeline.status, timeline.body).toBe(200);
+    fixture.advancePastLeaseExpiry();
+    const contradiction = await runMountedSourcedResidentRequest(fixture, {
+      taskId: fixture.contradictionTaskId,
+      runId: fixture.contradictionRunId,
+      runType: "contradiction-finder",
+      investigationId: "inv_sourced_factory_001",
+      evidenceIds
+    });
+    expect(contradiction.status, contradiction.body).toBe(200);
+    fixture.advancePastLeaseExpiry();
+
+    const planner = await fixture.supervision.executeSourcedInvestigation({
+      taskId: fixture.plannerTaskId,
+      runId: fixture.plannerRunId,
+      runType: "investigation-planner",
+      investigationId: "inv_sourced_factory_002"
+    }) as { readonly recorded: { readonly handoff: { readonly outputArtifacts: readonly {
+      readonly artifactKind: string;
+      readonly artifactHash: `sha256:${string}`;
+    }[] } } };
+    const planHash = planner.recorded.handoff.outputArtifacts.find((artifact) =>
+      artifact.artifactKind === "investigation-plan-artifact"
+    )?.artifactHash;
+    if (planHash === undefined) throw new Error("mounted planner artifact is unavailable");
+    const plan = await readMountedSourcedOutputArtifact(fixture.handle, planHash);
+    expect(plan).toMatchObject({
+      investigationId: "inv_sourced_factory_002",
+      prioritizedGaps: [expect.objectContaining({
+        timelineRefs: [],
+        contradictionRefs: []
+      })]
+    });
+  }, mountedSourcedMultiWorkflowTimeoutMs);
+
+  it("does not relabel legacy unscoped timeline or contradiction artifacts into a planner investigation", async () => {
+    const fixture = await mountedSourcedResidentFactoryFixture({
+      canonicalDatedFacts: true,
+      secondEvidence: "conflicting-assertion",
+      contradictionIncludesSecondEvidence: true
+    });
+    if (fixture.secondEvidenceId === undefined) throw new Error("second planner evidence is unavailable");
+    const evidenceIds = [fixture.evidenceId, fixture.secondEvidenceId];
+    const timeline = await runMountedSourcedResidentRequest(fixture, {
+      taskId: fixture.timelineTaskId,
+      runId: fixture.timelineRunId,
+      runType: "timeline-builder",
+      evidenceIds
+    });
+    expect(timeline.status, timeline.body).toBe(200);
+    fixture.advancePastLeaseExpiry();
+    const contradiction = await runMountedSourcedResidentRequest(fixture, {
+      taskId: fixture.contradictionTaskId,
+      runId: fixture.contradictionRunId,
+      runType: "contradiction-finder",
+      evidenceIds
+    });
+    expect(contradiction.status, contradiction.body).toBe(200);
+    fixture.advancePastLeaseExpiry();
+
+    const planner = await fixture.supervision.executeSourcedInvestigation({
+      taskId: fixture.plannerTaskId,
+      runId: fixture.plannerRunId,
+      runType: "investigation-planner",
+      investigationId: "inv_sourced_factory_001"
+    }) as { readonly recorded: { readonly handoff: { readonly outputArtifacts: readonly {
+      readonly artifactKind: string;
+      readonly artifactHash: `sha256:${string}`;
+    }[] } } };
+    const planHash = planner.recorded.handoff.outputArtifacts.find((artifact) =>
+      artifact.artifactKind === "investigation-plan-artifact"
+    )?.artifactHash;
+    if (planHash === undefined) throw new Error("mounted planner artifact is unavailable");
+    const plan = await readMountedSourcedOutputArtifact(fixture.handle, planHash);
+    expect(plan).toMatchObject({
+      investigationId: "inv_sourced_factory_001",
+      prioritizedGaps: [expect.objectContaining({
+        timelineRefs: [],
+        contradictionRefs: []
       })]
     });
   }, mountedSourcedMultiWorkflowTimeoutMs);
@@ -1166,7 +1299,8 @@ describe("untrusted specialist runner", () => {
           wakeRuntime,
           taskId: task.taskId,
           runId: task.runId,
-          runType: task.runType
+          runType: task.runType,
+          ...(task.investigationId === undefined ? {} : { investigationId: task.investigationId })
         });
       },
       sourcedInvestigationExecution: createMountedSourcedInvestigationExecutionPort({
@@ -1657,6 +1791,7 @@ async function runMountedSourcedResidentRequest(
     readonly taskId: string;
     readonly runId: string;
     readonly runType: "timeline-builder" | "contradiction-finder";
+    readonly investigationId?: string;
     readonly evidenceIds: readonly string[];
   }
 ) {
@@ -1667,6 +1802,7 @@ async function runMountedSourcedResidentRequest(
       body: JSON.stringify({
         runId: input.runId,
         runType: input.runType,
+        ...(input.investigationId === undefined ? {} : { investigationId: input.investigationId }),
         evidenceIds: input.evidenceIds
       })
     },
@@ -2231,7 +2367,8 @@ async function mountedSourcedResidentFactoryFixture(options: {
               wakeRuntime,
               taskId: advisory.taskId,
               runId: advisory.runId,
-              runType: advisory.runType
+              runType: advisory.runType,
+              ...(advisory.investigationId === undefined ? {} : { investigationId: advisory.investigationId })
             });
     },
     sourcedInvestigationExecution: createMountedSourcedInvestigationExecutionPort({

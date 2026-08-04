@@ -123,7 +123,8 @@ export function createLocalRuntimeHttpHandler(
         wakeRuntime,
         taskId: task.taskId,
         runId: task.runId,
-        runType: task.runType
+        runType: task.runType,
+        ...(task.investigationId === undefined ? {} : { investigationId: task.investigationId })
       });
     },
     sourcedInvestigationExecution: createMountedSourcedInvestigationExecutionPort({

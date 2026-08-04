@@ -30,7 +30,7 @@ export interface BindPortableMountedAgentHandoffInput {
   readonly approvedRunId: string;
   readonly runType: AgentSpecialistRunType;
   readonly retryGeneration: number;
-  /** Required for the investigation-planner durable-start binding. */
+  /** Required for planner runs and optional for scoped sourced-investigation runs. */
   readonly investigationId?: string;
 }
 
@@ -924,7 +924,7 @@ function advancePhase(
       || payload.runType !== binding.runType
       || payload.residentAgentId !== "agent_default"
       || payload.startedBy !== "agent_default"
-      || (binding.investigationId !== undefined && payload.investigationId !== binding.investigationId)
+      || payload.investigationId !== binding.investigationId
     ) {
       throw authorityError();
     }
@@ -1545,15 +1545,21 @@ function cursorFor(controller: MountedHandoffAuthorityController): CursorState {
 function normalizeBinding(value: BindPortableMountedAgentHandoffInput): RunBinding {
   const preliminary = ownDataRecord(value);
   const preliminaryRunType = requiredAgentSpecialistRunType(preliminary.runType);
-  const record = exactOwnDataRecord(value, preliminaryRunType === "investigation-planner"
-    ? ["taskId", "attemptId", "approvedRunId", "runType", "retryGeneration", "investigationId"]
-    : ["taskId", "attemptId", "approvedRunId", "runType", "retryGeneration"]);
+  const hasInvestigationId = Object.hasOwn(preliminary, "investigationId");
+  const permitsOptionalInvestigationId = preliminaryRunType === "timeline-builder" ||
+    preliminaryRunType === "contradiction-finder";
+  const record = exactOwnDataRecord(value,
+    preliminaryRunType === "investigation-planner" || (permitsOptionalInvestigationId && hasInvestigationId)
+      ? ["taskId", "attemptId", "approvedRunId", "runType", "retryGeneration", "investigationId"]
+      : ["taskId", "attemptId", "approvedRunId", "runType", "retryGeneration"]);
   const taskId = requiredText(record.taskId);
   const attemptId = requiredText(record.attemptId);
   const approvedRunId = requiredText(record.approvedRunId);
   const runType = requiredAgentSpecialistRunType(record.runType);
   const retryGeneration = requiredNonNegativeInteger(record.retryGeneration);
-  const investigationId = runType === "investigation-planner" ? requiredText(record.investigationId) : undefined;
+  const investigationId = runType === "investigation-planner" || (permitsOptionalInvestigationId && hasInvestigationId)
+    ? requiredText(record.investigationId)
+    : undefined;
   return Object.freeze({
     taskId,
     attemptId,

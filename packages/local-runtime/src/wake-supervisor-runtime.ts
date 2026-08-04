@@ -103,6 +103,7 @@ export interface ResidentAdmittedLocalTask {
 export type ResidentSourcedInvestigationTask = ResidentAdmittedLocalTask & (
   | {
       readonly runType: "timeline-builder" | "contradiction-finder";
+      readonly investigationId?: string;
       readonly evidenceIds: readonly string[];
     }
   | {

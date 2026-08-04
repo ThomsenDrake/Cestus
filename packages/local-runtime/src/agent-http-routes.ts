@@ -917,6 +917,7 @@ function mountedEvidenceTriageInputFromBody(value: Record<string, unknown>): {
 function mountedSourcedInvestigationInputFromBody(value: Record<string, unknown>): {
   readonly runId: string;
   readonly runType: "timeline-builder" | "contradiction-finder";
+  readonly investigationId?: string;
   readonly evidenceIds: readonly string[];
 } | {
   readonly runId: string;
@@ -933,7 +934,12 @@ function mountedSourcedInvestigationInputFromBody(value: Record<string, unknown>
     return undefined;
   }
   if (value.runType === "timeline-builder" || value.runType === "contradiction-finder") {
-    if (!hasOnlyKeys(value, ["runId", "runType", "evidenceIds"]) ||
+    const hasInvestigationId = Object.hasOwn(value, "investigationId");
+    if (!hasOnlyKeys(value, hasInvestigationId
+      ? ["runId", "runType", "investigationId", "evidenceIds"]
+      : ["runId", "runType", "evidenceIds"]) ||
+      (hasInvestigationId && (typeof value.investigationId !== "string" ||
+        !/^[a-zA-Z][a-zA-Z0-9._:-]+$/.test(value.investigationId))) ||
       !Array.isArray(value.evidenceIds) || value.evidenceIds.length === 0 ||
       value.evidenceIds.some((evidenceId) =>
         typeof evidenceId !== "string" || !/^ev_[a-zA-Z0-9_-]+$/.test(evidenceId)
@@ -943,6 +949,7 @@ function mountedSourcedInvestigationInputFromBody(value: Record<string, unknown>
     return Object.freeze({
       runId: value.runId,
       runType: value.runType,
+      ...(hasInvestigationId ? { investigationId: value.investigationId as string } : {}),
       evidenceIds: Object.freeze([...value.evidenceIds] as string[])
     });
   }
