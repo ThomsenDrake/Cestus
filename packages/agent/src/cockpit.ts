@@ -16,6 +16,7 @@ import {
   type SpecialistWorkflowRegistrySnapshot
 } from "./specialist-workflows.js";
 import type { AgentDomainToolFamily } from "./domain-execution-descriptors.js";
+import type { AgentReportPublicSafePreviewDto } from "./report-builder-workflow.js";
 import {
   parseSpecialistWorkflowHandoff,
   specialistWorkflowHandoffSchema,
@@ -137,6 +138,38 @@ export const agentCockpitContextPackDtoSchema = z.object({
   stalenessInputCount: z.number().int().nonnegative(),
   sourceEventIds: z.array(eventIdSchema).optional(),
   artifactHashes: z.array(contentHashSchema).optional()
+}).strict();
+
+export const agentCockpitReportPreviewDtoSchema = z.object({
+  schemaVersion: z.literal("agent-report-public-safe-preview.v1"),
+  mode: z.literal("preview-only"),
+  includedEvidenceRefs: z.array(secretSafeIdentifierSchema("report preview evidenceRef", /^ev_[a-zA-Z0-9_-]+$/)),
+  excludedEvidence: z.array(z.object({
+    evidenceRef: secretSafeIdentifierSchema("report preview excluded evidenceRef", /^ev_[a-zA-Z0-9_-]+$/),
+    categories: z.array(z.enum([
+      "private",
+      "source-identity",
+      "credential-risk",
+      "export-restricted",
+      "other-unsafe",
+      "quarantine",
+      "tombstoned"
+    ])).min(1),
+    approvalIds: z.array(secretSafeIdentifierSchema("report preview approvalId", /^[a-z][a-z-]+$/)).min(1)
+  }).strict()),
+  sensitiveOptInRequirements: z.array(z.object({
+    evidenceRef: secretSafeIdentifierSchema("report opt-in evidenceRef", /^ev_[a-zA-Z0-9_-]+$/),
+    category: z.enum([
+      "private",
+      "source-identity",
+      "credential-risk",
+      "export-restricted",
+      "other-unsafe",
+      "quarantine",
+      "tombstoned"
+    ]),
+    approvalId: secretSafeIdentifierSchema("report opt-in approvalId", /^[a-z][a-z-]+$/)
+  }).strict())
 }).strict();
 
 export const agentCockpitHandoffDtoSchema = specialistWorkflowHandoffSchema;
@@ -284,7 +317,8 @@ export const agentCockpitSelectedRunDtoSchema = agentCockpitRunCardDtoSchema.ext
   contextPacks: z.array(agentCockpitContextPackDtoSchema),
   planHistory: z.array(agentCockpitResidentPlanDtoSchema).default([]),
   observationHistory: z.array(agentCockpitResidentObservationDtoSchema).default([]),
-  handoff: agentCockpitHandoffDtoSchema.optional()
+  handoff: agentCockpitHandoffDtoSchema.optional(),
+  reportPreview: agentCockpitReportPreviewDtoSchema.optional()
 }).strict();
 
 export const agentCockpitMemorySnippetDtoSchema = z.object({
@@ -377,6 +411,7 @@ export type AgentCockpitNeedDto = z.infer<typeof agentCockpitNeedDtoSchema>;
 export type AgentCockpitTaskCardDto = z.infer<typeof agentCockpitTaskCardDtoSchema>;
 export type AgentCockpitModelAuditDto = z.infer<typeof agentCockpitModelAuditDtoSchema>;
 export type AgentCockpitContextPackDto = z.infer<typeof agentCockpitContextPackDtoSchema>;
+export type AgentCockpitReportPreviewDto = z.infer<typeof agentCockpitReportPreviewDtoSchema>;
 export type AgentCockpitHandoffDto = z.infer<typeof agentCockpitHandoffDtoSchema>;
 export type AgentCockpitRunCardDto = z.infer<typeof agentCockpitRunCardDtoSchema>;
 export type AgentCockpitResidentPlanDto = z.infer<typeof agentCockpitResidentPlanDtoSchema>;
@@ -396,6 +431,11 @@ export interface BuildAgentCockpitInput {
   readonly mergeAfterScheduler?: boolean;
   readonly specialistReadiness?: readonly SpecialistWorkflowReadinessDto[];
   readonly specialistHandoffs?: readonly SpecialistWorkflowHandoffDto[];
+  readonly specialistReportPreviews?: readonly {
+    readonly runId: string;
+    readonly taskId?: string;
+    readonly preview: AgentReportPublicSafePreviewDto;
+  }[];
   readonly residentPlans?: readonly AgentCockpitResidentPlanDto[];
   readonly residentObservations?: readonly AgentCockpitResidentObservationDto[];
   readonly availableSpecialistContracts?: readonly string[];
@@ -446,6 +486,7 @@ export function buildAgentCockpit(input: BuildAgentCockpitInput): AgentCockpitDt
         toolRequests,
         activeLocks,
         specialistHandoffs,
+        input.specialistReportPreviews ?? [],
         input.residentPlans ?? [],
         input.residentObservations ?? []
       );
@@ -638,6 +679,11 @@ function projectSelectedRun(
   toolRequests: AgentStatusDto["toolRequests"],
   activeLocks: readonly AgentStatusDto["locks"][number][],
   specialistHandoffs: readonly SpecialistWorkflowHandoffDto[],
+  specialistReportPreviews: readonly {
+    readonly runId: string;
+    readonly taskId?: string;
+    readonly preview: AgentReportPublicSafePreviewDto;
+  }[],
   residentPlans: readonly AgentCockpitResidentPlanDto[],
   residentObservations: readonly AgentCockpitResidentObservationDto[]
 ): AgentCockpitSelectedRunDto {
@@ -646,6 +692,11 @@ function projectSelectedRun(
   const blockedReasons = blockedReasonsForRun(run, taskForRun(run, tasks), runToolRequests, activeLocks);
   const contextPacks = uniqueContextPacks(runInvocations);
   const handoff = handoffForRun(run, specialistHandoffs);
+  const reportPreview = run.runType === "report-builder"
+    ? specialistReportPreviews.find((candidate) =>
+        candidate.runId === run.runId && candidate.taskId === run.taskId
+      )?.preview
+    : undefined;
 
   return {
     ...projectRunCard(run, tasks, modelInvocations, toolRequests, activeLocks),
@@ -677,7 +728,10 @@ function projectSelectedRun(
     observationHistory: residentObservations
       .filter((observation) => observation.runId === run.runId && observation.taskId === run.taskId)
       .toSorted((left, right) => left.recordedAt.localeCompare(right.recordedAt) || left.stepOrdinal - right.stepOrdinal),
-    ...(handoff === undefined ? {} : { handoff })
+    ...(handoff === undefined ? {} : { handoff }),
+    ...(reportPreview === undefined ? {} : {
+      reportPreview: agentCockpitReportPreviewDtoSchema.parse(reportPreview)
+    })
   };
 }
 

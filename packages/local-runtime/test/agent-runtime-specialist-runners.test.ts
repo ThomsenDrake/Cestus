@@ -237,6 +237,95 @@ describe("untrusted specialist runner", () => {
       .not.toMatch(/mounted resident sourced evidence bytes|authorization:|provider body/i);
   }, mountedSourcedMultiWorkflowTimeoutMs);
 
+  it("rebuilds the exact mounted report packet and safe cockpit preview after restart without effects", async () => {
+    const fixture = await mountedSourcedResidentFactoryFixture({ canonicalDatedFacts: true });
+    const response = await runMountedSourcedResidentRequest(fixture, {
+      taskId: fixture.reportTaskId,
+      runId: fixture.reportRunId,
+      runType: "report-builder",
+      evidenceIds: [fixture.evidenceId]
+    });
+    expect(response.status, response.body).toBe(200);
+    const completed = JSON.parse(response.body) as {
+      readonly recorded: { readonly manifest: {
+        readonly outputArtifacts: readonly { readonly artifactHash: `sha256:${string}` }[];
+      } };
+      readonly replay: { readonly selectedHandoff?: unknown };
+      readonly cockpit: { readonly selectedRun?: { readonly reportPreview?: unknown } };
+    };
+    const packetHash = completed.recorded.manifest.outputArtifacts[0]!.artifactHash;
+    const packetBefore = await readMountedSourcedOutputArtifact(fixture.handle, packetHash);
+    expect(packetBefore).toMatchObject({
+      schemaVersion: "local-report-packet.v1",
+      citationMap: [{
+        acceptedAssertionRefs: [fixture.canonicalDatedFacts!.assertionId],
+        evidenceCitations: [{ evidenceId: fixture.evidenceId }]
+      }],
+      truthBoundary: {
+        localDerivativeOnly: true,
+        exportAllowed: false,
+        publicationAllowed: false,
+        sensitiveOptInConsumed: false
+      }
+    });
+    expect(completed.cockpit.selectedRun?.reportPreview).toMatchObject({
+      schemaVersion: "agent-report-public-safe-preview.v1",
+      mode: "preview-only"
+    });
+
+    const beforeEvents = await fixture.handle.ledger.readAll();
+    expect(beforeEvents.filter((event) => [
+      "agent.model-invocation.requested",
+      "agent.model-invocation.completed",
+      "agent.model-invocation.failed",
+      "export.generated",
+      "report.generated"
+    ].includes(event.type))).toHaveLength(0);
+    await fixture.supervision.stop();
+    mountedSupervisions.splice(mountedSupervisions.indexOf(fixture.supervision), 1);
+    fixture.handle.close();
+    mountedHandles.splice(mountedHandles.indexOf(fixture.handle), 1);
+
+    const restarted = createSqlitePrrRuntime({
+      config: resolveLocalRuntimeConfig({
+        cwd: fixture.workspaceRoot,
+        env: {
+          CESTUS_LOCAL_STORAGE: "portable-workspace",
+          CESTUS_WORKSPACE_ROOT: fixture.workspaceRoot
+        }
+      }),
+      actor: { id: "actor_report_restart", kind: "system", label: "Report Restart" },
+      now: fixture.now
+    });
+    mountedHandles.push(restarted);
+    const mounted = restarted.mountedWorkspace;
+    if (mounted === undefined) throw new Error("restarted report fixture is not mounted");
+    const replayed = await buildSpecialistHandoffProjection({
+      events: await restarted.ledger.readAll(),
+      manifestReader: new FileBlobStore(join(mounted.paths.derivativeRoot, "specialist-handoff-manifest")),
+      runId: fixture.reportRunId,
+      taskId: fixture.reportTaskId
+    });
+    const packetAfter = await readMountedSourcedOutputArtifact(restarted, packetHash);
+    const cockpitResponse = await handleAgentHttpRoute({
+      request: { method: "GET", url: "/api/agent/cockpit" },
+      handle: restarted,
+      actor: { id: "actor_report_restart", kind: "system", label: "Report Restart" },
+      now: fixture.now,
+      agentRuntimeFactory: mountedResidentTaskLocalAgentRuntimeFactory
+    });
+    if (cockpitResponse === undefined) throw new Error("restarted report cockpit route was not reached");
+    const cockpit = JSON.parse(cockpitResponse.body) as {
+      readonly selectedRun?: { readonly reportPreview?: unknown };
+    };
+
+    expect(replayed.state).toBe("task-completed");
+    expect(replayed.selectedHandoff).toEqual(completed.replay.selectedHandoff);
+    expect(packetAfter).toEqual(packetBefore);
+    expect(cockpit.selectedRun?.reportPreview).toEqual(completed.cockpit.selectedRun?.reportPreview);
+    expect(JSON.stringify(cockpit)).not.toMatch(/mounted resident sourced evidence bytes|authorization:|provider body|private mailbox body/i);
+  }, mountedSourcedMultiWorkflowTimeoutMs);
+
   it("reaches planner and PRR advice through the production mounted resident HTTP caller", async () => {
     const plannerFixture = await mountedSourcedResidentFactoryFixture();
     const prrFixture = await mountedSourcedResidentFactoryFixture();
@@ -1790,7 +1879,7 @@ async function runMountedSourcedResidentRequest(
   input: {
     readonly taskId: string;
     readonly runId: string;
-    readonly runType: "timeline-builder" | "contradiction-finder";
+    readonly runType: "timeline-builder" | "contradiction-finder" | "report-builder";
     readonly investigationId?: string;
     readonly evidenceIds: readonly string[];
   }
@@ -1951,6 +2040,8 @@ async function mountedSourcedResidentFactoryFixture(options: {
   readonly timelineRunId: string;
   readonly contradictionTaskId: string;
   readonly contradictionRunId: string;
+  readonly reportTaskId: string;
+  readonly reportRunId: string;
   readonly plannerTaskId: string;
   readonly plannerRunId: string;
   readonly prrTaskId: string;
@@ -1999,7 +2090,7 @@ async function mountedSourcedResidentFactoryFixture(options: {
   const setup = createAgentRuntime({ ledger: handle.ledger, actor, now, providers: [] });
   await setup.initializeDefaultIdentity({
     workspaceId,
-    allowedRunTypes: ["timeline-builder", "contradiction-finder", "investigation-planner", "prr-negotiation"]
+    allowedRunTypes: ["timeline-builder", "contradiction-finder", "investigation-planner", "prr-negotiation", "report-builder"]
   });
   const mounted = handle.mountedWorkspace;
   if (mounted === undefined) throw new Error("sourced resident factory fixture is not mounted");
@@ -2300,6 +2391,7 @@ async function mountedSourcedResidentFactoryFixture(options: {
   }
   const timelineTaskId = "task_sourced_factory_timeline";
   const contradictionTaskId = "task_sourced_factory_contradiction";
+  const reportTaskId = "task_sourced_factory_report";
   const plannerTaskId = "task_sourced_factory_planner";
   const prrTaskId = "task_sourced_factory_prr";
   const unrelatedTimelineTaskId = secondEvidenceId === undefined
@@ -2308,6 +2400,7 @@ async function mountedSourcedResidentFactoryFixture(options: {
   for (const [taskId, title] of [
     [timelineTaskId, "Build the mounted sourced timeline"],
     [contradictionTaskId, "Find mounted sourced contradictions"],
+    [reportTaskId, "Assemble the mounted local report packet"],
     [plannerTaskId, "Plan the mounted investigation"],
     [prrTaskId, "Prepare mounted PRR advice"],
     ...(unrelatedTimelineTaskId === undefined
@@ -2345,7 +2438,7 @@ async function mountedSourcedResidentFactoryFixture(options: {
       const advisory = task as unknown as {
         readonly taskId: string;
         readonly runId: string;
-        readonly runType: "timeline-builder" | "contradiction-finder" | "investigation-planner" | "prr-negotiation";
+        readonly runType: "timeline-builder" | "contradiction-finder" | "investigation-planner" | "prr-negotiation" | "report-builder";
         readonly investigationId?: string;
       };
       return advisory.runType === "investigation-planner"
@@ -2393,6 +2486,8 @@ async function mountedSourcedResidentFactoryFixture(options: {
     timelineRunId: "run_sourced_factory_timeline",
     contradictionTaskId,
     contradictionRunId: "run_sourced_factory_contradiction",
+    reportTaskId,
+    reportRunId: "run_sourced_factory_report",
     plannerTaskId,
     plannerRunId: "run_sourced_factory_planner",
     prrTaskId,
