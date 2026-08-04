@@ -377,7 +377,7 @@ describe("MVP specialist workflow descriptors", () => {
       mutate(output: TimelineBuilderSourcedTimelineOutput) {
         output.omittedSources = [
           ...output.omittedSources,
-          { sourceRef: "ev_source_002", reason: "A duplicate omission must not be accepted." }
+          { sourceRef: "ev_source_002", reason: "A duplicate omission must not appear." }
         ];
       }
     },
@@ -622,270 +622,232 @@ describe("MVP specialist workflow descriptors", () => {
     })).toThrow(/source events.*exactly match/i);
   });
 
-  it("rejects completed reject, contest, supersede, and relink claims in contradiction narratives", async () => {
+  it.each([
+    {
+      runType: "timeline-builder" as const,
+      field: "summary" as const,
+      value: "The reviewer rejected the assertion."
+    },
+    {
+      runType: "timeline-builder" as const,
+      field: "uncertaintyNotes" as const,
+      value: "Should the reviewer contest the claim?"
+    },
+    {
+      runType: "timeline-builder" as const,
+      field: "omissionReasons" as const,
+      value: "The source superseded the assertion."
+    },
+    {
+      runType: "timeline-builder" as const,
+      field: "omittedSourceReason" as const,
+      value: "A reviewer should relink the claim after comparing sources."
+    },
+    {
+      runType: "timeline-builder" as const,
+      field: "unresolvedPrompts" as const,
+      value: "Should the assertion be accepted?"
+    },
+    {
+      runType: "timeline-builder" as const,
+      field: "omissionReasons" as const,
+      value: "The panel finalized the assertion."
+    },
+    {
+      runType: "contradiction-finder" as const,
+      field: "rationale" as const,
+      value: "A reviewer should supersede the assertion after comparing the sources."
+    },
+    {
+      runType: "contradiction-finder" as const,
+      field: "confidenceCaveat" as const,
+      value: "Was the claim rejected?"
+    },
+    {
+      runType: "contradiction-finder" as const,
+      field: "alternativeExplanations" as const,
+      value: "A reviewer may contest the assertion."
+    },
+    {
+      runType: "contradiction-finder" as const,
+      field: "requestedFollowupEvidence" as const,
+      value: "Relink the claim after obtaining the dated source."
+    }
+  ])("rejects governed $field prose for $runType before artifact storage", async ({ runType, field, value }) => {
     const store = memoryArtifactStore();
-    const output = sourcedContradictionOutput();
-    output.candidates[0] = {
-      ...output.candidates[0]!,
-      rationale: "The assertion was rejected.",
-      confidenceCaveat: "The assertion has been contested.",
-      alternativeExplanations: ["The assertion was superseded."],
-      requestedFollowupEvidence: ["The claim was relinked."]
+    let rejected = false;
+    if (runType === "timeline-builder") {
+      const output = sourcedTimelineOutput();
+      switch (field) {
+        case "summary":
+          output.timelineItems[0] = { ...output.timelineItems[0]!, summary: value };
+          break;
+        case "uncertaintyNotes":
+          output.timelineItems[0] = { ...output.timelineItems[0]!, uncertaintyNotes: [value] };
+          break;
+        case "omissionReasons":
+          output.omissionReasons = [value];
+          break;
+        case "omittedSourceReason":
+          output.omittedSources = [{ ...output.omittedSources[0]!, reason: value }];
+          break;
+        case "unresolvedPrompts":
+          output.unresolvedPrompts = [value];
+          break;
+      }
+      try {
+        await executeSourcedInvestigationWorkflow({
+          runType,
+          runId: "run_timeline_neutrality_001",
+          taskId: "task_timeline_neutrality_001",
+          ...await sourcedWorkflowAuthority({
+            runType,
+            taskId: "task_timeline_neutrality_001",
+            promptRunId: "run_timeline_neutrality_001"
+          }),
+          artifactStore: store,
+          execution: { mode: "fake", invoke: async () => output }
+        });
+      } catch (error) {
+        rejected = true;
+        expect(error).toBeInstanceOf(Error);
+      }
+    } else {
+      const output = sourcedContradictionOutput();
+      const candidate = output.candidates[0]!;
+      switch (field) {
+        case "rationale":
+          output.candidates[0] = { ...candidate, rationale: value };
+          break;
+        case "confidenceCaveat":
+          output.candidates[0] = { ...candidate, confidenceCaveat: value };
+          break;
+        case "alternativeExplanations":
+          output.candidates[0] = { ...candidate, alternativeExplanations: [value] };
+          break;
+        case "requestedFollowupEvidence":
+          output.candidates[0] = { ...candidate, requestedFollowupEvidence: [value] };
+          break;
+      }
+      try {
+        await executeSourcedInvestigationWorkflow({
+          runType,
+          runId: "run_contradiction_neutrality_001",
+          taskId: "task_contradiction_neutrality_001",
+          ...await sourcedWorkflowAuthority({
+            runType,
+            taskId: "task_contradiction_neutrality_001",
+            promptRunId: "run_contradiction_neutrality_001"
+          }),
+          artifactStore: store,
+          execution: { mode: "fake", invoke: async () => output }
+        });
+      } catch (error) {
+        rejected = true;
+        expect(error).toBeInstanceOf(Error);
+      }
+    }
+    expect({ rejected, storedArtifacts: store.putCount() }).toEqual({
+      rejected: true,
+      storedArtifacts: 0
+    });
+  });
+
+  it("accepts neutral source comparison, rationale, alternative, and follow-up prose", async () => {
+    const timelineStore = memoryArtifactStore();
+    const timelineOutput = sourcedTimelineOutput();
+    timelineOutput.timelineItems[0] = {
+      ...timelineOutput.timelineItems[0]!,
+      summary: "Source A records March while source B records April.",
+      uncertaintyNotes: ["The exact sources use different date precision."]
     };
-
-    await expect(executeSourcedInvestigationWorkflow({
-      runType: "contradiction-finder",
-      runId: "run_contradiction_forbidden_claims_001",
-      taskId: "task_contradiction_forbidden_claims_001",
+    timelineOutput.unresolvedPrompts = ["Request a source with day-level date precision."];
+    const timeline = await executeSourcedInvestigationWorkflow({
+      runType: "timeline-builder",
+      runId: "run_timeline_neutral_prose_001",
+      taskId: "task_timeline_neutral_prose_001",
       ...await sourcedWorkflowAuthority({
-        runType: "contradiction-finder",
-        taskId: "task_contradiction_forbidden_claims_001",
-        promptRunId: "run_contradiction_forbidden_claims_001"
+        runType: "timeline-builder",
+        taskId: "task_timeline_neutral_prose_001",
+        promptRunId: "run_timeline_neutral_prose_001"
       }),
-      artifactStore: store,
-      execution: { mode: "fake", invoke: async () => output }
-    })).rejects.toThrow(/authority|ontology|reject|contest|supersed|relink/i);
-    expect(store.putCount()).toBe(0);
-  });
+      artifactStore: timelineStore,
+      execution: { mode: "fake", invoke: async () => timelineOutput }
+    });
+    expect(timeline).toMatchObject({
+      artifact: { truthBoundary: { advisoryOnly: true, acceptedGraphMutationAllowed: false } }
+    });
+    expect(timeline.handoffMaterial.nextSafeActions).toEqual([
+      expect.objectContaining({ label: "Human review required", kind: "review", effect: "none" })
+    ]);
+    expect(Object.isFrozen(timeline.artifact)).toBe(true);
+    expect(Object.isFrozen(timeline.handoffMaterial.nextSafeActions[0])).toBe(true);
+    expect(timelineStore.putCount()).toBeGreaterThan(0);
 
-  it.each([
-    { field: "rationale" as const, value: "Assertion rejection has occurred." },
-    { field: "confidenceCaveat" as const, value: "Assertion contestation has occurred." },
-    { field: "alternativeExplanations" as const, value: "Assertion supersession has occurred." },
-    { field: "requestedFollowupEvidence" as const, value: "Claim relinking has occurred." },
-    { field: "rationale" as const, value: "Rejecting the assertion has occurred." },
-    { field: "confidenceCaveat" as const, value: "Contesting the assertion has occurred." },
-    { field: "alternativeExplanations" as const, value: "Superseding the assertion has occurred." },
-    { field: "requestedFollowupEvidence" as const, value: "Relinking the claim has occurred." },
-    { field: "rationale" as const, value: "Assertion rejection should be reviewed; the rejection has occurred." },
-    { field: "confidenceCaveat" as const, value: "Assertion contestation should be reviewed; the contestation has occurred." },
-    { field: "alternativeExplanations" as const, value: "Assertion supersession should be reviewed; the supersession has occurred." },
-    { field: "requestedFollowupEvidence" as const, value: "Claim relinking should be reviewed; the relinking has occurred." },
-    { field: "rationale" as const, value: "The final rejection of the assertion is documented." },
-    { field: "confidenceCaveat" as const, value: "Rejection of the assertion became final." },
-    { field: "alternativeExplanations" as const, value: "The completed contestation of the assertion is documented." },
-    { field: "rationale" as const, value: "Contestation of the assertion became effective." },
-    { field: "confidenceCaveat" as const, value: "The finalized supersession of the assertion is documented." },
-    { field: "alternativeExplanations" as const, value: "Supersession of the assertion became final." },
-    { field: "requestedFollowupEvidence" as const, value: "Relinking of the claim became effective." },
-    { field: "requestedFollowupEvidence" as const, value: "The finalized relinking of the claim is documented." },
-    { field: "rationale" as const, value: "Rejection was finalized for the assertion." },
-    { field: "confidenceCaveat" as const, value: "Contestation was recorded for the assertion." },
-    { field: "alternativeExplanations" as const, value: "Supersession was finalized for the assertion." },
-    { field: "requestedFollowupEvidence" as const, value: "Relinking was recorded for the claim." },
-    { field: "rationale" as const, value: "The assertion rejection is now final." },
-    { field: "confidenceCaveat" as const, value: "The assertion underwent rejection." },
-    { field: "alternativeExplanations" as const, value: "Supersession of the assertion is already effective." },
-    { field: "requestedFollowupEvidence" as const, value: "The claim underwent relinking." },
-    {
-      field: "rationale" as const,
-      value: "A reviewer should determine whether the assertion was rejected and it was rejected."
-    },
-    {
-      field: "rationale" as const,
-      value: "After human review, it was rejected. The assertion is final."
-    },
-    {
-      field: "rationale" as const,
-      value: "A reviewer should determine whether the assertion was rejected; records confirm it happened."
-    }
-  ])("rejects completed authority nominalization in $field", async ({ field, value }) => {
-    const store = memoryArtifactStore();
-    const output = sourcedContradictionOutput();
-    const candidate = output.candidates[0]!;
-    output.candidates[0] = field === "alternativeExplanations" || field === "requestedFollowupEvidence"
-      ? { ...candidate, [field]: [value] }
-      : { ...candidate, [field]: value };
-
-    await expect(executeSourcedInvestigationWorkflow({
-      runType: "contradiction-finder",
-      runId: "run_contradiction_forbidden_nominalizations_001",
-      taskId: "task_contradiction_forbidden_nominalizations_001",
-      ...await sourcedWorkflowAuthority({
-        runType: "contradiction-finder",
-        taskId: "task_contradiction_forbidden_nominalizations_001",
-        promptRunId: "run_contradiction_forbidden_nominalizations_001"
-      }),
-      artifactStore: store,
-      execution: { mode: "fake", invoke: async () => output }
-    })).rejects.toThrow(/authority|ontology|reject|contest|supersess|relink/i);
-    expect(store.putCount()).toBe(0);
-  });
-
-  it("permits modal requests for human review of reject, contest, supersede, and relink actions", async () => {
-    const output = sourcedContradictionOutput();
-    output.candidates[0] = {
-      ...output.candidates[0]!,
-      rationale: "A human reviewer should reject the assertion only after reviewing the exact sources. A human reviewer should determine whether the assertion was rejected. A reviewer should verify whether the assertion underwent rejection.",
-      confidenceCaveat: "A human reviewer may contest the assertion after resolving the date uncertainty. A human reviewer should verify whether assertion contestation occurred.",
-      alternativeExplanations: [
-        "A human reviewer could supersede the assertion if later evidence warrants it.",
-        "A reviewer should verify if assertion supersession occurred."
-      ],
-      requestedFollowupEvidence: [
-        "A human reviewer must decide whether to relink the claim after obtaining the source.",
-        "The reviewer may ask whether the claim was relinked.",
-        "Should a reviewer relink the claim?"
-      ]
+    const contradictionStore = memoryArtifactStore();
+    const contradictionOutput = sourcedContradictionOutput();
+    contradictionOutput.candidates[0] = {
+      ...contradictionOutput.candidates[0]!,
+      rationale: "The exact sources record different dates for the same event.",
+      confidenceCaveat: "The comparison is limited to the selected source bytes.",
+      alternativeExplanations: ["The records may describe different reporting periods."],
+      requestedFollowupEvidence: ["Request a dated source that distinguishes the reporting periods."]
     };
-
-    const result = await executeSourcedInvestigationWorkflow({
+    const contradiction = await executeSourcedInvestigationWorkflow({
       runType: "contradiction-finder",
-      runId: "run_contradiction_modal_review_001",
-      taskId: "task_contradiction_modal_review_001",
+      runId: "run_contradiction_neutral_prose_001",
+      taskId: "task_contradiction_neutral_prose_001",
       ...await sourcedWorkflowAuthority({
         runType: "contradiction-finder",
-        taskId: "task_contradiction_modal_review_001",
-        promptRunId: "run_contradiction_modal_review_001"
+        taskId: "task_contradiction_neutral_prose_001",
+        promptRunId: "run_contradiction_neutral_prose_001"
       }),
-      artifactStore: memoryArtifactStore(),
-      execution: { mode: "fake", invoke: async () => output }
+      artifactStore: contradictionStore,
+      execution: { mode: "fake", invoke: async () => contradictionOutput }
     });
-
-    expect(result.artifact).toMatchObject({ candidates: [{ requiredReviewerAction: "request-evidence" }] });
-  });
-
-  it.each([
-    "Was the assertion rejected?",
-    "Could the assertion be contested?",
-    "Is the assertion final?",
-    "A reviewer should determine whether the assertion was superseded."
-  ])("permits the pure advisory authority inquiry: %s", async (rationale) => {
-    const output = sourcedContradictionOutput();
-    output.candidates[0] = { ...output.candidates[0]!, rationale };
-
-    await expect(executeSourcedInvestigationWorkflow({
-      runType: "contradiction-finder",
-      runId: "run_contradiction_pure_inquiry_001",
-      taskId: "task_contradiction_pure_inquiry_001",
-      ...await sourcedWorkflowAuthority({
-        runType: "contradiction-finder",
-        taskId: "task_contradiction_pure_inquiry_001",
-        promptRunId: "run_contradiction_pure_inquiry_001"
-      }),
-      artifactStore: memoryArtifactStore(),
-      execution: { mode: "fake", invoke: async () => output }
-    })).resolves.toMatchObject({
-      artifact: { candidates: [{ requiredReviewerAction: "request-evidence" }] }
+    expect(contradiction).toMatchObject({
+      artifact: {
+        truthBoundary: {
+          advisoryOnly: true,
+          canRejectAssertion: false,
+          canContestAssertion: false,
+          canSupersedeAssertion: false,
+          canRelinkClaim: false,
+          acceptedGraphMutationAllowed: false
+        },
+        candidates: [{ requiredReviewerAction: "request-evidence" }]
+      }
     });
-  });
-
-  it.each([
-    {
-      label: "mixed rejection inquiry confirmed by a record",
-      outcome: "reject" as const,
-      value: "A reviewer should determine whether the assertion was rejected because the record confirms that outcome."
-    },
-    {
-      label: "mixed contestation advice followed by an established result",
-      outcome: "reject" as const,
-      value: "A reviewer may ask whether the assertion was contested, but the file establishes that result."
-    },
-    {
-      label: "mixed supersession inquiry contradicted by a completed docket statement",
-      outcome: "reject" as const,
-      value: "A reviewer should decide whether the claim was superseded even though the docket says this already happened."
-    },
-    {
-      label: "mixed relinking advice with an anaphoric completion tail",
-      outcome: "reject" as const,
-      value: "A reviewer should consider whether to relink the claim since the audit log shows the change already occurred."
-    },
-    {
-      label: "mixed finality question with a confirmed status",
-      outcome: "reject" as const,
-      value: "Could the assertion be final, although the signed order confirms that status?"
-    },
-    {
-      label: "mixed effectiveness inquiry with a settled outcome",
-      outcome: "reject" as const,
-      value: "A reviewer should assess whether the assertion is effective while the docket records the outcome as settled."
-    },
-    {
-      label: "pure rejection or contestation question",
-      outcome: "allow" as const,
-      value: "Should the assertion be rejected or contested?"
-    },
-    {
-      label: "pure supersession or relinking question",
-      outcome: "allow" as const,
-      value: "Could the claim be superseded or relinked?"
-    },
-    {
-      label: "pure finality or effectiveness question",
-      outcome: "allow" as const,
-      value: "Is the assertion final or effective?"
-    },
-    {
-      label: "pure reviewer advice with three candidate assertion actions",
-      outcome: "allow" as const,
-      value: "Should a reviewer decide whether to reject, contest, or supersede the assertion?"
-    },
-    {
-      label: "pure reviewer advice spanning relinking and finality",
-      outcome: "allow" as const,
-      value: "May a human reviewer ask whether to relink the claim or mark the assertion final?"
-    },
-    {
-      label: "pure reviewer inquiry spanning relinking and effectiveness",
-      outcome: "allow" as const,
-      value: "Could a reviewer determine whether the claim should be relinked and whether the assertion is effective?"
-    },
-    {
-      label: "plain completed rejection",
-      outcome: "reject" as const,
-      value: "The assertion was rejected after review."
-    },
-    {
-      label: "plain nominal contestation",
-      outcome: "reject" as const,
-      value: "Assertion contestation has occurred."
-    },
-    {
-      label: "plain completed supersession",
-      outcome: "reject" as const,
-      value: "The assertion was superseded by the later entry."
-    },
-    {
-      label: "plain completed relinking",
-      outcome: "reject" as const,
-      value: "Relinking of the claim is complete."
-    },
-    {
-      label: "plain assertion finality",
-      outcome: "reject" as const,
-      value: "The assertion is final."
-    },
-    {
-      label: "plain assertion effectiveness",
-      outcome: "reject" as const,
-      value: "The assertion became effective."
+    const replayedArtifact = JSON.parse(contradiction.artifactBytes.toString("utf8")) as {
+      readonly truthBoundary: Readonly<Record<string, boolean>>;
+      readonly candidates: readonly { readonly requiredReviewerAction: string }[];
+    };
+    expect(replayedArtifact).toMatchObject({
+      truthBoundary: {
+        advisoryOnly: true,
+        canRejectAssertion: false,
+        canContestAssertion: false,
+        canSupersedeAssertion: false,
+        canRelinkClaim: false,
+        acceptedGraphMutationAllowed: false,
+        publicationAllowed: false
+      },
+      candidates: [{ requiredReviewerAction: "request-evidence" }]
+    });
+    const replayedHandoff = parseSpecialistHandoffMaterial(JSON.parse(
+      contradiction.handoffMaterialBytes.toString("utf8")
+    ));
+    expect(replayedHandoff.nextSafeActions).toEqual([
+      expect.objectContaining({ label: "Human review required", kind: "review", effect: "none" })
+    ]);
+    expect(replayedHandoff.outputArtifacts[0]?.artifactHash).toBe(contradiction.artifactHash);
+    expect(Object.isFrozen(contradiction.artifact)).toBe(true);
+    if (contradiction.artifact.schemaVersion !== "contradiction-candidate-dossier.v1") {
+      throw new Error("Expected contradiction candidate dossier artifact.");
     }
-  ])("classifies $label without granting authority", async ({ outcome, value }) => {
-    const store = memoryArtifactStore();
-    const output = sourcedContradictionOutput();
-    output.candidates[0] = { ...output.candidates[0]!, rationale: value };
-    const execution = executeSourcedInvestigationWorkflow({
-      runType: "contradiction-finder",
-      runId: "run_contradiction_authority_matrix_001",
-      taskId: "task_contradiction_authority_matrix_001",
-      ...await sourcedWorkflowAuthority({
-        runType: "contradiction-finder",
-        taskId: "task_contradiction_authority_matrix_001",
-        promptRunId: "run_contradiction_authority_matrix_001"
-      }),
-      artifactStore: store,
-      execution: { mode: "fake", invoke: async () => output }
-    });
-
-    if (outcome === "allow") {
-      await expect(execution).resolves.toMatchObject({
-        artifact: { candidates: [{ requiredReviewerAction: "request-evidence" }] }
-      });
-      return;
-    }
-    await expect(execution).rejects.toThrow(/authority|ontology|reject|contest|supersed|relink|final|effective/i);
-    expect(store.putCount()).toBe(0);
+    expect(Object.isFrozen(contradiction.artifact.candidates[0])).toBe(true);
+    expect(Object.isFrozen(contradiction.handoffMaterial.nextSafeActions[0])).toBe(true);
+    expect(contradictionStore.putCount()).toBeGreaterThan(0);
   });
 
   it.each([

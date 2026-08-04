@@ -38,16 +38,6 @@ const hasDirectOrFirstPersonSubjectAction = (value: string, subject: RegExp, act
   hasDirectSubjectAction(value, subject, action) ||
   new RegExp(`\\b(?:i|we)\\s+(?:${action.source})\\s+(?:(?:the|a|an|this|that|one|two|three|several|multiple|\\d+)\\s+)?(?:${subject.source})`, action.flags).test(value);
 
-const isFullHumanReviewActionInquiry = (value: string, subject: RegExp, action: RegExp) =>
-  new RegExp(
-    `^\\s*(?:(?:a|the)\\s+)?(?:human\\s+)?reviewer\\s+` +
-    `(?:should|must|may|might|can|could|would|will)\\s+` +
-    `(?:determine|ask|decide|consider|review|verify|check)\\s+(?:whether|if)\\s+` +
-    `(?:(?:a|an|the)\\s+)?(?:${subject.source})\\s+` +
-    `(?:(?:is|are|was|were|has been|have been|had been)\\s+)?(?:${action.source})\\s*$`,
-    action.flags
-  ).test(value);
-
 const hasAuthorityEffectUnlessInstruction = (
   value: string,
   subject: RegExp,
@@ -57,84 +47,13 @@ const hasAuthorityEffectUnlessInstruction = (
   const instructionModal = /\b(?:should|must|may|might|can|could|would|will)\b/;
   const clauses = value.split(/[,;.!?]+/);
 
-  return clauses.some((clause, index) => {
-    if (isFullHumanReviewActionInquiry(clause, subject, action)) return false;
-    return hasCompletedPassiveAction(clause, subject, action) ||
-      (index > 0 && subject.test(clauses[index - 1]!) && hasPronounCompletedPassiveAction(clause, action)) ||
-      (actionMatcher(clause, subject, completionTerm) && !hasInstructionBeforeAction(clause, instructionModal, completionTerm)) ||
-      (actionMatcher(clause, subject, action) && !hasInstructionBeforeAction(clause, instructionModal, action));
-  });
-};
-
-const assertionOrClaimSubject = /\b(?:assertions?|claims?)\b/;
-const assertionOrClaimEffect = /\b(?:accept(?:ed|ing|ance)?|reject(?:ed|ing|ion)?|contest(?:ed|ing|ation)?|supersed(?:e|ed|ing)|supersession|relink(?:ed|ing)?|final(?:ize[ds]?|izing|ization|ity)?|effective(?:ness)?)\b/;
-
-const authoritySubjectGrammar = "(?:(?:a|an|the|this|that)\\s+)?(?:assertions?|claims?)";
-const authorityStateGrammar = "(?:accepted|rejected|contested|superseded|relinked|final|finalized|effective)";
-const authorityActionGrammar = "(?:accept|reject|contest|supersede|relink|finalize)";
-const authorityNominalGrammar = "(?:acceptance|rejection|contestation|supersession|relinking|finality|effectiveness)";
-const authorityAnaphoricSubjectGrammar = "(?:it|this|that|they|these|those)";
-const authorityInquirySubjectGrammar = `(?:${authoritySubjectGrammar}|${authorityAnaphoricSubjectGrammar})`;
-const authorityReviewerGrammar = "(?:(?:a|the)\\s+)?(?:human\\s+)?reviewer";
-const authorityModalGrammar = "(?:should|must|may|might|can|could|would|will)";
-const authorityReviewVerbGrammar = "(?:determine|ask|decide|consider|review|verify|check|assess)";
-const authorityList = (item: string) =>
-  `${item}(?:\\s*,\\s*${item})*(?:\\s*,?\\s+(?:and|or)\\s+${item})?`;
-const authorityStateListGrammar = authorityList(authorityStateGrammar);
-const authorityActionListGrammar = authorityList(authorityActionGrammar);
-const authorityNominalListGrammar = authorityList(authorityNominalGrammar);
-const authorityActionUnitGrammar = `(?:${authorityActionGrammar}\\s+${authoritySubjectGrammar}|mark\\s+${authoritySubjectGrammar}\\s+${authorityStateListGrammar})`;
-const authorityActionExpressionGrammar = `(?:${authorityActionListGrammar}\\s+${authoritySubjectGrammar}|${authorityActionUnitGrammar}(?:\\s+(?:and|or)\\s+${authorityActionUnitGrammar})*)`;
-const authoritySubjectPredicateGrammar =
-  `(?:${authorityInquirySubjectGrammar}\\s+(?:(?:is|are|was|were|has been|have been|had been|${authorityModalGrammar}\\s+be)\\s+${authorityStateListGrammar}|` +
-  `(?:undergo|undergoes|underwent|undergone)\\s+${authorityNominalListGrammar}|${authorityNominalListGrammar}\\s+(?:occur|occurs|occurred)))`;
-const authorityInquiryPropositionGrammar = `(?:to\\s+${authorityActionExpressionGrammar}|${authoritySubjectPredicateGrammar})`;
-const authorityReviewInquiryGrammar =
-  `${authorityReviewVerbGrammar}\\s+(?:whether|if)\\s+${authorityInquiryPropositionGrammar}` +
-  `(?:\\s+(?:and|or)\\s+(?:whether|if)\\s+${authorityInquiryPropositionGrammar})*`;
-const authorityAdvisoryTailGrammar =
-  `(?:\\s+(?:(?:only\\s+)?after\\s+(?:[a-z]+ing\\s+(?:a|an|the)\\s+[a-z0-9]+(?:\\s+[a-z0-9]+){0,5}|(?:human\\s+)?review)|` +
-  `if\\s+(?:later|additional|new)\\s+evidence\\s+(?:warrants|supports|requires|justifies)\\s+(?:it|review|the\\s+action)))?`;
-const authorityReviewerBodyGrammar = `(?:${authorityReviewInquiryGrammar}|${authorityActionExpressionGrammar})${authorityAdvisoryTailGrammar}`;
-const assertionOrClaimNominalEffect = new RegExp(`\\b${authorityNominalGrammar}\\b`);
-const assertionOrClaimAnaphoricEffect = new RegExp(
-  `\\b${authorityAnaphoricSubjectGrammar}\\s+(?:(?:is|are|was|were|has been|have been|had been)\\s+${authorityStateGrammar}|became\\s+(?:final|effective))\\b`
-);
-
-const isCompletePureAuthoritySegment = (value: string): boolean => {
-  const segment = value.trim();
-  if (segment.length === 0) return false;
-  const terminator = /[;.!?]$/.exec(segment)?.[0] ?? "";
-  const body = terminator.length === 0 ? segment : segment.slice(0, -1).trimEnd();
-  const directQuestion = new RegExp(
-    `^(?:(?:is|are|was|were)\\s+${authorityInquirySubjectGrammar}\\s+${authorityStateListGrammar}|` +
-    `${authorityModalGrammar}\\s+${authorityInquirySubjectGrammar}\\s+be\\s+${authorityStateListGrammar}|` +
-    `(?:has|have|had)\\s+${authorityInquirySubjectGrammar}\\s+been\\s+${authorityStateListGrammar})$`
+  return clauses.some((clause, index) =>
+    hasCompletedPassiveAction(clause, subject, action) ||
+    (index > 0 && subject.test(clauses[index - 1]!) && hasPronounCompletedPassiveAction(clause, action)) ||
+    (actionMatcher(clause, subject, completionTerm) && !hasInstructionBeforeAction(clause, instructionModal, completionTerm)) ||
+    (actionMatcher(clause, subject, action) && !hasInstructionBeforeAction(clause, instructionModal, action))
   );
-  if (terminator === "?" && directQuestion.test(body)) return true;
-
-  const reviewerLed = new RegExp(
-    `^${authorityReviewerGrammar}\\s+${authorityModalGrammar}\\s+${authorityReviewerBodyGrammar}$`
-  );
-  if (reviewerLed.test(body)) return true;
-
-  const modalLed = new RegExp(
-    `^${authorityModalGrammar}\\s+${authorityReviewerGrammar}\\s+${authorityReviewerBodyGrammar}$`
-  );
-  return terminator === "?" && modalLed.test(body);
 };
-
-const isCompletePureAssertionOrClaimAuthorityValue = (value: string): boolean => {
-  const segments = value.match(/[^;.!?]+[;.!?]?/g);
-  return segments !== null && segments.length > 0 && segments.every(isCompletePureAuthoritySegment);
-};
-
-const hasAssertionOrClaimAuthorityEffect = (value: string): boolean => {
-  const hasExplicitEffect = assertionOrClaimSubject.test(value) && assertionOrClaimEffect.test(value);
-  const hasImplicitEffect = assertionOrClaimNominalEffect.test(value) || assertionOrClaimAnaphoricEffect.test(value);
-  return (hasExplicitEffect || hasImplicitEffect) && !isCompletePureAssertionOrClaimAuthorityValue(value);
-};
-
 const hasCompletedPrrEffect = (value: string) =>
   hasSubjectAction(
     value,
@@ -157,8 +76,7 @@ const hasAuthorityClaim = (value: string) => {
     hasAuthorityEffectUnlessInstruction(normalized, /\b(?:portal|sites?)\b/, /\b(?:crawled|scraped)\b/, hasDirectOrFirstPersonSubjectAction) ||
     hasAuthorityEffectUnlessInstruction(normalized, /\b(?:report|packet|publication|export|evidence)\b/, /\b(?:exported|published)\b/, hasDirectOrFirstPersonSubjectAction) ||
     hasAuthorityEffectUnlessInstruction(normalized, /\b(?:repair|remediation)\b/, /\b(?:performed|executed|ran successfully)\b/) ||
-    hasAuthorityEffectUnlessInstruction(normalized, /\b(?:graph|ontology|relationship)\b/, /\baccepted\b/) ||
-    hasAssertionOrClaimAuthorityEffect(normalized) ||
+    hasAuthorityEffectUnlessInstruction(normalized, /\b(?:graph|ontology|assertion|relationship)\b/, /\baccepted\b/) ||
     hasAuthorityEffectUnlessInstruction(normalized, /\b(?:entity|entities|relationship)\b/, /\b(?:resolved|accepted)\b/) ||
     hasAuthorityEffectUnlessInstruction(normalized, /\b(?:legal|export|governance )?lock\b/, /\bcleared\b/)
   );
@@ -195,6 +113,15 @@ const safeText = (label: string) => z.string().min(1).max(2_000).superRefine((va
   }
 });
 const shortSafeText = (label: string) => safeText(label).max(500);
+const sourcedNarrativeGovernedMorphology = /\b(?:accept(?:s|ed|ing)?|acceptance|reject(?:s|ed|ing)?|rejection|contest(?:s|ed|ing)?|contestation|supersed(?:e|es|ed|ing)|supersession|re[\s-]?link(?:s|ed|ing)?|finaliz(?:e|es|ed|ing)|finalization)\b/i;
+const sourcedNarrativeText = (label: string) => shortSafeText(label).superRefine((value, ctx) => {
+  if (sourcedNarrativeGovernedMorphology.test(value.normalize("NFKC"))) {
+    ctx.addIssue({
+      code: "custom",
+      message: `${label} must remain source-descriptive and use typed reviewer action fields instead of governed authority morphology`
+    });
+  }
+});
 const id = (prefix: string) => safeText(`${prefix} identifier`).regex(new RegExp(`^${prefix}[a-zA-Z0-9_-]+$`));
 const canonicalReferencePattern = /^(?:sha256:[a-f0-9]{64}|(?=[a-zA-Z0-9._:-]{3,200}$)(?=[a-zA-Z0-9._:-]*[_:.])[a-zA-Z][a-zA-Z0-9._:-]*)$/;
 const ref = safeText("provider output reference").max(200).superRefine((value, ctx) => {
@@ -255,9 +182,9 @@ const timelineBuilderSourcedTimelineOutputSchema = z.object({
   timelineItems: z.array(z.object({
     itemId: id("timeline_"), date: normalizedDate.optional(), dateRange: z.object({ start: normalizedDate, end: normalizedDate }).strict().optional(),
     precision: z.enum(["year", "month", "day", "range", "unknown"]), evidenceRefs: z.array(ref).max(24), assertionRefs: z.array(ref).max(24), prrEventRefs: z.array(ref).max(24),
-    contentHashRefs: z.array(hash).min(1).max(24), summary: shortSafeText("timeline item summary"),
+    contentHashRefs: z.array(hash).min(1).max(24), summary: sourcedNarrativeText("timeline item summary"),
     uncertaintyCategories: z.array(z.enum(["date-uncertain", "source-conflict", "incomplete-source", "inference-required"])).max(8),
-    uncertaintyNotes: z.array(shortSafeText("timeline uncertainty note")).max(12),
+    uncertaintyNotes: z.array(sourcedNarrativeText("timeline uncertainty note")).max(12),
     uncertaintySourceRefs: z.array(ref).max(24)
   }).strict().superRefine((value, ctx) => {
     if ((value.date === undefined) === (value.dateRange === undefined)) {
@@ -279,18 +206,18 @@ const timelineBuilderSourcedTimelineOutputSchema = z.object({
       ctx.addIssue({ code: "custom", message: "timeline uncertainty requires notes and exact source refs" });
     }
   })).max(100),
-  omissionReasons: z.array(shortSafeText("timeline omission reason")).max(24),
-  omittedSources: z.array(z.object({ sourceRef: ref, reason: shortSafeText("timeline omitted-source reason") }).strict()).max(24),
-  unresolvedPrompts: z.array(shortSafeText("timeline unresolved prompt")).max(24)
+  omissionReasons: z.array(sourcedNarrativeText("timeline omission reason")).max(24),
+  omittedSources: z.array(z.object({ sourceRef: ref, reason: sourcedNarrativeText("timeline omitted-source reason") }).strict()).max(24),
+  unresolvedPrompts: z.array(sourcedNarrativeText("timeline unresolved prompt")).max(24)
 }).strict();
 
 const contradictionFinderCandidatesOutputSchema = z.object({
   candidates: z.array(z.object({
     candidateId: id("contradiction_"), comparedSourceRefs: z.array(ref).min(2).max(24), evidenceIds: z.array(id("ev_")).max(24), evidenceContentHashes: z.array(hash).max(24), assertionIds: z.array(ref).max(24), timelineItemIds: z.array(id("timeline_")).max(24),
     prrEventRefs: z.array(ref).max(24), category: z.enum(["direct-conflict", "timeline-conflict", "attribution-conflict", "quantitative-conflict", "scope-conflict"]),
-    confidence: z.number().min(0).max(1), confidenceCaveat: shortSafeText("contradiction confidence caveat"), rationale: shortSafeText("contradiction rationale"),
-    uncertaintyRefs: z.array(ref).max(24), alternativeExplanations: z.array(shortSafeText("alternative explanation")).min(1).max(12),
-    requestedFollowupEvidence: z.array(shortSafeText("requested follow-up evidence")).min(1).max(24),
+    confidence: z.number().min(0).max(1), confidenceCaveat: sourcedNarrativeText("contradiction confidence caveat"), rationale: sourcedNarrativeText("contradiction rationale"),
+    uncertaintyRefs: z.array(ref).max(24), alternativeExplanations: z.array(sourcedNarrativeText("alternative explanation")).min(1).max(12),
+    requestedFollowupEvidence: z.array(sourcedNarrativeText("requested follow-up evidence")).min(1).max(24),
     requiredReviewerAction: z.enum(["review", "request-evidence", "request-claim-link-review"])
   }).strict().superRefine((value, ctx) => {
     if (new Set(value.comparedSourceRefs).size < 2) {

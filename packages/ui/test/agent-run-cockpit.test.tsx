@@ -156,6 +156,7 @@ describe("AgentRunCockpit", () => {
         ? "timeline-artifact | timeline-builder-handoff.v1"
         : "contradiction-candidate-dossier | contradiction-finder-handoff.v1"
       )).toBeInTheDocument();
+      expect(within(region).getByText("Human review required")).toBeInTheDocument();
       expect(within(region).getAllByText("evidence-summary.v1").length).toBeGreaterThan(0);
       expect(within(region).getByText(timeline
         ? "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
@@ -231,7 +232,7 @@ function sourcedSelectedRunCockpit(runType: "timeline-builder" | "contradiction-
       approvalRequirements: [],
       nextSafeActions: [{
         actionId: `action_${runId}_review`,
-        label: timeline ? "Review the sourced timeline" : "Review the contradiction candidates",
+        label: "Human review required",
         kind: "review",
         effect: "none",
         artifactId
