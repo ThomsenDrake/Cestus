@@ -173,6 +173,29 @@ describe("checkTailnetPreviewReadiness", () => {
     );
   });
 
+  it("rejects a scoped IPv6 injected tailnet host before static-file observation", () => {
+    const cwd = tempDir();
+    const exactConfig = resolveLocalRuntimeConfig({ cwd, env: previewEnv(cwd) });
+    const config = {
+      ...exactConfig,
+      http: {
+        ...exactConfig.http,
+        host: "fd7a:115c:a1e0::1%tailscale0"
+      }
+    };
+
+    expect(() =>
+      checkTailnetPreviewReadiness({
+        config,
+        stat: () => {
+          throw new Error("static file observation must not occur before scoped IPv6 rejection");
+        }
+      })
+    ).toThrow(
+      "Tailnet local runtime host must be an explicit address in the Tailscale IPv4 or IPv6 ranges"
+    );
+  });
+
   it.each([
     { authRequired: false, authToken: "test-only-token" },
     { authRequired: true, authToken: undefined },
