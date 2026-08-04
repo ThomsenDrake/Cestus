@@ -17,6 +17,10 @@ import {
   type ExecuteSourcedInvestigationWorkflowInput
 } from "../../agent/src/sourced-investigation-workflows.js";
 import {
+  executeLocalReportBuilderWorkflow,
+  type ExecuteLocalReportBuilderWorkflowInput
+} from "../../agent/src/report-builder-workflow.js";
+import {
   runInvestigationPlannerWorkflow,
   type RunInvestigationPlannerWorkflowInput,
   type RunInvestigationPlannerWorkflowResult
@@ -217,6 +221,11 @@ export interface SourcedInvestigationRunnerResolution extends Omit<
   "runType" | "runId" | "taskId" | "promptRunId"
 > {}
 
+export interface ReportBuilderRunnerResolution extends Omit<
+  ExecuteLocalReportBuilderWorkflowInput,
+  "runId" | "taskId"
+> {}
+
 export interface ConsumeMountedSourcedInvestigationDispatchInput {
   readonly runner: UntrustedSpecialistRunner;
   readonly dispatch: TaskOrchestratorRunnerDispatchInput;
@@ -240,7 +249,8 @@ export interface ConsumeMountedSourcedInvestigationDispatchInput {
 export async function consumeMountedSourcedInvestigationDispatch(
   input: ConsumeMountedSourcedInvestigationDispatchInput
 ) {
-  if (input.dispatch.runType !== "timeline-builder" && input.dispatch.runType !== "contradiction-finder") {
+  if (input.dispatch.runType !== "timeline-builder" && input.dispatch.runType !== "contradiction-finder" &&
+    input.dispatch.runType !== "report-builder") {
     throw preparationError();
   }
 
@@ -355,6 +365,48 @@ export function createSourcedInvestigationSpecialistRunner(input: {
         runId: dispatch.approvedRunId,
         taskId: dispatch.taskId,
         promptRunId: dispatch.attemptId
+      });
+      const unsigned = Object.freeze({
+        schemaVersion: "agent-specialist-handoff-preparation.v1" as const,
+        taskId: dispatch.taskId,
+        attemptId: dispatch.attemptId,
+        approvedRunId: dispatch.approvedRunId,
+        runType: dispatch.runType,
+        handoffMaterial: result.handoffMaterial,
+        handoffMaterialHash: hashSpecialistHandoffMaterial(result.handoffMaterial)
+      });
+      return Object.freeze({
+        ...unsigned,
+        preparationHash: hashUntrustedSpecialistHandoffPreparation(unsigned)
+      });
+    }
+  });
+}
+
+/**
+ * Composes deterministic local report assembly into the same non-authoritative
+ * preparation boundary. It invokes no model or provider and owns no durable
+ * handoff authority.
+ */
+export function createReportBuilderSpecialistRunner(input: {
+  readonly resolve: (
+    dispatch: TaskOrchestratorRunnerDispatchInput
+  ) => Promise<ReportBuilderRunnerResolution> | ReportBuilderRunnerResolution;
+}): UntrustedSpecialistRunner {
+  const constructor = exactOwnDataObject(input, ["resolve"]);
+  if (typeof constructor.resolve !== "function") throw preparationError();
+  const resolve = constructor.resolve as (
+    dispatch: TaskOrchestratorRunnerDispatchInput
+  ) => Promise<ReportBuilderRunnerResolution> | ReportBuilderRunnerResolution;
+
+  return createUntrustedSpecialistRunner({
+    async delegate(dispatch) {
+      if (dispatch.runType !== "report-builder") throw preparationError();
+      const resolved = await resolve(dispatch);
+      const result = await executeLocalReportBuilderWorkflow({
+        ...resolved,
+        runId: dispatch.approvedRunId,
+        taskId: dispatch.taskId
       });
       const unsigned = Object.freeze({
         schemaVersion: "agent-specialist-handoff-preparation.v1" as const,

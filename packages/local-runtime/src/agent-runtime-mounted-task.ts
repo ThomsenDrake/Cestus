@@ -32,6 +32,8 @@ import {
   serializePromptArtifactEnvelope,
   serializeContextPackPayload,
   parseAuthorityBoundSpecialistHandoffManifest,
+  assembleLocalReportPacket,
+  publicSafeReportPreviewFromPacket,
   verifyAuthorityBoundSpecialistHandoffManifest,
   type AgentToolPreview,
   type AgentContextPackJsonValue,
@@ -97,6 +99,7 @@ import {
   consumeMountedSourcedInvestigationDispatch,
   createMountedInvestigationPlannerSpecialistRunner,
   createMountedPrrNegotiationSpecialistRunner,
+  createReportBuilderSpecialistRunner,
   createSourcedInvestigationSpecialistRunner,
   type UntrustedSpecialistRunner
 } from "./agent-runtime-specialist-runners.js";
@@ -719,7 +722,7 @@ interface MountedTaskHandoffAuthority {
   stop(): Promise<void>;
 }
 
-export type MountedSourcedInvestigationRunType = "timeline-builder" | "contradiction-finder";
+export type MountedSourcedInvestigationRunType = "timeline-builder" | "contradiction-finder" | "report-builder";
 export type MountedAdvisoryRunType = "investigation-planner" | "prr-negotiation";
 type MountedResidentSpecialistRunType = MountedSourcedInvestigationRunType | MountedAdvisoryRunType;
 
@@ -842,7 +845,8 @@ async function runMountedSourcedInvestigationTaskInternal(
     readonly handoff: FactoryPortableMountedAgentHandoffProducerResultV1;
   }
 ) {
-  if ((input.runType !== "timeline-builder" && input.runType !== "contradiction-finder") ||
+  if ((input.runType !== "timeline-builder" && input.runType !== "contradiction-finder" &&
+      input.runType !== "report-builder") ||
     !/^task_[a-zA-Z0-9_-]+$/.test(input.taskId) || !/^run_[a-zA-Z0-9_-]+$/.test(input.runId) ||
     (input.investigationId !== undefined && !/^[a-zA-Z][a-zA-Z0-9._:-]+$/.test(input.investigationId))) {
     throw new MountedResidentTaskError(400, "Mounted sourced investigation identity is invalid.", [
@@ -925,6 +929,11 @@ async function runMountedSourcedInvestigationTaskInternal(
     const contextEvents = Object.freeze(await input.handle.ledger.readAll());
     const timelineDraft = input.runType === "contradiction-finder"
       ? await readMountedTimelineDraftContext(authority, contextEvents, evidence, input.investigationId)
+      : input.runType === "report-builder"
+        ? await readOptionalMountedTimelineDraftContext(authority, contextEvents, evidence, input.investigationId)
+        : undefined;
+    const contradictionDraft = input.runType === "report-builder"
+      ? await readOptionalMountedContradictionDraftContext(authority, contextEvents, evidence, input.investigationId)
       : undefined;
     const associatedPrrRequestId = exactAssociatedPrrRequestId(contextEvents, evidence);
     const contextRegistry = createMountedSourcedInvestigationContextRegistry({
@@ -936,7 +945,8 @@ async function runMountedSourcedInvestigationTaskInternal(
       events: contextEvents,
       now: operationNow,
       ...(associatedPrrRequestId === undefined ? {} : { associatedPrrRequestId }),
-      ...(timelineDraft === undefined ? {} : { timelineDraft })
+      ...(timelineDraft === undefined ? {} : { timelineDraft }),
+      ...(contradictionDraft === undefined ? {} : { contradictionDraft })
     });
     const scope = associatedPrrRequestId === undefined
       ? Object.freeze({ kind: "task" as const, refs: Object.freeze([input.taskId]) })
@@ -1026,33 +1036,89 @@ async function runMountedSourcedInvestigationTaskInternal(
         "timeline source"
       );
     }
-    await seedContextProvenanceArtifacts(materialStore, contextPacks, contextEvents);
-    const localOutput = groundedMountedSourcedInvestigationOutput({
-      runType: input.runType,
-      evidence,
-      events: contextEvents,
-      contextPacks,
-      ...(associatedPrrRequestId === undefined ? {} : { associatedPrrRequestId })
-    });
-
-    const preparationRunner = createSourcedInvestigationSpecialistRunner({
-      resolve: (candidate) => {
-        if (!sameSourcedInvestigationDispatch(candidate, dispatch)) {
-          throw mountedConflict("Mounted sourced-investigation runner dispatch changed identity.");
-        }
-        return {
-          contextRegistry,
-          scope,
-          promptArtifact,
-          artifactStore: materialStore,
-          execution: { mode: "local" as const, invoke: () => localOutput },
-          ...(input.investigationId === undefined ? {} : { investigationId: input.investigationId })
-        };
+    for (const artifact of contradictionDraft?.artifacts ?? []) {
+      await putMountedSourcedDependencyExact(
+        materialStore,
+        artifact.contentHash,
+        artifact.bytes,
+        "contradiction source"
+      );
+    }
+    if (input.runType === "report-builder") {
+      for (const pack of contextPacks) {
+        await putMountedSourcedDependencyExact(
+          materialStore,
+          pack.ref.contentHash as ContentHash,
+          Buffer.from(serializeContextPackPayload(pack.payload)),
+          "report context"
+        );
       }
-    });
+      const { inputArtifactHash: promptHash, ...manifestWithoutHash } = promptArtifact.manifest;
+      await putMountedSourcedDependencyExact(
+        materialStore,
+        promptHash as ContentHash,
+        Buffer.from(serializeContextPackPayload({ manifest: manifestWithoutHash, text: promptArtifact.text })),
+        "report prompt reference"
+      );
+    }
+    await seedContextProvenanceArtifacts(materialStore, contextPacks, contextEvents);
+    const reportPacketInput = input.runType === "report-builder"
+      ? groundedMountedReportPacketInput({
+          runId: input.runId,
+          taskId: input.taskId,
+          generatedAt: operationTimestamp,
+          evidence,
+          events: contextEvents,
+          contextPacks,
+          timelineDraft,
+          contradictionDraft
+        })
+      : undefined;
+    const sourcedRunType = input.runType === "report-builder" ? undefined : input.runType;
+    const preparationRunner: UntrustedSpecialistRunner = input.runType === "report-builder"
+      ? createReportBuilderSpecialistRunner({
+          resolve: (candidate) => {
+            if (!sameSourcedInvestigationDispatch(candidate, dispatch) || reportPacketInput === undefined) {
+              throw mountedConflict("Mounted report runner dispatch changed identity.");
+            }
+            const { runId: _runId, taskId: _taskId, ...packetInput } = reportPacketInput;
+            return {
+              ...packetInput,
+              contextPackRefs: contextPacks.map((pack) => pack.ref),
+              promptArtifactHash: promptArtifact.manifest.inputArtifactHash as ContentHash,
+              artifactStore: materialStore
+            };
+          }
+        })
+      : createSourcedInvestigationSpecialistRunner({
+          resolve: (candidate) => {
+            if (!sameSourcedInvestigationDispatch(candidate, dispatch)) {
+              throw mountedConflict("Mounted sourced-investigation runner dispatch changed identity.");
+            }
+            if (sourcedRunType === undefined) {
+              throw mountedConflict("Mounted sourced-investigation runner type is unavailable.");
+            }
+            const localOutput = groundedMountedSourcedInvestigationOutput({
+              runType: sourcedRunType,
+              evidence,
+              events: contextEvents,
+              contextPacks,
+              ...(associatedPrrRequestId === undefined ? {} : { associatedPrrRequestId })
+            });
+            return {
+              contextRegistry,
+              scope,
+              promptArtifact,
+              artifactStore: materialStore,
+              execution: { mode: "local" as const, invoke: () => localOutput },
+              ...(input.investigationId === undefined ? {} : { investigationId: input.investigationId })
+            };
+          }
+        });
     const runnerRegistry = Object.freeze({
       async dispatch(candidate: TaskOrchestratorRunnerDispatchInput) {
-        if ((candidate.runType !== "timeline-builder" && candidate.runType !== "contradiction-finder") ||
+        if ((candidate.runType !== "timeline-builder" && candidate.runType !== "contradiction-finder" &&
+            candidate.runType !== "report-builder") ||
           !sameSourcedInvestigationDispatch(candidate, dispatch)) {
           throw mountedConflict("Mounted sourced-investigation runner registry rejected the dispatch.");
         }
@@ -1093,7 +1159,14 @@ async function runMountedSourcedInvestigationTaskInternal(
       status: await runtime.status(),
       generatedAt: operationTimestamp,
       selectedRunId: input.runId,
-      specialistHandoffs: [replay.selectedHandoff]
+      specialistHandoffs: [replay.selectedHandoff],
+      ...(reportPacketInput === undefined ? {} : {
+        specialistReportPreviews: [{
+          runId: input.runId,
+          taskId: input.taskId,
+          preview: publicSafeReportPreviewFromPacket(assembleLocalReportPacket(reportPacketInput))
+        }]
+      })
     });
     if (cockpit.selectedRun?.runId !== input.runId || cockpit.selectedRun.handoff === undefined) {
       throw mountedConflict("Mounted sourced-investigation handoff is unavailable in the selected run.");
@@ -3502,6 +3575,7 @@ function createMountedSourcedInvestigationContextRegistry(input: {
   readonly now: () => string;
   readonly associatedPrrRequestId?: string | undefined;
   readonly timelineDraft?: MountedTimelineDraftContext | undefined;
+  readonly contradictionDraft?: MountedContradictionDraftContext | undefined;
 }) {
   const registry = createMountedEvidenceTriageContextRegistry(input);
   if (input.associatedPrrRequestId !== undefined) {
@@ -3533,6 +3607,61 @@ function createMountedSourcedInvestigationContextRegistry(input: {
       } : {})
     });
   }
+  if (input.runType === "report-builder") {
+    if (input.timelineDraft === undefined) {
+      registerMountedAdvisoryPlaceholderContextPack({
+        registry,
+        contextPackId: "timeline-draft-summary.v1",
+        generatedAt: input.now(),
+        taskId: input.taskId,
+        sourceEventIds: sourceEventIdsFor(input.evidence),
+        payload: { items: [], omissions: ["No prior sourced timeline is selected for this report packet."] },
+        safeSummary: "No prior sourced timeline is selected for this report packet."
+      });
+    } else {
+      registerTimelineDraftSummaryContextPack(registry, {
+        scope: { kind: "task", id: input.taskId },
+        generatedAt: input.now(),
+        safeSummary: "A prior canonical timeline is bound to the selected report evidence.",
+        sourceEventIds: input.timelineDraft.sourceEventIds,
+        items: input.timelineDraft.items,
+        omissions: input.timelineDraft.items.length === 0
+          ? ["The prior sourced timeline contains no grounded timeline items."]
+          : [],
+        ...(input.timelineDraft.items.length === 0 ? {
+          emptyProof: {
+            artifactHash: input.timelineDraft.artifacts[0]!.contentHash,
+            sourceEventIds: input.timelineDraft.sourceEventIds
+          }
+        } : {})
+      });
+    }
+    registerMountedAdvisoryPlaceholderContextPack({
+      registry,
+      contextPackId: "contradiction-candidate-summary.v1",
+      generatedAt: input.now(),
+      taskId: input.taskId,
+      sourceEventIds: input.contradictionDraft?.sourceEventIds ?? sourceEventIdsFor(input.evidence),
+      payload: input.contradictionDraft === undefined
+        ? { items: [], omissions: ["No prior contradiction candidates are selected for this report packet."] }
+        : {
+            schemaVersion: "contradiction-candidate-summary.context.v1",
+            truthBoundary: {
+              advisoryOnly: true,
+              acceptedGraphMutationAllowed: false,
+              publicationAllowed: false
+            },
+            items: input.contradictionDraft.items,
+            omissions: input.contradictionDraft.items.length === 0
+              ? ["The prior canonical contradiction dossier contains no candidates."]
+              : []
+          },
+      safeSummary: input.contradictionDraft === undefined
+        ? "No prior contradiction candidates are selected for this report packet."
+        : "Prior canonical contradiction candidates are bound to the selected report evidence.",
+      artifactHashes: input.contradictionDraft?.artifacts.map((artifact) => artifact.contentHash) ?? []
+    });
+  }
   assertPackageOwnedContextRegistrationsForRunType(
     registry,
     input.runType,
@@ -3555,7 +3684,7 @@ async function resolveSourcedInvestigationContextPacks(
 }
 
 function groundedMountedSourcedInvestigationOutput(input: {
-  readonly runType: MountedSourcedInvestigationRunType;
+  readonly runType: Exclude<MountedSourcedInvestigationRunType, "report-builder">;
   readonly evidence: readonly EvidenceBinding[];
   readonly events: readonly KnowledgeEvent[];
   readonly contextPacks: readonly VerifiedResolvedContextPack[];
@@ -3614,6 +3743,100 @@ function groundedMountedSourcedInvestigationOutput(input: {
       `Record an exact source date or date range for ${binding.evidenceId} before adding a timeline item.`
     )
   };
+}
+
+function groundedMountedReportPacketInput(input: {
+  readonly runId: string;
+  readonly taskId: string;
+  readonly generatedAt: string;
+  readonly evidence: readonly EvidenceBinding[];
+  readonly events: readonly KnowledgeEvent[];
+  readonly contextPacks: readonly VerifiedResolvedContextPack[];
+  readonly timelineDraft?: MountedTimelineDraftContext | undefined;
+  readonly contradictionDraft?: MountedContradictionDraftContext | undefined;
+}) {
+  const selectedEvidence = new Map(input.evidence.map((binding) => [binding.evidenceId, binding] as const));
+  const graphPack = exactResolvedContextPack(input.contextPacks, "accepted-graph-projection.v1");
+  const graphItems = plainRecord(plainRecord(graphPack.payload)?.items);
+  const rows = Array.isArray(graphItems?.assertions) ? graphItems.assertions : [];
+  const acceptedAssertions: Array<{
+    readonly assertionId: string;
+    readonly evidenceId: string;
+    readonly evidenceContentHash: ContentHash;
+    readonly proposedByEventId: string;
+    readonly acceptedByEventId: string;
+    readonly sourceEventIds: readonly string[];
+    readonly safeStatement: string;
+  }> = [];
+  for (const value of rows) {
+    const row = plainRecord(value);
+    const assertionId = row?.assertionId;
+    const evidenceId = row?.evidenceId;
+    const evidenceContentHash = row?.evidenceContentHash;
+    const proposedByEventId = row?.proposedByEventId;
+    const acceptedByEventId = row?.acceptedByEventId;
+    const sourceEventIds = stringArray(row?.sourceEventIds);
+    const safeStatement = row?.safeStatement;
+    const binding = typeof evidenceId === "string" ? selectedEvidence.get(evidenceId) : undefined;
+    if (typeof assertionId !== "string" || typeof evidenceId !== "string" || binding === undefined ||
+      typeof evidenceContentHash !== "string" || !isContentHash(evidenceContentHash) ||
+      evidenceContentHash !== binding.contentHash || typeof proposedByEventId !== "string" ||
+      typeof acceptedByEventId !== "string" || sourceEventIds === undefined ||
+      typeof safeStatement !== "string" || safeStatement.length === 0) {
+      throw mountedConflict("Mounted report assertion context is not citation-complete.");
+    }
+    const proposed = exactEvent(input.events, proposedByEventId, "assertion.proposed");
+    const accepted = exactEvent(input.events, acceptedByEventId, "assertion.accepted");
+    if (plainRecord(proposed.payload)?.assertionId !== assertionId ||
+      plainRecord(proposed.payload)?.evidenceId !== evidenceId ||
+      plainRecord(accepted.payload)?.assertionId !== assertionId ||
+      accepted.context.actor.kind !== "human" || accepted.context.causationId !== proposed.id ||
+      !sameExactStringSet(sourceEventIds, [proposed.id, accepted.id])) {
+      throw mountedConflict("Mounted report assertion ledger provenance is not exact.");
+    }
+    acceptedAssertions.push(Object.freeze({
+      assertionId,
+      evidenceId,
+      evidenceContentHash,
+      proposedByEventId,
+      acceptedByEventId,
+      sourceEventIds: Object.freeze([...sourceEventIds]),
+      safeStatement
+    }));
+  }
+  acceptedAssertions.sort((left, right) => left.assertionId.localeCompare(right.assertionId));
+  const acceptedRefs = new Set(acceptedAssertions.map((item) => item.assertionId));
+  const uncertaintyNotes = (input.timelineDraft?.items ?? [])
+    .filter((item) => item.uncertaintyCategories.length > 0)
+    .map((item) => Object.freeze({
+      noteId: `uncertainty_${item.itemId}`,
+      summary: `Timeline item ${item.itemId} retains uncertainty categories: ${item.uncertaintyCategories.join(", ")}.`,
+      sourceRefs: Object.freeze([...acceptedRefs])
+    }));
+  const contradictionCandidates = (input.contradictionDraft?.items ?? []).map((item) => Object.freeze({
+    candidateId: item.candidateId,
+    rationale: item.rationale,
+    confidenceCaveat: "This contradiction candidate remains advisory and requires human source review.",
+    sourceRefs: Object.freeze(item.assertionIds.filter((assertionId) => acceptedRefs.has(assertionId)))
+  }));
+  return Object.freeze({
+    runId: input.runId,
+    taskId: input.taskId,
+    generatedAt: input.generatedAt,
+    governanceEvents: input.events,
+    requestedEvidenceIds: Object.freeze(input.evidence.map((binding) => binding.evidenceId)),
+    acceptedAssertions: Object.freeze(acceptedAssertions),
+    reviewedClaims: Object.freeze([]),
+    passages: Object.freeze(acceptedAssertions.map((assertion) => Object.freeze({
+      passageId: `passage_${assertion.assertionId}`,
+      sectionId: "section_accepted_findings",
+      sectionTitle: "Accepted findings",
+      text: assertion.safeStatement,
+      sourceRefs: Object.freeze([assertion.assertionId])
+    }))),
+    uncertaintyNotes: Object.freeze(uncertaintyNotes),
+    contradictionCandidates: Object.freeze(contradictionCandidates)
+  });
 }
 
 function groundedMountedContradictionCandidates(input: {

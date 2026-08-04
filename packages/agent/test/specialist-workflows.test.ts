@@ -18,6 +18,7 @@ import {
   executeSourcedInvestigationWorkflow,
   type SourcedInvestigationArtifactStore
 } from "../src/sourced-investigation-workflows.js";
+import { assembleLocalReportPacket } from "../src/report-builder-workflow.js";
 import {
   buildSelectionManifestHash,
   investigativeRegistrationIdentity,
@@ -48,6 +49,7 @@ import type { ProductionRunScope } from "../src/production-specialist-registrati
 import { parseSpecialistHandoffMaterial } from "../src/specialist-handoff-manifest.js";
 import { InMemoryEventLedger } from "../../ontology/src/event-ledger.js";
 import { buildGraphProjection } from "../../ontology/src/graph-projection.js";
+import { goldenGovernanceLedgerEvents } from "../../ontology/test/fixtures/golden-governance-ledger.js";
 import { approvedAgentSpecialistRunTypes, specialistExecutionStatusFor } from "../src/specialists.js";
 import {
   specialistWorkflowDescriptorFor,
@@ -1177,6 +1179,109 @@ describe("MVP specialist workflow descriptors", () => {
     expect([...graphAfter.assertions.entries()]).toEqual([...graphBefore.assertions.entries()]);
     expect([...graphAfter.entities.entries()]).toEqual([...graphBefore.entities.entries()]);
     expect([...graphAfter.relationships.entries()]).toEqual([...graphBefore.relationships.entries()]);
+  });
+
+  it("assembles a citation-complete local report while keeping the default preview public-safe", () => {
+    const packet = assembleLocalReportPacket({
+      runId: "run_report_packet_001",
+      taskId: "task_report_packet_001",
+      generatedAt: "2026-08-04T12:00:00.000Z",
+      governanceEvents: goldenGovernanceLedgerEvents,
+      requestedEvidenceIds: ["ev_source_public", "ev_source_private"],
+      acceptedAssertions: [{
+        assertionId: "assertion_report_public_001",
+        evidenceId: "ev_source_public",
+        evidenceContentHash: hash("1"),
+        proposedByEventId: "evt_assertion_report_proposed_001",
+        acceptedByEventId: "evt_assertion_report_accepted_001",
+        sourceEventIds: ["evt_assertion_report_proposed_001", "evt_assertion_report_accepted_001"],
+        safeStatement: "The public agenda records the meeting date."
+      }],
+      reviewedClaims: [{
+        claimId: "claim_report_private_001",
+        evidenceId: "ev_source_private",
+        evidenceContentHash: hash("2"),
+        reviewedByEventId: "evt_claim_report_reviewed_001",
+        sourceEventIds: ["evt_claim_report_reviewed_001"],
+        safeStatement: "A reviewed private note identifies a disputed response date."
+      }],
+      passages: [{
+        passageId: "passage_report_public_001",
+        sectionId: "section_report_findings",
+        sectionTitle: "Findings",
+        text: "The public agenda records the meeting date.",
+        sourceRefs: ["assertion_report_public_001"]
+      }, {
+        passageId: "passage_report_private_001",
+        sectionId: "section_report_findings",
+        sectionTitle: "Findings",
+        text: "A reviewed private note identifies a disputed response date.",
+        sourceRefs: ["claim_report_private_001"]
+      }],
+      uncertaintyNotes: [{
+        noteId: "risk_uncertain_date_001",
+        summary: "The exact response date remains uncertain.",
+        sourceRefs: ["claim_report_private_001"]
+      }],
+      contradictionCandidates: [{
+        candidateId: "contradiction_report_001",
+        rationale: "The reviewed date conflicts with the public chronology.",
+        confidenceCaveat: "The private record still requires source review.",
+        sourceRefs: ["assertion_report_public_001", "claim_report_private_001"]
+      }]
+    });
+
+    expect(packet.truthBoundary).toEqual({
+      localDerivativeOnly: true,
+      advisoryOnly: true,
+      exportAllowed: false,
+      publicationAllowed: false,
+      sensitiveOptInConsumed: false
+    });
+    expect(packet.citationMap).toEqual([
+      expect.objectContaining({
+        passageId: "passage_report_public_001",
+        acceptedAssertionRefs: ["assertion_report_public_001"],
+        reviewedClaimRefs: [],
+        evidenceCitations: [{ evidenceId: "ev_source_public", contentHash: hash("1") }]
+      }),
+      expect.objectContaining({
+        passageId: "passage_report_private_001",
+        acceptedAssertionRefs: [],
+        reviewedClaimRefs: ["claim_report_private_001"],
+        evidenceCitations: [{ evidenceId: "ev_source_private", contentHash: hash("2") }]
+      })
+    ]);
+    expect(packet.riskNotes.map((note) => note.kind)).toEqual(["contradiction", "uncertainty"]);
+    expect(packet.publicSafePreview.includedEvidence.map((item) => item.evidenceRef)).toEqual(["ev_source_public"]);
+    expect(packet.publicSafePreview.excludedEvidence.map((item) => item.evidenceRef)).toEqual(["ev_source_private"]);
+    expect(packet.sensitiveOptInRequirements).toEqual([{
+      evidenceRef: "ev_source_private",
+      category: "private",
+      approvalId: "human-approve-private-evidence-inclusion"
+    }]);
+    expect(JSON.stringify(packet.publicSafePreview)).not.toContain("reviewed private note");
+  });
+
+  it("blocks report readiness when a factual passage lacks an exact citation", () => {
+    expect(() => assembleLocalReportPacket({
+      runId: "run_report_missing_citation_001",
+      taskId: "task_report_missing_citation_001",
+      generatedAt: "2026-08-04T12:00:00.000Z",
+      governanceEvents: goldenGovernanceLedgerEvents,
+      requestedEvidenceIds: ["ev_source_public"],
+      acceptedAssertions: [],
+      reviewedClaims: [],
+      passages: [{
+        passageId: "passage_report_missing_citation_001",
+        sectionId: "section_report_findings",
+        sectionTitle: "Findings",
+        text: "An uncited factual statement must not become ready.",
+        sourceRefs: ["assertion_missing_001"]
+      }],
+      uncertaintyNotes: [],
+      contradictionCandidates: []
+    })).toThrow("Every factual report passage requires an exact accepted-assertion or reviewed-claim citation.");
   });
 });
 
