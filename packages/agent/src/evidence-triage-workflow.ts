@@ -196,7 +196,12 @@ async function publishEvidenceTriageDurableHandoff(
   if (authorityInputs.some((value) => value !== undefined) && authorityInputs.some((value) => value === undefined)) {
     throw new Error("Evidence triage mounted handoff requires complete material, manifest, and authority inputs.");
   }
-  await seedEvidenceTriageHandoffReferences(manifestStore, prepared, handoff.outputArtifacts);
+  await seedEvidenceTriageHandoffReferences(
+    manifestStore,
+    materialStore,
+    prepared,
+    handoff.outputArtifacts
+  );
   const handoffMaterial = buildSpecialistHandoffMaterial({
     status: handoff.status,
     safeSummary: handoff.safeSummary,
@@ -219,6 +224,22 @@ async function publishEvidenceTriageDurableHandoff(
     taskId: input.taskId,
     handoffMaterial
   });
+  if (materialStore !== manifestStore) {
+    const finalOutputMaterialHash = finalOutput.payload.handoffMaterialArtifactHash;
+    if (finalOutputMaterialHash === undefined) {
+      throw new Error("Evidence triage final-output handoff material hash is unavailable.");
+    }
+    const materialBytes = await materialStore.get(finalOutputMaterialHash as `sha256:${string}`);
+    if (!Buffer.isBuffer(materialBytes) || hashBytes(materialBytes) !== finalOutputMaterialHash) {
+      throw new Error("Evidence triage final-output handoff material readback failed.");
+    }
+    await assertStoreBindsHash(
+      manifestStore,
+      finalOutputMaterialHash as `sha256:${string}`,
+      Buffer.from(materialBytes),
+      "final-output handoff material"
+    );
+  }
   if (input.handoffAuthorityWitness !== undefined) {
     const recorded = await recordAuthorityBoundSpecialistHandoff({
       ledger: input.ledger,
@@ -286,7 +307,8 @@ function evidenceTriageHandoffStore(store: SpecialistDerivativeArtifactStore | u
 }
 
 async function seedEvidenceTriageHandoffReferences(
-  store: SpecialistHandoffManifestStore,
+  manifestStore: SpecialistHandoffManifestStore,
+  materialStore: SpecialistHandoffManifestStore,
   prepared: Awaited<ReturnType<typeof prepareSpecialistRun>>,
   outputArtifacts: readonly { readonly artifactHash: `sha256:${string}` }[]
 ): Promise<void> {
@@ -298,21 +320,83 @@ async function seedEvidenceTriageHandoffReferences(
       throw new Error("Evidence triage durable handoff requires resolved context payload bytes for every context ref.");
     }
     const payloadBytes = Buffer.from(serializeContextPackPayload(resolved.payload));
-    await assertStoreBindsHash(store, ref.contentHash as `sha256:${string}`, payloadBytes, "context pack payload");
+    if (materialStore !== manifestStore) {
+      await assertStoreBindsHash(
+        materialStore,
+        ref.contentHash as `sha256:${string}`,
+        payloadBytes,
+        "material context pack payload"
+      );
+    }
+    await assertStoreBindsHash(
+      manifestStore,
+      ref.contentHash as `sha256:${string}`,
+      payloadBytes,
+      "context pack payload"
+    );
   }
 
+  const promptArtifactHash = prepared.promptArtifact.manifest.inputArtifactHash as `sha256:${string}`;
+  const promptBytes = promptArtifactReferenceBytes(prepared.promptArtifact);
+  if (materialStore !== manifestStore) {
+    await assertStoreBindsHash(
+      materialStore,
+      promptArtifactHash,
+      promptBytes,
+      "material prompt artifact"
+    );
+  }
   await assertStoreBindsHash(
-    store,
-    prepared.promptArtifact.manifest.inputArtifactHash as `sha256:${string}`,
-    promptArtifactReferenceBytes(prepared.promptArtifact),
+    manifestStore,
+    promptArtifactHash,
+    promptBytes,
     "prompt artifact"
   );
 
-  for (const artifact of outputArtifacts) {
-    const bytes = await store.get(artifact.artifactHash);
-    if (!Buffer.isBuffer(bytes) || hashBytes(bytes) !== artifact.artifactHash) {
-      throw new Error("Evidence triage durable handoff output artifact readback failed.");
+  if (materialStore !== manifestStore) {
+    for (const artifactHash of prepared.contextPackRefs.flatMap((ref) => ref.artifactHashes ?? [])) {
+      await copyMissingEvidenceTriageHandoffReference(
+        manifestStore,
+        materialStore,
+        artifactHash as `sha256:${string}`,
+        "context provenance artifact"
+      );
+      await copyMissingEvidenceTriageHandoffReference(
+        materialStore,
+        manifestStore,
+        artifactHash as `sha256:${string}`,
+        "material context provenance artifact"
+      );
     }
+  }
+  for (const artifact of outputArtifacts) {
+    await copyMissingEvidenceTriageHandoffReference(
+      manifestStore,
+      materialStore,
+      artifact.artifactHash,
+      "output artifact"
+    );
+  }
+}
+
+async function copyMissingEvidenceTriageHandoffReference(
+  target: SpecialistHandoffManifestStore,
+  source: SpecialistHandoffManifestStore,
+  contentHash: `sha256:${string}`,
+  label: string
+): Promise<void> {
+  try {
+    const existing = await target.get(contentHash);
+    if (!Buffer.isBuffer(existing) || hashBytes(existing) !== contentHash) {
+      throw new Error(`Evidence triage durable handoff ${label} readback failed.`);
+    }
+    return;
+  } catch {
+    const bytes = await source.get(contentHash);
+    if (!Buffer.isBuffer(bytes) || hashBytes(bytes) !== contentHash) {
+      throw new Error(`Evidence triage durable handoff ${label} source readback failed.`);
+    }
+    await assertStoreBindsHash(target, contentHash, Buffer.from(bytes), label);
   }
 }
 

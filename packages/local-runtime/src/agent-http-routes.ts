@@ -729,25 +729,20 @@ async function projectMountedCockpitHandoffs(
 ): Promise<readonly SpecialistWorkflowHandoffDto[]> {
   const mounted = handle.mountedWorkspace;
   if (mounted === undefined || !inspectPortableWorkspaceCurrentness(handle).ok) return Object.freeze([]);
-  const stores = [
-    new FileBlobStore(join(mounted.paths.derivativeRoot, "specialist-handoff-manifest")),
-    new FileBlobStore(join(mounted.paths.derivativeRoot, "specialist-handoff-material"))
-  ] as const;
+  const store = new FileBlobStore(join(mounted.paths.derivativeRoot, "specialist-handoff-manifest"));
   const manifestReader = Object.freeze({
     async get(contentHash: `sha256:${string}`) {
-      for (const store of stores) {
+      requirePortableWorkspaceCurrent(handle);
+      try {
+        const bytes = await store.get(contentHash);
         requirePortableWorkspaceCurrent(handle);
-        try {
-          const bytes = await store.get(contentHash);
-          requirePortableWorkspaceCurrent(handle);
-          return bytes;
-        } catch {
-          if (!inspectPortableWorkspaceCurrentness(handle).ok) {
-            throw new Error("Portable workspace became unavailable during handoff replay.");
-          }
+        return bytes;
+      } catch {
+        if (!inspectPortableWorkspaceCurrentness(handle).ok) {
+          throw new Error("Portable workspace became unavailable during handoff replay.");
         }
+        throw new Error("Mounted canonical handoff artifact is unavailable by its durable content hash.");
       }
-      throw new Error("Mounted handoff artifact is unavailable by its durable content hash.");
     }
   });
   const handoffs: SpecialistWorkflowHandoffDto[] = [];
@@ -923,21 +918,73 @@ function mountedSourcedInvestigationInputFromBody(value: Record<string, unknown>
   readonly runId: string;
   readonly runType: "timeline-builder" | "contradiction-finder";
   readonly evidenceIds: readonly string[];
+} | {
+  readonly runId: string;
+  readonly runType: "investigation-planner";
+  readonly investigationId: string;
+} | {
+  readonly runId: string;
+  readonly runType: "prr-negotiation";
+  readonly prrRequestId: string;
+  readonly correspondenceId: string;
+  readonly jurisdictionRuleRefs: readonly string[];
 } | undefined {
-  if (!hasOnlyKeys(value, ["runId", "runType", "evidenceIds"]) ||
-    typeof value.runId !== "string" || !/^run_[a-zA-Z0-9_-]+$/.test(value.runId) ||
-    (value.runType !== "timeline-builder" && value.runType !== "contradiction-finder") ||
-    !Array.isArray(value.evidenceIds) || value.evidenceIds.length === 0 ||
-    value.evidenceIds.some((evidenceId) =>
-      typeof evidenceId !== "string" || !/^ev_[a-zA-Z0-9_-]+$/.test(evidenceId)
-    ) || new Set(value.evidenceIds).size !== value.evidenceIds.length) {
+  if (typeof value.runId !== "string" || !/^run_[a-zA-Z0-9_-]+$/.test(value.runId)) {
     return undefined;
   }
-  return Object.freeze({
-    runId: value.runId,
-    runType: value.runType,
-    evidenceIds: Object.freeze([...value.evidenceIds] as string[])
-  });
+  if (value.runType === "timeline-builder" || value.runType === "contradiction-finder") {
+    if (!hasOnlyKeys(value, ["runId", "runType", "evidenceIds"]) ||
+      !Array.isArray(value.evidenceIds) || value.evidenceIds.length === 0 ||
+      value.evidenceIds.some((evidenceId) =>
+        typeof evidenceId !== "string" || !/^ev_[a-zA-Z0-9_-]+$/.test(evidenceId)
+      ) || new Set(value.evidenceIds).size !== value.evidenceIds.length) {
+      return undefined;
+    }
+    return Object.freeze({
+      runId: value.runId,
+      runType: value.runType,
+      evidenceIds: Object.freeze([...value.evidenceIds] as string[])
+    });
+  }
+  if (value.runType === "investigation-planner") {
+    if (!hasOnlyKeys(value, ["runId", "runType", "investigationId"]) ||
+      typeof value.investigationId !== "string" ||
+      !/^[a-zA-Z][a-zA-Z0-9._:-]+$/.test(value.investigationId)) {
+      return undefined;
+    }
+    return Object.freeze({
+      runId: value.runId,
+      runType: value.runType,
+      investigationId: value.investigationId
+    });
+  }
+  if (value.runType === "prr-negotiation") {
+    if (!hasOnlyKeys(value, [
+      "runId",
+      "runType",
+      "prrRequestId",
+      "correspondenceId",
+      "jurisdictionRuleRefs"
+    ]) || typeof value.prrRequestId !== "string" ||
+      !/^prr_req_[a-zA-Z0-9_-]+$/.test(value.prrRequestId) ||
+      typeof value.correspondenceId !== "string" ||
+      !/^corr_[a-zA-Z0-9_-]+$/.test(value.correspondenceId) ||
+      !Array.isArray(value.jurisdictionRuleRefs) || value.jurisdictionRuleRefs.length === 0 ||
+      value.jurisdictionRuleRefs.some((ruleRef) =>
+        typeof ruleRef !== "string" ||
+        !/^jurisdiction-rule:[a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+:[a-zA-Z0-9._-]+$/.test(ruleRef)
+      ) || new Set(value.jurisdictionRuleRefs).size !== value.jurisdictionRuleRefs.length) {
+      return undefined;
+    }
+    return Object.freeze({
+      runId: value.runId,
+      runType: value.runType,
+      prrRequestId: value.prrRequestId,
+      correspondenceId: value.correspondenceId,
+      jurisdictionRuleRefs: Object.freeze([...value.jurisdictionRuleRefs] as string[])
+    });
+  }
+  return undefined;
 }
 
 function matchMountedSourcedInvestigationRoute(path: string):
@@ -1124,9 +1171,9 @@ function invalidMountedSourcedInvestigationBodyDiagnostic(): {
     readonly message: string;
     readonly allowedRepairActions: readonly string[];
   };
-} {
+  } {
   return diagnostic("Mounted sourced investigation body is invalid.", [
-    "send runId, timeline-builder or contradiction-finder runType, and unique evidenceIds"
+    "send the exact fields for one timeline, contradiction, investigation-planner, or PRR-negotiation command"
   ]);
 }
 

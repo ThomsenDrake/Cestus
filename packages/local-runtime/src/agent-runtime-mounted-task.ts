@@ -761,6 +761,22 @@ interface MountedTimelineDraftContext {
   }[];
 }
 
+interface MountedContradictionDraftContext {
+  readonly sourceEventIds: readonly string[];
+  readonly artifacts: readonly {
+    readonly contentHash: ContentHash;
+    readonly bytes: Buffer;
+  }[];
+  readonly items: readonly {
+    readonly candidateId: string;
+    readonly artifactHash: ContentHash;
+    readonly rationale: string;
+    readonly evidenceIds: readonly string[];
+    readonly assertionIds: readonly string[];
+    readonly timelineItemIds: readonly string[];
+  }[];
+}
+
 /**
  * Production mounted entrypoint used only by the resident supervision owner.
  * The HTTP caller cannot provide runtime, execution, stores, or handoff authority.
@@ -1144,6 +1160,12 @@ async function runMountedAdvisoryTaskInternal(
     throw mountedConflict("Mounted resident task is not an untouched queued advisory task.");
   }
   await verifyMountedEvidenceSourceBytes(authority, evidence);
+  const [priorTimelineDraft, priorContradictionDraft] = input.runType === "investigation-planner"
+    ? await Promise.all([
+        readOptionalMountedTimelineDraftContext(authority, eventsBeforeRun, evidence),
+        readOptionalMountedContradictionDraftContext(authority, eventsBeforeRun, evidence)
+      ])
+    : [undefined, undefined] as const;
 
   const retryGeneration = 0;
   const attemptId = buildTaskAttemptId({ taskId: input.taskId, runType: input.runType, retryGeneration });
@@ -1185,21 +1207,58 @@ async function runMountedAdvisoryTaskInternal(
     now: operationNow
   });
   if (input.runType === "investigation-planner") {
-    registerMountedAdvisoryPlaceholderContextPack({
-      registry: contextRegistry,
-      contextPackId: "timeline-draft-summary.v1",
-      generatedAt: operationTimestamp,
-      taskId: input.taskId,
-      sourceEventIds: sourceEventIdsFor(evidence),
-      payload: { items: [], omissions: ["No prior timeline draft is selected for this planning pass."] }
-    });
+    if (priorTimelineDraft === undefined) {
+      registerMountedAdvisoryPlaceholderContextPack({
+        registry: contextRegistry,
+        contextPackId: "timeline-draft-summary.v1",
+        generatedAt: operationTimestamp,
+        taskId: input.taskId,
+        sourceEventIds: sourceEventIdsFor(evidence),
+        payload: { items: [], omissions: ["No prior timeline draft is selected for this planning pass."] },
+        safeSummary: "No prior timeline draft is selected for this planning pass."
+      });
+    } else {
+      registerTimelineDraftSummaryContextPack(contextRegistry, {
+        scope: { kind: "task", id: input.taskId },
+        generatedAt: operationTimestamp,
+        safeSummary: "A prior canonical timeline is bound to the selected planning evidence.",
+        sourceEventIds: priorTimelineDraft.sourceEventIds,
+        items: priorTimelineDraft.items,
+        omissions: priorTimelineDraft.items.length === 0
+          ? ["The prior sourced timeline contains no grounded timeline items."]
+          : [],
+        ...(priorTimelineDraft.items.length === 0 ? {
+          emptyProof: {
+            artifactHash: priorTimelineDraft.artifacts[0]!.contentHash,
+            sourceEventIds: priorTimelineDraft.sourceEventIds
+          }
+        } : {})
+      });
+    }
     registerMountedAdvisoryPlaceholderContextPack({
       registry: contextRegistry,
       contextPackId: "contradiction-candidate-summary.v1",
       generatedAt: operationTimestamp,
       taskId: input.taskId,
-      sourceEventIds: sourceEventIdsFor(evidence),
-      payload: { items: [], omissions: ["No prior contradiction candidates are selected for this planning pass."] }
+      sourceEventIds: priorContradictionDraft?.sourceEventIds ?? sourceEventIdsFor(evidence),
+      payload: priorContradictionDraft === undefined
+        ? { items: [], omissions: ["No prior contradiction candidates are selected for this planning pass."] }
+        : {
+            schemaVersion: "contradiction-candidate-summary.context.v1",
+            truthBoundary: {
+              advisoryOnly: true,
+              acceptedGraphMutationAllowed: false,
+              publicationAllowed: false
+            },
+            items: priorContradictionDraft.items,
+            omissions: priorContradictionDraft.items.length === 0
+              ? ["The prior canonical contradiction dossier contains no candidates."]
+              : []
+          },
+      safeSummary: priorContradictionDraft === undefined
+        ? "No prior contradiction candidates are selected for this planning pass."
+        : "Prior canonical contradiction candidates are bound to the selected planning evidence.",
+      artifactHashes: priorContradictionDraft?.artifacts.map((artifact) => artifact.contentHash) ?? []
     });
   } else {
     registerLocalRuntimeSelectedPrrContextPacks({
@@ -1272,7 +1331,7 @@ async function runMountedAdvisoryTaskInternal(
   await seedContextProvenanceArtifacts(manifestStore, contextPacks, contextEvents);
 
   const localOutput = input.runType === "investigation-planner"
-    ? mountedInvestigationPlannerOutput(input, evidence)
+    ? mountedInvestigationPlannerOutput(input, evidence, contextPacks)
     : mountedPrrNegotiationOutput(input, contextPacks);
   const advisoryRuntime = createAgentRuntime({
     ledger: executionLedger,
@@ -2723,27 +2782,16 @@ async function captureMountedTaskAuthority(
       const material = mountedCanonicalStore({
         target: materialTarget,
         readers: [
-          { store: manifestTarget },
           { store: sourceStore, allowedHashes: sourceHashes }
         ],
         revalidate
       });
       const manifest = mountedCanonicalStore({
         target: manifestTarget,
-        readers: [
-          { store: materialTarget },
-          { store: sourceStore, allowedHashes: sourceHashes }
-        ],
+        readers: [],
         revalidate
       });
-      const reader = mountedCompositeReader({
-        readers: [
-          { store: manifestTarget },
-          { store: materialTarget },
-          { store: sourceStore, allowedHashes: sourceHashes }
-        ],
-        revalidate
-      });
+      const reader = manifest;
       return Object.freeze({ material, manifest, reader });
     },
     async withHandoffReadSnapshot<T>(
@@ -2751,14 +2799,11 @@ async function captureMountedTaskAuthority(
       read: (reader: SpecialistHandoffManifestStore) => Promise<T>
     ): Promise<T> {
       await revalidate();
-      const sourceHashes = new Set<ContentHash>(storeInput.sourceArtifactHashes ?? []);
-      const sourceStore = sourceBlobStoreFor(capturedWorkspace);
+      void storeInput;
       let active = true;
       const reader = mountedReadSnapshotReader({
         readers: [
-          { store: new FileBlobStore(join(capturedWorkspace.paths.derivativeRoot, "specialist-handoff-manifest")) },
-          { store: new FileBlobStore(join(capturedWorkspace.paths.derivativeRoot, "specialist-handoff-material")) },
-          { store: sourceStore, allowedHashes: sourceHashes }
+          { store: new FileBlobStore(join(capturedWorkspace.paths.derivativeRoot, "specialist-handoff-manifest")) }
         ],
         isActive: () => active
       });
@@ -2797,20 +2842,6 @@ function mountedCanonicalStore(input: {
 interface MountedStoreReader {
   readonly store: SpecialistHandoffManifestStore;
   readonly allowedHashes?: ReadonlySet<ContentHash>;
-}
-
-function mountedCompositeReader(input: {
-  readonly readers: readonly MountedStoreReader[];
-  readonly revalidate: () => Promise<void>;
-}): SpecialistHandoffManifestStore {
-  return Object.freeze({
-    async put() {
-      throw mountedConflict("Mounted composite artifact readers cannot write fallback copies.");
-    },
-    async get(contentHash: ContentHash) {
-      return await readMountedStoreHash(contentHash, input.readers, input.revalidate);
-    }
-  });
 }
 
 function mountedReadSnapshotReader(input: {
@@ -2951,12 +2982,22 @@ async function readMountedTimelineDraftContext(
   events: readonly KnowledgeEvent[],
   evidence: readonly EvidenceBinding[]
 ): Promise<MountedTimelineDraftContext> {
+  const draft = await readOptionalMountedTimelineDraftContext(authority, events, evidence);
+  if (draft === undefined) {
+    throw mountedConflict("Contradiction review requires exactly one replayable timeline relevant to the selected evidence.");
+  }
+  return draft;
+}
+
+async function readOptionalMountedTimelineDraftContext(
+  authority: MountedTaskAuthority,
+  events: readonly KnowledgeEvent[],
+  evidence: readonly EvidenceBinding[]
+): Promise<MountedTimelineDraftContext | undefined> {
   const recordedHandoffs = events.filter((event): event is KnowledgeEventOf<"agent.specialist-handoff.recorded"> =>
     event.type === "agent.specialist-handoff.recorded" && event.payload.runType === "timeline-builder"
   );
-  if (recordedHandoffs.length === 0) {
-    throw mountedConflict("Contradiction review requires a prior replayable sourced timeline.");
-  }
+  if (recordedHandoffs.length === 0) return undefined;
   return await authority.withHandoffReadSnapshot({}, async (reader) => {
     const relevant: MountedTimelineDraftContext[] = [];
     for (const recorded of recordedHandoffs) {
@@ -2968,13 +3009,189 @@ async function readMountedTimelineDraftContext(
       });
       if (candidate !== undefined) relevant.push(candidate);
     }
-    if (relevant.length !== 1) {
-      throw mountedConflict(relevant.length === 0
-        ? "Contradiction review requires exactly one replayable timeline relevant to the selected evidence."
-        : "Contradiction review found ambiguous replayable timelines for the selected evidence.");
+    if (relevant.length > 1) {
+      throw mountedConflict("Mounted planning found ambiguous replayable timelines for the selected evidence.");
     }
-    return relevant[0]!;
+    return relevant[0];
   });
+}
+
+async function readOptionalMountedContradictionDraftContext(
+  authority: MountedTaskAuthority,
+  events: readonly KnowledgeEvent[],
+  evidence: readonly EvidenceBinding[]
+): Promise<MountedContradictionDraftContext | undefined> {
+  const recordedHandoffs = events.filter((event): event is KnowledgeEventOf<"agent.specialist-handoff.recorded"> =>
+    event.type === "agent.specialist-handoff.recorded" && event.payload.runType === "contradiction-finder"
+  );
+  if (recordedHandoffs.length === 0) return undefined;
+  return await authority.withHandoffReadSnapshot({}, async (reader) => {
+    const relevant: MountedContradictionDraftContext[] = [];
+    for (const recorded of recordedHandoffs) {
+      const candidate = await replayMountedContradictionDraftCandidate({
+        reader,
+        events,
+        evidence,
+        recorded
+      });
+      if (candidate !== undefined) relevant.push(candidate);
+    }
+    if (relevant.length > 1) {
+      throw mountedConflict("Mounted planning found ambiguous replayable contradiction dossiers for the selected evidence.");
+    }
+    return relevant[0];
+  });
+}
+
+async function replayMountedContradictionDraftCandidate(input: {
+  readonly reader: SpecialistHandoffManifestStore;
+  readonly events: readonly KnowledgeEvent[];
+  readonly evidence: readonly EvidenceBinding[];
+  readonly recorded: KnowledgeEventOf<"agent.specialist-handoff.recorded">;
+}): Promise<MountedContradictionDraftContext | undefined> {
+  const replay = await buildSpecialistHandoffProjection({
+    events: input.events,
+    manifestReader: input.reader,
+    runId: input.recorded.payload.runId,
+    ...(input.recorded.payload.taskId === undefined ? {} : { taskId: input.recorded.payload.taskId })
+  });
+  const outputArtifacts = replay.selectedHandoff?.outputArtifacts.filter((artifact) =>
+    artifact.artifactKind === "contradiction-candidate-dossier" &&
+    artifact.schemaId === "contradiction-finder-handoff.v1"
+  ) ?? [];
+  if (replay.state !== "task-completed" || replay.diagnostics.length !== 0 ||
+    replay.selectedHandoff?.runType !== "contradiction-finder" || outputArtifacts.length !== 1) {
+    throw mountedConflict("Prior contradiction handoff does not replay exactly.");
+  }
+  const artifactHash = requireContentHash(outputArtifacts[0]!.artifactHash);
+  const bytes = await input.reader.get(artifactHash);
+  if (hashBytes(bytes) !== artifactHash) {
+    throw mountedConflict("Prior contradiction artifact hash readback failed.");
+  }
+  const artifact = plainRecord(parseJson(bytes));
+  const truthBoundary = plainRecord(artifact?.truthBoundary);
+  if (artifact?.schemaVersion !== "contradiction-candidate-dossier.v1" ||
+    artifact.runId !== input.recorded.payload.runId || artifact.taskId !== input.recorded.payload.taskId ||
+    truthBoundary?.advisoryOnly !== true || truthBoundary.canRejectAssertion !== false ||
+    truthBoundary.canContestAssertion !== false || truthBoundary.canSupersedeAssertion !== false ||
+    truthBoundary.canRelinkClaim !== false || truthBoundary.acceptedGraphMutationAllowed !== false ||
+    truthBoundary.publicationAllowed !== false || !Array.isArray(artifact.candidates) ||
+    !Array.isArray(artifact.contextPackRefs)) {
+    throw mountedConflict("Prior contradiction artifact does not match its recorded advisory handoff.");
+  }
+  if (!await mountedContradictionEvidenceSelectionMatches({
+    reader: input.reader,
+    contextPackRefs: artifact.contextPackRefs,
+    evidence: input.evidence,
+    recorded: input.recorded
+  })) {
+    return undefined;
+  }
+  const selectedById = new Map(input.evidence.map((binding) => [binding.evidenceId, binding] as const));
+  const candidateIds = new Set<string>();
+  const items: MountedContradictionDraftContext["items"][number][] = [];
+  for (const value of artifact.candidates) {
+    const candidate = plainRecord(value);
+    const candidateId = candidate?.candidateId;
+    const rationale = candidate?.rationale;
+    const evidenceCitations = Array.isArray(candidate?.evidence) ? candidate.evidence : undefined;
+    const evidenceIds = stringArray(candidate?.evidenceIds) ?? evidenceCitations?.map((citation) =>
+      plainRecord(citation)?.evidenceId
+    );
+    const assertionCitations = Array.isArray(candidate?.assertions) ? candidate.assertions : undefined;
+    const assertionIds = stringArray(candidate?.assertionIds) ?? assertionCitations?.map((citation) =>
+      plainRecord(citation)?.assertionId
+    );
+    const timelineItemIds = stringArray(candidate?.timelineItemIds);
+    const evidenceContentHashes = stringArray(candidate?.evidenceContentHashes);
+    if (typeof candidateId !== "string" || !/^contradiction_[a-zA-Z0-9_-]+$/.test(candidateId) ||
+      candidateIds.has(candidateId) || typeof rationale !== "string" || rationale.length === 0 ||
+      evidenceCitations === undefined || assertionCitations === undefined || evidenceIds === undefined ||
+      assertionIds === undefined || timelineItemIds === undefined || evidenceContentHashes === undefined ||
+      evidenceIds.some((evidenceId) => typeof evidenceId !== "string" || !selectedById.has(evidenceId)) ||
+      assertionIds.some((assertionId) => typeof assertionId !== "string") ||
+      timelineItemIds.some((itemId) => !/^timeline_[a-zA-Z0-9_-]+$/.test(itemId)) ||
+      new Set(evidenceIds).size !== evidenceIds.length || new Set(assertionIds).size !== assertionIds.length ||
+      new Set(timelineItemIds).size !== timelineItemIds.length) {
+      throw mountedConflict("Prior contradiction candidate summary is not exact and evidence-bound.");
+    }
+    const citationEvidenceIds: string[] = [];
+    const citationHashes: ContentHash[] = [];
+    for (const citationValue of evidenceCitations) {
+      const citation = plainRecord(citationValue);
+      const binding = typeof citation?.evidenceId === "string"
+        ? selectedById.get(citation.evidenceId)
+        : undefined;
+      if (binding === undefined || citation?.contentHash !== binding.contentHash ||
+        citation.ingestionEventId !== binding.evidenceEventId) {
+        throw mountedConflict("Prior contradiction evidence citation is not current and exact.");
+      }
+      citationEvidenceIds.push(binding.evidenceId);
+      citationHashes.push(binding.contentHash);
+    }
+    if (!sameStringSet(evidenceIds as string[], citationEvidenceIds) ||
+      !sameStringSet(evidenceContentHashes, citationHashes)) {
+      throw mountedConflict("Prior contradiction candidate evidence bindings do not replay exactly.");
+    }
+    candidateIds.add(candidateId);
+    items.push(Object.freeze({
+      candidateId,
+      artifactHash,
+      rationale,
+      evidenceIds: Object.freeze([...(evidenceIds as string[])]),
+      assertionIds: Object.freeze([...(assertionIds as string[])]),
+      timelineItemIds: Object.freeze([...timelineItemIds])
+    }));
+  }
+  const aggregateEventIds = uniqueStrings(input.recorded.payload.sourceEventIds);
+  if (aggregateEventIds.length === 0 || aggregateEventIds.length !== input.recorded.payload.sourceEventIds.length ||
+    aggregateEventIds.some((eventId) => !input.events.some((event) => event.id === eventId))) {
+    throw mountedConflict("Prior contradiction event provenance is incomplete.");
+  }
+  return Object.freeze({
+    sourceEventIds: Object.freeze([...aggregateEventIds].sort()),
+    artifacts: Object.freeze([{ contentHash: artifactHash, bytes: Buffer.from(bytes) }]),
+    items: Object.freeze(items.sort((left, right) => left.candidateId.localeCompare(right.candidateId)))
+  });
+}
+
+async function mountedContradictionEvidenceSelectionMatches(input: {
+  readonly reader: SpecialistHandoffManifestStore;
+  readonly contextPackRefs: readonly unknown[];
+  readonly evidence: readonly EvidenceBinding[];
+  readonly recorded: KnowledgeEventOf<"agent.specialist-handoff.recorded">;
+}): Promise<boolean> {
+  const evidenceRefs = input.contextPackRefs.map((value) => contextPackRefSchema.safeParse(value))
+    .filter((result) => result.success && result.data.contextPackId === "evidence-summary.v1")
+    .map((result) => result.data);
+  if (evidenceRefs.length !== 1) {
+    throw mountedConflict("Prior contradiction evidence summary binding is missing or ambiguous.");
+  }
+  const ref = evidenceRefs[0]!;
+  const contentHash = requireContentHash(ref.contentHash);
+  const bytes = await input.reader.get(contentHash);
+  if (hashBytes(bytes) !== contentHash) {
+    throw mountedConflict("Prior contradiction evidence summary hash readback failed.");
+  }
+  const items = plainRecord(parseJson(bytes))?.items;
+  if (!Array.isArray(items)) {
+    throw mountedConflict("Prior contradiction evidence summary is invalid.");
+  }
+  const selectedById = new Map(input.evidence.map((binding) => [binding.evidenceId, binding] as const));
+  const seen = new Set<string>();
+  for (const value of items) {
+    const item = plainRecord(value);
+    const binding = typeof item?.evidenceId === "string" ? selectedById.get(item.evidenceId) : undefined;
+    if (binding === undefined || seen.has(binding.evidenceId) || item?.contentHash !== binding.contentHash ||
+      item.ingestionEventId !== binding.evidenceEventId) {
+      return false;
+    }
+    seen.add(binding.evidenceId);
+  }
+  const recordedEventIds = new Set(input.recorded.payload.sourceEventIds);
+  return seen.size === selectedById.size &&
+    input.evidence.every((binding) => seen.has(binding.evidenceId) &&
+      recordedEventIds.has(binding.evidenceEventId) && recordedEventIds.has(binding.linkEventId));
 }
 
 async function replayMountedTimelineDraftCandidate(input: {
@@ -4508,6 +4725,8 @@ function registerMountedAdvisoryPlaceholderContextPack(input: {
   readonly taskId: string;
   readonly sourceEventIds: readonly string[];
   readonly payload: AgentContextPackJsonValue;
+  readonly safeSummary: string;
+  readonly artifactHashes?: readonly ContentHash[];
 }): void {
   const parser = (payload: AgentContextPackJsonValue, ref?: ContextPackRef) => {
     if (ref?.contextPackId !== input.contextPackId || payload === null ||
@@ -4542,11 +4761,15 @@ function registerMountedAdvisoryPlaceholderContextPack(input: {
       generatedAt: input.generatedAt,
       scope: { kind: "task", id: input.taskId },
       payload: input.payload,
-      safeSummary: input.contextPackId === "timeline-draft-summary.v1"
-        ? "No prior timeline draft is selected for this planning pass."
-        : "No prior contradiction candidates are selected for this planning pass.",
-      provenanceRefs: input.sourceEventIds.map((eventId) => `event:${eventId}`),
+      safeSummary: input.safeSummary,
+      provenanceRefs: [
+        ...input.sourceEventIds.map((eventId) => `event:${eventId}`),
+        ...(input.artifactHashes ?? [])
+      ],
       sourceEventIds: input.sourceEventIds,
+      ...(input.artifactHashes === undefined || input.artifactHashes.length === 0
+        ? {}
+        : { artifactHashes: input.artifactHashes }),
       sizeBudgetBytes: 16_384
     })
   });
@@ -4566,12 +4789,25 @@ async function resolveMountedAdvisoryContextPacks(
 
 function mountedInvestigationPlannerOutput(
   input: RunMountedAdvisoryTaskInput,
-  evidence: readonly EvidenceBinding[]
+  evidence: readonly EvidenceBinding[],
+  contextPacks: readonly VerifiedResolvedContextPack[]
 ) {
-  const evidenceId = evidence[0]?.evidenceId;
-  if (input.investigationId === undefined || evidenceId === undefined) {
+  const evidenceIds = evidence.map((binding) => binding.evidenceId);
+  if (input.investigationId === undefined || evidenceIds.length === 0) {
     throw mountedConflict("Mounted investigation planning requires exact investigation and evidence context.");
   }
+  const timelineRefs = mountedAdvisorySummaryIds(
+    contextPacks,
+    "timeline-draft-summary.v1",
+    "itemId",
+    /^timeline_[a-zA-Z0-9_-]+$/
+  );
+  const contradictionRefs = mountedAdvisorySummaryIds(
+    contextPacks,
+    "contradiction-candidate-summary.v1",
+    "candidateId",
+    /^contradiction_[a-zA-Z0-9_-]+$/
+  );
   const suffix = input.taskId.replace(/^task_/, "");
   const gapId = `gap_${suffix}`;
   return Object.freeze({
@@ -4581,9 +4817,9 @@ function mountedInvestigationPlannerOutput(
     prioritizedGaps: [{
       gapId,
       priority: "high" as const,
-      linkedEvidenceRefs: [evidenceId],
-      timelineRefs: [],
-      contradictionRefs: [],
+      linkedEvidenceRefs: evidenceIds,
+      timelineRefs,
+      contradictionRefs,
       rationale: "The selected evidence leaves a bounded question for investigator review.",
       dependencyRefs: [input.investigationId]
     }],
@@ -4599,24 +4835,44 @@ function mountedInvestigationPlannerOutput(
   });
 }
 
+function mountedAdvisorySummaryIds(
+  contextPacks: readonly VerifiedResolvedContextPack[],
+  contextPackId: "timeline-draft-summary.v1" | "contradiction-candidate-summary.v1",
+  field: "itemId" | "candidateId",
+  pattern: RegExp
+): readonly string[] {
+  const pack = contextPacks.find((candidate) => candidate.ref.contextPackId === contextPackId);
+  const values = plainRecord(pack?.payload)?.items;
+  if (!Array.isArray(values)) {
+    throw mountedConflict("Mounted planning summary context is unavailable.");
+  }
+  const ids = values.map((value) => plainRecord(value)?.[field]);
+  if (ids.some((value) => typeof value !== "string" || !pattern.test(value)) ||
+    new Set(ids).size !== ids.length) {
+    throw mountedConflict("Mounted planning summary references are not exact and unique.");
+  }
+  return Object.freeze((ids as string[]).sort());
+}
+
 function mountedPrrNegotiationOutput(
   input: RunMountedAdvisoryTaskInput,
   contextPacks: readonly VerifiedResolvedContextPack[]
 ) {
   const citedRuleRef = input.jurisdictionRuleRefs?.[0];
+  const deadlineRef = mountedPrrDeadlineReference(input.jurisdictionRuleRefs ?? [], contextPacks);
   const jurisdictionRef = firstContextFieldString(
     contextPacks.find((pack) => pack.ref.contextPackId === "jurisdiction-pack-summary.v1")?.payload,
     "jurisdictionArtifactHash"
   );
-  if (citedRuleRef === undefined || jurisdictionRef === undefined) {
-    throw mountedConflict("Mounted PRR advice requires exact jurisdiction context.");
+  if (citedRuleRef === undefined || jurisdictionRef === undefined || deadlineRef === undefined) {
+    throw mountedConflict("Mounted PRR advice requires exact jurisdiction and deadline context.");
   }
   return Object.freeze({
     draftSummary: "Review a narrow public-records follow-up draft before any external send.",
     requestFollowUpApproval: false,
     citedRuleRefs: [citedRuleRef],
     jurisdictionRefs: [jurisdictionRef],
-    deadlineRefs: [citedRuleRef],
+    deadlineRefs: [deadlineRef],
     deadlineNotes: ["Confirm the current deadline against the selected request before taking action."],
     narrowingOptions: ["Limit any later follow-up to the selected request and records scope."],
     feeOptions: ["Request a reviewable fee estimate if the agency raises costs."],
@@ -4624,6 +4880,39 @@ function mountedPrrNegotiationOutput(
     unresolvedQuestions: ["Has the agency acknowledged the selected request?"],
     legalPressureNotes: ["Legal escalation remains a separate human-controlled decision."]
   });
+}
+
+function mountedPrrDeadlineReference(
+  jurisdictionRuleRefs: readonly string[],
+  contextPacks: readonly VerifiedResolvedContextPack[]
+): string | undefined {
+  const trustedRules = new Set(jurisdictionRuleRefs);
+  for (const pack of contextPacks) {
+    if (pack.ref.contextPackId !== "jurisdiction-pack-summary.v1") continue;
+    const payload = plainRecord(pack.payload);
+    if (payload?.schemaVersion !== "jurisdiction-pack-summary-context.v1" ||
+      typeof payload.packName !== "string" || typeof payload.packVersion !== "string" ||
+      !Array.isArray(payload.citedRules)) continue;
+    for (const value of payload.citedRules) {
+      const rule = plainRecord(value);
+      if (rule?.kind !== "deadline" || typeof rule.id !== "string") continue;
+      const ruleRef = `jurisdiction-rule:${payload.packName}@${payload.packVersion}:${rule.id}`;
+      if (trustedRules.has(ruleRef)) return ruleRef;
+    }
+  }
+  for (const pack of contextPacks) {
+    if (pack.ref.contextPackId !== "prr-read-model.v1") continue;
+    const payload = plainRecord(pack.payload);
+    const deadline = plainRecord(payload?.deadline);
+    const requestStream = plainRecord(payload?.requestStream);
+    if (payload?.schemaVersion === "prr-read-model-context.v1" && deadline !== undefined &&
+      (deadline.source === "estimated" || deadline.source === "confirmed") &&
+      typeof requestStream?.streamHeadEventId === "string" &&
+      /^evt_[a-zA-Z0-9_-]+$/.test(requestStream.streamHeadEventId)) {
+      return requestStream.streamHeadEventId;
+    }
+  }
+  return undefined;
 }
 
 function firstContextFieldString(value: unknown, field: string): string | undefined {

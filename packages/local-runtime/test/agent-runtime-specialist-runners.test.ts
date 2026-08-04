@@ -1,6 +1,6 @@
 import { Buffer } from "node:buffer";
 import { createHash } from "node:crypto";
-import { mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync } from "node:fs";
+import { mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, unlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -63,7 +63,8 @@ import * as specialistRunnerSurface from "../src/agent-runtime-specialist-runner
 import { handleAgentHttpRoute } from "../src/agent-http-routes.js";
 import {
   bindMountedAdvisoryHandoffForLocalAgentRuntimeFactory,
-  bindMountedSourcedInvestigationHandoffForLocalAgentRuntimeFactory
+  bindMountedSourcedInvestigationHandoffForLocalAgentRuntimeFactory,
+  mountedResidentTaskLocalAgentRuntimeFactory
 } from "../src/agent-runtime-factory.js";
 import { createMountedSourcedInvestigationExecutionPort } from "../src/agent-runtime-mounted-task.js";
 import { resolveLocalRuntimeConfig } from "../src/config.js";
@@ -236,19 +237,35 @@ describe("untrusted specialist runner", () => {
       .not.toMatch(/mounted resident sourced evidence bytes|authorization:|provider body/i);
   }, mountedSourcedMultiWorkflowTimeoutMs);
 
-  it("reaches planner and PRR advice through the production resident mounted execution port", async () => {
+  it("reaches planner and PRR advice through the production mounted resident HTTP caller", async () => {
     const plannerFixture = await mountedSourcedResidentFactoryFixture();
     const prrFixture = await mountedSourcedResidentFactoryFixture();
 
-    const [planner, prr] = await Promise.allSettled([
-      plannerFixture.supervision.executeSourcedInvestigation({
-        taskId: plannerFixture.plannerTaskId,
+    const invalidPlanner = await runMountedAdvisoryResidentRequest(plannerFixture, plannerFixture.plannerTaskId, {
+      runId: plannerFixture.plannerRunId,
+      runType: "investigation-planner",
+      investigationId: "inv_sourced_factory_001",
+      evidenceIds: [plannerFixture.evidenceId]
+    });
+    const invalidPrr = await runMountedAdvisoryResidentRequest(prrFixture, prrFixture.prrTaskId, {
+      runId: prrFixture.prrRunId,
+      runType: "prr-negotiation",
+      prrRequestId: "prr_req_sourced_factory_001",
+      jurisdictionRuleRefs: [
+        "jurisdiction-rule:us-federal-foia@0.1.0:federal-determination-20-working-days"
+      ],
+      investigationId: "inv_extraneous_001"
+    });
+    expect(invalidPlanner.status).toBe(400);
+    expect(invalidPrr.status).toBe(400);
+
+    const [planner, prr] = await Promise.all([
+      runMountedAdvisoryResidentRequest(plannerFixture, plannerFixture.plannerTaskId, {
         runId: plannerFixture.plannerRunId,
         runType: "investigation-planner",
         investigationId: "inv_sourced_factory_001"
-      } as never),
-      prrFixture.supervision.executeSourcedInvestigation({
-        taskId: prrFixture.prrTaskId,
+      }),
+      runMountedAdvisoryResidentRequest(prrFixture, prrFixture.prrTaskId, {
         runId: prrFixture.prrRunId,
         runType: "prr-negotiation",
         prrRequestId: "prr_req_sourced_factory_001",
@@ -256,16 +273,16 @@ describe("untrusted specialist runner", () => {
         jurisdictionRuleRefs: [
           "jurisdiction-rule:us-federal-foia@0.1.0:federal-determination-20-working-days"
         ]
-      } as never)
+      })
     ]);
 
-    expect(planner).toMatchObject({
-      status: "fulfilled",
-      value: { cockpit: { selectedRun: { runType: "investigation-planner", state: "completed" } } }
+    expect(planner.status, planner.body).toBe(200);
+    expect(JSON.parse(planner.body)).toMatchObject({
+      cockpit: { selectedRun: { runType: "investigation-planner", state: "completed" } }
     });
-    expect(prr).toMatchObject({
-      status: "fulfilled",
-      value: { cockpit: { selectedRun: { runType: "prr-negotiation", state: "completed" } } }
+    expect(prr.status, prr.body).toBe(200);
+    expect(JSON.parse(prr.body)).toMatchObject({
+      cockpit: { selectedRun: { runType: "prr-negotiation", state: "completed" } }
     });
     for (const fixture of [plannerFixture, prrFixture]) {
       const types = (await fixture.handle.ledger.readAll()).map((event) => event.type);
@@ -277,6 +294,112 @@ describe("untrusted specialist runner", () => {
         "prr.legal-escalation.confirmed"
       ]));
     }
+  }, mountedSourcedMultiWorkflowTimeoutMs);
+
+  it("fails cockpit replay when canonical manifest material is absent even if material storage remains intact", async () => {
+    const fixture = await mountedSourcedResidentFactoryFixture();
+    const response = await fixture.supervision.executeSourcedInvestigation({
+      taskId: fixture.plannerTaskId,
+      runId: fixture.plannerRunId,
+      runType: "investigation-planner",
+      investigationId: "inv_sourced_factory_001"
+    }) as { readonly cockpit: { readonly selectedRun?: { readonly handoff?: unknown } } };
+    expect(response.cockpit.selectedRun?.handoff).toBeDefined();
+    const finalOutput = (await fixture.handle.ledger.readAll()).find((event) =>
+      event.type === "agent.specialist-run.step.recorded" &&
+      event.payload.runId === fixture.plannerRunId && event.payload.stepKind === "final-output"
+    );
+    if (finalOutput?.type !== "agent.specialist-run.step.recorded" ||
+      finalOutput.payload.handoffMaterialArtifactHash === undefined) {
+      throw new Error("planner final-output material hash is unavailable");
+    }
+    const mounted = fixture.handle.mountedWorkspace;
+    if (mounted === undefined) throw new Error("planner workspace is unavailable");
+    const materialHash = finalOutput.payload.handoffMaterialArtifactHash as `sha256:${string}`;
+    await expect(new FileBlobStore(join(
+      mounted.paths.derivativeRoot,
+      "specialist-handoff-material"
+    )).get(materialHash)).resolves.toBeInstanceOf(Buffer);
+    unlinkSync(mountedArtifactPath(
+      join(mounted.paths.derivativeRoot, "specialist-handoff-manifest"),
+      materialHash
+    ));
+
+    const cockpit = await handleAgentHttpRoute({
+      request: { method: "GET", url: "/api/agent/cockpit" },
+      handle: fixture.handle,
+      actor: { id: "actor_manifest_replay", kind: "system", label: "Manifest Replay" },
+      now: fixture.now,
+      supervision: fixture.supervision,
+      agentRuntimeFactory: mountedResidentTaskLocalAgentRuntimeFactory
+    });
+    expect(cockpit?.status, cockpit?.body).toBe(200);
+    expect(JSON.parse(cockpit!.body).selectedRun).not.toHaveProperty("handoff");
+  });
+
+  it("binds mounted planner gaps to prior canonical timeline and contradiction artifact IDs", async () => {
+    const fixture = await mountedSourcedResidentFactoryFixture({
+      canonicalDatedFacts: true,
+      secondEvidence: "conflicting-assertion",
+      contradictionIncludesSecondEvidence: true
+    });
+    if (fixture.secondEvidenceId === undefined) throw new Error("second planner evidence is unavailable");
+    const evidenceIds = [fixture.evidenceId, fixture.secondEvidenceId];
+    const timelineResponse = await runMountedSourcedResidentRequest(fixture, {
+      taskId: fixture.timelineTaskId,
+      runId: fixture.timelineRunId,
+      runType: "timeline-builder",
+      evidenceIds
+    });
+    expect(timelineResponse.status, timelineResponse.body).toBe(200);
+    const timelineEnvelope = JSON.parse(timelineResponse.body) as {
+      readonly recorded: { readonly manifest: { readonly outputArtifacts: readonly { readonly artifactHash: `sha256:${string}` }[] } };
+    };
+    const timelineArtifact = await readMountedSourcedOutputArtifact(
+      fixture.handle,
+      timelineEnvelope.recorded.manifest.outputArtifacts[0]!.artifactHash
+    );
+    fixture.advancePastLeaseExpiry();
+    const contradictionResponse = await runMountedSourcedResidentRequest(fixture, {
+      taskId: fixture.contradictionTaskId,
+      runId: fixture.contradictionRunId,
+      runType: "contradiction-finder",
+      evidenceIds
+    });
+    expect(contradictionResponse.status, contradictionResponse.body).toBe(200);
+    const contradictionEnvelope = JSON.parse(contradictionResponse.body) as {
+      readonly recorded: { readonly manifest: { readonly outputArtifacts: readonly { readonly artifactHash: `sha256:${string}` }[] } };
+    };
+    const contradictionArtifact = await readMountedSourcedOutputArtifact(
+      fixture.handle,
+      contradictionEnvelope.recorded.manifest.outputArtifacts[0]!.artifactHash
+    );
+    fixture.advancePastLeaseExpiry();
+    const planner = await fixture.supervision.executeSourcedInvestigation({
+      taskId: fixture.plannerTaskId,
+      runId: fixture.plannerRunId,
+      runType: "investigation-planner",
+      investigationId: "inv_sourced_factory_001"
+    }) as { readonly recorded: { readonly handoff: { readonly outputArtifacts: readonly {
+      readonly artifactKind: string;
+      readonly artifactHash: `sha256:${string}`;
+    }[] } } };
+    const planHash = planner.recorded.handoff.outputArtifacts.find((artifact) =>
+      artifact.artifactKind === "investigation-plan-artifact"
+    )?.artifactHash;
+    if (planHash === undefined) throw new Error("mounted planner artifact is unavailable");
+    const plan = await readMountedSourcedOutputArtifact(fixture.handle, planHash);
+    const timelineIds = (timelineArtifact.items as readonly { readonly itemId: string }[]).map((item) => item.itemId);
+    const contradictionIds = (contradictionArtifact.candidates as readonly { readonly candidateId: string }[])
+      .map((candidate) => candidate.candidateId);
+    expect(timelineIds.length).toBeGreaterThan(0);
+    expect(contradictionIds.length).toBeGreaterThan(0);
+    expect(plan).toMatchObject({
+      prioritizedGaps: [expect.objectContaining({
+        timelineRefs: expect.arrayContaining(timelineIds),
+        contradictionRefs: expect.arrayContaining(contradictionIds)
+      })]
+    });
   }, mountedSourcedMultiWorkflowTimeoutMs);
 
   it("grounds production timeline items only in exact assertion and PRR ledger history", async () => {
@@ -1556,6 +1679,35 @@ async function runMountedSourcedResidentRequest(
   return response;
 }
 
+async function runMountedAdvisoryResidentRequest(
+  fixture: {
+    readonly handle: LocalRuntimeHandle;
+    readonly supervision: ResidentSupervisionRuntime;
+    readonly now: () => string;
+  },
+  taskId: string,
+  body: Readonly<Record<string, unknown>>
+) {
+  const response = await handleAgentHttpRoute({
+    request: {
+      method: "POST",
+      url: `/api/agent/tasks/${taskId}/sourced-investigation`,
+      body: JSON.stringify(body)
+    },
+    handle: fixture.handle,
+    actor: { id: "actor_advisory_helper", kind: "system", label: "Advisory Helper" },
+    now: fixture.now,
+    supervision: fixture.supervision
+  });
+  if (response === undefined) throw new Error("advisory resident route was not reached");
+  return response;
+}
+
+function mountedArtifactPath(root: string, contentHash: `sha256:${string}`): string {
+  const digest = contentHash.slice("sha256:".length);
+  return join(root, "sha256", digest.slice(0, 2), digest);
+}
+
 function createMountedSourcedCancellationController(
   fixture: { readonly workspaceRoot: string; readonly now: () => string },
   suffix: string
@@ -2150,9 +2302,9 @@ async function mountedPrrNegotiationFixture(requestFollowUpApproval: boolean) {
     responseText: JSON.stringify({
       draftSummary: "Review a narrow records follow-up before any external send.",
       requestFollowUpApproval,
-      citedRuleRefs: ["rule_foia_deadline_001"],
+      citedRuleRefs: ["jurisdiction-rule:us-federal-foia@0.1.0:rule_foia_deadline_001"],
       jurisdictionRefs: ["jurisdiction_us_federal_foia"],
-      deadlineRefs: ["deadline_prr_response_001"],
+      deadlineRefs: ["jurisdiction-rule:us-federal-foia@0.1.0:rule_foia_deadline_001"],
       deadlineNotes: ["The cited response period should be checked against the current request stream."],
       narrowingOptions: ["Limit the follow-up to the named contract and date range."],
       feeOptions: ["Ask for an itemized estimate before accepting any fee."],
@@ -2272,7 +2424,7 @@ async function mountedPrrNegotiationFixture(requestFollowUpApproval: boolean) {
         mountedPromptReadbackWitness: promptReadback.witness,
         prrRequestId,
         correspondenceId,
-        jurisdictionRuleRefs: ["rule_foia_deadline_001"],
+        jurisdictionRuleRefs: ["jurisdiction-rule:us-federal-foia@0.1.0:rule_foia_deadline_001"],
         followUpApprovalPreview: mountedPrrFollowUpApprovalPreview({
           prrRequestId,
           correspondenceId,
@@ -2368,6 +2520,7 @@ function mountedPrrContextPayload(
   switch (contextPackId) {
     case "prr-read-model.v1":
       return {
+        schemaVersion: "prr-read-model-context.v1",
         scope: { kind: "prr-request", id: input.prrRequestId },
         lifecycle: {
           status: "sent",
@@ -2382,10 +2535,13 @@ function mountedPrrContextPayload(
         },
         deadline: {
           deadlineDate: "2026-08-24",
-          source: "jurisdiction-pack",
-          confidence: 0.9,
-          explanation: "Current jurisdiction summary supplies the advisory deadline.",
-          deadlineRefs: ["deadline_prr_response_001"]
+          source: "confirmed",
+          confirmedBy: "actor_records_officer",
+          citedRules: [{
+            label: "FOIA response deadline",
+            citation: "5 USC 552(a)(6)(A)",
+            jurisdictionPack: { name: "us-federal-foia", version: "0.1.0" }
+          }]
         },
         fee: null,
         narrowing: null,
@@ -2406,12 +2562,15 @@ function mountedPrrContextPayload(
       };
     case "jurisdiction-pack-summary.v1":
       return {
+        schemaVersion: "jurisdiction-pack-summary-context.v1",
         packName: "us-federal-foia",
         packVersion: "0.1.0",
         jurisdiction: "US federal",
         jurisdictionRefs: ["jurisdiction_us_federal_foia"],
         citedRules: [{
-          ruleRef: "rule_foia_deadline_001",
+          id: "rule_foia_deadline_001",
+          ruleRef: "jurisdiction-rule:us-federal-foia@0.1.0:rule_foia_deadline_001",
+          kind: "deadline",
           label: "FOIA response deadline",
           citation: "5 USC 552(a)(6)(A)"
         }],

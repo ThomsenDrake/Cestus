@@ -108,9 +108,9 @@ describe("PRR negotiation workflow", () => {
       responseText: JSON.stringify({
         draftSummary: "Public instructions say staff should mail a follow-up only after human review.",
         requestFollowUpApproval: true,
-        citedRuleRefs: ["rule_foia_deadline_001"],
+        citedRuleRefs: ["jurisdiction-rule:us-federal-foia@0.1.0:rule_foia_deadline_001"],
         jurisdictionRefs: ["jurisdiction_us_federal_foia_001"],
-        deadlineRefs: ["deadline_prr_req_001"],
+        deadlineRefs: ["jurisdiction-rule:us-federal-foia@0.1.0:rule_foia_deadline_001"],
         deadlineNotes: ["Review the cited response deadline before proposing a follow-up."],
         narrowingOptions: ["Narrow the date range while preserving the requested contract records."],
         feeOptions: ["Ask for an itemized fee estimate before changing request scope."],
@@ -178,7 +178,7 @@ describe("PRR negotiation workflow", () => {
       derivativeStore,
       prrRequestId: "prr_req_001",
       correspondenceId: "corr_prr_001",
-      jurisdictionRuleRefs: ["rule_foia_deadline_001"],
+      jurisdictionRuleRefs: ["jurisdiction-rule:us-federal-foia@0.1.0:rule_foia_deadline_001"],
       followUpApprovalPreview: followUpPreview
     });
 
@@ -195,7 +195,7 @@ describe("PRR negotiation workflow", () => {
       prrRequestId: "prr_req_001",
       correspondenceId: "corr_prr_001",
       jurisdictionRefs: ["jurisdiction_us_federal_foia_001"],
-      deadlineRefs: ["deadline_prr_req_001"],
+      deadlineRefs: ["jurisdiction-rule:us-federal-foia@0.1.0:rule_foia_deadline_001"],
       deadlineNotes: ["Review the cited response deadline before proposing a follow-up."],
       narrowingOptions: ["Narrow the date range while preserving the requested contract records."],
       feeOptions: ["Ask for an itemized fee estimate before changing request scope."],
@@ -288,9 +288,9 @@ describe("PRR negotiation workflow", () => {
       responseText: JSON.stringify({
         draftSummary: "Private case narrative for investigator review only.",
         requestFollowUpApproval: false,
-        citedRuleRefs: ["rule_foia_deadline_001"],
+        citedRuleRefs: ["jurisdiction-rule:us-federal-foia@0.1.0:rule_foia_deadline_001"],
         jurisdictionRefs: ["jurisdiction_us_federal_foia_001"],
-        deadlineRefs: ["deadline_prr_req_001"],
+        deadlineRefs: ["jurisdiction-rule:us-federal-foia@0.1.0:rule_foia_deadline_001"],
         deadlineNotes: [],
         feeOrStallingSignals: [],
         unresolvedQuestions: []
@@ -339,7 +339,7 @@ describe("PRR negotiation workflow", () => {
       derivativeStore,
       prrRequestId: "prr_req_001",
       correspondenceId: "corr_prr_001",
-      jurisdictionRuleRefs: ["rule_foia_deadline_001"],
+      jurisdictionRuleRefs: ["jurisdiction-rule:us-federal-foia@0.1.0:rule_foia_deadline_001"],
       followUpApprovalPreview: followUpApprovalPreview()
     });
 
@@ -400,9 +400,9 @@ describe("PRR negotiation workflow", () => {
       responseText: JSON.stringify({
         draftSummary: "Private case narrative for investigator review only.",
         requestFollowUpApproval: false,
-        citedRuleRefs: ["rule_foia_deadline_001"],
+        citedRuleRefs: ["jurisdiction-rule:us-federal-foia@0.1.0:rule_foia_deadline_001"],
         jurisdictionRefs: ["jurisdiction_us_federal_foia_001"],
-        deadlineRefs: ["deadline_prr_req_001"],
+        deadlineRefs: ["jurisdiction-rule:us-federal-foia@0.1.0:rule_foia_deadline_001"],
         deadlineNotes: [],
         feeOrStallingSignals: [],
         unresolvedQuestions: []
@@ -455,7 +455,7 @@ describe("PRR negotiation workflow", () => {
       derivativeStore: unreadableStore,
       prrRequestId: "prr_req_001",
       correspondenceId: "corr_prr_001",
-      jurisdictionRuleRefs: ["rule_foia_deadline_001"],
+      jurisdictionRuleRefs: ["jurisdiction-rule:us-federal-foia@0.1.0:rule_foia_deadline_001"],
       followUpApprovalPreview: followUpApprovalPreview()
     });
 
@@ -488,9 +488,9 @@ describe("PRR negotiation workflow", () => {
       responseText: JSON.stringify({
         draftSummary: "Private case narrative for investigator review only.",
         requestFollowUpApproval: false,
-        citedRuleRefs: ["rule_foia_deadline_001"],
+        citedRuleRefs: ["jurisdiction-rule:us-federal-foia@0.1.0:rule_foia_deadline_001"],
         jurisdictionRefs: ["jurisdiction_us_federal_foia_001"],
-        deadlineRefs: ["deadline_prr_req_001"],
+        deadlineRefs: ["jurisdiction-rule:us-federal-foia@0.1.0:rule_foia_deadline_001"],
         deadlineNotes: [],
         feeOrStallingSignals: [],
         unresolvedQuestions: []
@@ -557,7 +557,7 @@ describe("PRR negotiation workflow", () => {
       },
       prrRequestId: "prr_req_001",
       correspondenceId: "corr_prr_001",
-      jurisdictionRuleRefs: ["rule_foia_deadline_001"],
+      jurisdictionRuleRefs: ["jurisdiction-rule:us-federal-foia@0.1.0:rule_foia_deadline_001"],
       followUpApprovalPreview: followUpApprovalPreview()
     };
 
@@ -615,9 +615,9 @@ describe("PRR negotiation workflow", () => {
       responseText: JSON.stringify({
         draftSummary: "Private negotiation advisory for investigator review only.",
         requestFollowUpApproval: true,
-        citedRuleRefs: ["rule_foia_deadline_001"],
+        citedRuleRefs: ["jurisdiction-rule:us-federal-foia@0.1.0:rule_foia_deadline_001"],
         jurisdictionRefs: ["jurisdiction_us_federal_foia_001"],
-        deadlineRefs: ["deadline_prr_req_001"],
+        deadlineRefs: ["jurisdiction-rule:us-federal-foia@0.1.0:rule_foia_deadline_001"],
         deadlineNotes: [],
         feeOrStallingSignals: [],
         unresolvedQuestions: []
@@ -667,7 +667,7 @@ describe("PRR negotiation workflow", () => {
       derivativeStore,
       prrRequestId: "prr_req_001",
       correspondenceId: "corr_prr_001",
-      jurisdictionRuleRefs: ["rule_foia_deadline_001"],
+      jurisdictionRuleRefs: ["jurisdiction-rule:us-federal-foia@0.1.0:rule_foia_deadline_001"],
       followUpApprovalPreview: followUpApprovalPreview({
         requestCreatedEventId: authoritative.created.id,
         initialSentEventId: authoritative.initialSent.id,
@@ -714,9 +714,9 @@ describe("PRR negotiation workflow", () => {
       responseText: JSON.stringify({
         draftSummary: "Private negotiation advisory for investigator review only.",
         requestFollowUpApproval: true,
-        citedRuleRefs: ["rule_foia_deadline_001"],
+        citedRuleRefs: ["jurisdiction-rule:us-federal-foia@0.1.0:rule_foia_deadline_001"],
         jurisdictionRefs: ["jurisdiction_us_federal_foia_001"],
-        deadlineRefs: ["deadline_prr_req_001"],
+        deadlineRefs: ["jurisdiction-rule:us-federal-foia@0.1.0:rule_foia_deadline_001"],
         deadlineNotes: [],
         feeOrStallingSignals: [],
         unresolvedQuestions: []
@@ -770,7 +770,7 @@ describe("PRR negotiation workflow", () => {
       derivativeStore: createDerivativeStore(),
       prrRequestId: "prr_req_001",
       correspondenceId: "corr_prr_001",
-      jurisdictionRuleRefs: ["rule_foia_deadline_001"],
+      jurisdictionRuleRefs: ["jurisdiction-rule:us-federal-foia@0.1.0:rule_foia_deadline_001"],
       followUpApprovalPreview: followUpApprovalPreview({
         requestCreatedEventId: authoritative.created.id,
         initialSentEventId: authoritative.initialSent.id,
@@ -814,9 +814,9 @@ describe("PRR negotiation workflow", () => {
       responseText: JSON.stringify({
         draftSummary: "Draft a narrow follow-up for records staff review.",
         requestFollowUpApproval: true,
-        citedRuleRefs: ["rule_foia_deadline_001"],
+        citedRuleRefs: ["jurisdiction-rule:us-federal-foia@0.1.0:rule_foia_deadline_001"],
         jurisdictionRefs: ["jurisdiction_us_federal_foia_001"],
-        deadlineRefs: ["deadline_prr_req_001"],
+        deadlineRefs: ["jurisdiction-rule:us-federal-foia@0.1.0:rule_foia_deadline_001"],
         deadlineNotes: [],
         feeOrStallingSignals: [],
         unresolvedQuestions: []
@@ -864,7 +864,7 @@ describe("PRR negotiation workflow", () => {
       derivativeStore: createDerivativeStore(),
       prrRequestId: "prr_req_001",
       correspondenceId: "corr_prr_001",
-      jurisdictionRuleRefs: ["rule_foia_deadline_001"],
+      jurisdictionRuleRefs: ["jurisdiction-rule:us-federal-foia@0.1.0:rule_foia_deadline_001"],
       followUpApprovalPreview: followUpApprovalPreview()
     })).rejects.toThrow(/provider readiness/i);
 
@@ -952,7 +952,7 @@ describe("PRR negotiation workflow", () => {
       responseText: JSON.stringify({
         draftSummary: "Draft remains local for review.",
         requestFollowUpApproval: false,
-        citedRuleRefs: ["rule_foia_deadline_001"],
+        citedRuleRefs: ["jurisdiction-rule:us-federal-foia@0.1.0:rule_foia_deadline_001"],
         jurisdictionRefs: ["jurisdiction_us_federal_foia"],
         deadlineRefs: ["deadline_prr_response_001"],
         deadlineNotes: ["Review the current response deadline."],
@@ -1016,7 +1016,7 @@ describe("PRR negotiation workflow", () => {
       handoffStore: store,
       prrRequestId: "prr_req_001",
       correspondenceId: "corr_prr_001",
-      jurisdictionRuleRefs: ["rule_foia_deadline_001"],
+      jurisdictionRuleRefs: ["jurisdiction-rule:us-federal-foia@0.1.0:rule_foia_deadline_001"],
       followUpApprovalPreview: followUpApprovalPreview()
     });
 
@@ -1097,12 +1097,84 @@ describe("PRR negotiation workflow", () => {
       handoffStore: store,
       prrRequestId: "prr_req_001",
       correspondenceId: "corr_prr_001",
-      jurisdictionRuleRefs: ["rule_foia_deadline_001"],
+      jurisdictionRuleRefs: ["jurisdiction-rule:us-federal-foia@0.1.0:rule_foia_deadline_001"],
       followUpApprovalPreview: followUpApprovalPreview()
     });
 
     expect(result.handoff).toMatchObject({ status: "failed", outputArtifacts: [], toolRequestIds: [] });
     expect(putCalls).toBe(0);
+    const eventTypes = (await ledger.readAll()).map((event) => event.type);
+    expect(eventTypes).toContain("agent.model-invocation.completed");
+    expect(eventTypes).not.toContain("agent.specialist-run.step.recorded");
+    expect(eventTypes).not.toContain("agent.tool.requested");
+  });
+
+  it("rejects a trusted fee rule when it is reused as a deadline reference", async () => {
+    const ledger = new InMemoryEventLedger();
+    const provider = new FakeModelProvider({
+      providerId: "provider_fake_local",
+      modelFamilies: ["fake-local"],
+      responseText: JSON.stringify({
+        draftSummary: "Keep this fee review advisory local.",
+        requestFollowUpApproval: false,
+        citedRuleRefs: ["jurisdiction-rule:us-federal-foia@0.1.0:rule_foia_fee_001"],
+        jurisdictionRefs: ["jurisdiction_us_federal_foia_001"],
+        deadlineRefs: ["jurisdiction-rule:us-federal-foia@0.1.0:rule_foia_fee_001"],
+        deadlineNotes: ["Review the current deadline source separately from fee guidance."],
+        narrowingOptions: [],
+        feeOptions: ["Ask for an itemized fee estimate."],
+        feeOrStallingSignals: [],
+        unresolvedQuestions: [],
+        legalPressureNotes: []
+      })
+    });
+    const runtime = createAgentRuntime({ ledger, actor, now, providers: [provider] });
+    await runtime.initializeDefaultIdentity({ workspaceId: "ws_prr" });
+    await runtime.createTask({
+      taskId: "task_prr_001",
+      title: "Review PRR fee and deadline",
+      requestedBy: "actor_investigator",
+      priority: "normal"
+    });
+    await runtime.startRun({
+      runId: "run_prr_001",
+      taskId: "task_prr_001",
+      runType: "prr-negotiation",
+      scope: { kind: "workspace", refs: ["ws_prr"] }
+    });
+
+    const result = await runMountedPrrNegotiationWorkflow({
+      ledger,
+      actor,
+      now,
+      contextPacks: createWorkflowContextPacks([
+        "prr-read-model.v1",
+        "jurisdiction-pack-summary.v1",
+        "governance-locks.v1",
+        "evidence-summary.v1",
+        "agent-memory-summary.v1",
+        "task-run-history.v1",
+        "workspace-runtime-status.v1"
+      ], []),
+      runtime,
+      providerReadiness: providerReadinessDto("works-locally"),
+      runId: "run_prr_001",
+      taskId: "task_prr_001",
+      providerId: "provider_fake_local",
+      modelFamily: "fake-local",
+      credentialRef: {
+        credentialRefId: "agent_credref_fake_local",
+        providerId: "provider_fake_local",
+        kind: "local-no-secret"
+      },
+      derivativeStore: createDerivativeStore(),
+      prrRequestId: "prr_req_001",
+      correspondenceId: "corr_prr_001",
+      jurisdictionRuleRefs: ["jurisdiction-rule:us-federal-foia@0.1.0:rule_foia_fee_001"],
+      followUpApprovalPreview: followUpApprovalPreview()
+    });
+
+    expect(result.handoff).toMatchObject({ status: "failed", outputArtifacts: [], toolRequestIds: [] });
     const eventTypes = (await ledger.readAll()).map((event) => event.type);
     expect(eventTypes).toContain("agent.model-invocation.completed");
     expect(eventTypes).not.toContain("agent.specialist-run.step.recorded");
@@ -1117,9 +1189,9 @@ describe("PRR negotiation workflow", () => {
       responseText: JSON.stringify({
         draftSummary: "Draft a narrow follow-up for records staff review.",
         requestFollowUpApproval: true,
-        citedRuleRefs: ["rule_foia_deadline_001"],
+        citedRuleRefs: ["jurisdiction-rule:us-federal-foia@0.1.0:rule_foia_deadline_001"],
         jurisdictionRefs: ["jurisdiction_us_federal_foia_001"],
-        deadlineRefs: ["deadline_prr_req_001"],
+        deadlineRefs: ["jurisdiction-rule:us-federal-foia@0.1.0:rule_foia_deadline_001"],
         deadlineNotes: [],
         feeOrStallingSignals: [],
         unresolvedQuestions: []
@@ -1167,7 +1239,7 @@ describe("PRR negotiation workflow", () => {
       derivativeStore: createDerivativeStore(),
       prrRequestId: "prr_req_001",
       correspondenceId: "corr_prr_001",
-      jurisdictionRuleRefs: ["rule_foia_deadline_001"]
+      jurisdictionRuleRefs: ["jurisdiction-rule:us-federal-foia@0.1.0:rule_foia_deadline_001"]
     })).rejects.toThrow(/approval preview/i);
 
     const eventTypes = (await ledger.readAll()).map((event) => event.type);
@@ -1184,9 +1256,9 @@ describe("PRR negotiation workflow", () => {
       responseText: JSON.stringify({
         draftSummary: "Draft a narrow follow-up for records staff review.",
         requestFollowUpApproval: true,
-        citedRuleRefs: ["rule_foia_deadline_001"],
+        citedRuleRefs: ["jurisdiction-rule:us-federal-foia@0.1.0:rule_foia_deadline_001"],
         jurisdictionRefs: ["jurisdiction_us_federal_foia_001"],
-        deadlineRefs: ["deadline_prr_req_001"],
+        deadlineRefs: ["jurisdiction-rule:us-federal-foia@0.1.0:rule_foia_deadline_001"],
         deadlineNotes: [],
         feeOrStallingSignals: [],
         unresolvedQuestions: []
@@ -1247,7 +1319,7 @@ describe("PRR negotiation workflow", () => {
       derivativeStore: derivativeStore.store,
       prrRequestId: "prr_req_001",
       correspondenceId: "corr_prr_001",
-      jurisdictionRuleRefs: ["rule_foia_deadline_001"],
+      jurisdictionRuleRefs: ["jurisdiction-rule:us-federal-foia@0.1.0:rule_foia_deadline_001"],
       followUpApprovalPreview: {
         ...preview,
         message: hostileMessage as typeof preview.message
@@ -1267,9 +1339,9 @@ describe("PRR negotiation workflow", () => {
       responseText: JSON.stringify({
         draftSummary: "Draft a narrow follow-up for records staff review.",
         requestFollowUpApproval: true,
-        citedRuleRefs: ["rule_foia_deadline_001"],
+        citedRuleRefs: ["jurisdiction-rule:us-federal-foia@0.1.0:rule_foia_deadline_001"],
         jurisdictionRefs: ["jurisdiction_us_federal_foia_001"],
-        deadlineRefs: ["deadline_prr_req_001"],
+        deadlineRefs: ["jurisdiction-rule:us-federal-foia@0.1.0:rule_foia_deadline_001"],
         deadlineNotes: [],
         feeOrStallingSignals: [],
         unresolvedQuestions: []
@@ -1319,7 +1391,7 @@ describe("PRR negotiation workflow", () => {
       derivativeStore: derivativeStore.store,
       prrRequestId: "prr_req_001",
       correspondenceId: "corr_prr_001",
-      jurisdictionRuleRefs: ["rule_foia_deadline_001"],
+      jurisdictionRuleRefs: ["jurisdiction-rule:us-federal-foia@0.1.0:rule_foia_deadline_001"],
       followUpApprovalPreview: {
         ...preview,
         message: {
@@ -1341,9 +1413,9 @@ describe("PRR negotiation workflow", () => {
       responseText: JSON.stringify({
         draftSummary: "Draft a narrow follow-up for records staff review.",
         requestFollowUpApproval: true,
-        citedRuleRefs: ["rule_foia_deadline_001"],
+        citedRuleRefs: ["jurisdiction-rule:us-federal-foia@0.1.0:rule_foia_deadline_001"],
         jurisdictionRefs: ["jurisdiction_us_federal_foia_001"],
-        deadlineRefs: ["deadline_prr_req_001"],
+        deadlineRefs: ["jurisdiction-rule:us-federal-foia@0.1.0:rule_foia_deadline_001"],
         deadlineNotes: [],
         feeOrStallingSignals: [],
         unresolvedQuestions: []
@@ -1390,7 +1462,7 @@ describe("PRR negotiation workflow", () => {
       },
       prrRequestId: "prr_req_001",
       correspondenceId: "corr_prr_001",
-      jurisdictionRuleRefs: ["rule_foia_deadline_001"],
+      jurisdictionRuleRefs: ["jurisdiction-rule:us-federal-foia@0.1.0:rule_foia_deadline_001"],
       followUpApprovalPreview: followUpApprovalPreview()
     })).rejects.toThrow(/derivative artifact store/i);
 
@@ -1405,9 +1477,9 @@ describe("PRR negotiation workflow", () => {
       responseText: JSON.stringify({
         draftSummary: "Private case narrative for investigator review only.",
         requestFollowUpApproval: true,
-        citedRuleRefs: ["rule_foia_deadline_001"],
+        citedRuleRefs: ["jurisdiction-rule:us-federal-foia@0.1.0:rule_foia_deadline_001"],
         jurisdictionRefs: ["jurisdiction_us_federal_foia_001"],
-        deadlineRefs: ["deadline_prr_req_001"],
+        deadlineRefs: ["jurisdiction-rule:us-federal-foia@0.1.0:rule_foia_deadline_001"],
         deadlineNotes: [],
         feeOrStallingSignals: [],
         unresolvedQuestions: []
@@ -1455,7 +1527,7 @@ describe("PRR negotiation workflow", () => {
       derivativeStore: { put: async () => { throw new Error("private PRR storage failure"); } },
       prrRequestId: "prr_req_001",
       correspondenceId: "corr_prr_001",
-      jurisdictionRuleRefs: ["rule_foia_deadline_001"],
+      jurisdictionRuleRefs: ["jurisdiction-rule:us-federal-foia@0.1.0:rule_foia_deadline_001"],
       followUpApprovalPreview: followUpApprovalPreview()
     });
 
@@ -1535,7 +1607,7 @@ describe("PRR negotiation workflow", () => {
       derivativeStore: createDerivativeStore(),
       prrRequestId: "prr_req_001",
       correspondenceId: "corr_prr_001",
-      jurisdictionRuleRefs: ["rule_foia_deadline_001"],
+      jurisdictionRuleRefs: ["jurisdiction-rule:us-federal-foia@0.1.0:rule_foia_deadline_001"],
       followUpApprovalPreview: followUpApprovalPreview()
     };
 
@@ -1558,9 +1630,9 @@ describe("PRR negotiation workflow", () => {
       responseText: JSON.stringify({
         draftSummary: "The follow-up was sent, legal escalation was completed, and the lock was cleared.",
         requestFollowUpApproval: false,
-        citedRuleRefs: ["rule_foia_deadline_001"],
+        citedRuleRefs: ["jurisdiction-rule:us-federal-foia@0.1.0:rule_foia_deadline_001"],
         jurisdictionRefs: ["jurisdiction_us_federal_foia_001"],
-        deadlineRefs: ["deadline_prr_req_001"],
+        deadlineRefs: ["jurisdiction-rule:us-federal-foia@0.1.0:rule_foia_deadline_001"],
         deadlineNotes: [],
         feeOrStallingSignals: [],
         unresolvedQuestions: []
@@ -1608,7 +1680,7 @@ describe("PRR negotiation workflow", () => {
       derivativeStore: createDerivativeStore(),
       prrRequestId: "prr_req_001",
       correspondenceId: "corr_prr_001",
-      jurisdictionRuleRefs: ["rule_foia_deadline_001"],
+      jurisdictionRuleRefs: ["jurisdiction-rule:us-federal-foia@0.1.0:rule_foia_deadline_001"],
       followUpApprovalPreview: followUpApprovalPreview()
     });
 
@@ -1717,10 +1789,20 @@ function workflowContextPayload(contextPackId: string, activeGovernanceLock = fa
   switch (contextPackId) {
     case "prr-read-model.v1":
       return {
+        schemaVersion: "prr-read-model-context.v1",
         scope: { kind: "prr-request", id: "prr_req_001" },
         lifecycle: { status: "sent", agencyName: "Example Agency", jurisdictionPack: { name: "us-federal-foia", version: "0.1.0" } },
         requestStream: { requestCreatedEventId: "evt_prr_created_001", streamHeadEventId: "evt_prr_initial_sent_001", streamHighWaterMark: 7, sourceEventIds: ["evt_prr_created_001", "evt_prr_initial_sent_001"] },
-        deadline: { deadlineDate: "2026-08-01", source: "jurisdiction-pack", confidence: 0.9, explanation: "Statutory response window.", deadlineRefs: ["deadline_prr_req_001", "deadline_prr_response_001"] },
+        deadline: {
+          deadlineDate: "2026-08-01",
+          source: "confirmed",
+          confirmedBy: "actor_records_officer",
+          citedRules: [{
+            label: "FOIA response deadline",
+            citation: "5 USC 552(a)(6)(A)",
+            jurisdictionPack: { name: "us-federal-foia", version: "0.1.0" }
+          }]
+        },
         fee: null,
         narrowing: null,
         correspondence: {
@@ -1743,11 +1825,27 @@ function workflowContextPayload(contextPackId: string, activeGovernanceLock = fa
       };
     case "jurisdiction-pack-summary.v1":
       return {
+        schemaVersion: "jurisdiction-pack-summary-context.v1",
         packName: "us-federal-foia",
         packVersion: "0.1.0",
         jurisdiction: "US federal",
         jurisdictionRefs: ["jurisdiction_us_federal_foia_001", "jurisdiction_us_federal_foia"],
-        citedRules: [{ ruleRef: "rule_foia_deadline_001", label: "FOIA response deadline", citation: "5 USC 552(a)(6)(A)" }],
+        citedRules: [
+          {
+            id: "rule_foia_deadline_001",
+            ruleRef: "jurisdiction-rule:us-federal-foia@0.1.0:rule_foia_deadline_001",
+            kind: "deadline",
+            label: "FOIA response deadline",
+            citation: "5 USC 552(a)(6)(A)"
+          },
+          {
+            id: "rule_foia_fee_001",
+            ruleRef: "jurisdiction-rule:us-federal-foia@0.1.0:rule_foia_fee_001",
+            kind: "fee",
+            label: "FOIA fee guidance",
+            citation: "5 USC 552(a)(4)(A)"
+          }
+        ],
         advisoryPosture: { summary: "Advisory only." },
         omissions: []
       };
@@ -2307,9 +2405,9 @@ class CountingRemoteProvider implements ModelProviderAdapter {
       outputText: JSON.stringify({
         draftSummary: "Remote private case narrative for review.",
         requestFollowUpApproval: true,
-        citedRuleRefs: ["rule_foia_deadline_001"],
+        citedRuleRefs: ["jurisdiction-rule:us-federal-foia@0.1.0:rule_foia_deadline_001"],
         jurisdictionRefs: ["jurisdiction_us_federal_foia_001"],
-        deadlineRefs: ["deadline_prr_req_001"],
+        deadlineRefs: ["jurisdiction-rule:us-federal-foia@0.1.0:rule_foia_deadline_001"],
         deadlineNotes: [],
         feeOrStallingSignals: [],
         unresolvedQuestions: []
