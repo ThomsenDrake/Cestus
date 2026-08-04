@@ -40,6 +40,7 @@ export interface BuildSpecialistHandoffManifestInput {
   readonly handoffRevision: number;
   readonly runId: string;
   readonly taskId?: string;
+  readonly investigationId?: string;
   readonly runType: string;
   readonly residentAgentId: "agent_default";
   readonly generatedAt: string;
@@ -75,6 +76,7 @@ export interface SpecialistHandoffManifest {
   readonly handoffDtoHash: `sha256:${string}`;
   readonly runId: string;
   readonly taskId?: string;
+  readonly investigationId?: string;
   readonly runType: string;
   readonly residentAgentId: "agent_default";
   readonly status: SpecialistHandoffStatus;
@@ -105,6 +107,7 @@ export interface AuthorityBoundSpecialistHandoffManifest extends Omit<Specialist
 export interface BuildSpecialistHandoffMaterialInput {
   readonly status: SpecialistHandoffStatus;
   readonly safeSummary: string;
+  readonly investigationId?: string;
   readonly contextPackRefs: readonly ContextPackRef[];
   readonly promptArtifactHash?: `sha256:${string}`;
   readonly outputArtifacts: readonly SpecialistWorkflowOutputArtifactDto[];
@@ -137,6 +140,7 @@ const buildInputSchema = z.object({
   handoffRevision: z.number().int().positive(),
   runId: safeStringSchema,
   taskId: safeStringSchema.optional(),
+  investigationId: safeStringSchema.optional(),
   runType: safeStringSchema,
   residentAgentId: z.literal("agent_default"),
   generatedAt: z.string().datetime(),
@@ -166,6 +170,7 @@ const manifestSchema = z.object({
   handoffDtoHash: contentHashSchema,
   runId: safeStringSchema,
   taskId: safeStringSchema.optional(),
+  investigationId: safeStringSchema.optional(),
   runType: safeStringSchema,
   residentAgentId: z.literal("agent_default"),
   status: statusSchema,
@@ -205,6 +210,7 @@ const authorityBoundManifestSchema = z.object({
   handoffDtoHash: contentHashSchema,
   runId: safeStringSchema,
   taskId: safeStringSchema.optional(),
+  investigationId: safeStringSchema.optional(),
   runType: safeStringSchema,
   residentAgentId: z.literal("agent_default"),
   status: statusSchema,
@@ -231,6 +237,7 @@ const authorityBoundManifestSchema = z.object({
 const handoffMaterialInputSchema = z.object({
   status: statusSchema,
   safeSummary: safeStringSchema,
+  investigationId: safeStringSchema.optional(),
   contextPackRefs: z.array(z.unknown()),
   promptArtifactHash: contentHashSchema.optional(),
   outputArtifacts: z.array(specialistOutputArtifactRefSchema),
@@ -290,6 +297,7 @@ export function buildSpecialistHandoffMaterial(input: BuildSpecialistHandoffMate
     schemaVersion: specialistHandoffMaterialSchemaVersion,
     status: parsed.status,
     safeSummary: parsed.safeSummary,
+    ...(parsed.investigationId === undefined ? {} : { investigationId: parsed.investigationId }),
     contextPackRefs: parsed.contextPackRefs.map((ref) => parseContextPackRef(ref)),
     ...(parsed.promptArtifactHash === undefined ? {} : { promptArtifactHash: parsed.promptArtifactHash }),
     outputArtifacts: parsed.outputArtifacts,
@@ -311,6 +319,7 @@ export function parseSpecialistHandoffMaterial(value: unknown): SpecialistHandof
     schemaVersion: parsed.schemaVersion,
     status: parsed.status,
     safeSummary: parsed.safeSummary,
+    ...(parsed.investigationId === undefined ? {} : { investigationId: parsed.investigationId }),
     contextPackRefs: parsed.contextPackRefs.map((ref) => parseContextPackRef(ref)),
     ...(parsed.promptArtifactHash === undefined ? {} : { promptArtifactHash: parsed.promptArtifactHash }),
     outputArtifacts: parsed.outputArtifacts,
@@ -387,6 +396,7 @@ export function buildSpecialistHandoffManifest(input: BuildSpecialistHandoffMani
     runType: parsed.runType,
     runId: parsed.runId,
     ...(parsed.taskId === undefined ? {} : { taskId: parsed.taskId }),
+    ...(parsed.investigationId === undefined ? {} : { investigationId: parsed.investigationId }),
     residentAgentId: parsed.residentAgentId,
     generatedAt: parsed.generatedAt,
     status: parsed.status,
@@ -406,6 +416,7 @@ export function buildSpecialistHandoffManifest(input: BuildSpecialistHandoffMani
     handoffDtoHash: hashSpecialistWorkflowHandoff(handoff),
     runId: handoff.runId,
     ...(handoff.taskId === undefined ? {} : { taskId: handoff.taskId }),
+    ...(handoff.investigationId === undefined ? {} : { investigationId: handoff.investigationId }),
     runType: handoff.runType,
     residentAgentId: handoff.residentAgentId,
     status: handoff.status,
@@ -488,6 +499,7 @@ export function parseAuthorityBoundSpecialistHandoffManifest(value: unknown): Au
     handoffDtoHash: manifest.handoffDtoHash,
     runId: manifest.runId,
     ...(manifest.taskId === undefined ? {} : { taskId: manifest.taskId }),
+    ...(manifest.investigationId === undefined ? {} : { investigationId: manifest.investigationId }),
     runType: manifest.runType,
     residentAgentId: manifest.residentAgentId,
     status: manifest.status,
@@ -570,6 +582,7 @@ interface SpecialistHandoffManifestAgreement {
   readonly handoffRevision: unknown;
   readonly runId: unknown;
   readonly taskId?: unknown | undefined;
+  readonly investigationId?: unknown | undefined;
   readonly runType: unknown;
   readonly residentAgentId: unknown;
   readonly status: unknown;
@@ -592,6 +605,7 @@ function assertManifestHandoffAgreement(
     ["handoffRevision", manifest.handoffRevision, handoff.handoffRevision],
     ["runId", manifest.runId, handoff.runId],
     ["taskId", manifest.taskId, handoff.taskId],
+    ["investigationId", manifest.investigationId, handoff.investigationId],
     ["runType", manifest.runType, handoff.runType],
     ["residentAgentId", manifest.residentAgentId, handoff.residentAgentId],
     ["status", manifest.status, handoff.status],

@@ -120,6 +120,7 @@ export interface SpecialistWorkflowHandoffDto {
   readonly runType: AgentSpecialistRunType;
   readonly runId: string;
   readonly taskId?: string;
+  readonly investigationId?: string;
   readonly residentAgentId: typeof residentAgentIdValue;
   readonly generatedAt: string;
   readonly status: typeof handoffStatusValues[number];
@@ -196,6 +197,7 @@ const specialistWorkflowHandoffCommonObjectShape = {
   runType: approvedRunTypeSchema,
   runId: safeIdentifierSchema("runId"),
   taskId: safeIdentifierSchema("taskId").optional(),
+  investigationId: safeIdentifierSchema("investigationId").optional(),
   residentAgentId: z.literal(residentAgentIdValue),
   generatedAt: z.string().datetime(),
   status: handoffStatusSchema,
@@ -541,6 +543,7 @@ function freezeSpecialistWorkflowHandoff(
     ),
     nextSafeActions: Object.freeze(value.nextSafeActions.map((action) => freezeNextAction(action))),
     ...(value.taskId === undefined ? {} : { taskId: value.taskId }),
+    ...(value.investigationId === undefined ? {} : { investigationId: value.investigationId }),
     ...(value.promptArtifactHash === undefined ? {} : { promptArtifactHash: value.promptArtifactHash }),
     ...(value.failure === undefined ? {} : { failure: freezeFailureDto(value.failure) })
   };
@@ -568,6 +571,7 @@ function freezeLegacySpecialistWorkflowHandoff(
     ),
     nextSafeActions: Object.freeze(value.nextSafeActions.map((action) => freezeNextAction(action))),
     ...(value.taskId === undefined ? {} : { taskId: value.taskId }),
+    ...(value.investigationId === undefined ? {} : { investigationId: value.investigationId }),
     ...(value.promptArtifactHash === undefined ? {} : { promptArtifactHash: value.promptArtifactHash }),
     ...(value.failure === undefined ? {} : { failure: freezeFailureDto(value.failure) })
   };

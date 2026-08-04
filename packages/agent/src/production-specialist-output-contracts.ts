@@ -126,8 +126,9 @@ const sourcedNarrativeText = (label: string) => shortSafeText(label).superRefine
 });
 const id = (prefix: string) => safeText(`${prefix} identifier`).regex(new RegExp(`^${prefix}[a-zA-Z0-9_-]+$`));
 const canonicalReferencePattern = /^(?:sha256:[a-f0-9]{64}|(?=[a-zA-Z0-9._:-]{3,200}$)(?=[a-zA-Z0-9._:-]*[_:.])[a-zA-Z][a-zA-Z0-9._:-]*)$/;
+const jurisdictionRuleReferencePattern = /^jurisdiction-rule:[a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+:[a-zA-Z0-9._-]+$/;
 const ref = safeText("provider output reference").max(200).superRefine((value, ctx) => {
-  if (!canonicalReferencePattern.test(value)) {
+  if (!canonicalReferencePattern.test(value) && !jurisdictionRuleReferencePattern.test(value)) {
     ctx.addIssue({ code: "custom", message: "provider output reference must be a canonical identifier or sha256 hash" });
   }
 });
@@ -159,9 +160,14 @@ const prrNegotiationReviewOutputSchema = z.object({
   draftSummary: shortSafeText("PRR negotiation draft summary"),
   requestFollowUpApproval: z.boolean(),
   citedRuleRefs: z.array(ref).max(12),
+  jurisdictionRefs: z.array(ref).max(12).default([]),
+  deadlineRefs: z.array(ref).max(12).default([]),
   deadlineNotes: z.array(shortSafeText("PRR negotiation deadline note")).max(24),
+  narrowingOptions: z.array(shortSafeText("PRR negotiation narrowing option")).max(24).default([]),
+  feeOptions: z.array(shortSafeText("PRR negotiation fee option")).max(24).default([]),
   feeOrStallingSignals: z.array(shortSafeText("PRR negotiation fee or stalling signal")).max(24),
-  unresolvedQuestions: z.array(shortSafeText("PRR negotiation unresolved question")).max(24)
+  unresolvedQuestions: z.array(shortSafeText("PRR negotiation unresolved question")).max(24),
+  legalPressureNotes: z.array(shortSafeText("PRR negotiation legal-pressure review note")).max(24).default([])
 }).strict();
 
 const evidenceTriageClassifyOutputSchema = z.object({
@@ -230,8 +236,18 @@ const contradictionFinderCandidatesOutputSchema = z.object({
 
 const investigationPlannerNextStepsOutputSchema = z.object({
   planSummary: shortSafeText("investigation plan summary"), objectiveRefs: z.array(ref).max(24), gapIds: z.array(ref).max(24),
+  prioritizedGaps: z.array(z.object({
+    gapId: ref,
+    priority: z.enum(["critical", "high", "medium", "low"]),
+    linkedEvidenceRefs: z.array(ref).max(24),
+    timelineRefs: z.array(ref).max(24),
+    contradictionRefs: z.array(ref).max(24),
+    rationale: shortSafeText("investigation gap priority rationale"),
+    dependencyRefs: z.array(ref).max(24)
+  }).strict()).max(24).default([]),
   taskCandidates: z.array(z.object({ taskId: id("task_"), summary: shortSafeText("task candidate summary"), priorityRationale: shortSafeText("task candidate priority rationale"), linkedRefs: z.array(ref).max(24), approvalRequirements: z.array(z.enum(["human-review", "external-message-send", "provider-byte-transfer", "legal-escalation", "export-or-publication"])).max(8) }).strict()).max(24),
-  prrDraftCandidates: z.array(shortSafeText("PRR draft candidate")).max(12)
+  prrDraftCandidates: z.array(shortSafeText("PRR draft candidate")).max(12),
+  safeNextSteps: z.array(shortSafeText("investigation safe next step")).max(24).default([])
 }).strict();
 
 const reportBuilderPacketDraftOutputSchema = z.object({

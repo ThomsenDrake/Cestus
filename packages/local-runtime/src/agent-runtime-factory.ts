@@ -187,6 +187,7 @@ export async function bindMountedSourcedInvestigationHandoffForLocalAgentRuntime
   readonly taskId: string;
   readonly runId: string;
   readonly runType: "timeline-builder" | "contradiction-finder";
+  readonly investigationId?: string;
 }): Promise<FactoryPortableMountedAgentHandoffProducerResultV1> {
   const operation = issueMountedArtifactAuthorityOperationForFactory(input.wakeRuntime);
   return await createPortableMountedAgentArtifactStoreProducer(operation).bind({
@@ -198,8 +199,49 @@ export async function bindMountedSourcedInvestigationHandoffForLocalAgentRuntime
     }),
     approvedRunId: input.runId,
     runType: input.runType,
+    retryGeneration: 0,
+    ...(input.investigationId === undefined ? {} : { investigationId: input.investigationId })
+  });
+}
+
+/** Issues one exact local advisory handoff; it grants no send or legal authority. */
+export async function bindMountedAdvisoryHandoffForLocalAgentRuntimeFactory(input:
+  | {
+      readonly wakeRuntime: WakeSupervisorRuntime;
+      readonly taskId: string;
+      readonly runId: string;
+      readonly runType: "investigation-planner";
+      readonly investigationId: string;
+    }
+  | {
+      readonly wakeRuntime: WakeSupervisorRuntime;
+      readonly taskId: string;
+      readonly runId: string;
+      readonly runType: "prr-negotiation";
+    }
+): Promise<FactoryPortableMountedAgentHandoffProducerResultV1> {
+  const operation = issueMountedArtifactAuthorityOperationForFactory(input.wakeRuntime);
+  const attemptId = buildTaskAttemptId({
+    taskId: input.taskId,
+    runType: input.runType,
     retryGeneration: 0
   });
+  return input.runType === "investigation-planner"
+    ? await createPortableMountedAgentArtifactStoreProducer(operation).bind({
+        taskId: input.taskId,
+        attemptId,
+        approvedRunId: input.runId,
+        runType: input.runType,
+        retryGeneration: 0,
+        investigationId: input.investigationId
+      })
+    : await createPortableMountedAgentArtifactStoreProducer(operation).bind({
+        taskId: input.taskId,
+        attemptId,
+        approvedRunId: input.runId,
+        runType: input.runType,
+        retryGeneration: 0
+      });
 }
 
 /** Keeps supervised handoff issuance and controller consumption inside the authorized factory role. */

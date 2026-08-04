@@ -847,6 +847,7 @@ function sameSupersessionMaterialAnchor(
   next: SpecialistHandoffMaterial
 ): boolean {
   return prior.status === next.status &&
+    prior.investigationId === next.investigationId &&
     sameCanonicalValue(prior.contextPackRefs, next.contextPackRefs) &&
     prior.promptArtifactHash === next.promptArtifactHash &&
     sameCanonicalValue(prior.outputArtifacts, next.outputArtifacts) &&
@@ -1072,6 +1073,7 @@ function materialMismatchField(material: SpecialistHandoffMaterial, manifest: An
   const comparisons: Array<readonly [string, unknown, unknown]> = [
     ["status", material.status, manifest.status],
     ["safeSummary", material.safeSummary, manifest.safeSummary],
+    ["investigationId", material.investigationId, manifest.investigationId],
     ["contextPackRefs", material.contextPackRefs, manifest.contextPackRefs],
     ["promptArtifactHash", material.promptArtifactHash, manifest.promptArtifactHash],
     ["outputArtifacts", material.outputArtifacts, manifest.outputArtifacts],
