@@ -513,6 +513,37 @@ export function AgentRunCockpit({
                     <EmptyState>No context pack refs were reported.</EmptyState>
                   )}
                 </div>
+                {selectedRunRecord.reportPreview === undefined ? null : (
+                  <section aria-label="Public-safe report preview" className="space-y-3 border border-[var(--console-line)] bg-[var(--console-void)]/48 px-4 py-3">
+                    <SubsectionHeader title="Public-safe report preview" />
+                    <p className="text-base text-[var(--paper-light)] sm:text-sm">
+                      Preview only. No sensitive opt-in, export, or publication action has occurred.
+                    </p>
+                    <InlineStat
+                      label="Included evidence IDs"
+                      value={listLabel(selectedRunRecord.reportPreview.includedEvidenceRefs)}
+                    />
+                    {selectedRunRecord.reportPreview.excludedEvidence.length === 0 ? (
+                      <EmptyState>No evidence exclusions are reported for this preview.</EmptyState>
+                    ) : (
+                      <ul role="list" className="divide-y divide-[var(--console-line)] border border-[var(--console-line)]">
+                        {selectedRunRecord.reportPreview.excludedEvidence.map((item) => (
+                          <li key={item.evidenceRef} className="grid gap-1 px-3 py-2">
+                            <p className="break-all font-mono text-base text-[var(--signal-cyan)] sm:text-sm">{item.evidenceRef}</p>
+                            <p className="text-base text-[var(--paper-light)] sm:text-sm">{listLabel(item.categories)}</p>
+                            <p className="break-all font-mono text-base text-[var(--muted-amber)] sm:text-sm">{listLabel(item.approvalIds)}</p>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    <InlineStat
+                      label="Sensitive opt-in requirements"
+                      value={listLabel(selectedRunRecord.reportPreview.sensitiveOptInRequirements.map((item) =>
+                        `${item.evidenceRef}: ${item.category}: ${item.approvalId}`
+                      ))}
+                    />
+                  </section>
+                )}
                 <dl className="grid gap-3 md:grid-cols-3">
                   <InlineStat label="Tool requests" value={listLabel(selectedRunRecord.handoff.toolRequestIds)} />
                   <InlineStat
