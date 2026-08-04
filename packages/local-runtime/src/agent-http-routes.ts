@@ -1,5 +1,3 @@
-import { Buffer } from "node:buffer";
-import { createHash } from "node:crypto";
 import { join } from "node:path";
 import {
   agentApprovalDecisionResultDtoSchema,
@@ -11,9 +9,6 @@ import {
   createResidentAgentDomainAdapterRegistry,
   createAgentToolGateway,
   isAgentSecretSafeText,
-  parseLocalReportPacket,
-  publicSafeReportPreviewFromPacket,
-  type AgentReportPublicSafePreviewDto,
   type AgentMemoryKind,
   type AgentMemoryScope,
   type AgentMemoryState,
@@ -40,6 +35,7 @@ import { handleAgentOntologyBootstrapRoute } from "./agent-ontology-bootstrap-ro
 import {
   MountedResidentTaskError,
   admitMountedEvidenceTriageTask,
+  projectCanonicalMountedReportPreviews,
   reconstructMountedEvidenceTriageTask,
   runMountedEvidenceTriageTask,
   type MountedEvidenceTriageProviderMode
@@ -780,55 +776,26 @@ async function projectMountedCockpitHandoffs(
 async function projectMountedCockpitReportPreviews(
   handle: LocalRuntimeHandle,
   handoffs: readonly SpecialistWorkflowHandoffDto[]
-): Promise<readonly {
-  readonly runId: string;
-  readonly taskId?: string;
-  readonly preview: AgentReportPublicSafePreviewDto;
-}[]> {
+) {
   const mounted = handle.mountedWorkspace;
   if (mounted === undefined || !inspectPortableWorkspaceCurrentness(handle).ok) return Object.freeze([]);
   const store = new FileBlobStore(join(mounted.paths.derivativeRoot, "specialist-handoff-manifest"));
-  const previews: Array<{
-    readonly runId: string;
-    readonly taskId?: string;
-    readonly preview: AgentReportPublicSafePreviewDto;
-  }> = [];
-  for (const handoff of handoffs) {
-    if (handoff.runType !== "report-builder") continue;
-    const reportArtifacts = handoff.outputArtifacts.filter((artifact) =>
-      artifact.artifactKind === "export-preview" && artifact.schemaId === "report-builder-handoff.v1"
-    );
-    if (reportArtifacts.length !== 1) continue;
-    const reportArtifact = reportArtifacts[0]!;
-    if (reportArtifact.artifactId !== `artifact_${handoff.runId}_export_preview`) continue;
-    requirePortableWorkspaceCurrent(handle);
-    let bytes: Buffer;
-    try {
-      bytes = await store.get(reportArtifact.artifactHash);
-    } catch {
-      if (!inspectPortableWorkspaceCurrentness(handle).ok) {
-        throw new Error("Portable workspace became unavailable during report preview replay.");
+  requirePortableWorkspaceCurrent(handle);
+  const previews = await projectCanonicalMountedReportPreviews({
+    handoffs,
+    canonicalReader: Object.freeze({
+      async get(contentHash: `sha256:${string}`) {
+        requirePortableWorkspaceCurrent(handle);
+        try {
+          return await store.get(contentHash);
+        } finally {
+          requirePortableWorkspaceCurrent(handle);
+        }
       }
-      continue;
-    }
-    requirePortableWorkspaceCurrent(handle);
-    const actualHash = `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
-    if (actualHash !== reportArtifact.artifactHash) continue;
-    let packet;
-    try {
-      packet = parseLocalReportPacket(JSON.parse(bytes.toString("utf8")) as unknown);
-    } catch {
-      continue;
-    }
-    if (packet.runId !== handoff.runId || packet.taskId !== handoff.taskId) continue;
-    requirePortableWorkspaceCurrent(handle);
-    previews.push(Object.freeze({
-      runId: handoff.runId,
-      ...(handoff.taskId === undefined ? {} : { taskId: handoff.taskId }),
-      preview: publicSafeReportPreviewFromPacket(packet)
-    }));
-  }
-  return Object.freeze(previews);
+    })
+  });
+  requirePortableWorkspaceCurrent(handle);
+  return previews;
 }
 
 function requirePortableWorkspaceCurrent(handle: LocalRuntimeHandle): void {

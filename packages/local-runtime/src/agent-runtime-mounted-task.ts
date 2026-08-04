@@ -32,10 +32,11 @@ import {
   serializePromptArtifactEnvelope,
   serializeContextPackPayload,
   parseAuthorityBoundSpecialistHandoffManifest,
-  assembleLocalReportPacket,
+  parseLocalReportPacket,
   publicSafeReportPreviewFromPacket,
   verifyAuthorityBoundSpecialistHandoffManifest,
   type AgentToolPreview,
+  type AgentReportPublicSafePreviewDto,
   type AgentContextPackJsonValue,
   type AcceptedGraphAssertionRow,
   type ContextPackRef,
@@ -50,6 +51,7 @@ import {
   type ContradictionFinderCandidatesOutput,
   type SourcedTimelineArtifact,
   type SpecialistHandoffReadback,
+  type SpecialistWorkflowHandoffDto,
   type TimelineBuilderSourcedTimelineOutput,
   type AuthorityBoundSpecialistHandoffManifest,
   type SpecialistHandoffManifestStore,
@@ -781,6 +783,50 @@ interface MountedContradictionDraftContext {
   }[];
 }
 
+export async function projectCanonicalMountedReportPreviews(input: {
+  readonly handoffs: readonly SpecialistWorkflowHandoffDto[];
+  readonly canonicalReader: Pick<SpecialistHandoffManifestStore, "get">;
+}): Promise<readonly {
+  readonly runId: string;
+  readonly taskId?: string;
+  readonly preview: AgentReportPublicSafePreviewDto;
+}[]> {
+  const previews: Array<{
+    readonly runId: string;
+    readonly taskId?: string;
+    readonly preview: AgentReportPublicSafePreviewDto;
+  }> = [];
+  for (const handoff of input.handoffs) {
+    if (handoff.runType !== "report-builder") continue;
+    const reportArtifacts = handoff.outputArtifacts.filter((artifact) =>
+      artifact.artifactKind === "export-preview" && artifact.schemaId === "report-builder-handoff.v1"
+    );
+    if (reportArtifacts.length !== 1) continue;
+    const reportArtifact = reportArtifacts[0]!;
+    if (reportArtifact.artifactId !== `artifact_${handoff.runId}_export_preview`) continue;
+    let bytes: Buffer;
+    try {
+      bytes = await input.canonicalReader.get(reportArtifact.artifactHash);
+    } catch {
+      continue;
+    }
+    if (hashBytes(bytes) !== reportArtifact.artifactHash) continue;
+    let packet;
+    try {
+      packet = parseLocalReportPacket(JSON.parse(bytes.toString("utf8")) as unknown);
+    } catch {
+      continue;
+    }
+    if (packet.runId !== handoff.runId || packet.taskId !== handoff.taskId) continue;
+    previews.push(Object.freeze({
+      runId: handoff.runId,
+      ...(handoff.taskId === undefined ? {} : { taskId: handoff.taskId }),
+      preview: publicSafeReportPreviewFromPacket(packet)
+    }));
+  }
+  return Object.freeze(previews);
+}
+
 /**
  * Production mounted entrypoint used only by the resident supervision owner.
  * The HTTP caller cannot provide runtime, execution, stores, or handoff authority.
@@ -1155,18 +1201,20 @@ async function runMountedSourcedInvestigationTaskInternal(
       replay.selectedHandoff?.runType !== input.runType) {
       throw mountedConflict("Mounted sourced-investigation handoff did not replay exactly.");
     }
+    const specialistReportPreviews = input.runType === "report-builder"
+      ? await authority.withHandoffReadSnapshot({}, async (reader) =>
+          await projectCanonicalMountedReportPreviews({
+            handoffs: [replay.selectedHandoff!],
+            canonicalReader: reader
+          })
+        )
+      : Object.freeze([]);
     const cockpit = buildAgentCockpit({
       status: await runtime.status(),
       generatedAt: operationTimestamp,
       selectedRunId: input.runId,
       specialistHandoffs: [replay.selectedHandoff],
-      ...(reportPacketInput === undefined ? {} : {
-        specialistReportPreviews: [{
-          runId: input.runId,
-          taskId: input.taskId,
-          preview: publicSafeReportPreviewFromPacket(assembleLocalReportPacket(reportPacketInput))
-        }]
-      })
+      ...(specialistReportPreviews.length === 0 ? {} : { specialistReportPreviews })
     });
     if (cockpit.selectedRun?.runId !== input.runId || cockpit.selectedRun.handoff === undefined) {
       throw mountedConflict("Mounted sourced-investigation handoff is unavailable in the selected run.");

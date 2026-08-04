@@ -326,6 +326,55 @@ describe("untrusted specialist runner", () => {
     expect(JSON.stringify(cockpit)).not.toMatch(/mounted resident sourced evidence bytes|authorization:|provider body|private mailbox body/i);
   }, mountedSourcedMultiWorkflowTimeoutMs);
 
+  it("omits the immediate POST report preview when the canonical packet disappears after handoff recording", async () => {
+    const fixture = await mountedSourcedResidentFactoryFixture({ canonicalDatedFacts: true });
+    const originalGet = FileBlobStore.prototype.get;
+    let removedAfterRecording = false;
+    let removedPacketHash: `sha256:${string}` | undefined;
+    const getSpy = vi.spyOn(FileBlobStore.prototype, "get").mockImplementation(async function (
+      this: FileBlobStore,
+      contentHash: `sha256:${string}`
+    ) {
+      const rootDir = Reflect.get(this, "rootDir");
+      if (!removedAfterRecording && typeof rootDir === "string" &&
+        rootDir.endsWith("specialist-handoff-manifest")) {
+        const recorded = (await fixture.handle.ledger.readAll()).find(
+          (event): event is KnowledgeEventOf<"agent.specialist-handoff.recorded"> =>
+            event.type === "agent.specialist-handoff.recorded" && event.payload.runId === fixture.reportRunId
+        );
+        const packetHash = recorded?.payload.outputArtifactHashes[0];
+        if (recorded !== undefined && typeof packetHash === "string" &&
+          /^sha256:[a-f0-9]{64}$/.test(packetHash) &&
+          contentHash === recorded.payload.handoffManifestHash) {
+          removedPacketHash = packetHash as `sha256:${string}`;
+          unlinkSync(mountedArtifactPath(rootDir, removedPacketHash));
+          removedAfterRecording = true;
+        }
+      }
+      return await originalGet.call(this, contentHash);
+    });
+    try {
+      const response = await runMountedSourcedResidentRequest(fixture, {
+        taskId: fixture.reportTaskId,
+        runId: fixture.reportRunId,
+        runType: "report-builder",
+        evidenceIds: [fixture.evidenceId]
+      });
+      expect(removedAfterRecording).toBe(true);
+      if (removedPacketHash === undefined) throw new Error("removed report packet hash is unavailable");
+      const mounted = fixture.handle.mountedWorkspace;
+      if (mounted === undefined) throw new Error("mounted immediate report fixture is unavailable");
+      await expect(new FileBlobStore(join(
+        mounted.paths.derivativeRoot,
+        "specialist-handoff-material"
+      )).get(removedPacketHash)).resolves.toBeInstanceOf(Buffer);
+      expect(response.status, response.body).toBe(200);
+      expect(JSON.parse(response.body).cockpit?.selectedRun).not.toHaveProperty("reportPreview");
+    } finally {
+      getSpy.mockRestore();
+    }
+  }, mountedSourcedMultiWorkflowTimeoutMs);
+
   it("omits the report preview when its canonical manifest packet is missing despite an intact material copy", async () => {
     const fixture = await mountedSourcedResidentFactoryFixture({ canonicalDatedFacts: true });
     const response = await runMountedSourcedResidentRequest(fixture, {
