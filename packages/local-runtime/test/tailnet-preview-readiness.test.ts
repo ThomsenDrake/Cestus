@@ -173,6 +173,41 @@ describe("checkTailnetPreviewReadiness", () => {
     );
   });
 
+  it.each([
+    { authRequired: false, authToken: "test-only-token" },
+    { authRequired: true, authToken: undefined },
+    { authRequired: true, authToken: "" },
+    { authRequired: true, authToken: "   " }
+  ])("rejects injected tailnet config without enforced nonempty authentication", ({ authRequired, authToken }) => {
+    const cwd = tempDir();
+    writeBuiltUi(cwd);
+    const exactConfig = resolveLocalRuntimeConfig({ cwd, env: previewEnv(cwd) });
+    const config = {
+      ...exactConfig,
+      http: {
+        ...exactConfig.http,
+        authRequired,
+        ...(authToken === undefined ? { authToken: undefined } : { authToken })
+      }
+    };
+
+    expect(() => checkTailnetPreviewReadiness({ config })).toThrow(
+      "Tailnet preview readiness requires authentication"
+    );
+  });
+
+  it("rejects a whitespace-padded raw tailnet environment host without reporting ready", () => {
+    const cwd = tempDir();
+    writeBuiltUi(cwd);
+
+    expect(() =>
+      checkTailnetPreviewReadiness({
+        cwd,
+        env: { ...previewEnv(cwd), CESTUS_LOCAL_HOST: " 100.99.12.34 " }
+      })
+    ).toThrow("Tailnet local runtime host must be an explicit address in the Tailscale IPv4 or IPv6 ranges");
+  });
+
   it("runs the CLI check without revealing auth material", async () => {
     const cwd = tempDir();
     const env = previewEnv(cwd);

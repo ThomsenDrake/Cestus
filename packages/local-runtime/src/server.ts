@@ -47,6 +47,7 @@ export async function startLocalRuntimeServer(
       ...(input.env === undefined ? {} : { env: input.env })
     });
   const interfaces = input.networkInterfaces ?? networkInterfaces;
+  assertTailnetAuthentication(config);
   assertTailnetHostAssigned(config, interfaces);
   const actor = input.actor ?? defaultActor;
   const handler = createLocalRuntimeHttpHandler({ config, actor });
@@ -312,6 +313,16 @@ function assertTailnetHostAssigned(
     .some((item) => ipAddressesEquivalent(item.address, config.http.host));
   if (!assigned) {
     throw new Error("Tailnet local runtime host must be assigned to a local network interface");
+  }
+}
+
+function assertTailnetAuthentication(config: ResolvedLocalRuntimeConfig): void {
+  if (config.http.bindMode !== "tailnet") {
+    return;
+  }
+  const token = config.http.authToken;
+  if (config.http.authRequired !== true || token === undefined || token.trim().length === 0) {
+    throw new Error("Tailnet local runtime requires authentication");
   }
 }
 
