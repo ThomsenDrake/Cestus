@@ -40,8 +40,8 @@ export function checkTailnetPreviewReadiness(
     throw new Error("Tailnet preview readiness requires tailnet bind mode");
   }
   assertTailnetAddress(config.http.host);
-  if (config.http.authToken === undefined) {
-    throw new Error("Tailnet preview readiness requires configured authentication");
+  if (!tailnetAuthenticationIsConfigured(config)) {
+    throw new Error("Tailnet preview readiness requires authentication");
   }
   if (config.http.devSeedEnabled) {
     throw new Error("Tailnet preview readiness requires development seed to be disabled");
@@ -74,6 +74,11 @@ export function checkTailnetPreviewReadiness(
 function isPathContainedBy(repositoryRoot: string, path: string): boolean {
   const relativePath = relative(canonicalPath(repositoryRoot), canonicalPath(path));
   return relativePath === "" || (!relativePath.startsWith(`..${sep}`) && relativePath !== ".." && !isAbsolute(relativePath));
+}
+
+function tailnetAuthenticationIsConfigured(config: ResolvedLocalRuntimeConfig): boolean {
+  const token = config.http.authToken;
+  return config.http.authRequired === true && token !== undefined && token.trim().length > 0;
 }
 
 function canonicalPath(path: string): string {

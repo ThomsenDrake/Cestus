@@ -224,6 +224,22 @@ describe("resolveLocalRuntimeConfig", () => {
     }
   );
 
+  it.each([" 100.99.12.34 ", " fd7a:115c:a1e0::1 "])(
+    "rejects a whitespace-padded raw tailnet environment host %s before resolving config",
+    (host) => {
+      expect(() =>
+        resolveLocalRuntimeConfig({
+          cwd,
+          env: {
+            CESTUS_LOCAL_BIND: "tailnet",
+            CESTUS_LOCAL_HOST: host,
+            CESTUS_LOCAL_AUTH_TOKEN: "local-secret"
+          }
+        })
+      ).toThrow("Tailnet local runtime host must be an explicit address in the Tailscale IPv4 or IPv6 ranges");
+    }
+  );
+
   it("allows authenticated tailnet exposure without enabling dev seed", () => {
     const config = resolveLocalRuntimeConfig({
       cwd,
@@ -241,6 +257,19 @@ describe("resolveLocalRuntimeConfig", () => {
       authToken: "local-secret",
       devSeedEnabled: false
     });
+  });
+
+  it("accepts an exact IPv6 tailnet environment host", () => {
+    const config = resolveLocalRuntimeConfig({
+      cwd,
+      env: {
+        CESTUS_LOCAL_BIND: "tailnet",
+        CESTUS_LOCAL_HOST: "fd7a:115c:a1e0::1",
+        CESTUS_LOCAL_AUTH_TOKEN: "local-secret"
+      }
+    });
+
+    expect(config.http.host).toBe("fd7a:115c:a1e0::1");
   });
 
   it("keeps dev seed enablement separate from exposure mode", () => {

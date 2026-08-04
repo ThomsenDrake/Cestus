@@ -51,6 +51,10 @@ export function resolveLocalRuntimeConfig(
 ): ResolvedLocalRuntimeConfig {
   const cwd = resolve(input.cwd ?? process.cwd());
   const env = input.env ?? process.env;
+  const environmentBindMode = normalizeOptional(env.CESTUS_LOCAL_BIND);
+  if (environmentBindMode === "tailnet" && env.CESTUS_LOCAL_HOST !== undefined) {
+    assertTailnetAddress(env.CESTUS_LOCAL_HOST);
+  }
   const configFile = readLocalRuntimeConfigFile({
     cwd,
     env,
@@ -58,7 +62,7 @@ export function resolveLocalRuntimeConfig(
       ? {}
       : { repairSecretPermissions: input.repairSecretConfigPermissions })
   });
-  const bindMode = parseBindMode(normalizeOptional(env.CESTUS_LOCAL_BIND) ?? configFile?.http?.bindMode);
+  const bindMode = parseBindMode(environmentBindMode ?? configFile?.http?.bindMode);
   const host = resolveHost(bindMode, env, configFile);
   const authToken = normalizeOptional(env.CESTUS_LOCAL_AUTH_TOKEN) ?? configFile?.http?.authToken;
   const authRequired = bindMode !== "loopback" || !isLoopbackHost(host);
@@ -172,7 +176,11 @@ function resolveHost(
   env: Record<string, string | undefined>,
   configFile: LocalRuntimeConfigFile | undefined
 ): string {
-  const explicitHost = normalizeOptional(env.CESTUS_LOCAL_HOST) ?? configFile?.http?.host;
+  const rawEnvironmentHost = env.CESTUS_LOCAL_HOST;
+  if (bindMode === "tailnet" && rawEnvironmentHost !== undefined) {
+    assertTailnetAddress(rawEnvironmentHost);
+  }
+  const explicitHost = normalizeOptional(rawEnvironmentHost) ?? configFile?.http?.host;
   if (bindMode === "tailnet") {
     assertTailnetAddress(explicitHost);
   }

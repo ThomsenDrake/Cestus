@@ -172,6 +172,36 @@ describe("startLocalRuntimeServer", () => {
     expect(existsSync(config.logs.dir)).toBe(false);
   });
 
+  it.each([
+    { authRequired: false, authToken: "secret-local-token" },
+    { authRequired: true, authToken: undefined },
+    { authRequired: true, authToken: "" },
+    { authRequired: true, authToken: "   " }
+  ])("rejects tailnet config without enforced nonempty authentication before runtime effects", async ({ authRequired, authToken }) => {
+    const base = configWithPortZero(resolveLocalRuntimeConfig({ cwd: tempDir(), env: {} }));
+    const config: ResolvedLocalRuntimeConfig = {
+      ...base,
+      http: {
+        ...base.http,
+        bindMode: "tailnet",
+        host: "100.99.12.34",
+        authRequired,
+        ...(authToken === undefined ? { authToken: undefined } : { authToken })
+      }
+    };
+
+    await expect(
+      startLocalRuntimeServer({
+        config,
+        networkInterfaces: () => {
+          throw new Error("interface observation must not occur before auth rejection");
+        }
+      })
+    ).rejects.toThrow("Tailnet local runtime requires authentication");
+    expect(existsSync(config.storage.sqlitePath)).toBe(false);
+    expect(existsSync(config.logs.dir)).toBe(false);
+  });
+
   it("can be closed more than once without closing the runtime twice", async () => {
     const handle = await startTestServer(loopbackConfig());
     handles.splice(handles.indexOf(handle), 1);

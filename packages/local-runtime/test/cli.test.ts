@@ -379,6 +379,27 @@ describe("runLocalRuntimeCli", () => {
     expect(readFileSync(configPath, "utf8")).toBe(existing);
   });
 
+  it("rejects a whitespace-padded raw tailnet environment host before readiness output", async () => {
+    const stdout: string[] = [];
+    const stderr: string[] = [];
+
+    const exitCode = await runLocalRuntimeCli(["tailnet-preview-check"], {
+      cwd: "/tmp/cestus-cli-test",
+      env: {
+        CESTUS_LOCAL_BIND: "tailnet",
+        CESTUS_LOCAL_HOST: " 100.99.12.34 ",
+        CESTUS_LOCAL_AUTH_TOKEN: "secret-token"
+      },
+      stdout: (line) => stdout.push(line),
+      stderr: (line) => stderr.push(line)
+    });
+
+    expect(exitCode).toBe(1);
+    expect(stdout).toEqual([]);
+    expect(stderr.join("\n")).toContain("Tailnet local runtime host");
+    expect(stderr.join("\n")).not.toContain("secret-token");
+  });
+
   it("uses written config for later config diagnostics", async () => {
     const stdout: string[] = [];
     tempDir = mkdtempSync(join(tmpdir(), "cestus-cli-"));
