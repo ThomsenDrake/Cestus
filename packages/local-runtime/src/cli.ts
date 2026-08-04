@@ -14,6 +14,8 @@ import {
 } from "./config-file.js";
 import { createLocalRuntimeHttpHandler } from "./http-handler.js";
 import { startLocalRuntimeServer } from "./server.js";
+import { checkTailnetPreviewReadiness } from "./tailnet-preview-readiness.js";
+import { assertTailnetAddress } from "./tailnet-address.js";
 import { createPortableWorkspace, portableWorkspacePaths, readPortableWorkspaceManifest } from "../../workspace/src/index.js";
 import { ensureDefaultResidentIdentity, type ResidentIdentityLifecycleDto } from "../../agent/src/identity-bootstrap.js";
 import type { ActorRef } from "../../ontology/src/contracts.js";
@@ -104,6 +106,11 @@ export async function runLocalRuntimeCli(
 
     if (command === "config") {
       stdout(JSON.stringify(redactedConfig(dependencies), null, 2));
+      return 0;
+    }
+
+    if (command === "tailnet-preview-check") {
+      stdout(JSON.stringify(checkTailnetPreviewReadiness(configInputFrom(dependencies)), null, 2));
       return 0;
     }
 
@@ -409,6 +416,9 @@ function resolveConfigureFlags(
   flags: ConfigureFlags,
   dependencies: LocalRuntimeCliDependencies
 ): ConfigureFlags {
+  if (flags.bindMode === "tailnet") {
+    assertTailnetAddress(flags.host);
+  }
   if (flags.expectedWorkspaceId !== undefined) {
     return flags;
   }

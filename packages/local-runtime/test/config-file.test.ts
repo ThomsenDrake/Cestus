@@ -84,6 +84,21 @@ describe("local runtime config files", () => {
     expect(rotated.config.http?.authToken).not.toBe(first.config.http?.authToken);
   });
 
+  it("rejects an invalid tailnet host before creating config or generating auth material", () => {
+    const cwd = tempDir();
+    const configPath = join(cwd, ".cestus/local/runtime.config.json");
+
+    expect(() =>
+      writeLocalRuntimeOnboardingConfig({
+        cwd,
+        env: {},
+        bindMode: "tailnet",
+        host: "0.0.0.0"
+      })
+    ).toThrow("Tailnet local runtime host must be an explicit address in the Tailscale IPv4 or IPv6 ranges");
+    expect(existsSync(configPath)).toBe(false);
+  });
+
   it("resets host and auth material when changing exposed config back to loopback", () => {
     const cwd = tempDir();
     writeLocalRuntimeOnboardingConfig({
@@ -147,7 +162,8 @@ describe("local runtime config files", () => {
     const written = writeLocalRuntimeOnboardingConfig({
       cwd,
       env: { CESTUS_LOCAL_CONFIG_PATH: configPath },
-      bindMode: "tailnet"
+      bindMode: "tailnet",
+      host: "100.126.143.105"
     });
     const file = readLocalRuntimeConfigFile({ cwd, env: { CESTUS_LOCAL_CONFIG_PATH: configPath } });
     const redacted = redactLocalRuntimeConfigFile(file);

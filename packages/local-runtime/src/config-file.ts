@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 import { chmodSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { isIP } from "node:net";
 import { dirname, isAbsolute, resolve } from "node:path";
+import { assertTailnetAddress } from "./tailnet-address.js";
 
 export interface LocalRuntimeConfigFile {
   readonly storage?: {
@@ -46,6 +47,7 @@ export interface WriteLocalRuntimeOnboardingConfigInput {
 export interface LocalRuntimeConfigFileInput {
   readonly cwd?: string;
   readonly env?: Record<string, string | undefined>;
+  readonly repairSecretPermissions?: boolean;
 }
 
 export interface WrittenLocalRuntimeOnboardingConfig {
@@ -77,13 +79,16 @@ export function readLocalRuntimeConfigFile(
   }
 
   const config = parseLocalRuntimeConfigFile(parsed, path);
-  repairSecretConfigPermissions(path, config);
+  if (input.repairSecretPermissions !== false) {
+    repairSecretConfigPermissions(path, config);
+  }
   return config;
 }
 
 export function writeLocalRuntimeOnboardingConfig(
   input: WriteLocalRuntimeOnboardingConfigInput
 ): WrittenLocalRuntimeOnboardingConfig {
+  validateOnboardingInput(input);
   const path = resolveLocalRuntimeConfigFilePath(input);
   const existing = readLocalRuntimeConfigFile(input) ?? {};
   const config = mergeOnboardingConfig(existing, input);
@@ -450,6 +455,16 @@ function validateWritableConfig(config: LocalRuntimeConfigFile): void {
 
   if (config.storage?.strategy === "portable-workspace" && config.storage.workspaceRoot === undefined) {
     throw new Error("portable-workspace storage requires a workspaceRoot");
+  }
+
+  if (config.http?.bindMode === "tailnet") {
+    assertTailnetAddress(config.http.host);
+  }
+}
+
+function validateOnboardingInput(input: WriteLocalRuntimeOnboardingConfigInput): void {
+  if (input.bindMode === "tailnet") {
+    assertTailnetAddress(input.host);
   }
 }
 

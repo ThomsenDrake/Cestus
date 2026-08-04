@@ -263,6 +263,7 @@ describe("runLocalRuntimeCli", () => {
       cwd: tempDir,
       env: {
         CESTUS_LOCAL_BIND: "tailnet",
+        CESTUS_LOCAL_HOST: "100.126.143.105",
         CESTUS_LOCAL_AUTH_TOKEN: "secret-token"
       },
       stdout: (line) => stdout.push(line),
@@ -306,6 +307,25 @@ describe("runLocalRuntimeCli", () => {
     expect(file.http.authToken).toMatch(/^[A-Za-z0-9_-]{43}$/);
     expect(output).toContain('"authToken": "[redacted]"');
     expect(output).not.toContain(file.http.authToken);
+  });
+
+  it("rejects invalid tailnet configuration before creating config or printing auth material", async () => {
+    const stdout: string[] = [];
+    const stderr: string[] = [];
+    tempDir = mkdtempSync(join(tmpdir(), "cestus-cli-"));
+
+    const exitCode = await runLocalRuntimeCli(["configure", "--bind", "tailnet", "--host", "0.0.0.0"], {
+      cwd: tempDir,
+      env: {},
+      stdout: (line) => stdout.push(line),
+      stderr: (line) => stderr.push(line)
+    });
+
+    expect(exitCode).toBe(1);
+    expect(stdout).toEqual([]);
+    expect(stderr.join("\n")).toContain("Tailnet local runtime host");
+    expect(stderr.join("\n")).not.toMatch(/token|secret|password|oauth|credential|api[_-]?key|private[_-]?key|session/i);
+    expect(existsSync(join(tempDir, ".cestus/local/runtime.config.json"))).toBe(false);
   });
 
   it("uses written config for later config diagnostics", async () => {

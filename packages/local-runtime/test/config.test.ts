@@ -208,6 +208,22 @@ describe("resolveLocalRuntimeConfig", () => {
     ).toThrow("Auth is required for non-loopback local runtime exposure");
   });
 
+  it.each([undefined, "0.0.0.0", "::", "127.0.0.1", "192.168.1.20", "203.0.113.20", "not-an-ip"]) (
+    "rejects invalid tailnet host %s before resolving auth",
+    (host) => {
+      expect(() =>
+        resolveLocalRuntimeConfig({
+          cwd,
+          env: {
+            CESTUS_LOCAL_BIND: "tailnet",
+            ...(host === undefined ? {} : { CESTUS_LOCAL_HOST: host }),
+            CESTUS_LOCAL_AUTH_TOKEN: "local-secret"
+          }
+        })
+      ).toThrow("Tailnet local runtime host must be an explicit address in the Tailscale IPv4 or IPv6 ranges");
+    }
+  );
+
   it("allows authenticated tailnet exposure without enabling dev seed", () => {
     const config = resolveLocalRuntimeConfig({
       cwd,
