@@ -2,6 +2,7 @@ import { isIP } from "node:net";
 import { homedir } from "node:os";
 import { isAbsolute, join, resolve } from "node:path";
 import { readLocalRuntimeConfigFile, type LocalRuntimeConfigFile } from "./config-file.js";
+import { assertTailnetAddress } from "./tailnet-address.js";
 
 export type LocalRuntimeStorageStrategy =
   | "repo-local"
@@ -13,6 +14,7 @@ export type LocalRuntimeBindMode = "loopback" | "tailnet" | "lan";
 export interface LocalRuntimeConfigInput {
   readonly cwd?: string;
   readonly env?: Record<string, string | undefined>;
+  readonly repairSecretConfigPermissions?: boolean;
 }
 
 export interface ResolvedLocalRuntimeConfig {
@@ -49,8 +51,18 @@ export function resolveLocalRuntimeConfig(
 ): ResolvedLocalRuntimeConfig {
   const cwd = resolve(input.cwd ?? process.cwd());
   const env = input.env ?? process.env;
-  const configFile = readLocalRuntimeConfigFile({ cwd, env });
-  const bindMode = parseBindMode(normalizeOptional(env.CESTUS_LOCAL_BIND) ?? configFile?.http?.bindMode);
+  const environmentBindMode = normalizeOptional(env.CESTUS_LOCAL_BIND);
+  if (environmentBindMode === "tailnet" && env.CESTUS_LOCAL_HOST !== undefined) {
+    assertTailnetAddress(env.CESTUS_LOCAL_HOST);
+  }
+  const configFile = readLocalRuntimeConfigFile({
+    cwd,
+    env,
+    ...(input.repairSecretConfigPermissions === undefined
+      ? {}
+      : { repairSecretPermissions: input.repairSecretConfigPermissions })
+  });
+  const bindMode = parseBindMode(environmentBindMode ?? configFile?.http?.bindMode);
   const host = resolveHost(bindMode, env, configFile);
   const authToken = normalizeOptional(env.CESTUS_LOCAL_AUTH_TOKEN) ?? configFile?.http?.authToken;
   const authRequired = bindMode !== "loopback" || !isLoopbackHost(host);
@@ -164,7 +176,14 @@ function resolveHost(
   env: Record<string, string | undefined>,
   configFile: LocalRuntimeConfigFile | undefined
 ): string {
-  const explicitHost = normalizeOptional(env.CESTUS_LOCAL_HOST) ?? configFile?.http?.host;
+  const rawEnvironmentHost = env.CESTUS_LOCAL_HOST;
+  if (bindMode === "tailnet" && rawEnvironmentHost !== undefined) {
+    assertTailnetAddress(rawEnvironmentHost);
+  }
+  const explicitHost = normalizeOptional(rawEnvironmentHost) ?? configFile?.http?.host;
+  if (bindMode === "tailnet") {
+    assertTailnetAddress(explicitHost);
+  }
   if (explicitHost !== undefined) {
     return explicitHost;
   }
