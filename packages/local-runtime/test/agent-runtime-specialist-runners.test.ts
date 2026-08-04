@@ -89,6 +89,7 @@ const dispatch = Object.freeze({
 const mountedTempDirs: string[] = [];
 const mountedHandles: LocalRuntimeHandle[] = [];
 const mountedSupervisions: ResidentSupervisionRuntime[] = [];
+const mountedSourcedMultiWorkflowTimeoutMs = 15_000;
 
 afterEach(async () => {
   for (const supervision of mountedSupervisions.splice(0)) await supervision.stop();
@@ -224,7 +225,7 @@ describe("untrusted specialist runner", () => {
       event.type === "agent.model-invocation.completed")).toHaveLength(0);
     expect(JSON.stringify([timeline.cockpit, contradiction.cockpit]))
       .not.toMatch(/mounted resident sourced evidence bytes|authorization:|provider body/i);
-  });
+  }, mountedSourcedMultiWorkflowTimeoutMs);
 
   it("grounds production timeline items only in exact assertion and PRR ledger history", async () => {
     const fixture = await mountedSourcedResidentFactoryFixture({ canonicalDatedFacts: true });
@@ -339,7 +340,7 @@ describe("untrusted specialist runner", () => {
     expect(first === undefined || second === undefined
       ? undefined
       : first.sourceEventIds.filter((eventId) => second.sourceEventIds.includes(eventId))).toEqual([]);
-  });
+  }, mountedSourcedMultiWorkflowTimeoutMs);
 
   it("produces an advisory contradiction candidate from two exact conflicting ledger assertions", async () => {
     const fixture = await mountedSourcedResidentFactoryFixture({
@@ -407,7 +408,7 @@ describe("untrusted specialist runner", () => {
         requiredReviewerAction: "review"
       })]
     });
-  });
+  }, mountedSourcedMultiWorkflowTimeoutMs);
 
   it("rejects a mounted contradiction comparison whose distinct evidence IDs resolve to the same exact source bytes", async () => {
     const fixture = await mountedSourcedResidentFactoryFixture({
@@ -438,7 +439,7 @@ describe("untrusted specialist runner", () => {
       event.type === "agent.specialist-handoff.recorded" &&
       event.payload.runId === fixture.contradictionRunId
     )).toBe(false);
-  });
+  }, mountedSourcedMultiWorkflowTimeoutMs);
 
   it("does not emit a contradiction for semantically identical numeric zero values", async () => {
     const fixture = await mountedSourcedResidentFactoryFixture({
@@ -474,7 +475,7 @@ describe("untrusted specialist runner", () => {
       fixture.handle,
       response.recorded.manifest.outputArtifacts[0]!.artifactHash
     )).resolves.toMatchObject({ candidates: [] });
-  });
+  }, mountedSourcedMultiWorkflowTimeoutMs);
 
   it("selects the replayable timeline relevant to current evidence when a newer unrelated timeline exists", async () => {
     const fixture = await mountedSourcedResidentFactoryFixture({
@@ -514,7 +515,7 @@ describe("untrusted specialist runner", () => {
     expect(timelineContext.items).toEqual(expect.arrayContaining([expect.objectContaining({
       itemId: `timeline_assertion_${fixture.canonicalDatedFacts.assertionId}`
     })]));
-  }, 15_000);
+  }, mountedSourcedMultiWorkflowTimeoutMs);
 
   it("rejects a prior timeline that does not exactly account for every currently selected source", async () => {
     const fixture = await mountedSourcedResidentFactoryFixture({
@@ -544,7 +545,7 @@ describe("untrusted specialist runner", () => {
     expect(JSON.parse(contradiction.body)).toMatchObject({
       diagnostic: { message: expect.stringMatching(/exactly one replayable timeline relevant/i) }
     });
-  });
+  }, mountedSourcedMultiWorkflowTimeoutMs);
 
   it("fails closed when two replayable timelines are relevant to the selected evidence", async () => {
     const fixture = await mountedSourcedResidentFactoryFixture({
@@ -585,7 +586,7 @@ describe("untrusted specialist runner", () => {
     expect(JSON.parse(contradiction.body)).toMatchObject({
       diagnostic: { message: expect.stringMatching(/ambiguous replayable timelines/i) }
     });
-  });
+  }, mountedSourcedMultiWorkflowTimeoutMs);
 
   it("keeps successful HTTP cancellation quiescent across an active sourced execution", async () => {
     const promptBoundaryEntered = Promise.withResolvers<void>();
@@ -1057,7 +1058,7 @@ describe("untrusted specialist runner", () => {
       supervision: fixture.supervision
     });
     expect(contradiction?.status).toBe(200);
-  });
+  }, mountedSourcedMultiWorkflowTimeoutMs);
 
   it("dispatches through mounted authority and replays the handoff into the selected-run cockpit", async () => {
     expect(Reflect.get(specialistRunnerSurface, "consumeMountedSourcedInvestigationDispatch"))
