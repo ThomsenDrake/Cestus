@@ -1,6 +1,6 @@
 # Resident Agent Mounted Task Vertical
 
-Status: approved.
+Status: implemented product-behavior reference.
 
 ## Desired Behavior
 

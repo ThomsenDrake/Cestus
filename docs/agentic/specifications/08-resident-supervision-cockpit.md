@@ -1,6 +1,6 @@
 # Resident Supervision And Cockpit
 
-Status: approved.
+Status: implemented product-behavior reference.
 
 ## Desired Behavior
 

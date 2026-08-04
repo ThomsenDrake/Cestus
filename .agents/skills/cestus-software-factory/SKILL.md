@@ -1,66 +1,61 @@
 ---
 name: cestus-software-factory
-description: Execute one approved Cestus product specification through isolated implementation, automated verification, independent review, and risk-calibrated integration.
+description: Execute one approved Cestus specification through bounded implementation, verification, commitment-boundary review, and integration.
 ---
 
 # Cestus Software Factory
 
-Use this playbook for Cestus implementation, review, and branch finishing. The
-authoritative contract is `docs/agentic/software-factory.md`; this skill keeps
-the normal path compact.
+The authoritative contract is `docs/agentic/software-factory.md`. This compact
+playbook applies it without adding a process layer.
 
 ## Input
 
-Start from one approved executable specification. It must state desired
-behavior, observable acceptance examples, allowed scope, relevant context
-entry points, risk lane, targeted and integration verification, and genuine
-escalation conditions. If any required field is absent, resolve it from direct
-user authority or existing product contracts; ask only when the missing choice
-would change product scope, safety, irreversible behavior, credentials, data
-loss, or an external effect.
+Start from one approved executable specification. It states desired behavior,
+observable acceptance examples, allowed scope, relevant entry points, risk
+lane, targeted and integration verification, and genuine escalation conditions.
+Resolve a missing field from direct user authority or current product contracts;
+ask only when the choice changes product scope, safety, credentials, data loss,
+irreversible behavior, or an external effect.
 
-An approved specification already supplies product and design authority. Do
-not precede execution with a generic brainstorming, design-reapproval,
-implementation-plan, program-management, or swarm workflow. Invoke one only
-when a genuine escalation condition requires a new product decision; this
-Cestus playbook takes precedence over generic workflow skills for an approved
-slice.
+The specification already has product and design authority. Do not add generic
+brainstorming, design reapproval, implementation planning, program management,
+or a swarm unless escalation requires a new product decision.
 
 ## Assemble Bounded Context
 
-Read:
+Read only:
 
-- `AGENTS.md` and `docs/agentic/software-factory.md`;
+- `AGENTS.md`, the factory contract, and this skill;
 - the approved specification;
-- nested instructions inside the allowed scope;
-- the named source, contract, test, and dependency entry points;
-- exact verification commands from the specification.
+- instructions inside its allowed scope;
+- named source, contracts, nearby tests, and dependencies; and
+- the exact verification commands, base commit, and candidate diff.
 
-Do not load historical claims, amendments, freezes, registries, acceptance
-matrices, old mission selectors, readiness logs, unrelated plans, or unrelated
-worktrees into an ordinary worker context.
+Do not load historical factory artifacts, retired plans, or unrelated worktrees
+without a concrete dependency. Git history is the archive.
 
 ## Execute The Line
 
-1. Verify the integration branch, configured remote, clean task base, and risk
-   lane. Use one isolated task branch or worktree.
-2. Reproduce the requested behavior or add the failing test before behavior
-   edits. For documentation or behavior-neutral work, record the focused
-   validation instead.
-3. Implement the smallest complete slice within the allowed paths.
-4. Run targeted tests, types, lint, build, or contract checks. Self-correct
-   routine failures, with at most two focused repair attempts.
-5. Treat the branch diff as the candidate. Obtain one fresh independent agent
-   review for yellow work and whenever production code changes. Green
-   documentation/tests-only work may skip review unless its specification
-   requires one.
-6. Repair material findings within the same bound, then rerun affected checks.
-7. Put the candidate against the latest integration tip and run the specified
-   integration verification once. Compare known baseline debt; do not accept a
-   new failure as pre-existing.
-8. Integrate qualifying green or yellow work with normal history-preserving Git
-   operations, push only the configured remote, and observe CI. Escalate the
-   exact exceptional action for red work.
+1. Confirm the integration branch, remote, isolated task branch, base, and risk
+   lane. Do not inspect unrelated parked worktrees.
+2. Before product behavior changes, write a failing test or exact reproduction.
+   Documentation and behavior-neutral maintenance record focused validation.
+3. Terra / High is the sole native implementation lane. Change only allowed
+   files, run focused checks, and present the diff with evidence.
+4. Use at most two focused repair attempts for concrete failed checks or
+   findings. A correction can get the fresh Sol verdict its boundary requires
+   without increasing that two-focused-repair maximum.
+5. `$sol-advisor:orchestration` is the preferred coordinator and role router.
+   Primary Sol / High owns architecture interpretation, primary verification,
+   acceptance, and integration. Luna task lane is never used unless explicitly
+   requested.
+6. A fresh Sol verdict replaces generic independent review only at a commitment
+   boundary: red work, consequential architecture, migration, public API, or
+   genuinely wide change.
+7. At integration, primary Sol / High runs the specification's broad
+   verification once against the latest integration tip, compares any baseline,
+   and integrates qualifying green/yellow work with normal Git history. Do not
+   push, merge, or observe CI unless the approved specification authorizes it.
 
 ## Risk Lanes
 
@@ -68,38 +63,36 @@ worktrees into an ordinary worker context.
   maintenance, isolated well-tested defects, and behavior-neutral cleanup.
 - Yellow: ordinary product/UI/domain behavior, non-destructive APIs,
   reversible internal schema additions, and bounded cross-package changes.
-- Red: credentials, secrets, auth or trust boundaries, destructive or
-  irreversible migrations, production routes, external effects, PRR sends,
-  legal actions, publication/releases, data-loss risk, or a new product/scope
-  decision.
+- Red: credentials, secrets, trust boundaries, destructive or irreversible
+  migrations, production routes, external effects, PRR sends, legal actions,
+  publication/releases, data-loss risk, or a new product/scope decision.
 
-Agents may prepare and verify red work, but the exact irreversible or
-exceptional action stays human-gated.
+Red actions stay human-gated. Green and yellow work bounded by a specification
+needs no further human approval.
 
 ## Product Invariants
 
-Preserve append-only product ledger semantics, provenance, replayable
-projections, consume-time approval validation, secret safety, human PRR-send
-and legal gates, destructive-operation safeguards, fail-closed boundaries, and
-no fallback writes. These are product contracts; do not mirror them into a
-development lifecycle ledger.
+Preserve append-only ledger semantics, provenance, rebuildable projections,
+consume-time approval validation, secret safety, human PRR-send and legal
+gates, destructive-operation safeguards, fail-closed boundaries, and no
+fallback writes. Never turn development coordination into a product ledger.
 
-## Verification
+## Verification And Reporting
 
-Use task-specific commands during implementation. At integration, use the
+Run task-specific focused checks during implementation. At integration, use the
 specification's broader command; the repository default is:
 
 ```bash
 npm run verify
 ```
 
-When this skill changes, also run:
+When this skill changes, run:
 
 ```bash
 uv run --with pyyaml python /home/drake/.codex/skills/.system/skill-creator/scripts/quick_validate.py .agents/skills/cestus-software-factory
 ```
 
-The final handoff names the specification, branch, commit, changed files,
-review decision, exact checks and results, known baseline failures, integration
-status, and any genuine exception. Git holds execution truth; ordinary work
-creates no claim, amendment, registry, or factory lifecycle event.
+Report only commits, changed files, check results, fresh Sol verdict findings,
+integration status, or genuine exceptions. Create no Cestus plans, missions,
+claims, registries, amendments, or lifecycle records; do not report polling,
+waiting, unchanged state, heartbeats, retries, or individual commands.

@@ -1,6 +1,6 @@
 # Evidence-Backed Report Draft And Public-Safe Preview
 
-Status: approved.
+Status: implemented product-behavior reference.
 
 ## Desired Behavior
 
