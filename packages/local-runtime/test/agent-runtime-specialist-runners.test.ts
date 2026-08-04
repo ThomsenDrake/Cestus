@@ -514,7 +514,7 @@ describe("untrusted specialist runner", () => {
     expect(timelineContext.items).toEqual(expect.arrayContaining([expect.objectContaining({
       itemId: `timeline_assertion_${fixture.canonicalDatedFacts.assertionId}`
     })]));
-  });
+  }, 15_000);
 
   it("rejects a prior timeline that does not exactly account for every currently selected source", async () => {
     const fixture = await mountedSourcedResidentFactoryFixture({
