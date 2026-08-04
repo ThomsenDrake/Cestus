@@ -654,6 +654,7 @@ function prrNegotiationReferencesAreExact(
 ): boolean {
   const context = prrResolvedContextStrings(prepared);
   const trustedRules = new Set(input.jurisdictionRuleRefs);
+  const typedDeadlineRefs = prrTypedDeadlineRefs(prepared);
   return output.citedRuleRefs.length > 0 &&
     new Set(output.citedRuleRefs).size === output.citedRuleRefs.length &&
     output.citedRuleRefs.every((ref) => trustedRules.has(ref) && context.has(ref)) &&
@@ -662,7 +663,48 @@ function prrNegotiationReferencesAreExact(
     output.jurisdictionRefs.every((ref) => context.has(ref)) &&
     output.deadlineRefs.length > 0 &&
     new Set(output.deadlineRefs).size === output.deadlineRefs.length &&
-    output.deadlineRefs.every((ref) => context.has(ref));
+    output.deadlineRefs.every((ref) => typedDeadlineRefs.has(ref));
+}
+
+function prrTypedDeadlineRefs(
+  prepared: Awaited<ReturnType<typeof prepareSpecialistRun>>
+): ReadonlySet<string> {
+  const refs = new Set<string>();
+  for (const pack of prepared.promptArtifact.resolvedContextPacks ?? []) {
+    const payload = prrContextRecord(pack.payload);
+    if (pack.ref.contextPackId === "jurisdiction-pack-summary.v1" &&
+      payload?.schemaVersion === "jurisdiction-pack-summary-context.v1") {
+      const packName = payload.packName;
+      const packVersion = payload.packVersion;
+      const citedRules = Array.isArray(payload.citedRules) ? payload.citedRules : [];
+      if (typeof packName !== "string" || typeof packVersion !== "string") continue;
+      for (const value of citedRules) {
+        const rule = prrContextRecord(value);
+        if (rule?.kind !== "deadline" || typeof rule.id !== "string") continue;
+        refs.add(`jurisdiction-rule:${packName}@${packVersion}:${rule.id}`);
+        if (typeof rule.ruleRef === "string") refs.add(rule.ruleRef);
+      }
+      continue;
+    }
+    if (pack.ref.contextPackId === "prr-read-model.v1" &&
+      payload?.schemaVersion === "prr-read-model-context.v1") {
+      const deadline = prrContextRecord(payload.deadline);
+      const requestStream = prrContextRecord(payload.requestStream);
+      if (deadline !== undefined &&
+        (deadline.source === "estimated" || deadline.source === "confirmed") &&
+        typeof requestStream?.streamHeadEventId === "string" &&
+        /^evt_[a-zA-Z0-9_-]+$/.test(requestStream.streamHeadEventId)) {
+        refs.add(requestStream.streamHeadEventId);
+      }
+    }
+  }
+  return refs;
+}
+
+function prrContextRecord(value: unknown): Readonly<Record<string, unknown>> | undefined {
+  return value !== null && typeof value === "object" && !Array.isArray(value)
+    ? value as Readonly<Record<string, unknown>>
+    : undefined;
 }
 
 function prrResolvedContextStrings(
