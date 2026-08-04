@@ -49,6 +49,10 @@ const investigationDispatch = Object.freeze({
   runType: "investigation-planner" as const,
   investigationId: "inv_portable_handoff_exact"
 });
+const prrDispatch = Object.freeze({
+  ...dispatch,
+  runType: "prr-negotiation" as const
+});
 
 afterEach(() => {
   for (const handle of handles.splice(0)) handle.close();
@@ -351,6 +355,57 @@ describe("portable mounted agent artifact stores", () => {
     await expect(issuedBinding(fixture, investigationDispatch).then(async ({ result }) => {
       await beforeMountedHandoffAuthorityEffect(result.controller, "final-output");
     })).rejects.toThrow(/authority/i);
+  });
+
+  it("accepts one exact PRR draft derivative before final output without changing terminal authority cardinality", async () => {
+    const fixture = authorityFixture();
+    const events = [
+      prrStartedEvent(),
+      prrModelInvocationRequestedEvent(),
+      prrModelInvocationCompletedEvent(),
+      prrDraftDerivativeEvent()
+    ];
+    Object.defineProperty(fixture.handle.ledger, "readAll", {
+      configurable: true,
+      value: async () => events.map((event) => structuredClone(event))
+    });
+    const { result } = await issuedBinding(fixture, prrDispatch);
+
+    await expect(beforeMountedHandoffAuthorityEffect(result.controller, "final-output")).resolves.toBeUndefined();
+  });
+
+  it("burns wrong-run, wrong-task, wrong-kind, duplicate, or out-of-order PRR draft derivatives", async () => {
+    const exactTranscript = () => [prrModelInvocationRequestedEvent(), prrModelInvocationCompletedEvent()];
+    const mutations: readonly (readonly KnowledgeEvent[])[] = [
+      [...exactTranscript(), prrDraftDerivativeEvent({
+        payload: { ...prrDraftDerivativeEvent().payload, runId: "run_portable_handoff_foreign" }
+      })],
+      [...exactTranscript(), prrDraftDerivativeEvent({
+        payload: { ...prrDraftDerivativeEvent().payload, taskId: "task_portable_handoff_foreign" }
+      })],
+      [...exactTranscript(), prrDraftDerivativeEvent({
+        payload: { ...prrDraftDerivativeEvent().payload, stepKind: "local-derivative" }
+      })],
+      [
+        ...exactTranscript(),
+        prrDraftDerivativeEvent(),
+        prrDraftDerivativeEvent({ id: "evt_prr_draft_derivative_duplicate", sequence: 3 })
+      ],
+      [prrDraftDerivativeEvent(), ...exactTranscript()]
+    ];
+    for (const suffix of mutations) {
+      const fixture = authorityFixture();
+      const events: KnowledgeEvent[] = [prrStartedEvent()];
+      Object.defineProperty(fixture.handle.ledger, "readAll", {
+        configurable: true,
+        value: async () => events.map((event) => structuredClone(event))
+      });
+      const { result } = await issuedBinding(fixture, prrDispatch);
+      events.push(...suffix);
+
+      await expect(beforeMountedHandoffAuthorityEffect(result.controller, "final-output")).rejects.toThrow(/authority/i);
+      await expect(result.binding.materialStore.put(Buffer.from("must-not-write", "utf8"))).rejects.toThrow(/authority/i);
+    }
   });
 
   it.each([
@@ -1121,6 +1176,56 @@ function investigationModelInvocationFailedEvent(patch: Record<string, unknown> 
     payload: {
       ...failed.payload,
       runId: investigationDispatch.approvedRunId
+    },
+    ...patch
+  } as KnowledgeEvent;
+}
+
+function prrStartedEvent(patch: Record<string, unknown> = {}): KnowledgeEvent {
+  const started = startedEvent();
+  return {
+    ...started,
+    payload: {
+      ...started.payload,
+      runType: prrDispatch.runType
+    },
+    ...patch
+  } as KnowledgeEvent;
+}
+
+function prrModelInvocationRequestedEvent(patch: Record<string, unknown> = {}): KnowledgeEvent {
+  const requested = modelInvocationRequestedEvent();
+  return {
+    ...requested,
+    payload: {
+      ...requested.payload,
+      runType: prrDispatch.runType
+    },
+    ...patch
+  } as KnowledgeEvent;
+}
+
+function prrModelInvocationCompletedEvent(patch: Record<string, unknown> = {}): KnowledgeEvent {
+  return {
+    ...modelInvocationCompletedEvent(),
+    ...patch
+  } as KnowledgeEvent;
+}
+
+function prrDraftDerivativeEvent(patch: Record<string, unknown> = {}): KnowledgeEvent {
+  return {
+    ...prrStartedEvent(),
+    id: "evt_prr_draft_derivative",
+    type: "agent.specialist-run.step.recorded",
+    sequence: 2,
+    context: eventContext({ correlationId: `corr_${prrDispatch.approvedRunId}_step_prr_negotiation_draft` }),
+    payload: {
+      runId: prrDispatch.approvedRunId,
+      stepId: "step_prr_negotiation_draft",
+      summary: "Created a local PRR negotiation advisory artifact for human review.",
+      invocationId: "inv_portable_handoff",
+      inputArtifactHashes: [hash("1"), hash("2")],
+      outputArtifactHashes: [hash("3")]
     },
     ...patch
   } as KnowledgeEvent;

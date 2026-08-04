@@ -134,6 +134,15 @@ export async function runInvestigationPlannerWorkflow(
     investigationId: input.investigationId,
     objectiveRefs: [...output.objectiveRefs],
     gapIds: [...output.gapIds],
+    prioritizedGaps: output.prioritizedGaps.map((gap) => ({
+      gapId: gap.gapId,
+      priority: gap.priority,
+      linkedEvidenceRefs: [...gap.linkedEvidenceRefs],
+      timelineRefs: [...gap.timelineRefs],
+      contradictionRefs: [...gap.contradictionRefs],
+      rationale: gap.rationale,
+      dependencyRefs: [...gap.dependencyRefs]
+    })),
     taskCandidates: output.taskCandidates.map((candidate) => ({
       taskId: candidate.taskId,
       summary: candidate.summary,
@@ -142,6 +151,7 @@ export async function runInvestigationPlannerWorkflow(
       approvalRequirements: [...candidate.approvalRequirements]
     })),
     prrDraftCandidates: [...output.prrDraftCandidates],
+    safeNextSteps: [...output.safeNextSteps],
     sourceEventIds: [...sourceEventIds],
     contextPackRefs: prepared.contextPackRefs,
     promptArtifactHash: prepared.promptArtifact.manifest.inputArtifactHash

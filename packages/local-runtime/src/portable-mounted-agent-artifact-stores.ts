@@ -145,6 +145,7 @@ interface ModelInvocationCursor {
   readonly modelFamily?: string;
   readonly inputArtifactHash?: string;
   readonly terminalEventId?: string;
+  readonly outputArtifactHash?: string;
 }
 
 interface DispatchPreludeCursor {
@@ -203,6 +204,8 @@ type CursorPhase =
   | "task-running"
   | "started"
   | "started-running"
+  | "prr-draft-derivative"
+  | "prr-draft-derivative-running"
   | "final-output"
   | "handoff-prepared"
   | "handoff-recorded"
@@ -448,7 +451,7 @@ export async function beforeMountedHandoffAuthorityEffect(
       kind === "final-output" &&
       (!hasRequiredModelInvocationTranscript(cursor.binding, cursor.modelInvocation) || !hasCompleteDispatchPrelude(cursor.prelude))
     ) throw authorityError();
-    if (!isExpectedPredecessor(cursor.phase, kind)) throw authorityError();
+    if (!isExpectedPredecessor(cursor.phase, kind, cursor.binding.runType)) throw authorityError();
   } catch {
     cursor.burned = true;
     throw authorityError();
@@ -783,10 +786,13 @@ async function inspectAround<T>(
 }
 
 function assertFinalOutputMaterialWriteAuthority(cursor: CursorState, content: Buffer): void {
+  if (!isCanonicalFinalOutputMaterial(content)) return;
+  const prrDerivativeReady = cursor.phase === "prr-draft-derivative" ||
+    cursor.phase === "prr-draft-derivative-running";
   if (
-    isCanonicalFinalOutputMaterial(content) &&
-    (cursor.phase === "started" || cursor.phase === "started-running") &&
-    (!hasRequiredModelInvocationTranscript(cursor.binding, cursor.modelInvocation) || !hasCompleteDispatchPrelude(cursor.prelude))
+    cursor.binding.runType === "prr-negotiation" && !prrDerivativeReady ||
+    !hasRequiredModelInvocationTranscript(cursor.binding, cursor.modelInvocation) ||
+    !hasCompleteDispatchPrelude(cursor.prelude)
   ) {
     cursor.burned = true;
     throw authorityError();
@@ -981,12 +987,56 @@ function advancePhase(
       phase,
       eventId: record.id,
       canonical,
-      modelInvocation: Object.freeze({ ...modelInvocation, terminalEventId: record.id })
+      modelInvocation: Object.freeze({
+        ...modelInvocation,
+        terminalEventId: record.id,
+        ...(type === "agent.model-invocation.completed"
+          ? { outputArtifactHash: requiredHash(payload.outputArtifactHash) }
+          : {})
+      })
+    };
+  }
+  if (type === "agent.specialist-run.step.recorded" && payload.stepKind !== "final-output") {
+    const inputArtifactHash = modelInvocation?.inputArtifactHash;
+    const outputArtifactHash = modelInvocation?.outputArtifactHash;
+    const outputArtifactHashes = normalizedHashArray(payload.outputArtifactHashes);
+    if (
+      binding.runType !== "prr-negotiation"
+      || (phase !== "started" && phase !== "started-running")
+      || !hasRequiredModelInvocationTranscript(binding, modelInvocation)
+      || !hasCompleteDispatchPrelude(prelude)
+      || !validateKnowledgeEvent(record).success
+      || record.streamId !== `agent_run_${binding.approvedRunId}`
+      || payload.runId !== binding.approvedRunId
+      || payload.stepId !== "step_prr_negotiation_draft"
+      || Object.hasOwn(payload, "stepKind")
+      || Object.hasOwn(payload, "stepSchemaId")
+      || Object.hasOwn(payload, "idempotencyKey")
+      || Object.hasOwn(payload, "handoffMaterialArtifactHash")
+      || Object.hasOwn(payload, "toolRequestId")
+      || payload.invocationId !== modelInvocation?.invocationId
+      || inputArtifactHash === undefined
+      || outputArtifactHash === undefined
+      || !sameStringArrays(normalizedHashArray(payload.inputArtifactHashes), [inputArtifactHash, outputArtifactHash])
+      || outputArtifactHashes.length !== 1
+      || context.correlationId !== `corr_${binding.approvedRunId}_step_prr_negotiation_draft`
+      || Object.hasOwn(context, "causationId")
+    ) {
+      throw authorityError();
+    }
+    return {
+      phase: phase === "started-running" ? "prr-draft-derivative-running" : "prr-draft-derivative",
+      eventId: record.id,
+      canonical,
+      modelInvocation
     };
   }
   if (type === "agent.specialist-run.step.recorded") {
+    const finalOutputPredecessor = binding.runType === "prr-negotiation"
+      ? phase === "prr-draft-derivative" || phase === "prr-draft-derivative-running"
+      : phase === "started" || phase === "started-running";
     if (
-      (phase !== "started" && phase !== "started-running")
+      !finalOutputPredecessor
       || !hasRequiredModelInvocationTranscript(binding, modelInvocation)
       || !hasCompleteDispatchPrelude(prelude)
       || record.streamId !== `agent_run_${binding.approvedRunId}`
@@ -1164,7 +1214,9 @@ function advancePhase(
 function isBoundEvent(event: NormalizedJson, binding: RunBinding): boolean {
   const record = normalizedOwnDataRecord(event);
   const payload = normalizedOwnDataRecord(record.payload);
-  return payload.runId === binding.approvedRunId || payload.taskId === binding.taskId;
+  return payload.runId === binding.approvedRunId || payload.taskId === binding.taskId ||
+    (record.type === "agent.specialist-run.step.recorded" &&
+      record.streamId === `agent_run_${binding.approvedRunId}`);
 }
 
 function advanceDispatchPrelude(
@@ -1288,6 +1340,10 @@ function hasRequiredModelInvocationTranscript(
   value: ModelInvocationCursor | undefined
 ): boolean {
   if (value?.requestedEventId !== undefined && value.terminalEventId === undefined) return false;
+  if (binding.runType === "prr-negotiation") {
+    return value?.requestedEventId !== undefined && value.terminalEventId !== undefined &&
+      value.outputArtifactHash !== undefined;
+  }
   if (binding.runType !== "investigation-planner") return true;
   return value?.requestedEventId !== undefined && value.terminalEventId !== undefined;
 }
@@ -1442,9 +1498,16 @@ function sameAuthorityBinding(payload: NormalizedJsonRecord, expected: HandoffAu
   return Object.getOwnPropertyNames(authority).every((field) => fields.includes(field as typeof fields[number]));
 }
 
-function isExpectedPredecessor(phase: CursorPhase, kind: MountedHandoffAuthorityEffectKind): boolean {
+function isExpectedPredecessor(
+  phase: CursorPhase,
+  kind: MountedHandoffAuthorityEffectKind,
+  runType: AgentSpecialistRunType
+): boolean {
+  const finalOutputReady = runType === "prr-negotiation"
+    ? phase === "prr-draft-derivative" || phase === "prr-draft-derivative-running"
+    : phase === "started" || phase === "started-running";
   return (
-    (kind === "final-output" && (phase === "started" || phase === "started-running"))
+    (kind === "final-output" && finalOutputReady)
     || (kind === "handoff-prepared" && phase === "final-output")
     || (kind === "handoff-recorded" && phase === "handoff-prepared")
     || (kind === "run-terminal" && phase === "handoff-recorded")

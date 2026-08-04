@@ -16,6 +16,16 @@ import {
   executeSourcedInvestigationWorkflow,
   type ExecuteSourcedInvestigationWorkflowInput
 } from "../../agent/src/sourced-investigation-workflows.js";
+import {
+  runInvestigationPlannerWorkflow,
+  type RunInvestigationPlannerWorkflowInput,
+  type RunInvestigationPlannerWorkflowResult
+} from "../../agent/src/investigation-planner-workflow.js";
+import {
+  runPrrNegotiationWorkflow,
+  type RunPrrNegotiationWorkflowInput,
+  type RunPrrNegotiationWorkflowResult
+} from "../../agent/src/prr-negotiation-workflow.js";
 import type {
   TaskOrchestratorRunnerDispatchInput,
   TaskOrchestratorRunnerDispatchResult
@@ -24,6 +34,8 @@ import type { ActorRef } from "../../ontology/src/contracts.js";
 import type { EventLedger } from "../../ontology/src/event-ledger.js";
 import {
   consumeMountedHandoffAuthorityController,
+  preflightPortableMountedAgentHandoffBinding,
+  type MountedHandoffAuthorityConsumptionReceiptV1,
   type FactoryPortableMountedAgentHandoffProducerResultV1
 } from "./portable-mounted-agent-artifact-stores.js";
 
@@ -85,6 +97,116 @@ export function createUntrustedSpecialistRunner(input: {
           schemaVersion: "agent.task-orchestrator.runner-preparation.v1" as const,
           preparation
         })
+      });
+    }
+  });
+}
+
+export interface MountedInvestigationPlannerRunnerResolution extends Omit<
+  RunInvestigationPlannerWorkflowInput,
+  | "runId"
+  | "taskId"
+  | "investigationId"
+  | "derivativeStore"
+  | "handoffStore"
+  | "handoffAuthorityWitness"
+> {
+  readonly investigationId: string;
+}
+
+export interface MountedPrrNegotiationRunnerResolution extends Omit<
+  RunPrrNegotiationWorkflowInput,
+  | "runId"
+  | "taskId"
+  | "derivativeStore"
+  | "handoffStore"
+  | "handoffAuthorityWitness"
+> {}
+
+export interface MountedAdvisoryDispatchInput {
+  readonly dispatch: TaskOrchestratorRunnerDispatchInput;
+  readonly retryGeneration: number;
+  readonly handoff: FactoryPortableMountedAgentHandoffProducerResultV1;
+}
+
+export interface MountedInvestigationPlannerDispatchResult {
+  readonly result: RunInvestigationPlannerWorkflowResult;
+  readonly authorityConsumption?: MountedHandoffAuthorityConsumptionReceiptV1;
+}
+
+export interface MountedPrrNegotiationDispatchResult {
+  readonly result: RunPrrNegotiationWorkflowResult;
+  readonly authorityConsumption?: MountedHandoffAuthorityConsumptionReceiptV1;
+}
+
+/**
+ * Binds the existing planner workflow to one exact factory-issued mounted
+ * handoff. The caller can resolve local/fake model and context dependencies,
+ * but cannot replace the task/run identity, stores, or handoff authority.
+ */
+export function createMountedInvestigationPlannerSpecialistRunner(input: {
+  readonly resolve: (
+    dispatch: TaskOrchestratorRunnerDispatchInput
+  ) => Promise<MountedInvestigationPlannerRunnerResolution> | MountedInvestigationPlannerRunnerResolution;
+}) {
+  const resolve = mountedAdvisoryResolver<MountedInvestigationPlannerRunnerResolution>(input);
+  return Object.freeze({
+    async dispatch(value: MountedAdvisoryDispatchInput): Promise<MountedInvestigationPlannerDispatchResult> {
+      const mounted = normalizeMountedAdvisoryDispatch(value, "investigation-planner");
+      await preflightMountedAdvisoryDispatch(mounted);
+      const resolved = await resolve(mounted.dispatch);
+      const result = await runInvestigationPlannerWorkflow({
+        ...resolved,
+        runId: mounted.dispatch.approvedRunId,
+        taskId: mounted.dispatch.taskId,
+        investigationId: resolved.investigationId,
+        derivativeStore: mounted.handoff.binding.materialStore,
+        handoffStore: mounted.handoff.binding.materialStore,
+        handoffAuthorityWitness: mounted.handoff.binding.authorityWitness
+      });
+      assertAdvisoryResultIdentity(result.handoff, mounted.dispatch);
+      const authorityConsumption = await consumeCompletedMountedAdvisoryHandoff({
+        ledger: resolved.ledger,
+        handoff: mounted.handoff,
+        dispatch: mounted.dispatch
+      });
+      return Object.freeze({
+        result,
+        ...(authorityConsumption === undefined ? {} : { authorityConsumption })
+      });
+    }
+  });
+}
+
+/** The equivalent mounted composition for local PRR advice and drafts. */
+export function createMountedPrrNegotiationSpecialistRunner(input: {
+  readonly resolve: (
+    dispatch: TaskOrchestratorRunnerDispatchInput
+  ) => Promise<MountedPrrNegotiationRunnerResolution> | MountedPrrNegotiationRunnerResolution;
+}) {
+  const resolve = mountedAdvisoryResolver<MountedPrrNegotiationRunnerResolution>(input);
+  return Object.freeze({
+    async dispatch(value: MountedAdvisoryDispatchInput): Promise<MountedPrrNegotiationDispatchResult> {
+      const mounted = normalizeMountedAdvisoryDispatch(value, "prr-negotiation");
+      await preflightMountedAdvisoryDispatch(mounted);
+      const resolved = await resolve(mounted.dispatch);
+      const result = await runPrrNegotiationWorkflow({
+        ...resolved,
+        runId: mounted.dispatch.approvedRunId,
+        taskId: mounted.dispatch.taskId,
+        derivativeStore: mounted.handoff.binding.materialStore,
+        handoffStore: mounted.handoff.binding.materialStore,
+        handoffAuthorityWitness: mounted.handoff.binding.authorityWitness
+      });
+      assertAdvisoryResultIdentity(result.handoff, mounted.dispatch);
+      const authorityConsumption = await consumeCompletedMountedAdvisoryHandoff({
+        ledger: resolved.ledger,
+        handoff: mounted.handoff,
+        dispatch: mounted.dispatch
+      });
+      return Object.freeze({
+        result,
+        ...(authorityConsumption === undefined ? {} : { authorityConsumption })
       });
     }
   });
@@ -257,6 +379,95 @@ function normalizeDelegate(value: unknown): (input: TaskOrchestratorRunnerDispat
     throw preparationError();
   }
   return input.delegate as (input: TaskOrchestratorRunnerDispatchInput) => Promise<unknown>;
+}
+
+function mountedAdvisoryResolver<T>(value: unknown): (
+  dispatch: TaskOrchestratorRunnerDispatchInput
+) => Promise<T> | T {
+  const input = exactOwnDataObject(value, ["resolve"]);
+  if (typeof input.resolve !== "function") throw preparationError();
+  return input.resolve as (dispatch: TaskOrchestratorRunnerDispatchInput) => Promise<T> | T;
+}
+
+function normalizeMountedAdvisoryDispatch(
+  value: unknown,
+  expectedRunType: "investigation-planner" | "prr-negotiation"
+): MountedAdvisoryDispatchInput {
+  const input = exactOwnDataObject(value, ["dispatch", "retryGeneration", "handoff"]);
+  const dispatch = normalizePublicDispatch(input.dispatch);
+  if (dispatch.runType !== expectedRunType ||
+    !Number.isInteger(input.retryGeneration) || (input.retryGeneration as number) < 0 ||
+    input.handoff === null || typeof input.handoff !== "object") {
+    throw preparationError();
+  }
+  return Object.freeze({
+    dispatch,
+    retryGeneration: input.retryGeneration as number,
+    handoff: input.handoff as FactoryPortableMountedAgentHandoffProducerResultV1
+  });
+}
+
+async function preflightMountedAdvisoryDispatch(input: MountedAdvisoryDispatchInput): Promise<void> {
+  try {
+    await preflightPortableMountedAgentHandoffBinding({
+      binding: input.handoff.binding,
+      controller: input.handoff.controller,
+      taskId: input.dispatch.taskId,
+      attemptId: input.dispatch.attemptId,
+      runId: input.dispatch.approvedRunId,
+      runType: input.dispatch.runType,
+      retryGeneration: input.retryGeneration
+    });
+  } catch {
+    throw preparationError();
+  }
+}
+
+function assertAdvisoryResultIdentity(
+  handoff: RunInvestigationPlannerWorkflowResult["handoff"] | RunPrrNegotiationWorkflowResult["handoff"],
+  dispatch: TaskOrchestratorRunnerDispatchInput
+): void {
+  if (handoff.taskId !== dispatch.taskId || handoff.runId !== dispatch.approvedRunId ||
+    handoff.runType !== dispatch.runType) {
+    throw preparationError();
+  }
+}
+
+async function consumeCompletedMountedAdvisoryHandoff(input: {
+  readonly ledger: EventLedger;
+  readonly handoff: FactoryPortableMountedAgentHandoffProducerResultV1;
+  readonly dispatch: TaskOrchestratorRunnerDispatchInput;
+}): Promise<MountedHandoffAuthorityConsumptionReceiptV1 | undefined> {
+  const events = await input.ledger.readAll();
+  const effectIds = events.filter((event) => {
+    switch (event.type) {
+      case "agent.specialist-run.step.recorded":
+        return event.payload.runId === input.dispatch.approvedRunId && event.payload.stepKind === "final-output";
+      case "agent.specialist-handoff.prepared":
+      case "agent.specialist-handoff.recorded":
+        return event.payload.runId === input.dispatch.approvedRunId &&
+          event.payload.taskId === input.dispatch.taskId && event.payload.runType === input.dispatch.runType;
+      case "agent.specialist-run.completed":
+      case "agent.specialist-run.failed":
+        return event.payload.runId === input.dispatch.approvedRunId;
+      case "agent.task.orchestration.completed":
+        return event.payload.taskId === input.dispatch.taskId &&
+          event.payload.runId === input.dispatch.approvedRunId && event.payload.runType === input.dispatch.runType &&
+          event.payload.attemptId === input.dispatch.attemptId;
+      case "agent.task.status.changed":
+        return event.payload.taskId === input.dispatch.taskId && event.payload.runId === input.dispatch.approvedRunId &&
+          (event.payload.status === "completed" || event.payload.status === "failed");
+      default:
+        return false;
+    }
+  }).map((event) => event.id);
+  if (effectIds.length === 0) return undefined;
+  if (effectIds.length !== 6) throw preparationError();
+  try {
+    return await consumeMountedHandoffAuthorityController(input.handoff.controller, effectIds);
+  } catch {
+    throw preparationError();
+  }
 }
 
 function normalizePublicDispatch(value: unknown): TaskOrchestratorRunnerDispatchInput {
