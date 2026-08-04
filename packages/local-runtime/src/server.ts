@@ -11,6 +11,7 @@ import type { ActorRef } from "../../prr/src/draft-events.js";
 import { resolveLocalRuntimeConfig, type ResolvedLocalRuntimeConfig } from "./config.js";
 import { createLocalRuntimeHttpHandler } from "./http-handler.js";
 import { readStaticUiFile } from "./static-files.js";
+import { assertTailnetAddress, isTailnetAddress } from "./tailnet-address.js";
 
 export interface StartLocalRuntimeServerInput {
   readonly config?: ResolvedLocalRuntimeConfig;
@@ -45,6 +46,8 @@ export async function startLocalRuntimeServer(
       ...(input.cwd === undefined ? {} : { cwd: input.cwd }),
       ...(input.env === undefined ? {} : { env: input.env })
     });
+  const interfaces = input.networkInterfaces ?? networkInterfaces;
+  assertTailnetHostAssigned(config, interfaces);
   const actor = input.actor ?? defaultActor;
   const handler = createLocalRuntimeHttpHandler({ config, actor });
   mkdirSync(config.logs.dir, { recursive: true });
@@ -121,7 +124,7 @@ export async function startLocalRuntimeServer(
   const sessionBootstrapUrls =
     sessionBootstrapCode === undefined
       ? []
-      : buildSessionBootstrapUrls(config, server, sessionBootstrapCode, input.networkInterfaces ?? networkInterfaces);
+      : buildSessionBootstrapUrls(config, server, sessionBootstrapCode, interfaces);
 
   return Object.freeze({
     config,
@@ -265,7 +268,7 @@ function buildSessionBootstrapUrls(
   );
 }
 
-function browserHostsFor(
+export function browserHostsFor(
   config: ResolvedLocalRuntimeConfig,
   interfaces: () => NodeJS.Dict<NetworkInterfaceInfo[]>
 ): readonly string[] {
@@ -292,9 +295,24 @@ function isWildcardHost(host: string): boolean {
 }
 
 function isTailnetIpv4Host(host: string): boolean {
-  const parts = host.split(".").map((part) => Number(part));
-  const [first, second] = parts;
-  return parts.length === 4 && first === 100 && second !== undefined && second >= 64 && second <= 127;
+  return isTailnetAddress(host);
+}
+
+function assertTailnetHostAssigned(
+  config: ResolvedLocalRuntimeConfig,
+  interfaces: () => NodeJS.Dict<NetworkInterfaceInfo[]>
+): void {
+  if (config.http.bindMode !== "tailnet") {
+    return;
+  }
+
+  assertTailnetAddress(config.http.host);
+  const assigned = Object.values(interfaces())
+    .flatMap((items) => items ?? [])
+    .some((item) => item.address === config.http.host);
+  if (!assigned) {
+    throw new Error("Tailnet local runtime host must be assigned to a local network interface");
+  }
 }
 
 function uniqueStrings(values: readonly string[]): readonly string[] {

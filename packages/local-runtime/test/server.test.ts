@@ -1,11 +1,11 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { request as httpRequest } from "node:http";
 import type { AddressInfo } from "node:net";
 import { tmpdir, type NetworkInterfaceInfo } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { resolveLocalRuntimeConfig, type ResolvedLocalRuntimeConfig } from "../src/config.js";
-import { startLocalRuntimeServer, type LocalRuntimeServerHandle } from "../src/server.js";
+import { browserHostsFor, startLocalRuntimeServer, type LocalRuntimeServerHandle } from "../src/server.js";
 import { createPortableWorkspace } from "../../workspace/src/index.js";
 import { operatorStatusDtoSchema } from "../../operator-status/src/contracts.js";
 
@@ -120,29 +120,56 @@ describe("startLocalRuntimeServer", () => {
     ]);
   });
 
-  it("uses a non-loopback browser session URL for wildcard LAN binds", async () => {
-    const handle = await startLocalRuntimeServer({
-      config: authRequiredWildcardLanConfig(),
-      networkInterfaces: () => fakeLanInterfaces("192.0.2.42")
-    });
-    handles.push(handle);
-
-    expect(handle.sessionBootstrapUrl).toMatch(/^http:\/\/192\.0\.2\.42:\d+\/api\/local-session\?code=/);
-    expect(handle.sessionBootstrapUrl).not.toContain("127.0.0.1");
-    expect(handle.sessionBootstrapUrl).not.toContain("secret-local-token");
-    expect(handle.sessionBootstrapUrls).toContain(handle.sessionBootstrapUrl);
+  it("selects a non-loopback browser host for wildcard LAN binds without listening", () => {
+    expect(browserHostsFor(authRequiredWildcardLanConfig(), () => fakeLanInterfaces("192.0.2.42"))).toEqual([
+      "192.0.2.42"
+    ]);
   });
 
-  it("prefers tailnet browser session URLs for wildcard tailnet binds", async () => {
-    const handle = await startLocalRuntimeServer({
-      config: authRequiredWildcardTailnetConfig(),
-      networkInterfaces: () => fakeLanInterfaces("192.0.2.42", "100.99.12.34")
-    });
-    handles.push(handle);
+  it("rejects unassigned tailnet hosts before creating ledger or log paths", async () => {
+    const base = configWithPortZero(resolveLocalRuntimeConfig({ cwd: tempDir(), env: {} }));
+    const config: ResolvedLocalRuntimeConfig = {
+      ...base,
+      http: {
+        ...base.http,
+        bindMode: "tailnet",
+        host: "100.99.12.34",
+        authRequired: true,
+        authToken: "secret-local-token"
+      }
+    };
 
-    expect(handle.sessionBootstrapUrl).toMatch(/^http:\/\/100\.99\.12\.34:\d+\/api\/local-session\?code=/);
-    expect(handle.sessionBootstrapUrls).toEqual([handle.sessionBootstrapUrl]);
-    expect(handle.sessionBootstrapUrl).not.toContain("secret-local-token");
+    await expect(
+      startLocalRuntimeServer({
+        config,
+        networkInterfaces: () => fakeLanInterfaces("100.99.12.35")
+      })
+    ).rejects.toThrow("Tailnet local runtime host must be assigned to a local network interface");
+    expect(existsSync(config.storage.sqlitePath)).toBe(false);
+    expect(existsSync(config.logs.dir)).toBe(false);
+  });
+
+  it("rejects out-of-range tailnet hosts before creating ledger or log paths", async () => {
+    const base = configWithPortZero(resolveLocalRuntimeConfig({ cwd: tempDir(), env: {} }));
+    const config: ResolvedLocalRuntimeConfig = {
+      ...base,
+      http: {
+        ...base.http,
+        bindMode: "tailnet",
+        host: "192.168.1.20",
+        authRequired: true,
+        authToken: "secret-local-token"
+      }
+    };
+
+    await expect(
+      startLocalRuntimeServer({
+        config,
+        networkInterfaces: () => fakeLanInterfaces("192.168.1.20")
+      })
+    ).rejects.toThrow("Tailnet local runtime host must be an explicit address in the Tailscale IPv4 or IPv6 ranges");
+    expect(existsSync(config.storage.sqlitePath)).toBe(false);
+    expect(existsSync(config.logs.dir)).toBe(false);
   });
 
   it("can be closed more than once without closing the runtime twice", async () => {
@@ -163,7 +190,7 @@ function authRequiredConfig(): ResolvedLocalRuntimeConfig {
     resolveLocalRuntimeConfig({
       cwd: tempDir(),
       env: {
-        CESTUS_LOCAL_BIND: "tailnet",
+        CESTUS_LOCAL_BIND: "lan",
         CESTUS_LOCAL_HOST: "127.0.0.1",
         CESTUS_LOCAL_AUTH_TOKEN: "secret-local-token"
       }
@@ -177,18 +204,6 @@ function authRequiredWildcardLanConfig(): ResolvedLocalRuntimeConfig {
       cwd: tempDir(),
       env: {
         CESTUS_LOCAL_BIND: "lan",
-        CESTUS_LOCAL_AUTH_TOKEN: "secret-local-token"
-      }
-    })
-  );
-}
-
-function authRequiredWildcardTailnetConfig(): ResolvedLocalRuntimeConfig {
-  return configWithPortZero(
-    resolveLocalRuntimeConfig({
-      cwd: tempDir(),
-      env: {
-        CESTUS_LOCAL_BIND: "tailnet",
         CESTUS_LOCAL_AUTH_TOKEN: "secret-local-token"
       }
     })
