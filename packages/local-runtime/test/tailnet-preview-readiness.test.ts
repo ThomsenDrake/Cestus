@@ -12,6 +12,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { runLocalRuntimeCli } from "../src/cli.js";
+import { resolveLocalRuntimeConfig } from "../src/config.js";
 import { checkTailnetPreviewReadiness } from "../src/tailnet-preview-readiness.js";
 
 const tempDirs: string[] = [];
@@ -153,6 +154,23 @@ describe("checkTailnetPreviewReadiness", () => {
         env: { ...previewEnv(cwd), CESTUS_APP_DATA_DIR: danglingAppData }
       })
     ).toThrow("Tailnet preview readiness could not resolve durable storage safely");
+  });
+
+  it("rejects a whitespace-padded injected tailnet host without reporting ready", () => {
+    const cwd = tempDir();
+    writeBuiltUi(cwd);
+    const exactConfig = resolveLocalRuntimeConfig({ cwd, env: previewEnv(cwd) });
+    const config = {
+      ...exactConfig,
+      http: {
+        ...exactConfig.http,
+        host: " 100.99.12.34 "
+      }
+    };
+
+    expect(() => checkTailnetPreviewReadiness({ config })).toThrow(
+      "Tailnet local runtime host must be an explicit address in the Tailscale IPv4 or IPv6 ranges"
+    );
   });
 
   it("runs the CLI check without revealing auth material", async () => {
