@@ -1,52 +1,52 @@
 # Cestus Agent Contract
 
-This repository is built by autonomous coding agents. Treat the approved
-product specification, the current Git branch, and verification output as the
-durable task state.
+Treat the approved product specification, current Git branch, and verification
+output as durable task state.
 
 ## Current Factory Authority
 
-Read these before changing Cestus:
+Read, in order:
 
-1. The approved executable specification for the product slice.
-2. `docs/agentic/software-factory.md`, the sole operating contract for moving
-   that specification through implementation, review, and integration.
-3. `.agents/skills/cestus-software-factory/SKILL.md`, the concise execution
-   playbook.
-4. Only the repository instructions and source files relevant to the allowed
-   scope in the specification.
+1. the approved executable specification;
+2. `docs/agentic/software-factory.md`;
+3. `.agents/skills/cestus-software-factory/SKILL.md`;
+4. only instructions and source relevant to the allowed scope.
 
-The pre-cutover mission selectors, claims, amendments, freezes, registries,
-acceptance matrices, readiness logs, and Factory V2 branches are historical
-records. They are not task inputs, approval gates, ownership authorities, or
-default verification requirements.
+The approved Cestus specification is product and design authority.
+`$sol-advisor:orchestration` is the preferred coordinator and role router; it
+does not create extra Cestus plans, missions, claims, registries, amendments,
+or lifecycle records. Factory V1/V2 material is history only, not task input,
+approval, ownership authority, or a default verification requirement.
 
-An approved Cestus executable specification already carries product and design
-authority. Do not add generic brainstorming, design-reapproval,
-implementation-plan, program-management, or swarm workflows before executing
-it. Use such a workflow only when the specification cannot be completed
-without a genuinely new product decision covered by the escalation rules
-below. This repository contract takes precedence over generic workflow skills.
+## Role Routing
+
+- Primary Sol / High owns architecture interpretation, primary verification,
+  acceptance, and integration decisions.
+- Terra / High is the sole native implementation lane.
+- A fresh Sol verdict replaces generic independent-review flow at a
+  commitment boundary: red work, consequential architecture, migration,
+  public API, or genuinely wide change.
+- Luna task lane is never used unless explicitly requested.
 
 ## Work Rules
 
-- Start from one approved executable specification. Use
-  `docs/agentic/executable-spec-template.md` for new product slices.
-- Work in one task-scoped branch or worktree. The branch owns the candidate;
-  the diff is the handoff.
-- Use one implementation agent and, when required by the risk lane, one fresh
-  independent reviewer. Do not create a swarm for an ordinary slice.
-- Write a failing test or exact reproduction before product behavior changes.
-  Documentation and behavior-neutral maintenance use focused validation.
-- Run targeted checks while implementing and broader verification once at the
-  integration boundary, unless the specification identifies a higher-risk
-  check.
-- Make no more than two focused repair attempts before returning an exception
-  to the coordinator.
-- Green and yellow work already bounded by an approved specification needs no
-  further human approval. Escalate only the exact red-lane action or a genuine
-  new product, scope, safety, credential, irreversible, data-loss, or external
-  behavior decision.
+- Start from one approved executable specification; use
+  `docs/agentic/executable-spec-template.md` for a new slice.
+- Use one task-scoped branch or worktree. The diff is the candidate and Git
+  history is the archive.
+- Reproduce or write a failing test before product behavior changes;
+  documentation and behavior-neutral maintenance use focused validation.
+- Preserve green, yellow, and red risk lanes. Run targeted checks during work
+  and integration verification once at the integration boundary.
+- At most two focused repair attempts address failed checks or findings. A
+  correction receives any fresh Sol verdict required by its boundary without
+  expanding that implementation-repair maximum.
+- Green and yellow work bounded by the specification needs no further human
+  approval. Escalate only a red action or a genuine new product, scope,
+  safety, credential, irreversible, data-loss, or external-behavior decision.
+- Report only commits, changed files, check results, review findings,
+  integration status, or genuine exceptions; do not report polling, waiting,
+  unchanged state, heartbeats, or command-by-command activity.
 
 ## Product Safety Invariants
 

@@ -1,6 +1,6 @@
 # Portable Ingestion Evidence Corpus
 
-Status: approved.
+Status: implemented product-behavior reference.
 
 ## Desired Behavior
 
