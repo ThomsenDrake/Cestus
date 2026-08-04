@@ -616,12 +616,17 @@ async function revalidateIssuedPortableWitness(cursor: CursorState): Promise<voi
     return;
   }
   try {
+    const preExecutionTaskPhase = cursor.phase === "initial" ||
+      cursor.phase === "task-created" || cursor.phase === "task-queued";
+    const phaseHasExpectedPredecessor = cursor.phase === "initial"
+      ? cursor.lastRelevantEventId === undefined
+      : cursor.lastRelevantEventId !== undefined;
     if (
-      cursor.phase !== "initial"
+      !preExecutionTaskPhase
+      || !phaseHasExpectedPredecessor
       || cursor.canonical !== undefined
       || cursor.modelInvocation !== undefined
       || Object.keys(cursor.prelude).length !== 0
-      || cursor.lastRelevantEventId !== undefined
       || cursor.handoffEventIds.length !== 0
       || cursor.accepted === undefined
     ) {
