@@ -208,6 +208,47 @@ describe("resolveLocalRuntimeConfig", () => {
     ).toThrow("Auth is required for non-loopback local runtime exposure");
   });
 
+  it.each([
+    undefined,
+    "0.0.0.0",
+    "::",
+    "127.0.0.1",
+    "192.168.1.20",
+    "203.0.113.20",
+    "fd7a:115c:a1e0::1%tailscale0",
+    "not-an-ip"
+  ])(
+    "rejects invalid tailnet host %s before resolving auth",
+    (host) => {
+      expect(() =>
+        resolveLocalRuntimeConfig({
+          cwd,
+          env: {
+            CESTUS_LOCAL_BIND: "tailnet",
+            ...(host === undefined ? {} : { CESTUS_LOCAL_HOST: host }),
+            CESTUS_LOCAL_AUTH_TOKEN: "local-secret"
+          }
+        })
+      ).toThrow("Tailnet local runtime host must be an explicit address in the Tailscale IPv4 or IPv6 ranges");
+    }
+  );
+
+  it.each([" 100.99.12.34 ", " fd7a:115c:a1e0::1 "])(
+    "rejects a whitespace-padded raw tailnet environment host %s before resolving config",
+    (host) => {
+      expect(() =>
+        resolveLocalRuntimeConfig({
+          cwd,
+          env: {
+            CESTUS_LOCAL_BIND: "tailnet",
+            CESTUS_LOCAL_HOST: host,
+            CESTUS_LOCAL_AUTH_TOKEN: "local-secret"
+          }
+        })
+      ).toThrow("Tailnet local runtime host must be an explicit address in the Tailscale IPv4 or IPv6 ranges");
+    }
+  );
+
   it("allows authenticated tailnet exposure without enabling dev seed", () => {
     const config = resolveLocalRuntimeConfig({
       cwd,
@@ -225,6 +266,19 @@ describe("resolveLocalRuntimeConfig", () => {
       authToken: "local-secret",
       devSeedEnabled: false
     });
+  });
+
+  it("accepts an exact IPv6 tailnet environment host", () => {
+    const config = resolveLocalRuntimeConfig({
+      cwd,
+      env: {
+        CESTUS_LOCAL_BIND: "tailnet",
+        CESTUS_LOCAL_HOST: "fd7a:115c:a1e0::1",
+        CESTUS_LOCAL_AUTH_TOKEN: "local-secret"
+      }
+    });
+
+    expect(config.http.host).toBe("fd7a:115c:a1e0::1");
   });
 
   it("keeps dev seed enablement separate from exposure mode", () => {
