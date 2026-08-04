@@ -187,6 +187,7 @@ export async function bindMountedSourcedInvestigationHandoffForLocalAgentRuntime
   readonly taskId: string;
   readonly runId: string;
   readonly runType: "timeline-builder" | "contradiction-finder";
+  readonly investigationId?: string;
 }): Promise<FactoryPortableMountedAgentHandoffProducerResultV1> {
   const operation = issueMountedArtifactAuthorityOperationForFactory(input.wakeRuntime);
   return await createPortableMountedAgentArtifactStoreProducer(operation).bind({
@@ -198,7 +199,8 @@ export async function bindMountedSourcedInvestigationHandoffForLocalAgentRuntime
     }),
     approvedRunId: input.runId,
     runType: input.runType,
-    retryGeneration: 0
+    retryGeneration: 0,
+    ...(input.investigationId === undefined ? {} : { investigationId: input.investigationId })
   });
 }
 

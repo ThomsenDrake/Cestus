@@ -729,6 +729,7 @@ export interface RunMountedSourcedInvestigationTaskInput {
   readonly taskId: string;
   readonly runId: string;
   readonly runType: MountedSourcedInvestigationRunType;
+  readonly investigationId?: string;
   readonly evidenceIds: readonly string[];
   readonly beforePromptArtifactWriteForTest?: (() => void | Promise<void>) | undefined;
 }
@@ -825,6 +826,7 @@ export function createMountedSourcedInvestigationExecutionPort(input: {
         taskId: task.taskId,
         runId: task.runId,
         runType: task.runType,
+        ...(task.investigationId === undefined ? {} : { investigationId: task.investigationId }),
         evidenceIds: task.evidenceIds,
         ...(input.beforePromptArtifactWriteForTest === undefined ? {} : {
           beforePromptArtifactWriteForTest: input.beforePromptArtifactWriteForTest
@@ -841,7 +843,8 @@ async function runMountedSourcedInvestigationTaskInternal(
   }
 ) {
   if ((input.runType !== "timeline-builder" && input.runType !== "contradiction-finder") ||
-    !/^task_[a-zA-Z0-9_-]+$/.test(input.taskId) || !/^run_[a-zA-Z0-9_-]+$/.test(input.runId)) {
+    !/^task_[a-zA-Z0-9_-]+$/.test(input.taskId) || !/^run_[a-zA-Z0-9_-]+$/.test(input.runId) ||
+    (input.investigationId !== undefined && !/^[a-zA-Z][a-zA-Z0-9._:-]+$/.test(input.investigationId))) {
     throw new MountedResidentTaskError(400, "Mounted sourced investigation identity is invalid.", [
       "select a queued mounted task and one approved sourced-investigation run type"
     ]);
@@ -915,12 +918,13 @@ async function runMountedSourcedInvestigationTaskInternal(
       runId: input.runId,
       runType: input.runType,
       authority,
-      evidence
+      evidence,
+      ...(input.investigationId === undefined ? {} : { investigationId: input.investigationId })
     });
 
     const contextEvents = Object.freeze(await input.handle.ledger.readAll());
     const timelineDraft = input.runType === "contradiction-finder"
-      ? await readMountedTimelineDraftContext(authority, contextEvents, evidence)
+      ? await readMountedTimelineDraftContext(authority, contextEvents, evidence, input.investigationId)
       : undefined;
     const associatedPrrRequestId = exactAssociatedPrrRequestId(contextEvents, evidence);
     const contextRegistry = createMountedSourcedInvestigationContextRegistry({
@@ -1041,7 +1045,8 @@ async function runMountedSourcedInvestigationTaskInternal(
           scope,
           promptArtifact,
           artifactStore: materialStore,
-          execution: { mode: "local" as const, invoke: () => localOutput }
+          execution: { mode: "local" as const, invoke: () => localOutput },
+          ...(input.investigationId === undefined ? {} : { investigationId: input.investigationId })
         };
       }
     });
@@ -1162,8 +1167,8 @@ async function runMountedAdvisoryTaskInternal(
   await verifyMountedEvidenceSourceBytes(authority, evidence);
   const [priorTimelineDraft, priorContradictionDraft] = input.runType === "investigation-planner"
     ? await Promise.all([
-        readOptionalMountedTimelineDraftContext(authority, eventsBeforeRun, evidence),
-        readOptionalMountedContradictionDraftContext(authority, eventsBeforeRun, evidence)
+        readOptionalMountedTimelineDraftContext(authority, eventsBeforeRun, evidence, input.investigationId),
+        readOptionalMountedContradictionDraftContext(authority, eventsBeforeRun, evidence, input.investigationId)
       ])
     : [undefined, undefined] as const;
 
@@ -2980,9 +2985,10 @@ async function seedContextProvenanceArtifacts(
 async function readMountedTimelineDraftContext(
   authority: MountedTaskAuthority,
   events: readonly KnowledgeEvent[],
-  evidence: readonly EvidenceBinding[]
+  evidence: readonly EvidenceBinding[],
+  investigationId?: string
 ): Promise<MountedTimelineDraftContext> {
-  const draft = await readOptionalMountedTimelineDraftContext(authority, events, evidence);
+  const draft = await readOptionalMountedTimelineDraftContext(authority, events, evidence, investigationId);
   if (draft === undefined) {
     throw mountedConflict("Contradiction review requires exactly one replayable timeline relevant to the selected evidence.");
   }
@@ -2992,7 +2998,8 @@ async function readMountedTimelineDraftContext(
 async function readOptionalMountedTimelineDraftContext(
   authority: MountedTaskAuthority,
   events: readonly KnowledgeEvent[],
-  evidence: readonly EvidenceBinding[]
+  evidence: readonly EvidenceBinding[],
+  investigationId?: string
 ): Promise<MountedTimelineDraftContext | undefined> {
   const recordedHandoffs = events.filter((event): event is KnowledgeEventOf<"agent.specialist-handoff.recorded"> =>
     event.type === "agent.specialist-handoff.recorded" && event.payload.runType === "timeline-builder"
@@ -3005,7 +3012,8 @@ async function readOptionalMountedTimelineDraftContext(
         reader,
         events,
         evidence,
-        recorded
+        recorded,
+        ...(investigationId === undefined ? {} : { investigationId })
       });
       if (candidate !== undefined) relevant.push(candidate);
     }
@@ -3019,7 +3027,8 @@ async function readOptionalMountedTimelineDraftContext(
 async function readOptionalMountedContradictionDraftContext(
   authority: MountedTaskAuthority,
   events: readonly KnowledgeEvent[],
-  evidence: readonly EvidenceBinding[]
+  evidence: readonly EvidenceBinding[],
+  investigationId?: string
 ): Promise<MountedContradictionDraftContext | undefined> {
   const recordedHandoffs = events.filter((event): event is KnowledgeEventOf<"agent.specialist-handoff.recorded"> =>
     event.type === "agent.specialist-handoff.recorded" && event.payload.runType === "contradiction-finder"
@@ -3032,7 +3041,8 @@ async function readOptionalMountedContradictionDraftContext(
         reader,
         events,
         evidence,
-        recorded
+        recorded,
+        ...(investigationId === undefined ? {} : { investigationId })
       });
       if (candidate !== undefined) relevant.push(candidate);
     }
@@ -3048,6 +3058,7 @@ async function replayMountedContradictionDraftCandidate(input: {
   readonly events: readonly KnowledgeEvent[];
   readonly evidence: readonly EvidenceBinding[];
   readonly recorded: KnowledgeEventOf<"agent.specialist-handoff.recorded">;
+  readonly investigationId?: string;
 }): Promise<MountedContradictionDraftContext | undefined> {
   const replay = await buildSpecialistHandoffProjection({
     events: input.events,
@@ -3078,6 +3089,15 @@ async function replayMountedContradictionDraftCandidate(input: {
     truthBoundary.publicationAllowed !== false || !Array.isArray(artifact.candidates) ||
     !Array.isArray(artifact.contextPackRefs)) {
     throw mountedConflict("Prior contradiction artifact does not match its recorded advisory handoff.");
+  }
+  if (!mountedDraftInvestigationScopeMatches({
+    events: input.events,
+    runId: input.recorded.payload.runId,
+    handoffInvestigationId: replay.selectedHandoff.investigationId,
+    artifactInvestigationId: artifact.investigationId,
+    ...(input.investigationId === undefined ? {} : { requiredInvestigationId: input.investigationId })
+  })) {
+    return undefined;
   }
   if (!await mountedContradictionEvidenceSelectionMatches({
     reader: input.reader,
@@ -3199,6 +3219,7 @@ async function replayMountedTimelineDraftCandidate(input: {
   readonly events: readonly KnowledgeEvent[];
   readonly evidence: readonly EvidenceBinding[];
   readonly recorded: KnowledgeEventOf<"agent.specialist-handoff.recorded">;
+  readonly investigationId?: string;
 }): Promise<MountedTimelineDraftContext | undefined> {
   const replay = await buildSpecialistHandoffProjection({
     events: input.events,
@@ -3225,6 +3246,15 @@ async function replayMountedTimelineDraftCandidate(input: {
     !Array.isArray(artifactRecord.items) || !Array.isArray(artifactRecord.omittedSources) ||
     !Array.isArray(artifactRecord.contextPackRefs)) {
     throw mountedConflict("Prior sourced timeline artifact does not match its recorded handoff.");
+  }
+  if (!mountedDraftInvestigationScopeMatches({
+    events: input.events,
+    runId: input.recorded.payload.runId,
+    handoffInvestigationId: replay.selectedHandoff.investigationId,
+    artifactInvestigationId: artifactRecord.investigationId,
+    ...(input.investigationId === undefined ? {} : { requiredInvestigationId: input.investigationId })
+  })) {
+    return undefined;
   }
   const artifact = artifactRecord as unknown as SourcedTimelineArtifact;
   const eventById = new Map(input.events.map((event) => [event.id, event] as const));
@@ -3398,6 +3428,33 @@ async function replayMountedTimelineDraftCandidate(input: {
     artifacts: Object.freeze([{ contentHash: artifactHash, bytes: Buffer.from(bytes) }]),
     items: Object.freeze(items)
   });
+}
+
+function mountedDraftInvestigationScopeMatches(input: {
+  readonly events: readonly KnowledgeEvent[];
+  readonly runId: string;
+  readonly handoffInvestigationId: unknown;
+  readonly artifactInvestigationId: unknown;
+  readonly requiredInvestigationId?: string;
+}): boolean {
+  if (input.requiredInvestigationId === undefined) return true;
+  const runStarts = input.events.filter((event): event is KnowledgeEventOf<"agent.specialist-run.started"> =>
+    event.type === "agent.specialist-run.started" && event.payload.runId === input.runId
+  );
+  if (runStarts.length !== 1) {
+    throw mountedConflict("Prior sourced investigation run provenance is missing or ambiguous.");
+  }
+  const durableInvestigationIds = [
+    runStarts[0]!.payload.investigationId,
+    input.handoffInvestigationId,
+    input.artifactInvestigationId
+  ];
+  if (durableInvestigationIds.every((value) => value === undefined)) return false;
+  if (durableInvestigationIds.some((value) => typeof value !== "string") ||
+    new Set(durableInvestigationIds).size !== 1) {
+    throw mountedConflict("Prior sourced investigation scope does not replay exactly.");
+  }
+  return durableInvestigationIds[0] === input.requiredInvestigationId;
 }
 
 function mountedTimelineEventContentHashes(

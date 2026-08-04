@@ -53,6 +53,7 @@ export interface ExecuteSourcedInvestigationWorkflowInput {
   readonly runType: SourcedInvestigationRunType;
   readonly runId: string;
   readonly taskId: string;
+  readonly investigationId?: string;
   readonly contextRegistry: ContextPackRegistry;
   readonly scope: ProductionRunScope;
   readonly promptRunId: string;
@@ -65,6 +66,7 @@ export interface SourcedTimelineArtifact {
   readonly schemaVersion: "sourced-timeline-artifact.v1";
   readonly runId: string;
   readonly taskId: string;
+  readonly investigationId?: string;
   readonly truthBoundary: {
     readonly advisoryOnly: true;
     readonly acceptedGraphMutationAllowed: false;
@@ -101,6 +103,7 @@ export interface ContradictionCandidateDossier {
   readonly schemaVersion: "contradiction-candidate-dossier.v1";
   readonly runId: string;
   readonly taskId: string;
+  readonly investigationId?: string;
   readonly truthBoundary: {
     readonly advisoryOnly: true;
     readonly canRejectAssertion: false;
@@ -250,6 +253,7 @@ export async function executeSourcedInvestigationWorkflow(
     safeSummary: input.runType === "timeline-builder"
       ? "A sourced local timeline is ready for human review."
       : "A local contradiction-candidate dossier is ready for human review.",
+    ...(input.investigationId === undefined ? {} : { investigationId: input.investigationId }),
     contextPackRefs,
     promptArtifactHash,
     outputArtifacts: [outputArtifact],
@@ -281,6 +285,7 @@ function normalizeInput(input: ExecuteSourcedInvestigationWorkflowInput): Execut
     runType: input.runType,
     runId: input.runId,
     taskId: input.taskId,
+    ...(input.investigationId === undefined ? {} : { investigationId: input.investigationId }),
     promptRunId: input.promptRunId,
     scope: input.scope
   }, "Sourced investigation identity") as Record<string, unknown>;
@@ -288,6 +293,9 @@ function normalizeInput(input: ExecuteSourcedInvestigationWorkflowInput): Execut
     (normalized.runType !== "timeline-builder" && normalized.runType !== "contradiction-finder") ||
     typeof normalized.runId !== "string" || normalized.runId.length === 0 ||
     typeof normalized.taskId !== "string" || normalized.taskId.length === 0 ||
+    (normalized.investigationId !== undefined &&
+      (typeof normalized.investigationId !== "string" ||
+        !/^[a-zA-Z][a-zA-Z0-9._:-]+$/.test(normalized.investigationId))) ||
     typeof normalized.promptRunId !== "string" || normalized.promptRunId.length === 0
   ) {
     throw new Error("Sourced investigation workflow identity is invalid.");
@@ -317,6 +325,7 @@ function normalizeInput(input: ExecuteSourcedInvestigationWorkflowInput): Execut
     runType: normalized.runType,
     runId: normalized.runId,
     taskId: normalized.taskId,
+    ...(normalized.investigationId === undefined ? {} : { investigationId: normalized.investigationId as string }),
     contextRegistry: input.contextRegistry,
     scope: normalized.scope as ProductionRunScope,
     promptRunId: normalized.promptRunId,
@@ -535,6 +544,7 @@ function buildTimelineArtifact(
     schemaVersion: "sourced-timeline-artifact.v1",
     runId: input.runId,
     taskId: input.taskId,
+    ...(input.investigationId === undefined ? {} : { investigationId: input.investigationId }),
     truthBoundary: {
       advisoryOnly: true,
       acceptedGraphMutationAllowed: false,
@@ -631,6 +641,7 @@ function buildContradictionDossier(
     schemaVersion: "contradiction-candidate-dossier.v1",
     runId: input.runId,
     taskId: input.taskId,
+    ...(input.investigationId === undefined ? {} : { investigationId: input.investigationId }),
     truthBoundary: {
       advisoryOnly: true,
       canRejectAssertion: false,
