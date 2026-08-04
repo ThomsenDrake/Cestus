@@ -155,6 +155,9 @@ describe("Requests data boundary", () => {
         [
           "docs/agentic/software-factory.md",
           "docs/agentic/executable-spec-template.md",
+          "$sol-advisor:orchestration",
+          "Terra / High",
+          "Luna task lane",
           "Development coordination is not part of the product ledger"
         ].join("\n")
       ],
@@ -162,7 +165,13 @@ describe("Requests data boundary", () => {
       [".opencode/AGENTS.md", "Cestus agent instructions"],
       [
         ".agents/skills/cestus-software-factory/SKILL.md",
-        ["## Assemble Bounded Context", "## Execute The Line", "at most two focused repair attempts"].join("\n")
+        [
+          "## Assemble Bounded Context",
+          "## Execute The Line",
+          "at most two focused repair attempts",
+          "$sol-advisor:orchestration",
+          "Terra / High"
+        ].join("\n")
       ],
       [
         "docs/agentic/software-factory.md",
@@ -171,7 +180,11 @@ describe("Requests data boundary", () => {
           "## Delivery Line",
           "## Risk Lanes",
           "## Mandatory Overhead Limits",
-          "Factory V1 and Factory V2 are preserved as history"
+          "Factory V1 and Factory V2 are preserved as history",
+          "$sol-advisor:orchestration",
+          "Primary Sol / High",
+          "Terra / High",
+          "fresh Sol verdict"
         ].join("\n")
       ],
       [
