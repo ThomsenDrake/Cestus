@@ -40,6 +40,7 @@ import {
   createPortableMountedAgentArtifactStoreProducer
 } from "../../local-runtime/src/portable-mounted-agent-artifact-stores.js";
 import { createPortableWorkspaceLifecyclePorts } from "../../local-runtime/src/portable-workspace-lifecycle.js";
+import { createMountedInvestigationPlannerSpecialistRunner } from "../../local-runtime/src/agent-runtime-specialist-runners.js";
 
 const now = () => "2026-07-10T01:00:00.000Z";
 const actor = { id: "actor_agent", kind: "agent" as const, label: "Cestus Agent" };
@@ -247,12 +248,13 @@ describe("investigation planner workflow", () => {
 
   it("keeps a real portable mounted handoff cursor current across planner model invocation before final output", async () => {
     const fixture = await portablePlannerModelInvocationFixture();
+    const input = await fixture.prepareInput();
     expect(fixture.handoff.controller).toBeDefined();
     expect(fixture.handoff.binding.authorityWitness).toMatchObject({
       schemaVersion: "agent-mounted-specialist-handoff-authority.v1"
     });
-    const prepared = await prepareSpecialistRun(fixture.input, "investigation-planner");
-    await invokeSpecialistModel(fixture.input, prepared, "inv_run_portable_investigation_planner");
+    const prepared = await prepareSpecialistRun(input, "investigation-planner");
+    await invokeSpecialistModel(input, prepared, "inv_run_portable_investigation_planner");
 
     await expect(fixture.handoff.binding.materialStore.put(Buffer.from("planner final-output material", "utf8")))
       .resolves.toMatchObject({ contentHash: expect.stringMatching(/^sha256:/) });
@@ -260,7 +262,8 @@ describe("investigation planner workflow", () => {
 
   it("rejects missing provider provenance before mounted investigation final-output material or ledger effects", async () => {
     const fixture = await portablePlannerModelInvocationFixture();
-    const before = await fixture.input.ledger.readAll();
+    const input = await fixture.prepareInput();
+    const before = await input.ledger.readAll();
     const material = buildSpecialistHandoffMaterial({
       status: "ready-for-review",
       safeSummary: "Investigation output is available for human review.",
@@ -290,12 +293,12 @@ describe("investigation planner workflow", () => {
     let attempted: { readonly event: KnowledgeEventOf<"agent.specialist-run.step.recorded"> } | { readonly error: unknown };
     try {
       attempted = await appendSpecialistFinalOutputStep({
-        ledger: fixture.input.ledger,
+        ledger: input.ledger,
         materialStore: fixture.handoff.binding.materialStore,
-        actor: fixture.input.actor,
+        actor: input.actor,
         now,
-        runId: fixture.input.runId,
-        taskId: fixture.input.taskId,
+        runId: input.runId,
+        taskId: input.taskId,
         handoffMaterial: material
       }).then(
         (event) => Object.freeze({ event }),
@@ -305,7 +308,7 @@ describe("investigation planner workflow", () => {
       Object.defineProperty(FileBlobStore.prototype, "put", { configurable: true, value: originalPut });
     }
 
-    const after = await fixture.input.ledger.readAll();
+    const after = await input.ledger.readAll();
     const finalOutputs = after.filter((event): event is KnowledgeEventOf<"agent.specialist-run.step.recorded"> =>
       event.type === "agent.specialist-run.step.recorded" && event.payload.stepKind === "final-output"
     );
@@ -324,14 +327,28 @@ describe("investigation planner workflow", () => {
 
   it("completes the planner V2 lifecycle through a real portable mounted witness and verified readback", async () => {
     const fixture = await portablePlannerModelInvocationFixture();
-
-    const result = await runInvestigationPlannerWorkflowKernel({
-      ...fixture.input,
-      derivativeStore: fixture.handoff.binding.materialStore,
-      handoffStore: fixture.handoff.binding.materialStore,
-      handoffAuthorityWitness: fixture.handoff.binding.authorityWitness,
-      investigationId: "inv_scope_001"
+    let input: Awaited<ReturnType<typeof fixture.prepareInput>> | undefined;
+    const runner = createMountedInvestigationPlannerSpecialistRunner({
+      resolve: async () => ({
+        ...(input = await fixture.prepareInput()),
+        investigationId: "inv_scope_001"
+      })
     });
+    const mounted = await runner.dispatch({
+      dispatch: {
+        taskId: "task_portable_investigation",
+        attemptId: buildTaskAttemptId({
+          taskId: "task_portable_investigation",
+          runType: "investigation-planner",
+          retryGeneration: 0
+        }),
+        approvedRunId: "run_portable_investigation",
+        runType: "investigation-planner"
+      },
+      retryGeneration: 0,
+      handoff: fixture.handoff
+    });
+    const result = mounted.result;
 
     expect(result.handoff).toMatchObject({ status: "ready-for-review", lifecycle: "handoff-recorded" });
     expect(result.readback).toMatchObject({
@@ -339,7 +356,8 @@ describe("investigation planner workflow", () => {
       taskId: "task_portable_investigation",
       runId: "run_portable_investigation"
     });
-    const events = await fixture.input.ledger.readAll();
+    if (input === undefined) throw new Error("mounted planner runner did not resolve its local input");
+    const events = await input.ledger.readAll();
     const orderedEffects = events.filter((event) => [
       "agent.specialist-run.step.recorded",
       "agent.specialist-handoff.prepared",
@@ -356,10 +374,10 @@ describe("investigation planner workflow", () => {
     ]);
     const taskStatus = events.findLast((event) => event.type === "agent.task.status.changed");
     expect(taskStatus?.payload).toMatchObject({ taskId: "task_portable_investigation", status: "completed" });
-    await expect(consumeMountedHandoffAuthorityController(fixture.handoff.controller, [
-      ...orderedEffects.map((event) => event.id),
-      taskStatus!.id
-    ])).resolves.toMatchObject({ schemaVersion: "mounted-handoff-authority-consumed-receipt.v1" });
+    expect(mounted.authorityConsumption).toMatchObject({
+      schemaVersion: "mounted-handoff-authority-consumed-receipt.v1",
+      eventIds: [...orderedEffects.map((event) => event.id), taskStatus!.id]
+    });
     expect(events.map((event) => event.type)).not.toEqual(expect.arrayContaining([
       "agent.tool.requested", "prr.request.sent", "prr.followup.sent", "assertion.accepted"
     ]));
@@ -367,6 +385,7 @@ describe("investigation planner workflow", () => {
 
   it("resumes a durable final output through a fresh real portable mounted witness without a second model invocation", async () => {
     const fixture = await portablePlannerModelInvocationFixture();
+    const input = await fixture.prepareInput();
     const materialStore = fixture.handoff.binding.materialStore;
     const unavailableManifestStore = Object.freeze({
       async put(content: Buffer) {
@@ -378,14 +397,14 @@ describe("investigation planner workflow", () => {
       get: materialStore.get
     });
     const interrupted = await runInvestigationPlannerWorkflowKernel({
-      ...fixture.input,
+      ...input,
       derivativeStore: materialStore,
       handoffStore: unavailableManifestStore,
       handoffAuthorityWitness: fixture.handoff.binding.authorityWitness,
       investigationId: "inv_scope_001"
     });
     expect(interrupted.handoff).toMatchObject({ status: "blocked", lifecycle: "output-persisted" });
-    const modelEventIds = (await fixture.input.ledger.readAll())
+    const modelEventIds = (await input.ledger.readAll())
       .filter((event) => event.type === "agent.model-invocation.requested" || event.type === "agent.model-invocation.completed")
       .map((event) => event.id);
     const recoveryGrant = await fixture.ports.authority.revalidate({
@@ -423,7 +442,7 @@ describe("investigation planner workflow", () => {
       investigationId: "inv_scope_001"
     });
     const recovered = await runInvestigationPlannerWorkflowKernel({
-      ...fixture.input,
+      ...input,
       derivativeStore: retryBinding.binding.materialStore,
       handoffStore: retryBinding.binding.materialStore,
       handoffAuthorityWitness: retryBinding.binding.authorityWitness,
@@ -432,10 +451,10 @@ describe("investigation planner workflow", () => {
 
     expect(recovered.handoff).toMatchObject({ status: "ready-for-review", lifecycle: "handoff-recorded" });
     expect(recovered.readback).toMatchObject({ outcome: "verified", runId: "run_portable_investigation" });
-    expect((await fixture.input.ledger.readAll())
+    expect((await input.ledger.readAll())
       .filter((event) => event.type === "agent.model-invocation.requested" || event.type === "agent.model-invocation.completed")
       .map((event) => event.id)).toEqual(modelEventIds);
-    const effects = (await fixture.input.ledger.readAll()).filter((event) =>
+    const effects = (await input.ledger.readAll()).filter((event) =>
       [
         "agent.specialist-run.step.recorded",
         "agent.specialist-handoff.prepared",
@@ -496,6 +515,15 @@ describe("investigation planner workflow", () => {
       investigationId: "inv_scope_001",
       objectiveRefs: ["objective_procurement_001"],
       gapIds: ["gap_contract_amendments_001"],
+      prioritizedGaps: [{
+        gapId: "gap_contract_amendments_001",
+        priority: "high",
+        linkedEvidenceRefs: ["ev_planner_001"],
+        timelineRefs: ["timeline_procurement_001"],
+        contradictionRefs: ["contradiction_procurement_001"],
+        rationale: "Contract amendment records close the highest-impact open evidence gap.",
+        dependencyRefs: ["objective_procurement_001"]
+      }],
       taskCandidates: [{
         taskId: "task_investigation_candidate_001",
         summary: "Review procurement timeline.",
@@ -504,6 +532,7 @@ describe("investigation planner workflow", () => {
         approvalRequirements: ["human-review"]
       }],
       prrDraftCandidates: ["Draft a request for contract amendments."],
+      safeNextSteps: ["Review the sourced timeline and contradiction candidate before creating any external task."],
       sourceEventIds: [...sourceEventIds].sort(),
       contextPackRefs: result.handoff.contextPackRefs,
       promptArtifactHash: result.handoff.promptArtifactHash,
@@ -656,6 +685,15 @@ describe("investigation planner workflow", () => {
       investigationId: "inv_scope_001",
       objectiveRefs: ["objective_procurement_001"],
       gapIds: ["gap_contract_amendments_001"],
+      prioritizedGaps: [{
+        gapId: "gap_contract_amendments_001",
+        priority: "high",
+        linkedEvidenceRefs: ["ev_planner_001"],
+        timelineRefs: ["timeline_procurement_001"],
+        contradictionRefs: ["contradiction_procurement_001"],
+        rationale: "Contract amendment records close the highest-impact open evidence gap.",
+        dependencyRefs: ["objective_procurement_001"]
+      }],
       taskCandidates: [{
         taskId: "task_investigation_candidate_001",
         summary: "Review procurement timeline.",
@@ -664,6 +702,7 @@ describe("investigation planner workflow", () => {
         approvalRequirements: ["human-review"]
       }],
       prrDraftCandidates: ["Draft a request for contract amendments."],
+      safeNextSteps: ["Review the sourced timeline and contradiction candidate before creating any external task."],
       sourceEventIds: [...sourceEventIds].sort(),
       contextPackRefs: result.handoff.contextPackRefs,
       promptArtifactHash: result.handoff.promptArtifactHash,
@@ -1071,6 +1110,63 @@ describe("investigation planner workflow", () => {
     expect(buildAgentProjection(events).runs.get("run_investigation_001")?.state).toBe("failed");
   });
 
+  it("rejects planner references absent from the exact resolved context before derivative or final effects", async () => {
+    const { ledger, runtime } = await preparedRuntime(
+      "investigation-planner",
+      true,
+      JSON.stringify({
+        planSummary: "Review only exact mounted context before proposing local work.",
+        objectiveRefs: ["objective_invented_001"],
+        gapIds: ["gap_invented_001"],
+        prioritizedGaps: [{
+          gapId: "gap_invented_001",
+          priority: "high",
+          linkedEvidenceRefs: ["ev_invented_001"],
+          timelineRefs: ["timeline_invented_001"],
+          contradictionRefs: ["contradiction_invented_001"],
+          rationale: "This otherwise valid structure names context that was never resolved.",
+          dependencyRefs: ["objective_invented_001"]
+        }],
+        taskCandidates: [{
+          taskId: "task_investigation_candidate_invented",
+          summary: "Review an invented source.",
+          priorityRationale: "The reference validator must reject this advisory candidate.",
+          linkedRefs: ["ev_invented_001", "gap_invented_001"],
+          approvalRequirements: ["human-review"]
+        }],
+        prrDraftCandidates: [],
+        safeNextSteps: []
+      })
+    );
+    let derivativePuts = 0;
+    const derivativeBacking = createDerivativeStore();
+    const derivativeStore = {
+      async put(content: Buffer) {
+        derivativePuts += 1;
+        return await derivativeBacking.put(content);
+      },
+      get: derivativeBacking.get
+    };
+    const handoffStore = createDerivativeStore();
+
+    const result = await runInvestigationPlannerWorkflow({
+      ...plannerWorkflowInput({
+        ledger,
+        runtime,
+        handoffStore,
+        sourceEventIds: (await ledger.readAll()).map((event) => event.id)
+      }),
+      derivativeStore
+    });
+
+    expect(result.handoff).toMatchObject({ status: "failed", outputArtifacts: [] });
+    expect(derivativePuts).toBeGreaterThan(0);
+    const eventTypes = (await ledger.readAll()).map((event) => event.type);
+    expect(eventTypes).toContain("agent.model-invocation.completed");
+    expect(eventTypes).not.toContain("agent.specialist-run.step.recorded");
+    expect(eventTypes).not.toContain("agent.tool.requested");
+  });
+
   it("rejects model output that claims tasks were created, portals were crawled, or provider bytes were transferred", async () => {
     const ledger = new InMemoryEventLedger();
     const provider = new FakeModelProvider({
@@ -1275,13 +1371,22 @@ async function portablePlannerModelInvocationFixture() {
     modelFamilies: ["fake-local"],
     responseText: JSON.stringify({
       planSummary: "Review the evidence before creating local drafts.",
-      objectiveRefs: ["objective_portable_investigation"],
+      objectiveRefs: ["objective_procurement_001"],
       gapIds: ["gap_portable_investigation"],
+      prioritizedGaps: [{
+        gapId: "gap_portable_investigation",
+        priority: "high",
+        linkedEvidenceRefs: ["ev_planner_001"],
+        timelineRefs: ["timeline_procurement_001"],
+        contradictionRefs: ["contradiction_procurement_001"],
+        rationale: "Exact mounted context identifies the remaining local review gap.",
+        dependencyRefs: ["objective_procurement_001"]
+      }],
       taskCandidates: [{
         taskId: "task_portable_candidate",
         summary: "Review the portable investigation evidence.",
         priorityRationale: "Preserve the advisory investigation boundary.",
-        linkedRefs: ["objective_portable_investigation", "gap_portable_investigation"],
+        linkedRefs: ["objective_procurement_001", "gap_portable_investigation"],
         approvalRequirements: ["human-review"]
       }],
       prrDraftCandidates: ["Draft a review request without sending it."]
@@ -1406,18 +1511,6 @@ async function portablePlannerModelInvocationFixture() {
     runType: "investigation-planner",
     retryGeneration: 0
   });
-  await appendAttemptBinding(handle.ledger, {
-    taskId: "task_portable_investigation",
-    attemptId,
-    runId: "run_portable_investigation",
-    actor: portableActor
-  });
-  await runtime.startRun({
-    runId: "run_portable_investigation",
-    taskId: "task_portable_investigation",
-    runType: "investigation-planner",
-    scope: { kind: "investigation", refs: ["inv_scope_001"] }
-  });
   const handoff = await createPortableMountedAgentArtifactStoreProducer(operation).bind({
     taskId: "task_portable_investigation",
     attemptId,
@@ -1426,30 +1519,33 @@ async function portablePlannerModelInvocationFixture() {
     retryGeneration: 0,
     investigationId: "inv_scope_001"
   });
-  const contextPacks = createPlannerContextPacks(false, false, (await handle.ledger.readAll()).map((event) => event.id));
-  const input = {
-    ledger: handle.ledger,
-    actor: portableActor,
-    now,
-    contextPacks,
-    scope: { kind: "investigation" as const, refs: ["inv_scope_001"] },
-    runtime,
-    providerReadiness: providerReadinessDto(),
-    runId: "run_portable_investigation",
-    taskId: "task_portable_investigation",
-    providerId: "provider_fake_local",
-    modelFamily: "fake-local",
-    credentialRef: {
-      credentialRefId: "agent_credref_fake_local",
-      providerId: "provider_fake_local",
-      kind: "local-no-secret" as const
-    },
-    mountedPromptReadbackWitness: await mountedPlannerPromptReadbackWitness({
+  let prepared = false;
+  const prepareInput = async () => {
+    if (prepared) throw new Error("portable planner input is one-shot");
+    prepared = true;
+    await appendAttemptBinding(handle.ledger, {
+      taskId: "task_portable_investigation",
+      attemptId,
+      runId: "run_portable_investigation",
+      actor: portableActor
+    });
+    await runtime.startRun({
+      runId: "run_portable_investigation",
+      taskId: "task_portable_investigation",
+      runType: "investigation-planner",
+      scope: { kind: "investigation", refs: ["inv_scope_001"] }
+    });
+    const contextPacks = createPlannerContextPacks(
+      false,
+      false,
+      (await handle.ledger.readAll()).map((event) => event.id)
+    );
+    const baseInput = {
       ledger: handle.ledger,
       actor: portableActor,
       now,
       contextPacks,
-      scope: { kind: "investigation", refs: ["inv_scope_001"] },
+      scope: { kind: "investigation" as const, refs: ["inv_scope_001"] },
       runtime,
       providerReadiness: providerReadinessDto(),
       runId: "run_portable_investigation",
@@ -1461,23 +1557,37 @@ async function portablePlannerModelInvocationFixture() {
         providerId: "provider_fake_local",
         kind: "local-no-secret" as const
       }
-    })
+    };
+    return Object.freeze({
+      ...baseInput,
+      mountedPromptReadbackWitness: await mountedPlannerPromptReadbackWitness(baseInput)
+    });
   };
-  return { handoff, input, wakeRuntime, ports, workspaceId };
+  return { handoff, prepareInput, wakeRuntime, ports, workspaceId };
 }
 
 async function preparedRuntime(
   runType: "investigation-planner" | "evidence-triage" = "investigation-planner",
-  bindAttempt = true
+  bindAttempt = true,
+  responseText?: string
 ) {
   const ledger = new InMemoryEventLedger();
   const provider = new FakeModelProvider({
     providerId: "provider_fake_local",
     modelFamilies: ["fake-local"],
-    responseText: JSON.stringify({
+    responseText: responseText ?? JSON.stringify({
       planSummary: "Public instructions say investigators should review the timeline before creating local drafts.",
       objectiveRefs: ["objective_procurement_001"],
       gapIds: ["gap_contract_amendments_001"],
+      prioritizedGaps: [{
+        gapId: "gap_contract_amendments_001",
+        priority: "high",
+        linkedEvidenceRefs: ["ev_planner_001"],
+        timelineRefs: ["timeline_procurement_001"],
+        contradictionRefs: ["contradiction_procurement_001"],
+        rationale: "Contract amendment records close the highest-impact open evidence gap.",
+        dependencyRefs: ["objective_procurement_001"]
+      }],
       taskCandidates: [{
         taskId: "task_investigation_candidate_001",
         summary: "Review procurement timeline.",
@@ -1485,7 +1595,8 @@ async function preparedRuntime(
         linkedRefs: ["ev_planner_001", "gap_contract_amendments_001"],
         approvalRequirements: ["human-review"]
       }],
-      prrDraftCandidates: ["Draft a request for contract amendments."]
+      prrDraftCandidates: ["Draft a request for contract amendments."],
+      safeNextSteps: ["Review the sourced timeline and contradiction candidate before creating any external task."]
     })
   });
   const runtime = createAgentRuntime({
@@ -1779,10 +1890,10 @@ function isPlannerContextPayloadForPack(contextPackId: string, payload: AgentCon
 
 function plannerContextPayload(contextPackId: string): AgentContextPackJsonValue {
   switch (contextPackId) {
-    case "accepted-graph-projection.v1": return { items: { assertions: [{ assertionId: "assertion_planner_001", evidenceId: "ev_planner_001", evidenceContentHash: "sha256:1111111111111111111111111111111111111111111111111111111111111111", proposedByEventId: "evt_planner_context_001", acceptedByEventId: "evt_planner_context_001", sourceEventIds: ["evt_planner_context_001"], rowHash: "sha256:1111111111111111111111111111111111111111111111111111111111111111", safeStatement: "Verified planning graph statement." }], entities: [], relationships: [] } };
+    case "accepted-graph-projection.v1": return { items: { assertions: [{ assertionId: "assertion_planner_001", evidenceId: "ev_planner_001", evidenceContentHash: "sha256:1111111111111111111111111111111111111111111111111111111111111111", proposedByEventId: "evt_planner_context_001", acceptedByEventId: "evt_planner_context_001", sourceEventIds: ["evt_planner_context_001"], rowHash: "sha256:1111111111111111111111111111111111111111111111111111111111111111", safeStatement: "Verified planning graph statement." }], entities: [{ entityId: "objective_procurement_001" }], relationships: [] } };
     case "evidence-summary.v1": return { items: [{ evidenceId: "ev_planner_001", ingestionEventId: "evt_planner_context_001", contentHash: "sha256:1111111111111111111111111111111111111111111111111111111111111111", occurrenceIds: ["occurrence_planner_001"], safeNarrative: "Verified planning evidence." }] };
-    case "timeline-draft-summary.v1": return { items: [{ itemId: "timeline_planner_001", summary: "Verified timeline item." }], omissions: [] };
-    case "contradiction-candidate-summary.v1": return { items: [{ candidateId: "contradiction_planner_001", rationale: "Verified contradiction candidate." }], omissions: [] };
+    case "timeline-draft-summary.v1": return { items: [{ itemId: "timeline_procurement_001", summary: "Verified timeline item." }], omissions: [] };
+    case "contradiction-candidate-summary.v1": return { items: [{ candidateId: "contradiction_procurement_001", rationale: "Verified contradiction candidate." }], omissions: [] };
     case "governance-locks.v1": return { items: { activeLocks: [], governanceRestrictions: [{ restrictionId: "restriction_planner_001", restrictionKind: "review", affectedRef: "inv_scope_001", sourceEventIds: ["evt_planner_context_001"], projectionProvenanceRefs: ["evt_planner_context_001"], policyVersion: "v1", safeReasonCode: "review-required" }] } };
     case "agent-memory-summary.v1": return { memory: { activeMemory: [{ memoryId: "memory_planner_001", scope: "investigation", memoryKind: "summary", summary: "Verified planning memory.", confidence: 1, sourceEventIds: ["evt_planner_context_001"], artifactHashes: [] }], aggregateCounts: { active: 1 }, sourceEventIds: ["evt_planner_context_001"], artifactHashes: [] } };
     case "task-run-history.v1": return { history: { projectionHighWaterMark: 1, projectionSourceRef: "agent.projection.task-run-history", tasks: [{ taskId: "task_investigation_001", status: "running", priority: "normal", statusReasonCode: "Planning context prepared." }], runs: [], modelInvocations: [], toolRequests: [], aggregateCounts: { tasks: 1 }, sourceEventIds: ["evt_planner_context_001"], artifactHashes: [] } };

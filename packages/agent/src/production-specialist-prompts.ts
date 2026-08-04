@@ -117,15 +117,22 @@ const canonicalProductionPromptTemplateMaterial: CanonicalProductionPromptTempla
         draftSummary: "Advisory PRR follow-up draft is ready for human review.",
         requestFollowUpApproval: false,
         citedRuleRefs: ["rule_context_ref_001"],
+        jurisdictionRefs: [],
+        deadlineRefs: [],
         deadlineNotes: [],
+        narrowingOptions: [],
+        feeOptions: [],
         feeOrStallingSignals: [],
-        unresolvedQuestions: []
+        unresolvedQuestions: [],
+        legalPressureNotes: []
       },
       guidance: [
         "Use exact cited rule refs from verified jurisdiction-pack-summary.v1 context, preferring a Cited rule ruleRef value; leave citedRuleRefs empty rather than inventing or copying citation prose.",
         "draftSummary must be advisory draft language for human review. Do not claim that a follow-up, send, or legal escalation occurred.",
         "requestFollowUpApproval is a boolean; set true only when verified context supports asking a human to approve the domain-supplied follow-up draft.",
-        "Array defaults: citedRuleRefs, deadlineNotes, feeOrStallingSignals, and unresolvedQuestions may be [] when no grounded context supports entries."
+        "Bind jurisdictionRefs and deadlineRefs to verified canonical references; keep narrowingOptions, feeOptions, deadlineNotes, feeOrStallingSignals, unresolvedQuestions, and legalPressureNotes advisory.",
+        "Legal-pressure material is review content only and must never claim that a legal gate was consumed, a lock was cleared, or legal action occurred.",
+        "Array defaults: citedRuleRefs, jurisdictionRefs, deadlineRefs, deadlineNotes, narrowingOptions, feeOptions, feeOrStallingSignals, unresolvedQuestions, and legalPressureNotes may be [] when no grounded context supports entries."
       ]
     }),
     "evidence-triage": outputInstruction({
@@ -215,6 +222,7 @@ const canonicalProductionPromptTemplateMaterial: CanonicalProductionPromptTempla
         planSummary: "Investigation plan is ready for human review.",
         objectiveRefs: [],
         gapIds: [],
+        prioritizedGaps: [],
         taskCandidates: [{
           taskId: "task_context_001",
           summary: "Review the verified evidence gap.",
@@ -222,13 +230,17 @@ const canonicalProductionPromptTemplateMaterial: CanonicalProductionPromptTempla
           linkedRefs: ["ev_context_001"],
           approvalRequirements: ["human-review"]
         }],
-        prrDraftCandidates: []
+        prrDraftCandidates: [],
+        safeNextSteps: []
       },
       guidance: [
         "taskCandidates object shape requires taskId, summary, priorityRationale, linkedRefs, and approvalRequirements.",
+        "prioritizedGaps object shape requires gapId, priority, linkedEvidenceRefs, timelineRefs, contradictionRefs, rationale, and dependencyRefs.",
+        "Keep prioritized gaps in descending urgency and bind every cited evidence, timeline, contradiction, and dependency to a verified canonical reference.",
+        "safeNextSteps are local advisory actions only and must not claim that an external task, message, legal action, provider transfer, or graph acceptance occurred.",
         "Identifier patterns: taskId task_...; refs must be canonical identifiers or sha256 hashes.",
         "approvalRequirements enum choices: human-review, external-message-send, provider-byte-transfer, legal-escalation, export-or-publication.",
-        "Use [] for objectiveRefs, gapIds, taskCandidates, or prrDraftCandidates when no grounded verified context supports entries."
+        "Use [] for objectiveRefs, gapIds, prioritizedGaps, taskCandidates, prrDraftCandidates, or safeNextSteps when no grounded verified context supports entries."
       ]
     }),
     "report-builder": outputInstruction({

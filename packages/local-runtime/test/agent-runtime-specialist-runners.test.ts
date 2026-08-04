@@ -1,12 +1,14 @@
 import { Buffer } from "node:buffer";
 import { createHash } from "node:crypto";
-import { mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync } from "node:fs";
+import { mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, unlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   createContextPackRegistry,
-  serializeContextPackPayload
+  registerContextPackPayloadParserAuthority,
+  serializeContextPackPayload,
+  type AgentContextPackJsonValue
 } from "../../agent/src/context-packs.js";
 import { buildAgentCockpit } from "../../agent/src/cockpit.js";
 import {
@@ -35,6 +37,9 @@ import {
 } from "../../agent/src/specialist-handoff-preparation.js";
 import { buildSpecialistHandoffProjection } from "../../agent/src/specialist-handoff-projection.js";
 import { createAgentRuntime } from "../../agent/src/runtime.js";
+import { FakeModelProvider } from "../../agent/src/provider.js";
+import type { PrrNegotiationFollowUpApprovalPreviewInput } from "../../agent/src/prr-negotiation-workflow.js";
+import type { ProviderReadinessDto } from "../../agent/src/provider-readiness.js";
 import { buildTaskAttemptId, taskOrchestrationStreamId } from "../../agent/src/task-orchestrator-events.js";
 import type {
   ActiveClaimReconciliationPort,
@@ -43,12 +48,13 @@ import type {
   WorkspaceAdmissionSnapshot
 } from "../../agent/src/wake-supervisor.js";
 import { FileBlobStore } from "../../ontology/src/blob-store.js";
-import type { AppendableKnowledgeEvent, KnowledgeEvent } from "../../ontology/src/contracts.js";
+import type { AppendableKnowledgeEvent, KnowledgeEvent, KnowledgeEventOf } from "../../ontology/src/contracts.js";
 import type { EventLedger } from "../../ontology/src/event-ledger.js";
 import { SQLiteEventLedger } from "../../ontology/src/sqlite-event-ledger.js";
 import { createPortableWorkspace } from "../../workspace/src/index.js";
 import {
   consumeMountedSourcedInvestigationDispatch,
+  createMountedPrrNegotiationSpecialistRunner,
   createSourcedInvestigationSpecialistRunner,
   createUntrustedSpecialistRunner,
   type UntrustedSpecialistRunner
@@ -56,10 +62,13 @@ import {
 import * as specialistRunnerSurface from "../src/agent-runtime-specialist-runners.js";
 import { handleAgentHttpRoute } from "../src/agent-http-routes.js";
 import {
-  bindMountedSourcedInvestigationHandoffForLocalAgentRuntimeFactory
+  bindMountedAdvisoryHandoffForLocalAgentRuntimeFactory,
+  bindMountedSourcedInvestigationHandoffForLocalAgentRuntimeFactory,
+  mountedResidentTaskLocalAgentRuntimeFactory
 } from "../src/agent-runtime-factory.js";
 import { createMountedSourcedInvestigationExecutionPort } from "../src/agent-runtime-mounted-task.js";
 import { resolveLocalRuntimeConfig } from "../src/config.js";
+import { createMountedPromptArtifactStore } from "../src/mounted-prompt-artifact-store.js";
 import {
   issueMountedArtifactAuthorityOperationForFactory,
   registerMountedArtifactAuthorityIssuerForWakeRuntime
@@ -77,7 +86,8 @@ import { createSqlitePrrRuntime, type LocalRuntimeHandle } from "../src/runtime-
 import {
   createResidentSupervisionRuntime,
   type ResidentBackgroundExecutionPort,
-  type ResidentSupervisionRuntime
+  type ResidentSupervisionRuntime,
+  type WakeSupervisorRuntime
 } from "../src/wake-supervisor-runtime.js";
 
 const dispatch = Object.freeze({
@@ -225,6 +235,304 @@ describe("untrusted specialist runner", () => {
       event.type === "agent.model-invocation.completed")).toHaveLength(0);
     expect(JSON.stringify([timeline.cockpit, contradiction.cockpit]))
       .not.toMatch(/mounted resident sourced evidence bytes|authorization:|provider body/i);
+  }, mountedSourcedMultiWorkflowTimeoutMs);
+
+  it("reaches planner and PRR advice through the production mounted resident HTTP caller", async () => {
+    const plannerFixture = await mountedSourcedResidentFactoryFixture();
+    const prrFixture = await mountedSourcedResidentFactoryFixture();
+
+    const invalidPlanner = await runMountedAdvisoryResidentRequest(plannerFixture, plannerFixture.plannerTaskId, {
+      runId: plannerFixture.plannerRunId,
+      runType: "investigation-planner",
+      investigationId: "inv_sourced_factory_001",
+      evidenceIds: [plannerFixture.evidenceId]
+    });
+    const invalidPrr = await runMountedAdvisoryResidentRequest(prrFixture, prrFixture.prrTaskId, {
+      runId: prrFixture.prrRunId,
+      runType: "prr-negotiation",
+      prrRequestId: "prr_req_sourced_factory_001",
+      jurisdictionRuleRefs: [
+        "jurisdiction-rule:us-federal-foia@0.1.0:federal-determination-20-working-days"
+      ],
+      investigationId: "inv_extraneous_001"
+    });
+    expect(invalidPlanner.status).toBe(400);
+    expect(invalidPrr.status).toBe(400);
+
+    const [planner, prr] = await Promise.all([
+      runMountedAdvisoryResidentRequest(plannerFixture, plannerFixture.plannerTaskId, {
+        runId: plannerFixture.plannerRunId,
+        runType: "investigation-planner",
+        investigationId: "inv_sourced_factory_001"
+      }),
+      runMountedAdvisoryResidentRequest(prrFixture, prrFixture.prrTaskId, {
+        runId: prrFixture.prrRunId,
+        runType: "prr-negotiation",
+        prrRequestId: "prr_req_sourced_factory_001",
+        correspondenceId: "corr_prr_sourced_factory_001",
+        jurisdictionRuleRefs: [
+          "jurisdiction-rule:us-federal-foia@0.1.0:federal-determination-20-working-days"
+        ]
+      })
+    ]);
+
+    expect(planner.status, planner.body).toBe(200);
+    expect(JSON.parse(planner.body)).toMatchObject({
+      cockpit: { selectedRun: { runType: "investigation-planner", state: "completed" } }
+    });
+    expect(prr.status, prr.body).toBe(200);
+    expect(JSON.parse(prr.body)).toMatchObject({
+      cockpit: { selectedRun: { runType: "prr-negotiation", state: "completed" } }
+    });
+    for (const fixture of [plannerFixture, prrFixture]) {
+      const types = (await fixture.handle.ledger.readAll()).map((event) => event.type);
+      expect(types.filter((type) => type === "agent.specialist-handoff.recorded")).toHaveLength(1);
+      expect(types).not.toEqual(expect.arrayContaining([
+        "agent.tool.executed",
+        "agent.tool.completed",
+        "prr.followup.sent",
+        "prr.legal-escalation.confirmed"
+      ]));
+    }
+  }, mountedSourcedMultiWorkflowTimeoutMs);
+
+  it("fails cockpit replay when canonical manifest material is absent even if material storage remains intact", async () => {
+    const fixture = await mountedSourcedResidentFactoryFixture();
+    const response = await fixture.supervision.executeSourcedInvestigation({
+      taskId: fixture.plannerTaskId,
+      runId: fixture.plannerRunId,
+      runType: "investigation-planner",
+      investigationId: "inv_sourced_factory_001"
+    }) as { readonly cockpit: { readonly selectedRun?: { readonly handoff?: unknown } } };
+    expect(response.cockpit.selectedRun?.handoff).toBeDefined();
+    const finalOutput = (await fixture.handle.ledger.readAll()).find((event) =>
+      event.type === "agent.specialist-run.step.recorded" &&
+      event.payload.runId === fixture.plannerRunId && event.payload.stepKind === "final-output"
+    );
+    if (finalOutput?.type !== "agent.specialist-run.step.recorded" ||
+      finalOutput.payload.handoffMaterialArtifactHash === undefined) {
+      throw new Error("planner final-output material hash is unavailable");
+    }
+    const mounted = fixture.handle.mountedWorkspace;
+    if (mounted === undefined) throw new Error("planner workspace is unavailable");
+    const materialHash = finalOutput.payload.handoffMaterialArtifactHash as `sha256:${string}`;
+    await expect(new FileBlobStore(join(
+      mounted.paths.derivativeRoot,
+      "specialist-handoff-material"
+    )).get(materialHash)).resolves.toBeInstanceOf(Buffer);
+    unlinkSync(mountedArtifactPath(
+      join(mounted.paths.derivativeRoot, "specialist-handoff-manifest"),
+      materialHash
+    ));
+
+    const cockpit = await handleAgentHttpRoute({
+      request: { method: "GET", url: "/api/agent/cockpit" },
+      handle: fixture.handle,
+      actor: { id: "actor_manifest_replay", kind: "system", label: "Manifest Replay" },
+      now: fixture.now,
+      supervision: fixture.supervision,
+      agentRuntimeFactory: mountedResidentTaskLocalAgentRuntimeFactory
+    });
+    expect(cockpit?.status, cockpit?.body).toBe(200);
+    expect(JSON.parse(cockpit!.body).selectedRun).not.toHaveProperty("handoff");
+  });
+
+  it("binds mounted planner gaps to prior canonical timeline and contradiction artifact IDs", async () => {
+    const fixture = await mountedSourcedResidentFactoryFixture({
+      canonicalDatedFacts: true,
+      secondEvidence: "conflicting-assertion",
+      contradictionIncludesSecondEvidence: true
+    });
+    if (fixture.secondEvidenceId === undefined) throw new Error("second planner evidence is unavailable");
+    const evidenceIds = [fixture.evidenceId, fixture.secondEvidenceId];
+    const invalidScopedTimeline = await runMountedAdvisoryResidentRequest(fixture, fixture.timelineTaskId, {
+      runId: fixture.timelineRunId,
+      runType: "timeline-builder",
+      investigationId: "inv_sourced_factory_001",
+      evidenceIds,
+      prrRequestId: "prr_req_extraneous"
+    });
+    expect(invalidScopedTimeline.status).toBe(400);
+    const timelineResponse = await runMountedSourcedResidentRequest(fixture, {
+      taskId: fixture.timelineTaskId,
+      runId: fixture.timelineRunId,
+      runType: "timeline-builder",
+      investigationId: "inv_sourced_factory_001",
+      evidenceIds
+    });
+    expect(timelineResponse.status, timelineResponse.body).toBe(200);
+    const timelineEnvelope = JSON.parse(timelineResponse.body) as {
+      readonly recorded: {
+        readonly manifest: {
+          readonly investigationId?: string;
+          readonly outputArtifacts: readonly { readonly artifactHash: `sha256:${string}` }[];
+        };
+        readonly handoff: { readonly investigationId?: string };
+      };
+    };
+    expect(timelineEnvelope.recorded.manifest.investigationId).toBe("inv_sourced_factory_001");
+    expect(timelineEnvelope.recorded.handoff.investigationId).toBe("inv_sourced_factory_001");
+    const timelineArtifact = await readMountedSourcedOutputArtifact(
+      fixture.handle,
+      timelineEnvelope.recorded.manifest.outputArtifacts[0]!.artifactHash
+    );
+    fixture.advancePastLeaseExpiry();
+    const contradictionResponse = await runMountedSourcedResidentRequest(fixture, {
+      taskId: fixture.contradictionTaskId,
+      runId: fixture.contradictionRunId,
+      runType: "contradiction-finder",
+      investigationId: "inv_sourced_factory_001",
+      evidenceIds
+    });
+    expect(contradictionResponse.status, contradictionResponse.body).toBe(200);
+    const contradictionEnvelope = JSON.parse(contradictionResponse.body) as {
+      readonly recorded: {
+        readonly manifest: {
+          readonly investigationId?: string;
+          readonly outputArtifacts: readonly { readonly artifactHash: `sha256:${string}` }[];
+        };
+        readonly handoff: { readonly investigationId?: string };
+      };
+    };
+    expect(contradictionEnvelope.recorded.manifest.investigationId).toBe("inv_sourced_factory_001");
+    expect(contradictionEnvelope.recorded.handoff.investigationId).toBe("inv_sourced_factory_001");
+    const contradictionArtifact = await readMountedSourcedOutputArtifact(
+      fixture.handle,
+      contradictionEnvelope.recorded.manifest.outputArtifacts[0]!.artifactHash
+    );
+    fixture.advancePastLeaseExpiry();
+    const planner = await fixture.supervision.executeSourcedInvestigation({
+      taskId: fixture.plannerTaskId,
+      runId: fixture.plannerRunId,
+      runType: "investigation-planner",
+      investigationId: "inv_sourced_factory_001"
+    }) as { readonly recorded: { readonly handoff: { readonly outputArtifacts: readonly {
+      readonly artifactKind: string;
+      readonly artifactHash: `sha256:${string}`;
+    }[] } } };
+    const planHash = planner.recorded.handoff.outputArtifacts.find((artifact) =>
+      artifact.artifactKind === "investigation-plan-artifact"
+    )?.artifactHash;
+    if (planHash === undefined) throw new Error("mounted planner artifact is unavailable");
+    const plan = await readMountedSourcedOutputArtifact(fixture.handle, planHash);
+    const timelineIds = (timelineArtifact.items as readonly { readonly itemId: string }[]).map((item) => item.itemId);
+    const contradictionIds = (contradictionArtifact.candidates as readonly { readonly candidateId: string }[])
+      .map((candidate) => candidate.candidateId);
+    expect(timelineArtifact.investigationId).toBe("inv_sourced_factory_001");
+    expect(contradictionArtifact.investigationId).toBe("inv_sourced_factory_001");
+    const sourcedRunStarts = (await fixture.handle.ledger.readAll()).filter((event):
+      event is KnowledgeEventOf<"agent.specialist-run.started"> =>
+      event.type === "agent.specialist-run.started" &&
+      (event.payload.runId === fixture.timelineRunId || event.payload.runId === fixture.contradictionRunId)
+    );
+    expect(sourcedRunStarts).toHaveLength(2);
+    expect(sourcedRunStarts.every((event) => event.payload.investigationId === "inv_sourced_factory_001")).toBe(true);
+    expect(timelineIds.length).toBeGreaterThan(0);
+    expect(contradictionIds.length).toBeGreaterThan(0);
+    expect(plan).toMatchObject({
+      prioritizedGaps: [expect.objectContaining({
+        timelineRefs: expect.arrayContaining(timelineIds),
+        contradictionRefs: expect.arrayContaining(contradictionIds)
+      })]
+    });
+  }, mountedSourcedMultiWorkflowTimeoutMs);
+
+  it("does not relabel exact-evidence timeline or contradiction artifacts across investigations", async () => {
+    const fixture = await mountedSourcedResidentFactoryFixture({
+      canonicalDatedFacts: true,
+      secondEvidence: "conflicting-assertion",
+      contradictionIncludesSecondEvidence: true
+    });
+    if (fixture.secondEvidenceId === undefined) throw new Error("second planner evidence is unavailable");
+    const evidenceIds = [fixture.evidenceId, fixture.secondEvidenceId];
+    const timeline = await runMountedSourcedResidentRequest(fixture, {
+      taskId: fixture.timelineTaskId,
+      runId: fixture.timelineRunId,
+      runType: "timeline-builder",
+      investigationId: "inv_sourced_factory_001",
+      evidenceIds
+    });
+    expect(timeline.status, timeline.body).toBe(200);
+    fixture.advancePastLeaseExpiry();
+    const contradiction = await runMountedSourcedResidentRequest(fixture, {
+      taskId: fixture.contradictionTaskId,
+      runId: fixture.contradictionRunId,
+      runType: "contradiction-finder",
+      investigationId: "inv_sourced_factory_001",
+      evidenceIds
+    });
+    expect(contradiction.status, contradiction.body).toBe(200);
+    fixture.advancePastLeaseExpiry();
+
+    const planner = await fixture.supervision.executeSourcedInvestigation({
+      taskId: fixture.plannerTaskId,
+      runId: fixture.plannerRunId,
+      runType: "investigation-planner",
+      investigationId: "inv_sourced_factory_002"
+    }) as { readonly recorded: { readonly handoff: { readonly outputArtifacts: readonly {
+      readonly artifactKind: string;
+      readonly artifactHash: `sha256:${string}`;
+    }[] } } };
+    const planHash = planner.recorded.handoff.outputArtifacts.find((artifact) =>
+      artifact.artifactKind === "investigation-plan-artifact"
+    )?.artifactHash;
+    if (planHash === undefined) throw new Error("mounted planner artifact is unavailable");
+    const plan = await readMountedSourcedOutputArtifact(fixture.handle, planHash);
+    expect(plan).toMatchObject({
+      investigationId: "inv_sourced_factory_002",
+      prioritizedGaps: [expect.objectContaining({
+        timelineRefs: [],
+        contradictionRefs: []
+      })]
+    });
+  }, mountedSourcedMultiWorkflowTimeoutMs);
+
+  it("does not relabel legacy unscoped timeline or contradiction artifacts into a planner investigation", async () => {
+    const fixture = await mountedSourcedResidentFactoryFixture({
+      canonicalDatedFacts: true,
+      secondEvidence: "conflicting-assertion",
+      contradictionIncludesSecondEvidence: true
+    });
+    if (fixture.secondEvidenceId === undefined) throw new Error("second planner evidence is unavailable");
+    const evidenceIds = [fixture.evidenceId, fixture.secondEvidenceId];
+    const timeline = await runMountedSourcedResidentRequest(fixture, {
+      taskId: fixture.timelineTaskId,
+      runId: fixture.timelineRunId,
+      runType: "timeline-builder",
+      evidenceIds
+    });
+    expect(timeline.status, timeline.body).toBe(200);
+    fixture.advancePastLeaseExpiry();
+    const contradiction = await runMountedSourcedResidentRequest(fixture, {
+      taskId: fixture.contradictionTaskId,
+      runId: fixture.contradictionRunId,
+      runType: "contradiction-finder",
+      evidenceIds
+    });
+    expect(contradiction.status, contradiction.body).toBe(200);
+    fixture.advancePastLeaseExpiry();
+
+    const planner = await fixture.supervision.executeSourcedInvestigation({
+      taskId: fixture.plannerTaskId,
+      runId: fixture.plannerRunId,
+      runType: "investigation-planner",
+      investigationId: "inv_sourced_factory_001"
+    }) as { readonly recorded: { readonly handoff: { readonly outputArtifacts: readonly {
+      readonly artifactKind: string;
+      readonly artifactHash: `sha256:${string}`;
+    }[] } } };
+    const planHash = planner.recorded.handoff.outputArtifacts.find((artifact) =>
+      artifact.artifactKind === "investigation-plan-artifact"
+    )?.artifactHash;
+    if (planHash === undefined) throw new Error("mounted planner artifact is unavailable");
+    const plan = await readMountedSourcedOutputArtifact(fixture.handle, planHash);
+    expect(plan).toMatchObject({
+      investigationId: "inv_sourced_factory_001",
+      prioritizedGaps: [expect.objectContaining({
+        timelineRefs: [],
+        contradictionRefs: []
+      })]
+    });
   }, mountedSourcedMultiWorkflowTimeoutMs);
 
   it("grounds production timeline items only in exact assertion and PRR ledger history", async () => {
@@ -983,13 +1291,18 @@ describe("untrusted specialist runner", () => {
       actor: { id: "agent_default", kind: "agent", label: "Cestus Agent" },
       now: fixture.now,
       createSupervisorOwnerId: () => "owner_sourced_blocked_retry",
-      issueMountedSourcedInvestigationHandoff: async (wakeRuntime, task) =>
-        await bindMountedSourcedInvestigationHandoffForLocalAgentRuntimeFactory({
+      issueMountedSourcedInvestigationHandoff: async (wakeRuntime, task) => {
+        if (task.runType !== "timeline-builder" && task.runType !== "contradiction-finder") {
+          throw new Error("blocked-retry fixture accepts only sourced-investigation tasks");
+        }
+        return await bindMountedSourcedInvestigationHandoffForLocalAgentRuntimeFactory({
           wakeRuntime,
           taskId: task.taskId,
           runId: task.runId,
-          runType: task.runType
-        }),
+          runType: task.runType,
+          ...(task.investigationId === undefined ? {} : { investigationId: task.investigationId })
+        });
+      },
       sourcedInvestigationExecution: createMountedSourcedInvestigationExecutionPort({
         handle: fixture.handle,
         now: fixture.now
@@ -1150,6 +1463,68 @@ describe("untrusted specialist runner", () => {
       }
     });
     expect(JSON.stringify(cockpit.selectedRun)).not.toMatch(/mounted sourced timeline evidence bytes|authorization:|provider body/i);
+  });
+
+  it("composes mounted PRR advice while leaving exact send approval pending and unconsumed", async () => {
+    const completed = await mountedPrrNegotiationFixture(false);
+    expect(completed.mounted.result.handoff).toMatchObject({
+      runType: "prr-negotiation",
+      status: "ready-for-review",
+      outputArtifacts: [{ artifactKind: "correspondence-draft-artifact" }]
+    });
+    expect(completed.mounted.authorityConsumption?.eventIds).toHaveLength(6);
+    const completedWorkspace = completed.handle.mountedWorkspace;
+    if (completedWorkspace === undefined) throw new Error("mounted PRR workspace is unavailable");
+    const replayed = await buildSpecialistHandoffProjection({
+      events: await completed.handle.ledger.readAll(),
+      manifestReader: new FileBlobStore(join(
+        completedWorkspace.paths.derivativeRoot,
+        "specialist-handoff-manifest"
+      )),
+      runId: completed.dispatch.approvedRunId,
+      taskId: completed.dispatch.taskId
+    });
+    expect(replayed).toMatchObject({
+      state: "task-completed",
+      diagnostics: [],
+      selectedHandoff: {
+        runType: "prr-negotiation",
+        status: "ready-for-review"
+      }
+    });
+    const cockpit = buildAgentCockpit({
+      status: await completed.runtime.status(),
+      selectedRunId: completed.dispatch.approvedRunId,
+      specialistHandoffs: replayed.selectedHandoff === undefined ? [] : [replayed.selectedHandoff]
+    });
+    expect(cockpit.selectedRun).toMatchObject({
+      runType: "prr-negotiation",
+      state: "completed",
+      handoff: { status: "ready-for-review" }
+    });
+
+    const waiting = await mountedPrrNegotiationFixture(true);
+    expect(waiting.mounted.result.handoff).toMatchObject({
+      runType: "prr-negotiation",
+      status: "waiting-for-approval",
+      approvalRequirements: [{ approvalClass: "external-message-send" }]
+    });
+    expect(waiting.mounted.authorityConsumption).toBeUndefined();
+    const waitingEvents = await waiting.handle.ledger.readAll();
+    expect(waitingEvents.filter((event) => event.type === "agent.tool.requested")).toHaveLength(1);
+    expect(waitingEvents.find((event) => event.type === "agent.tool.requested")?.payload).toMatchObject({
+      toolId: "prr.follow-up.execute",
+      requiredApprovalClass: "external-message-send",
+      sideEffectClass: "external-message-send"
+    });
+    expect(waitingEvents.map((event) => event.type)).not.toEqual(expect.arrayContaining([
+      "agent.tool.executed",
+      "agent.tool.completed",
+      "prr.followup.sent",
+      "prr.legal-escalation.confirmed",
+      "agent.specialist-run.completed",
+      "agent.task.orchestration.completed"
+    ]));
   });
 
   it("rejects caller authority, store, registration, provenance, readiness, and H tuples before delegation", async () => {
@@ -1416,6 +1791,7 @@ async function runMountedSourcedResidentRequest(
     readonly taskId: string;
     readonly runId: string;
     readonly runType: "timeline-builder" | "contradiction-finder";
+    readonly investigationId?: string;
     readonly evidenceIds: readonly string[];
   }
 ) {
@@ -1426,6 +1802,7 @@ async function runMountedSourcedResidentRequest(
       body: JSON.stringify({
         runId: input.runId,
         runType: input.runType,
+        ...(input.investigationId === undefined ? {} : { investigationId: input.investigationId }),
         evidenceIds: input.evidenceIds
       })
     },
@@ -1436,6 +1813,35 @@ async function runMountedSourcedResidentRequest(
   });
   if (response === undefined) throw new Error("sourced resident route was not reached");
   return response;
+}
+
+async function runMountedAdvisoryResidentRequest(
+  fixture: {
+    readonly handle: LocalRuntimeHandle;
+    readonly supervision: ResidentSupervisionRuntime;
+    readonly now: () => string;
+  },
+  taskId: string,
+  body: Readonly<Record<string, unknown>>
+) {
+  const response = await handleAgentHttpRoute({
+    request: {
+      method: "POST",
+      url: `/api/agent/tasks/${taskId}/sourced-investigation`,
+      body: JSON.stringify(body)
+    },
+    handle: fixture.handle,
+    actor: { id: "actor_advisory_helper", kind: "system", label: "Advisory Helper" },
+    now: fixture.now,
+    supervision: fixture.supervision
+  });
+  if (response === undefined) throw new Error("advisory resident route was not reached");
+  return response;
+}
+
+function mountedArtifactPath(root: string, contentHash: `sha256:${string}`): string {
+  const digest = contentHash.slice("sha256:".length);
+  return join(root, "sha256", digest.slice(0, 2), digest);
 }
 
 function createMountedSourcedCancellationController(
@@ -1545,6 +1951,10 @@ async function mountedSourcedResidentFactoryFixture(options: {
   readonly timelineRunId: string;
   readonly contradictionTaskId: string;
   readonly contradictionRunId: string;
+  readonly plannerTaskId: string;
+  readonly plannerRunId: string;
+  readonly prrTaskId: string;
+  readonly prrRunId: string;
   readonly canonicalDatedFacts?: {
     readonly assertionId: string;
     readonly assertionProposedEventId: string;
@@ -1589,7 +1999,7 @@ async function mountedSourcedResidentFactoryFixture(options: {
   const setup = createAgentRuntime({ ledger: handle.ledger, actor, now, providers: [] });
   await setup.initializeDefaultIdentity({
     workspaceId,
-    allowedRunTypes: ["timeline-builder", "contradiction-finder"]
+    allowedRunTypes: ["timeline-builder", "contradiction-finder", "investigation-planner", "prr-negotiation"]
   });
   const mounted = handle.mountedWorkspace;
   if (mounted === undefined) throw new Error("sourced resident factory fixture is not mounted");
@@ -1636,6 +2046,27 @@ async function mountedSourcedResidentFactoryFixture(options: {
       occurrenceIds: ["occ_sourced_factory"]
     }
   } satisfies AppendableKnowledgeEvent<"ingestion.evidence.linked">);
+  const advisoryPrrCreated = await handle.ledger.append({
+    type: "prr.request.created",
+    version: 1,
+    streamId: "prr_req_sourced_factory_001",
+    context: {
+      actor,
+      occurredAt: sourcedNow,
+      causationId: linked.id,
+      correlationId: "corr_prr_sourced_factory_001",
+      coreVersion: "0.1.0",
+      packVersions: { core: "0.1.0", prr: "0.1.0" }
+    },
+    payload: {
+      prrRequestId: "prr_req_sourced_factory_001",
+      jurisdictionPack: { name: "us-federal-foia", version: "0.1.0" },
+      agency: { name: "Sourced Factory Records Office" },
+      requester: { name: "Sourced Factory Investigator" },
+      requestText: "Provide the selected source record.",
+      status: "draft"
+    }
+  } satisfies AppendableKnowledgeEvent<"prr.request.created">);
   let canonicalDatedFacts: {
     readonly assertionId: string;
     readonly assertionProposedEventId: string;
@@ -1869,12 +2300,16 @@ async function mountedSourcedResidentFactoryFixture(options: {
   }
   const timelineTaskId = "task_sourced_factory_timeline";
   const contradictionTaskId = "task_sourced_factory_contradiction";
+  const plannerTaskId = "task_sourced_factory_planner";
+  const prrTaskId = "task_sourced_factory_prr";
   const unrelatedTimelineTaskId = secondEvidenceId === undefined
     ? undefined
     : "task_sourced_factory_unrelated_timeline";
   for (const [taskId, title] of [
     [timelineTaskId, "Build the mounted sourced timeline"],
     [contradictionTaskId, "Find mounted sourced contradictions"],
+    [plannerTaskId, "Plan the mounted investigation"],
+    [prrTaskId, "Prepare mounted PRR advice"],
     ...(unrelatedTimelineTaskId === undefined
       ? []
       : [[unrelatedTimelineTaskId, "Build an unrelated mounted sourced timeline"] as const])
@@ -1891,6 +2326,7 @@ async function mountedSourcedResidentFactoryFixture(options: {
       priority: "normal",
       sourceEventIds: [
         ...(secondOnly ? [] : [ingested.id, linked.id, ...firstTaskSourceEventIds]),
+        ...(taskId === prrTaskId ? [advisoryPrrCreated.id] : []),
         ...(includeSecond ? secondTaskSourceEventIds : [])
       ],
       inputArtifactHashes: [
@@ -1905,13 +2341,36 @@ async function mountedSourcedResidentFactoryFixture(options: {
     actor,
     now,
     ...(options.backgroundExecution === undefined ? {} : { backgroundExecution: options.backgroundExecution }),
-    issueMountedSourcedInvestigationHandoff: async (wakeRuntime, task) =>
-      await bindMountedSourcedInvestigationHandoffForLocalAgentRuntimeFactory({
-        wakeRuntime,
-        taskId: task.taskId,
-        runId: task.runId,
-        runType: task.runType
-      }),
+    issueMountedSourcedInvestigationHandoff: async (wakeRuntime, task) => {
+      const advisory = task as unknown as {
+        readonly taskId: string;
+        readonly runId: string;
+        readonly runType: "timeline-builder" | "contradiction-finder" | "investigation-planner" | "prr-negotiation";
+        readonly investigationId?: string;
+      };
+      return advisory.runType === "investigation-planner"
+        ? await bindMountedAdvisoryHandoffForLocalAgentRuntimeFactory({
+            wakeRuntime,
+            taskId: advisory.taskId,
+            runId: advisory.runId,
+            runType: advisory.runType,
+            investigationId: advisory.investigationId ?? "inv_sourced_factory_001"
+          })
+        : advisory.runType === "prr-negotiation"
+          ? await bindMountedAdvisoryHandoffForLocalAgentRuntimeFactory({
+              wakeRuntime,
+              taskId: advisory.taskId,
+              runId: advisory.runId,
+              runType: advisory.runType
+            })
+          : await bindMountedSourcedInvestigationHandoffForLocalAgentRuntimeFactory({
+              wakeRuntime,
+              taskId: advisory.taskId,
+              runId: advisory.runId,
+              runType: advisory.runType,
+              ...(advisory.investigationId === undefined ? {} : { investigationId: advisory.investigationId })
+            });
+    },
     sourcedInvestigationExecution: createMountedSourcedInvestigationExecutionPort({
       handle,
       now,
@@ -1934,6 +2393,10 @@ async function mountedSourcedResidentFactoryFixture(options: {
     timelineRunId: "run_sourced_factory_timeline",
     contradictionTaskId,
     contradictionRunId: "run_sourced_factory_contradiction",
+    plannerTaskId,
+    plannerRunId: "run_sourced_factory_planner",
+    prrTaskId,
+    prrRunId: "run_sourced_factory_prr",
     ...(canonicalDatedFacts === undefined ? {} : { canonicalDatedFacts }),
     ...(secondEvidenceId === undefined || secondEvidenceFacts === undefined ? {} : {
       secondEvidenceId,
@@ -1942,6 +2405,435 @@ async function mountedSourcedResidentFactoryFixture(options: {
       unrelatedTimelineRunId: "run_sourced_factory_unrelated_timeline"
     })
   });
+}
+
+async function mountedPrrNegotiationFixture(requestFollowUpApproval: boolean) {
+  const outcome = requestFollowUpApproval ? "waiting" : "completed";
+  const workspaceId = `ws_mounted_prr_${outcome}`;
+  const taskId = `task_mounted_prr_${outcome}`;
+  const runId = `run_mounted_prr_${outcome}`;
+  const prrRequestId = `prr_req_mounted_${outcome}`;
+  const correspondenceId = `corr_prr_mounted_${outcome}`;
+  const workspaceRoot = mkdtempSync(join(tmpdir(), "cestus-mounted-prr-"));
+  mountedTempDirs.push(workspaceRoot);
+  createPortableWorkspace({
+    rootDir: workspaceRoot,
+    workspaceId,
+    label: `Mounted PRR ${outcome} fixture`,
+    createdAt: sourcedNow,
+    createdBy: "actor_mounted_prr_test"
+  });
+  const actor = Object.freeze({ id: "agent_default" as const, kind: "agent" as const, label: "Cestus Agent" as const });
+  const handle = createSqlitePrrRuntime({
+    config: resolveLocalRuntimeConfig({
+      cwd: workspaceRoot,
+      env: { CESTUS_LOCAL_STORAGE: "portable-workspace", CESTUS_WORKSPACE_ROOT: workspaceRoot }
+    }),
+    actor: { id: "actor_mounted_prr_test", kind: "system", label: "Mounted PRR Test" },
+    now: () => sourcedNow
+  });
+  mountedHandles.push(handle);
+  const provider = new FakeModelProvider({
+    providerId: "provider_fake_local",
+    modelFamilies: ["fake-local"],
+    responseText: JSON.stringify({
+      draftSummary: "Review a narrow records follow-up before any external send.",
+      requestFollowUpApproval,
+      citedRuleRefs: ["jurisdiction-rule:us-federal-foia@0.1.0:rule_foia_deadline_001"],
+      jurisdictionRefs: ["jurisdiction_us_federal_foia"],
+      deadlineRefs: ["jurisdiction-rule:us-federal-foia@0.1.0:rule_foia_deadline_001"],
+      deadlineNotes: ["The cited response period should be checked against the current request stream."],
+      narrowingOptions: ["Limit the follow-up to the named contract and date range."],
+      feeOptions: ["Ask for an itemized estimate before accepting any fee."],
+      feeOrStallingSignals: ["Check for production records and agency timing before characterizing delay."],
+      unresolvedQuestions: ["Has the agency acknowledged the request?"],
+      legalPressureNotes: ["Any legal escalation remains a separate human-confirmed action."]
+    })
+  });
+  const runtime = createAgentRuntime({ ledger: handle.ledger, actor, now: () => sourcedNow, providers: [provider] });
+  await runtime.initializeDefaultIdentity({ workspaceId });
+  const created = await runtime.createTask({
+    taskId,
+    title: `Prepare mounted PRR ${outcome} advice`,
+    requestedBy: "actor_investigator",
+    priority: "normal"
+  });
+  if (!created.ok) throw new Error("mounted PRR fixture task was not created");
+  const sourceEvent = (await handle.ledger.readStream(`agent_task_${taskId}`)).find((event) =>
+    event.type === "agent.task.created"
+  );
+  if (sourceEvent === undefined) throw new Error("mounted PRR source event is unavailable");
+
+  const ports = mountedSourcedLifecyclePorts({
+    workspaceId,
+    workspaceIdentityEventId: `evt_mounted_prr_${outcome}_identity`,
+    highWaterMark: `evt_mounted_prr_${outcome}_high_water`,
+    highWaterOrdinal: 5
+  });
+  const wakeRuntime = {} as WakeSupervisorRuntime;
+  registerMountedArtifactAuthorityIssuerForWakeRuntime({
+    wakeRuntime,
+    lifecyclePorts: ports,
+    runtimeHandle: handle
+  });
+  await admitMountedSourcedAuthority(ports, workspaceId);
+  const handoff = await bindMountedAdvisoryHandoffForLocalAgentRuntimeFactory({
+    wakeRuntime,
+    taskId,
+    runId,
+    runType: "prr-negotiation"
+  });
+  const attemptId = buildTaskAttemptId({ taskId, runType: "prr-negotiation", retryGeneration: 0 });
+  const prrDispatch = Object.freeze({
+    taskId,
+    runType: "prr-negotiation" as const,
+    attemptId,
+    approvedRunId: runId
+  });
+  let prepared = false;
+  const runner = createMountedPrrNegotiationSpecialistRunner({
+    resolve: async () => {
+      if (prepared) throw new Error("mounted PRR fixture is one-shot");
+      prepared = true;
+      await appendMountedAttemptBinding(handle.ledger, {
+        taskId,
+        runId,
+        attemptId,
+        actor,
+        runType: "prr-negotiation"
+      });
+      const started = await runtime.startRun({
+        runId,
+        taskId,
+        runType: "prr-negotiation",
+        scope: { kind: "workspace", refs: [workspaceId] }
+      });
+      if (!started.ok) throw new Error("mounted PRR run did not start");
+      const contextPacks = mountedPrrNegotiationContextPacks({
+        prrRequestId,
+        taskId,
+        runId,
+        workspaceId,
+        sourceEventId: sourceEvent.id
+      });
+      const scope = Object.freeze({
+        kind: "prr-request" as const,
+        refs: Object.freeze([prrRequestId]),
+        associatedPrrRequestId: prrRequestId
+      });
+      const registration = productionSpecialistPromptRegistrationFor("prr-negotiation");
+      const resolvedContextPacks = await Promise.all(registration.contextRequirements.map(async (requirement) =>
+        await contextPacks.buildResolved(requirement.contextPackId)
+      ));
+      const rendered = renderProductionSpecialistPrompt({
+        taskId,
+        runId,
+        runType: "prr-negotiation",
+        generatedAt: sourcedNow,
+        scope,
+        resolvedContextPacks,
+        omissions: []
+      });
+      const promptStore = await createMountedPromptArtifactStore({ handle });
+      await promptStore.put(rendered);
+      const promptReadback = await promptStore.read({
+        inputArtifactHash: rendered.manifest.inputArtifactHash as `sha256:${string}`,
+        authoritativeResolvedContextPacks: rendered.resolvedContextPacks
+      });
+      if (promptReadback.witness === undefined) {
+        throw new Error("mounted PRR prompt readback witness is unavailable");
+      }
+      return Object.freeze({
+        ledger: handle.ledger,
+        actor,
+        now: () => sourcedNow,
+        contextPacks,
+        scope,
+        runtime,
+        providerReadiness: mountedPrrProviderReadiness(),
+        providerId: "provider_fake_local",
+        modelFamily: "fake-local",
+        credentialRef: {
+          credentialRefId: "agent_credref_fake_local",
+          providerId: "provider_fake_local",
+          kind: "local-no-secret" as const
+        },
+        mountedPromptReadbackWitness: promptReadback.witness,
+        prrRequestId,
+        correspondenceId,
+        jurisdictionRuleRefs: ["jurisdiction-rule:us-federal-foia@0.1.0:rule_foia_deadline_001"],
+        followUpApprovalPreview: mountedPrrFollowUpApprovalPreview({
+          prrRequestId,
+          correspondenceId,
+          sourceEventId: sourceEvent.id
+        })
+      });
+    }
+  });
+  const mounted = await runner.dispatch({
+    dispatch: prrDispatch,
+    retryGeneration: 0,
+    handoff
+  });
+  return Object.freeze({ handle, runtime, dispatch: prrDispatch, handoff, mounted });
+}
+
+function mountedPrrNegotiationContextPacks(input: {
+  readonly prrRequestId: string;
+  readonly taskId: string;
+  readonly runId: string;
+  readonly workspaceId: string;
+  readonly sourceEventId: string;
+}) {
+  const registry = createContextPackRegistry();
+  const contextPackIds = [
+    "prr-read-model.v1",
+    "jurisdiction-pack-summary.v1",
+    "governance-locks.v1",
+    "evidence-summary.v1",
+    "agent-memory-summary.v1",
+    "task-run-history.v1",
+    "workspace-runtime-status.v1"
+  ] as const;
+  for (const contextPackId of contextPackIds) {
+    registry.register({
+      descriptor: {
+        contextPackId,
+        version: 1,
+        label: `${contextPackId} mounted PRR summary`,
+        maxBytes: 16_384,
+        requiredProvenanceKinds: ["event"],
+        redactionPolicy: "safe-summary-only",
+        sourceProjection: "mounted-prr-test-projection"
+      },
+      parsePayload: mountedPrrContextPackParser(contextPackId),
+      build: () => ({
+        contextPackId,
+        version: 1,
+        generatedAt: sourcedNow,
+        payload: mountedPrrContextPayload(contextPackId, input),
+        safeSummary: contextPackId === "governance-locks.v1"
+          ? "Governance posture is clear for local advisory drafting."
+          : `${contextPackId} is current for local PRR advice.`,
+        provenanceRefs: [`event:${input.sourceEventId}`],
+        sourceEventIds: [input.sourceEventId],
+        ...(contextPackId === "prr-read-model.v1"
+          ? { scope: { kind: "prr-request", id: input.prrRequestId } }
+          : {}),
+        sizeBudgetBytes: 16_384
+      })
+    });
+  }
+  return registry;
+}
+
+function mountedPrrContextPackParser(contextPackId: string) {
+  const parser = (payload: AgentContextPackJsonValue, ref?: { readonly contextPackId: string }) => {
+    if (ref?.contextPackId !== contextPackId || typeof payload !== "object" || payload === null || Array.isArray(payload)) {
+      throw new Error("invalid mounted PRR context pack payload");
+    }
+    return payload;
+  };
+  Object.defineProperty(parser, "cestusContextPackParserId", {
+    value: contextPackId,
+    enumerable: false,
+    configurable: false,
+    writable: false
+  });
+  registerContextPackPayloadParserAuthority(parser);
+  return parser;
+}
+
+function mountedPrrContextPayload(
+  contextPackId: string,
+  input: {
+    readonly prrRequestId: string;
+    readonly taskId: string;
+    readonly runId: string;
+    readonly workspaceId: string;
+    readonly sourceEventId: string;
+  }
+): AgentContextPackJsonValue {
+  switch (contextPackId) {
+    case "prr-read-model.v1":
+      return {
+        schemaVersion: "prr-read-model-context.v1",
+        scope: { kind: "prr-request", id: input.prrRequestId },
+        lifecycle: {
+          status: "sent",
+          agencyName: "Example Records Office",
+          jurisdictionPack: { name: "us-federal-foia", version: "0.1.0" }
+        },
+        requestStream: {
+          requestCreatedEventId: input.sourceEventId,
+          streamHeadEventId: input.sourceEventId,
+          streamHighWaterMark: 1,
+          sourceEventIds: [input.sourceEventId]
+        },
+        deadline: {
+          deadlineDate: "2026-08-24",
+          source: "confirmed",
+          confirmedBy: "actor_records_officer",
+          citedRules: [{
+            label: "FOIA response deadline",
+            citation: "5 USC 552(a)(6)(A)",
+            jurisdictionPack: { name: "us-federal-foia", version: "0.1.0" }
+          }]
+        },
+        fee: null,
+        narrowing: null,
+        correspondence: { outbound: [], inbound: [] },
+        production: {
+          batches: [],
+          evidenceIds: [],
+          exemptions: [],
+          denial: null,
+          appeal: null,
+          stalling: { possible: false, confirmed: false, signals: [] },
+          escalation: null
+        },
+        diagnostics: [],
+        gates: [],
+        sourceRefs: { correspondence: [], evidence: [] },
+        omissions: []
+      };
+    case "jurisdiction-pack-summary.v1":
+      return {
+        schemaVersion: "jurisdiction-pack-summary-context.v1",
+        packName: "us-federal-foia",
+        packVersion: "0.1.0",
+        jurisdiction: "US federal",
+        jurisdictionRefs: ["jurisdiction_us_federal_foia"],
+        citedRules: [{
+          id: "rule_foia_deadline_001",
+          ruleRef: "jurisdiction-rule:us-federal-foia@0.1.0:rule_foia_deadline_001",
+          kind: "deadline",
+          label: "FOIA response deadline",
+          citation: "5 USC 552(a)(6)(A)"
+        }],
+        advisoryPosture: { summary: "Advisory only; legal action remains human-controlled." },
+        omissions: []
+      };
+    case "governance-locks.v1":
+      return { items: { activeLocks: [], governanceRestrictions: [] } };
+    case "evidence-summary.v1":
+      return { items: [] };
+    case "agent-memory-summary.v1":
+      return {
+        memory: {
+          activeMemory: [],
+          aggregateCounts: { active: 0 },
+          sourceEventIds: [input.sourceEventId],
+          artifactHashes: []
+        }
+      };
+    case "task-run-history.v1":
+      return {
+        history: {
+          projectionHighWaterMark: 1,
+          projectionSourceRef: "agent.projection.task-run-history",
+          tasks: [{ taskId: input.taskId, status: "running", statusReasonCode: "prr-negotiation" }],
+          runs: [{
+            runId: input.runId,
+            state: "running",
+            runType: "prr-negotiation",
+            taskId: input.taskId,
+            sourceEventIds: [input.sourceEventId]
+          }],
+          modelInvocations: [],
+          toolRequests: [],
+          aggregateCounts: { tasks: 1, runs: 1 },
+          sourceEventIds: [input.sourceEventId],
+          artifactHashes: [],
+          window: { order: "created-at", limit: 2, hasMore: false, totalCount: 2, omissionCodes: [] }
+        }
+      };
+    case "workspace-runtime-status.v1":
+      return {
+        runtime: {
+          runtimeHighWaterMark: 1,
+          workspaceMounted: true,
+          workspaceId: input.workspaceId,
+          storageStrategy: "portable-workspace",
+          bindPosture: "bound",
+          authPosture: "ready",
+          providerStates: [{ providerId: "provider_fake_local", state: "works-locally", reasonCode: "local-only" }],
+          diagnostics: [],
+          projectionHighWaterMarks: { agent: 1 },
+          omissionCodes: []
+        }
+      };
+    default:
+      throw new Error("unsupported mounted PRR context pack");
+  }
+}
+
+function mountedPrrProviderReadiness(): ProviderReadinessDto {
+  return {
+    schemaVersion: "agent-provider-readiness.v1",
+    generatedAt: sourcedNow,
+    cards: [{
+      providerId: "provider_fake_local",
+      label: "Fake Local Model Provider",
+      backendKind: "local-engine",
+      capabilitySummary: ["text"],
+      credentialKindSummary: ["local-no-secret"],
+      state: "works-locally",
+      requiredApprovalClass: "none",
+      credentialHealth: "not-required",
+      dataHandlingPosture: "local-only",
+      safeActionIds: ["action_use_local_provider"]
+    }],
+    diagnostics: []
+  };
+}
+
+function mountedPrrFollowUpApprovalPreview(input: {
+  readonly prrRequestId: string;
+  readonly correspondenceId: string;
+  readonly sourceEventId: string;
+}): PrrNegotiationFollowUpApprovalPreviewInput {
+  const subject = "Public records request follow-up";
+  const body = "Please confirm the status of the records request.";
+  return {
+    provider: "gmail",
+    messageSourceEventId: input.sourceEventId,
+    message: {
+      from: "investigator@example.org",
+      to: ["foia@example.gov"],
+      cc: [],
+      subject,
+      subjectHash: hashBytes(Buffer.from(subject, "utf8")),
+      bodyHash: hashBytes(Buffer.from(body, "utf8")),
+      renderedBodyHash: hashBytes(Buffer.from(body, "utf8")),
+      attachments: [],
+      requiresLegalConfirmation: false,
+      providerIdempotencyKey: `followup_${input.prrRequestId}_${input.correspondenceId}`
+    },
+    requestState: {
+      requestCreatedEventId: input.sourceEventId,
+      status: "sent",
+      jurisdictionPack: { name: "us-federal-foia", version: "0.1.0" },
+      confirmedStalling: false,
+      initialSentEventId: input.sourceEventId
+    },
+    providerCapability: {
+      provider: "gmail",
+      canSend: true,
+      canSync: true,
+      canFetchAttachments: true,
+      capabilityRef: hashBytes(Buffer.from("mounted Gmail capability", "utf8"))
+    },
+    legalGateChecks: [{
+      id: "legal-confirmation-not-required",
+      ready: true,
+      locked: false,
+      detail: "Routine correspondence does not require legal escalation confirmation."
+    }],
+    legalEvidenceBindings: [],
+    lockSnapshot: [],
+    projectionHighWaterMark: 1
+  };
 }
 
 async function mountedSourcedInvestigationFixture(): Promise<{
@@ -2065,9 +2957,10 @@ async function appendMountedAttemptBinding(
     readonly runId: string;
     readonly attemptId: `attempt_${string}`;
     readonly actor: { readonly id: string; readonly kind: "agent"; readonly label: string };
+    readonly runType?: "timeline-builder" | "prr-negotiation";
   }
 ): Promise<void> {
-  const runType = "timeline-builder" as const;
+  const runType = input.runType ?? "timeline-builder";
   const retryGeneration = 0;
   const leaseClaimGeneration = 1;
   const streamId = taskOrchestrationStreamId(input.taskId, runType);

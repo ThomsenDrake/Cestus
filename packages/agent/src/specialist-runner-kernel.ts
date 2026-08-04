@@ -24,7 +24,8 @@ import type { AgentRuntimeResult } from "./runtime-types.js";
 import {
   assertResolvedContextPacksForExecution,
   type ContextPackRef,
-  type ContextPackRegistry
+  type ContextPackRegistry,
+  type ResolvedContextPack
 } from "./context-packs.js";
 import type { AgentFailureCategory } from "./projection-types.js";
 import type { AgentApprovedToolPreviewResult } from "./scheduler-types.js";
@@ -898,6 +899,7 @@ export async function recordSpecialistHandoff(rawInput: RecordSpecialistHandoffI
     handoffRevision,
     runId: input.runId,
     ...(input.taskId === undefined ? {} : { taskId: input.taskId }),
+    ...(material.investigationId === undefined ? {} : { investigationId: material.investigationId }),
     runType: resolved.runType,
     residentAgentId: "agent_default",
     generatedAt: finalOutput.context.occurredAt,
@@ -1018,6 +1020,7 @@ export async function recordAuthorityBoundSpecialistHandoff(
     handoffRevision,
     runId: input.runId,
     ...(input.taskId === undefined ? {} : { taskId: input.taskId }),
+    ...(material.investigationId === undefined ? {} : { investigationId: material.investigationId }),
     runType: resolved.runType,
     residentAgentId: "agent_default",
     generatedAt: finalOutput.context.occurredAt,
@@ -1777,6 +1780,7 @@ async function assertHandoffMaterialAuthority(
     [prior.payload.runId, started.payload.runId],
     [prior.payload.taskId, started.payload.taskId],
     [prior.payload.runType, started.payload.runType],
+    [priorMaterial.investigationId, material.investigationId],
     [priorMaterial.status, material.status],
     [priorMaterial.contextPackRefs, material.contextPackRefs],
     [priorMaterial.promptArtifactHash, material.promptArtifactHash],
@@ -2977,7 +2981,24 @@ function stableSpecialistObjectJson(value: object): string {
   return `{${entries.join(",")}}`;
 }
 
-export function governanceLockIsActive(contextPackRefs: readonly ContextPackRef[]): boolean {
+export function governanceLockIsActive(
+  contextPackRefs: readonly ContextPackRef[],
+  resolvedContextPacks: readonly ResolvedContextPack[] = []
+): boolean {
+  const resolvedActive = resolvedContextPacks.some((resolved) => {
+    if (resolved.ref.contextPackId !== "governance-locks.v1" ||
+      !contextPackRefs.some((ref) => ref.contextPackId === resolved.ref.contextPackId &&
+        ref.contentHash === resolved.ref.contentHash)) {
+      return false;
+    }
+    const payload = resolved.payload;
+    if (payload === null || typeof payload !== "object" || Array.isArray(payload)) return true;
+    const items = (payload as Readonly<Record<string, unknown>>)["items"];
+    if (items === null || typeof items !== "object" || Array.isArray(items)) return true;
+    const activeLocks = (items as Readonly<Record<string, unknown>>)["activeLocks"];
+    return !Array.isArray(activeLocks) || activeLocks.length > 0;
+  });
+  if (resolvedActive) return true;
   return contextPackRefs.some((ref) =>
     ref.contextPackId === "governance-locks.v1" &&
     (

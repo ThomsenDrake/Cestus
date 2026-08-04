@@ -84,10 +84,11 @@ export async function runInvestigationPlannerWorkflow(
       }]
     );
   }
-  if (governanceLockIsActive(prepared.contextPackRefs)) {
+  if (governanceLockIsActive(prepared.contextPackRefs, prepared.promptArtifact.resolvedContextPacks)) {
     return blockedHandoff(input, "Active governance lock blocks investigation planning.", prepared.contextPackRefs);
   }
   const handoffStore = requireHandoffStore(input);
+  const materialStore = requireMaterialStore(input);
   if (input.handoffAuthorityWitness === undefined) {
     return blockedHandoff(
       input,
@@ -108,6 +109,7 @@ export async function runInvestigationPlannerWorkflow(
     );
   }
   try {
+    if (materialStore !== handoffStore) await persistHandoffDependencies(materialStore, prepared);
     await persistHandoffDependencies(handoffStore, prepared);
   } catch {
     return blockedHandoff(
@@ -127,6 +129,9 @@ export async function runInvestigationPlannerWorkflow(
   if (output === undefined) {
     return await failedModelOutputResult(input, prepared, handoffStore, sourceEventIds, invocation.eventIds);
   }
+  if (!investigationPlannerReferencesAreExact(input, prepared, output)) {
+    return await failedPlannerReferenceResult(input, prepared, invocation.eventIds);
+  }
   const artifactPayload = {
     schemaVersion: "investigation-planner-handoff.v1",
     runId: input.runId,
@@ -134,6 +139,15 @@ export async function runInvestigationPlannerWorkflow(
     investigationId: input.investigationId,
     objectiveRefs: [...output.objectiveRefs],
     gapIds: [...output.gapIds],
+    prioritizedGaps: output.prioritizedGaps.map((gap) => ({
+      gapId: gap.gapId,
+      priority: gap.priority,
+      linkedEvidenceRefs: [...gap.linkedEvidenceRefs],
+      timelineRefs: [...gap.timelineRefs],
+      contradictionRefs: [...gap.contradictionRefs],
+      rationale: gap.rationale,
+      dependencyRefs: [...gap.dependencyRefs]
+    })),
     taskCandidates: output.taskCandidates.map((candidate) => ({
       taskId: candidate.taskId,
       summary: candidate.summary,
@@ -142,6 +156,7 @@ export async function runInvestigationPlannerWorkflow(
       approvalRequirements: [...candidate.approvalRequirements]
     })),
     prrDraftCandidates: [...output.prrDraftCandidates],
+    safeNextSteps: [...output.safeNextSteps],
     sourceEventIds: [...sourceEventIds],
     contextPackRefs: prepared.contextPackRefs,
     promptArtifactHash: prepared.promptArtifact.manifest.inputArtifactHash
@@ -152,7 +167,7 @@ export async function runInvestigationPlannerWorkflow(
   let draftsArtifact: Awaited<ReturnType<typeof writeSpecialistDerivativeArtifact>>;
   try {
     planArtifact = await writeSpecialistDerivativeArtifact({
-      derivativeStore: handoffStore,
+      derivativeStore: materialStore,
       artifactKind: "investigation-plan-artifact",
       payload: {
         ...artifactPayload,
@@ -166,7 +181,7 @@ export async function runInvestigationPlannerWorkflow(
       planArtifact.artifactHash
     ));
     tasksArtifact = await writeSpecialistDerivativeArtifact({
-      derivativeStore: handoffStore,
+      derivativeStore: materialStore,
       artifactKind: "task-suggestion-bundle",
       payload: {
         ...artifactPayload,
@@ -180,7 +195,7 @@ export async function runInvestigationPlannerWorkflow(
       tasksArtifact.artifactHash
     ));
     draftsArtifact = await writeSpecialistDerivativeArtifact({
-      derivativeStore: handoffStore,
+      derivativeStore: materialStore,
       artifactKind: "draft-prr-candidate-bundle",
       payload: {
         ...artifactPayload,
@@ -432,6 +447,14 @@ function requireHandoffStore(input: RunInvestigationPlannerWorkflowInput): Speci
   return store;
 }
 
+function requireMaterialStore(input: RunInvestigationPlannerWorkflowInput): SpecialistHandoffManifestStore {
+  const store = input.derivativeStore as SpecialistHandoffManifestStore | undefined;
+  if (store === undefined || typeof store.put !== "function" || typeof store.get !== "function") {
+    throw new Error("A readable investigation derivative material store is required before model invocation.");
+  }
+  return store;
+}
+
 async function verifiedSourceEventIds(
   input: RunInvestigationPlannerWorkflowInput,
   contextPackRefs: readonly ContextPackRef[]
@@ -528,17 +551,26 @@ async function recordDurableHandoff(input: {
   readonly material: SpecialistHandoffMaterial;
   readonly eventIds: readonly string[];
 }): Promise<RunInvestigationPlannerWorkflowResult> {
+  const materialStore = requireMaterialStore(input.input);
   let finalOutput: Awaited<ReturnType<typeof appendSpecialistFinalOutputStep>>;
   try {
+    for (const artifact of input.material.outputArtifacts) {
+      await copyExactArtifact(materialStore, input.handoffStore, artifact.artifactHash);
+    }
     finalOutput = await appendSpecialistFinalOutputStep({
       ledger: input.input.ledger,
-      materialStore: input.handoffStore,
+      materialStore,
       actor: input.input.actor,
       now: input.input.now,
       runId: input.input.runId,
       taskId: input.input.taskId,
       handoffMaterial: input.material
     });
+    await copyExactArtifact(
+      materialStore,
+      input.handoffStore,
+      finalOutput.payload.handoffMaterialArtifactHash as `sha256:${string}`
+    );
   } catch {
     return await finalOutputStorageFailureResult(input);
   }
@@ -571,6 +603,18 @@ async function recordDurableHandoff(input: {
     ]),
     readback: recorded.readback
   });
+}
+
+async function copyExactArtifact(
+  source: SpecialistHandoffManifestStore,
+  target: SpecialistHandoffManifestStore,
+  contentHash: `sha256:${string}`
+): Promise<void> {
+  const bytes = await source.get(contentHash);
+  if (!Buffer.isBuffer(bytes) || hashBytes(bytes) !== contentHash) {
+    throw new Error("Investigation handoff material source is unavailable or mismatched.");
+  }
+  if (source !== target) await writeAndReadExact(target, contentHash, Buffer.from(bytes));
 }
 
 async function finalOutputStorageFailureResult(input: {
@@ -683,6 +727,126 @@ function parseModelOutput(outputText: string) {
   } catch {
     return undefined;
   }
+}
+
+function investigationPlannerReferencesAreExact(
+  input: RunInvestigationPlannerWorkflowInput,
+  prepared: PreparedSpecialistRun,
+  output: NonNullable<ReturnType<typeof parseModelOutput>>
+): boolean {
+  const resolved = prepared.promptArtifact.resolvedContextPacks ?? [];
+  const contextRefs = new Set<string>([input.taskId, input.investigationId ?? ""]);
+  for (const pack of resolved) collectContextStrings(pack.payload, contextRefs);
+  const evidenceRefs = contextFieldValues(resolved, "evidence-summary.v1", "evidenceId");
+  const timelineRefs = contextFieldValues(resolved, "timeline-draft-summary.v1", "itemId");
+  const contradictionRefs = contextFieldValues(resolved, "contradiction-candidate-summary.v1", "candidateId");
+  const objectiveRefs = new Set(output.objectiveRefs);
+  const gapIds = new Set(output.gapIds);
+  if (objectiveRefs.size !== output.objectiveRefs.length || objectiveRefs.size === 0 ||
+    [...objectiveRefs].some((ref) => !contextRefs.has(ref)) ||
+    gapIds.size !== output.gapIds.length || gapIds.size === 0 ||
+    output.prioritizedGaps.length !== gapIds.size ||
+    new Set(output.prioritizedGaps.map((gap) => gap.gapId)).size !== gapIds.size) {
+    return false;
+  }
+  const linkedRefs = new Set([...contextRefs, ...objectiveRefs, ...gapIds]);
+  for (const gap of output.prioritizedGaps) {
+    if (!gapIds.has(gap.gapId) ||
+      gap.linkedEvidenceRefs.some((ref) => !evidenceRefs.has(ref)) ||
+      gap.timelineRefs.some((ref) => !timelineRefs.has(ref)) ||
+      gap.contradictionRefs.some((ref) => !contradictionRefs.has(ref)) ||
+      gap.dependencyRefs.some((ref) => !linkedRefs.has(ref)) ||
+      gap.linkedEvidenceRefs.length + gap.timelineRefs.length + gap.contradictionRefs.length === 0) {
+      return false;
+    }
+  }
+  return output.taskCandidates.every((candidate) =>
+    candidate.linkedRefs.length > 0 && candidate.linkedRefs.every((ref) => linkedRefs.has(ref))
+  );
+}
+
+function contextFieldValues(
+  resolved: readonly NonNullable<PromptArtifactEnvelope["resolvedContextPacks"]>[number][],
+  contextPackId: string,
+  field: string
+): ReadonlySet<string> {
+  const values = new Set<string>();
+  for (const pack of resolved) {
+    if (pack.ref.contextPackId === contextPackId) collectFieldStrings(pack.payload, field, values);
+  }
+  return values;
+}
+
+function collectContextStrings(value: unknown, output: Set<string>): void {
+  if (typeof value === "string") {
+    output.add(value);
+    return;
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) collectContextStrings(item, output);
+    return;
+  }
+  if (value !== null && typeof value === "object") {
+    for (const item of Object.values(value)) collectContextStrings(item, output);
+  }
+}
+
+function collectFieldStrings(value: unknown, field: string, output: Set<string>): void {
+  if (Array.isArray(value)) {
+    for (const item of value) collectFieldStrings(item, field, output);
+    return;
+  }
+  if (value === null || typeof value !== "object") return;
+  for (const [key, item] of Object.entries(value)) {
+    if (key === field && typeof item === "string") output.add(item);
+    collectFieldStrings(item, field, output);
+  }
+}
+
+async function failedPlannerReferenceResult(
+  input: RunInvestigationPlannerWorkflowInput,
+  prepared: PreparedSpecialistRun,
+  invocationEventIds: readonly string[]
+): Promise<RunInvestigationPlannerWorkflowResult> {
+  const failed = await appendSpecialistFailure({
+    ledger: input.ledger,
+    actor: input.actor,
+    now: input.now,
+    runId: input.runId,
+    category: "model-output-invalid",
+    message: "Investigation planner output references were not bound to the selected resolved context.",
+    retryable: true,
+    allowedActions: ["retry with exact selected investigation context references"],
+    ...(invocationEventIds.at(-1) === undefined ? {} : { causationId: invocationEventIds.at(-1) })
+  });
+  const handoff = parseLegacySpecialistWorkflowHandoff({
+    schemaVersion: "agent-specialist-handoff.v1",
+    runType: "investigation-planner",
+    runId: input.runId,
+    taskId: input.taskId,
+    residentAgentId: "agent_default",
+    generatedAt: input.now(),
+    status: "failed",
+    safeSummary: "Investigation planning returned references outside the selected context.",
+    contextPackRefs: prepared.contextPackRefs,
+    promptArtifactHash: prepared.promptArtifact.manifest.inputArtifactHash,
+    outputArtifacts: [],
+    toolRequestIds: [],
+    approvalRequirements: [],
+    nextSafeActions: [{
+      actionId: `action_${input.runId}_retry_context_refs`,
+      label: "Retry with exact selected investigation references",
+      kind: "retry",
+      effect: "none"
+    }],
+    failure: {
+      category: "model-output-invalid",
+      code: "investigation-planner-reference-binding-invalid",
+      safeSummary: "Planner references did not match the selected resolved context.",
+      retryable: true
+    }
+  });
+  return resultWithLegacyHandoff(handoff, [...invocationEventIds, failed.id]);
 }
 
 async function failedModelOutputResult(
