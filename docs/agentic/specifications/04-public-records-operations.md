@@ -1,6 +1,6 @@
 # Public Records Operations Workspace
 
-Status: approved.
+Status: implemented product-behavior reference.
 
 ## Desired Behavior
 
