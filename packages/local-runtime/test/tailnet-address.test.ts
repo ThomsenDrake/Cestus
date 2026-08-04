@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isTailnetAddress } from "../src/tailnet-address.js";
+import { ipAddressesEquivalent, isTailnetAddress } from "../src/tailnet-address.js";
 
 describe("isTailnetAddress", () => {
   it.each([
@@ -23,5 +23,15 @@ describe("isTailnetAddress", () => {
     "not-an-ip"
   ])("rejects wildcard, loopback, LAN, public, or out-of-range address %s", (host) => {
     expect(isTailnetAddress(host)).toBe(false);
+  });
+
+  it("matches equivalent IPv6 interface address representations but not a distinct address", () => {
+    expect(ipAddressesEquivalent("FD7A:115C:A1E0:0000:0000:0000:0000:0001", "fd7a:115c:a1e0::1")).toBe(true);
+    expect(ipAddressesEquivalent("fd7a:115c:a1e0::1", "fd7a:115c:a1e0::2")).toBe(false);
+  });
+
+  it("keeps IPv4 interface address comparison exact", () => {
+    expect(ipAddressesEquivalent("100.99.12.34", "100.99.12.34")).toBe(true);
+    expect(ipAddressesEquivalent("100.99.12.34", "100.99.12.35")).toBe(false);
   });
 });
