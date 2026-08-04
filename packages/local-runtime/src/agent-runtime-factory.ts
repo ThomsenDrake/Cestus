@@ -202,6 +202,46 @@ export async function bindMountedSourcedInvestigationHandoffForLocalAgentRuntime
   });
 }
 
+/** Issues one exact local advisory handoff; it grants no send or legal authority. */
+export async function bindMountedAdvisoryHandoffForLocalAgentRuntimeFactory(input:
+  | {
+      readonly wakeRuntime: WakeSupervisorRuntime;
+      readonly taskId: string;
+      readonly runId: string;
+      readonly runType: "investigation-planner";
+      readonly investigationId: string;
+    }
+  | {
+      readonly wakeRuntime: WakeSupervisorRuntime;
+      readonly taskId: string;
+      readonly runId: string;
+      readonly runType: "prr-negotiation";
+    }
+): Promise<FactoryPortableMountedAgentHandoffProducerResultV1> {
+  const operation = issueMountedArtifactAuthorityOperationForFactory(input.wakeRuntime);
+  const attemptId = buildTaskAttemptId({
+    taskId: input.taskId,
+    runType: input.runType,
+    retryGeneration: 0
+  });
+  return input.runType === "investigation-planner"
+    ? await createPortableMountedAgentArtifactStoreProducer(operation).bind({
+        taskId: input.taskId,
+        attemptId,
+        approvedRunId: input.runId,
+        runType: input.runType,
+        retryGeneration: 0,
+        investigationId: input.investigationId
+      })
+    : await createPortableMountedAgentArtifactStoreProducer(operation).bind({
+        taskId: input.taskId,
+        attemptId,
+        approvedRunId: input.runId,
+        runType: input.runType,
+        retryGeneration: 0
+      });
+}
+
 /** Keeps supervised handoff issuance and controller consumption inside the authorized factory role. */
 export async function acquireMountedEvidenceTriageHandoffForLocalAgentRuntimeFactory(input: {
   readonly wakeRuntime: WakeSupervisorRuntime;

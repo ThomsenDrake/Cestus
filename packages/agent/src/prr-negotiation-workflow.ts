@@ -24,6 +24,7 @@ import {
   appendSpecialistFailure,
   assertSpecialistDerivativeStoreAvailable,
   assertSpecialistStepNotRecorded,
+  governanceLockIsActive,
   invokeSpecialistModel,
   normalizeSpecialistJsonValue,
   prepareSpecialistRun,
@@ -87,7 +88,15 @@ export async function runPrrNegotiationWorkflow(
       associatedPrrRequestId: input.prrRequestId
     })
   };
-  const prepared = await prepareSpecialistRun(runnerInput, "prr-negotiation");
+  let prepared: Awaited<ReturnType<typeof prepareSpecialistRun>>;
+  try {
+    prepared = await prepareSpecialistRun(runnerInput, "prr-negotiation");
+  } catch {
+    return blockedPrrContextHandoff(input, []);
+  }
+  if (governanceLockIsActive(prepared.contextPackRefs) || hasStalePrrAdvisoryContext(prepared.contextPackRefs)) {
+    return blockedPrrContextHandoff(input, prepared.contextPackRefs);
+  }
   const invocationId = `inv_${input.runId}_prr_negotiation`;
   const invocation = await invokeSpecialistModel(runnerInput, prepared, invocationId);
   const output = parseModelOutput(invocation.outputText);
@@ -103,7 +112,15 @@ export async function runPrrNegotiationWorkflow(
     correspondenceId: input.correspondenceId,
     domainSourceBindings: prrAdvisoryDomainSourceBindings(followUpPreflight),
     draftSummary: output.draftSummary,
-    citedRuleRefs: [...output.citedRuleRefs]
+    citedRuleRefs: [...output.citedRuleRefs],
+    jurisdictionRefs: [...output.jurisdictionRefs],
+    deadlineRefs: [...output.deadlineRefs],
+    deadlineNotes: [...output.deadlineNotes],
+    narrowingOptions: [...output.narrowingOptions],
+    feeOptions: [...output.feeOptions],
+    feeOrStallingSignals: [...output.feeOrStallingSignals],
+    unresolvedQuestions: [...output.unresolvedQuestions],
+    legalPressureNotes: [...output.legalPressureNotes]
   };
   let draftArtifact: Awaited<ReturnType<typeof writeSpecialistDerivativeArtifact>>;
   try {
@@ -194,6 +211,42 @@ export async function runPrrNegotiationWorkflow(
       recorded.taskStatus.id
     ])
   });
+}
+
+function blockedPrrContextHandoff(
+  input: RunPrrNegotiationWorkflowInput,
+  contextPackRefs: readonly import("./context-packs.js").ContextPackRef[]
+): RunPrrNegotiationWorkflowResult {
+  const handoff = parseLegacySpecialistWorkflowHandoff({
+    schemaVersion: "agent-specialist-handoff.v1",
+    runType: "prr-negotiation",
+    runId: input.runId,
+    taskId: input.taskId,
+    residentAgentId: "agent_default",
+    generatedAt: input.now(),
+    status: "blocked",
+    safeSummary: "PRR request context, jurisdiction, evidence, or governance posture is unavailable or stale.",
+    contextPackRefs,
+    outputArtifacts: [],
+    toolRequestIds: [],
+    approvalRequirements: [],
+    nextSafeActions: [{
+      actionId: `action_${input.runId}_inspect_context`,
+      label: "Inspect current PRR request, jurisdiction, evidence, and governance context",
+      kind: "inspect",
+      effect: "none"
+    }]
+  });
+  return Object.freeze({ handoff, eventIds: Object.freeze([]) });
+}
+
+function hasStalePrrAdvisoryContext(
+  contextPackRefs: readonly import("./context-packs.js").ContextPackRef[]
+): boolean {
+  return contextPackRefs.some((ref) =>
+    ["prr-read-model.v1", "jurisdiction-pack-summary.v1", "evidence-summary.v1"].includes(ref.contextPackId) &&
+    (ref.stalenessInputs ?? []).some((input) => /(?:^|[-_])(?:stale|missing|unavailable)(?:$|[-_])/i.test(input.kind))
+  );
 }
 
 async function resumePrrNegotiationDraftHandoff(

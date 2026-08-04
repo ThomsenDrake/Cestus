@@ -109,9 +109,14 @@ describe("PRR negotiation workflow", () => {
         draftSummary: "Public instructions say staff should mail a follow-up only after human review.",
         requestFollowUpApproval: true,
         citedRuleRefs: ["rule_foia_deadline_001"],
-        deadlineNotes: [],
-        feeOrStallingSignals: [],
-        unresolvedQuestions: []
+        jurisdictionRefs: ["jurisdiction_us_federal_foia_001"],
+        deadlineRefs: ["deadline_prr_req_001"],
+        deadlineNotes: ["Review the cited response deadline before proposing a follow-up."],
+        narrowingOptions: ["Narrow the date range while preserving the requested contract records."],
+        feeOptions: ["Ask for an itemized fee estimate before changing request scope."],
+        feeOrStallingSignals: ["The current projection records no confirmed stalling finding."],
+        unresolvedQuestions: ["Has the agency identified a production schedule?"],
+        legalPressureNotes: ["Keep any escalation analysis locked for human legal review."]
       })
     });
     const runtime = createAgentRuntime({ ledger, actor, now, providers: [provider] });
@@ -188,7 +193,15 @@ describe("PRR negotiation workflow", () => {
       schemaVersion: "prr-negotiation-handoff.v1",
       artifactKind: "correspondence-draft-artifact",
       prrRequestId: "prr_req_001",
-      correspondenceId: "corr_prr_001"
+      correspondenceId: "corr_prr_001",
+      jurisdictionRefs: ["jurisdiction_us_federal_foia_001"],
+      deadlineRefs: ["deadline_prr_req_001"],
+      deadlineNotes: ["Review the cited response deadline before proposing a follow-up."],
+      narrowingOptions: ["Narrow the date range while preserving the requested contract records."],
+      feeOptions: ["Ask for an itemized fee estimate before changing request scope."],
+      feeOrStallingSignals: ["The current projection records no confirmed stalling finding."],
+      unresolvedQuestions: ["Has the agency identified a production schedule?"],
+      legalPressureNotes: ["Keep any escalation analysis locked for human legal review."]
     });
     expect(draftPayload.domainSourceBindings).toEqual({
       normalizedInputHash: expectedPreflightPreview.normalizedInputHash,
@@ -843,6 +856,79 @@ describe("PRR negotiation workflow", () => {
       followUpApprovalPreview: followUpApprovalPreview()
     })).rejects.toThrow(/provider readiness/i);
 
+    expect((await ledger.readAll()).map((event) => event.type)).not.toContain("agent.model-invocation.requested");
+  });
+
+  it("returns a browser-safe blocked handoff when the jurisdiction context is unavailable", async () => {
+    const ledger = new InMemoryEventLedger();
+    const provider = new FakeModelProvider({
+      providerId: "provider_fake_local",
+      modelFamilies: ["fake-local"],
+      responseText: JSON.stringify({
+        draftSummary: "Draft remains local for review.",
+        requestFollowUpApproval: false,
+        citedRuleRefs: [],
+        deadlineNotes: [],
+        feeOrStallingSignals: [],
+        unresolvedQuestions: []
+      })
+    });
+    const runtime = createAgentRuntime({ ledger, actor, now, providers: [provider] });
+    await runtime.initializeDefaultIdentity({ workspaceId: "ws_prr" });
+    await runtime.createTask({
+      taskId: "task_prr_001",
+      title: "Review PRR deadline",
+      requestedBy: "actor_investigator",
+      priority: "normal"
+    });
+    await runtime.startRun({
+      runId: "run_prr_001",
+      taskId: "task_prr_001",
+      runType: "prr-negotiation",
+      scope: { kind: "workspace", refs: ["ws_prr"] }
+    });
+    const store = createDerivativeStore();
+
+    const result = await runPrrNegotiationWorkflow({
+      ledger,
+      actor,
+      now,
+      contextPacks: createWorkflowContextPacks([
+        "prr-read-model.v1",
+        "governance-locks.v1",
+        "evidence-summary.v1",
+        "agent-memory-summary.v1",
+        "task-run-history.v1",
+        "workspace-runtime-status.v1"
+      ], []),
+      runtime,
+      providerReadiness: providerReadinessDto("works-locally"),
+      runId: "run_prr_001",
+      taskId: "task_prr_001",
+      providerId: "provider_fake_local",
+      modelFamily: "fake-local",
+      credentialRef: {
+        credentialRefId: "agent_credref_fake_local",
+        providerId: "provider_fake_local",
+        kind: "local-no-secret"
+      },
+      derivativeStore: store,
+      handoffStore: store,
+      mountedPromptReadbackWitness: Object.freeze({}) as never,
+      handoffAuthorityWitness: Object.freeze({}) as never,
+      prrRequestId: "prr_req_001",
+      correspondenceId: "corr_prr_001",
+      jurisdictionRuleRefs: [],
+      followUpApprovalPreview: followUpApprovalPreview()
+    });
+
+    expect(result.handoff).toMatchObject({
+      status: "blocked",
+      safeSummary: expect.stringMatching(/jurisdiction|request context/i),
+      outputArtifacts: [],
+      toolRequestIds: []
+    });
+    expect(JSON.stringify(result.handoff)).not.toMatch(/stack|exception|provider.*error/i);
     expect((await ledger.readAll()).map((event) => event.type)).not.toContain("agent.model-invocation.requested");
   });
 
