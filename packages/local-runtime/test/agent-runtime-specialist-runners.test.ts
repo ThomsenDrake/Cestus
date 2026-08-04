@@ -326,6 +326,71 @@ describe("untrusted specialist runner", () => {
     expect(JSON.stringify(cockpit)).not.toMatch(/mounted resident sourced evidence bytes|authorization:|provider body|private mailbox body/i);
   }, mountedSourcedMultiWorkflowTimeoutMs);
 
+  it("omits the report preview when its canonical manifest packet is missing despite an intact material copy", async () => {
+    const fixture = await mountedSourcedResidentFactoryFixture({ canonicalDatedFacts: true });
+    const response = await runMountedSourcedResidentRequest(fixture, {
+      taskId: fixture.reportTaskId,
+      runId: fixture.reportRunId,
+      runType: "report-builder",
+      evidenceIds: [fixture.evidenceId]
+    });
+    expect(response.status, response.body).toBe(200);
+    const packetHash = reportPacketHashFromResponse(response.body);
+    const mounted = fixture.handle.mountedWorkspace;
+    if (mounted === undefined) throw new Error("mounted report canonical replay fixture is unavailable");
+    const manifestRoot = join(mounted.paths.derivativeRoot, "specialist-handoff-manifest");
+    const materialRoot = join(mounted.paths.derivativeRoot, "specialist-handoff-material");
+    await expect(new FileBlobStore(materialRoot).get(packetHash)).resolves.toBeInstanceOf(Buffer);
+    await expect(new FileBlobStore(manifestRoot).get(packetHash)).resolves.toBeInstanceOf(Buffer);
+    unlinkSync(mountedArtifactPath(manifestRoot, packetHash));
+
+    const restarted = await restartMountedSourcedFixture(fixture);
+    const cockpit = await handleAgentHttpRoute({
+      request: { method: "GET", url: "/api/agent/cockpit" },
+      handle: restarted,
+      actor: { id: "actor_report_manifest_missing", kind: "system", label: "Report Manifest Missing" },
+      now: fixture.now,
+      agentRuntimeFactory: mountedResidentTaskLocalAgentRuntimeFactory
+    });
+    expect(cockpit?.status, cockpit?.body).toBe(200);
+    expect(JSON.parse(cockpit!.body).selectedRun).not.toHaveProperty("reportPreview");
+  }, mountedSourcedMultiWorkflowTimeoutMs);
+
+  it("replays the report preview from its canonical manifest packet when the material copy is missing", async () => {
+    const fixture = await mountedSourcedResidentFactoryFixture({ canonicalDatedFacts: true });
+    const response = await runMountedSourcedResidentRequest(fixture, {
+      taskId: fixture.reportTaskId,
+      runId: fixture.reportRunId,
+      runType: "report-builder",
+      evidenceIds: [fixture.evidenceId]
+    });
+    expect(response.status, response.body).toBe(200);
+    const packetHash = reportPacketHashFromResponse(response.body);
+    const mounted = fixture.handle.mountedWorkspace;
+    if (mounted === undefined) throw new Error("mounted report material replay fixture is unavailable");
+    const manifestRoot = join(mounted.paths.derivativeRoot, "specialist-handoff-manifest");
+    const materialRoot = join(mounted.paths.derivativeRoot, "specialist-handoff-material");
+    await expect(new FileBlobStore(manifestRoot).get(packetHash)).resolves.toBeInstanceOf(Buffer);
+    await expect(new FileBlobStore(materialRoot).get(packetHash)).resolves.toBeInstanceOf(Buffer);
+    unlinkSync(mountedArtifactPath(materialRoot, packetHash));
+
+    const restarted = await restartMountedSourcedFixture(fixture);
+    const cockpit = await handleAgentHttpRoute({
+      request: { method: "GET", url: "/api/agent/cockpit" },
+      handle: restarted,
+      actor: { id: "actor_report_material_missing", kind: "system", label: "Report Material Missing" },
+      now: fixture.now,
+      agentRuntimeFactory: mountedResidentTaskLocalAgentRuntimeFactory
+    });
+    expect(cockpit?.status, cockpit?.body).toBe(200);
+    expect(JSON.parse(cockpit!.body).selectedRun?.reportPreview).toMatchObject({
+      schemaVersion: "agent-report-public-safe-preview.v1",
+      mode: "preview-only",
+      includedEvidenceRefs: [],
+      excludedEvidence: [{ evidenceRef: fixture.evidenceId }]
+    });
+  }, mountedSourcedMultiWorkflowTimeoutMs);
+
   it("reaches planner and PRR advice through the production mounted resident HTTP caller", async () => {
     const plannerFixture = await mountedSourcedResidentFactoryFixture();
     const prrFixture = await mountedSourcedResidentFactoryFixture();
@@ -1931,6 +1996,44 @@ async function runMountedAdvisoryResidentRequest(
 function mountedArtifactPath(root: string, contentHash: `sha256:${string}`): string {
   const digest = contentHash.slice("sha256:".length);
   return join(root, "sha256", digest.slice(0, 2), digest);
+}
+
+function reportPacketHashFromResponse(body: string): `sha256:${string}` {
+  const parsed = JSON.parse(body) as {
+    readonly recorded?: { readonly manifest?: {
+      readonly outputArtifacts?: readonly { readonly artifactHash?: unknown }[];
+    } };
+  };
+  const artifactHash = parsed.recorded?.manifest?.outputArtifacts?.[0]?.artifactHash;
+  if (typeof artifactHash !== "string" || !/^sha256:[a-f0-9]{64}$/.test(artifactHash)) {
+    throw new Error("mounted report response packet hash is unavailable");
+  }
+  return artifactHash as `sha256:${string}`;
+}
+
+async function restartMountedSourcedFixture(fixture: {
+  readonly handle: LocalRuntimeHandle;
+  readonly supervision: ResidentSupervisionRuntime;
+  readonly workspaceRoot: string;
+  readonly now: () => string;
+}): Promise<LocalRuntimeHandle> {
+  await fixture.supervision.stop();
+  mountedSupervisions.splice(mountedSupervisions.indexOf(fixture.supervision), 1);
+  fixture.handle.close();
+  mountedHandles.splice(mountedHandles.indexOf(fixture.handle), 1);
+  const restarted = createSqlitePrrRuntime({
+    config: resolveLocalRuntimeConfig({
+      cwd: fixture.workspaceRoot,
+      env: {
+        CESTUS_LOCAL_STORAGE: "portable-workspace",
+        CESTUS_WORKSPACE_ROOT: fixture.workspaceRoot
+      }
+    }),
+    actor: { id: "actor_report_restart_helper", kind: "system", label: "Report Restart Helper" },
+    now: fixture.now
+  });
+  mountedHandles.push(restarted);
+  return restarted;
 }
 
 function createMountedSourcedCancellationController(

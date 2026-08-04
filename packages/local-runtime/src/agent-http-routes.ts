@@ -1,4 +1,5 @@
 import { Buffer } from "node:buffer";
+import { createHash } from "node:crypto";
 import { join } from "node:path";
 import {
   agentApprovalDecisionResultDtoSchema,
@@ -786,7 +787,7 @@ async function projectMountedCockpitReportPreviews(
 }[]> {
   const mounted = handle.mountedWorkspace;
   if (mounted === undefined || !inspectPortableWorkspaceCurrentness(handle).ok) return Object.freeze([]);
-  const store = new FileBlobStore(join(mounted.paths.derivativeRoot, "specialist-handoff-material"));
+  const store = new FileBlobStore(join(mounted.paths.derivativeRoot, "specialist-handoff-manifest"));
   const previews: Array<{
     readonly runId: string;
     readonly taskId?: string;
@@ -798,14 +799,21 @@ async function projectMountedCockpitReportPreviews(
       artifact.artifactKind === "export-preview" && artifact.schemaId === "report-builder-handoff.v1"
     );
     if (reportArtifacts.length !== 1) continue;
+    const reportArtifact = reportArtifacts[0]!;
+    if (reportArtifact.artifactId !== `artifact_${handoff.runId}_export_preview`) continue;
     requirePortableWorkspaceCurrent(handle);
     let bytes: Buffer;
     try {
-      bytes = await store.get(reportArtifacts[0]!.artifactHash);
+      bytes = await store.get(reportArtifact.artifactHash);
     } catch {
+      if (!inspectPortableWorkspaceCurrentness(handle).ok) {
+        throw new Error("Portable workspace became unavailable during report preview replay.");
+      }
       continue;
     }
     requirePortableWorkspaceCurrent(handle);
+    const actualHash = `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
+    if (actualHash !== reportArtifact.artifactHash) continue;
     let packet;
     try {
       packet = parseLocalReportPacket(JSON.parse(bytes.toString("utf8")) as unknown);
@@ -813,6 +821,7 @@ async function projectMountedCockpitReportPreviews(
       continue;
     }
     if (packet.runId !== handoff.runId || packet.taskId !== handoff.taskId) continue;
+    requirePortableWorkspaceCurrent(handle);
     previews.push(Object.freeze({
       runId: handoff.runId,
       ...(handoff.taskId === undefined ? {} : { taskId: handoff.taskId }),
