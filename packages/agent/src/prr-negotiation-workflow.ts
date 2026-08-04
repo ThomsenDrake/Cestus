@@ -29,7 +29,6 @@ import {
   normalizeSpecialistJsonValue,
   prepareSpecialistRun,
   recordAuthorityBoundSpecialistHandoff,
-  serializeSpecialistLocalArtifact,
   writeSpecialistDerivativeArtifact,
   type SpecialistHandoffManifestStore,
   type SpecialistRunnerBaseInput
@@ -94,13 +93,20 @@ export async function runPrrNegotiationWorkflow(
   } catch {
     return blockedPrrContextHandoff(input, []);
   }
-  if (governanceLockIsActive(prepared.contextPackRefs) || hasStalePrrAdvisoryContext(prepared.contextPackRefs)) {
+  if (governanceLockIsActive(prepared.contextPackRefs, prepared.promptArtifact.resolvedContextPacks) ||
+    hasStalePrrAdvisoryContext(prepared.contextPackRefs)) {
+    return blockedPrrContextHandoff(input, prepared.contextPackRefs);
+  }
+  if (!trustedPrrReferencesAreCurrent(input, prepared)) {
     return blockedPrrContextHandoff(input, prepared.contextPackRefs);
   }
   const invocationId = `inv_${input.runId}_prr_negotiation`;
   const invocation = await invokeSpecialistModel(runnerInput, prepared, invocationId);
   const output = parseModelOutput(invocation.outputText);
   if (output === undefined) {
+    return await failedModelOutputResult(input, prepared, invocation.eventIds);
+  }
+  if (!prrNegotiationReferencesAreExact(input, prepared, output)) {
     return await failedModelOutputResult(input, prepared, invocation.eventIds);
   }
   const draftPayload = {
@@ -140,7 +146,8 @@ export async function runPrrNegotiationWorkflow(
     outputArtifactHashes: [draftHash]
   });
   try {
-    await persistPrrNegotiationDraftArtifact(handoffStore, draftPayload, draftArtifact);
+    const materialStore = requirePrrNegotiationMaterialStore(input);
+    await persistPrrNegotiationDraftArtifact(materialStore, handoffStore, draftArtifact);
   } catch {
     return await failedDraftHandoffStorageResult(input, prepared, [
       ...invocation.eventIds,
@@ -395,17 +402,36 @@ async function appendPrrNegotiationDraftFinalOutput(
   handoffStore: SpecialistHandoffManifestStore,
   handoffMaterial: ReturnType<typeof buildSpecialistHandoffMaterial>
 ) {
+  const materialStore = requirePrrNegotiationMaterialStore(input);
+  if (materialStore !== handoffStore) {
+    await seedPrrNegotiationHandoffReferences(materialStore, prepared, handoffMaterial.outputArtifacts);
+  }
   await seedPrrNegotiationHandoffReferences(handoffStore, prepared, handoffMaterial.outputArtifacts);
   const finalOutput = await appendSpecialistFinalOutputStep({
     ledger: input.ledger,
-    materialStore: handoffStore,
+    materialStore,
     actor: input.actor,
     now: input.now,
     runId: input.runId,
     taskId: input.taskId,
     handoffMaterial
   });
+  await copyPrrArtifactExact(
+    materialStore,
+    handoffStore,
+    finalOutput.payload.handoffMaterialArtifactHash as `sha256:${string}`
+  );
   return Object.freeze({ handoffStore, finalOutput });
+}
+
+function requirePrrNegotiationMaterialStore(
+  input: RunPrrNegotiationWorkflowInput
+): SpecialistHandoffManifestStore {
+  const store = input.derivativeStore as SpecialistHandoffManifestStore | undefined;
+  if (store === undefined || typeof store.put !== "function" || typeof store.get !== "function") {
+    throw new Error("PRR negotiation requires the readable mounted material store before provider invocation.");
+  }
+  return store;
 }
 
 function requirePrrNegotiationHandoffStore(
@@ -513,18 +539,26 @@ function waitingForApprovalPrrHandoff(
 }
 
 async function persistPrrNegotiationDraftArtifact(
-  store: SpecialistHandoffManifestStore,
-  payload: unknown,
+  materialStore: SpecialistHandoffManifestStore,
+  handoffStore: SpecialistHandoffManifestStore,
   artifact: Awaited<ReturnType<typeof writeSpecialistDerivativeArtifact>>
 ): Promise<void> {
-  const bytes = serializeSpecialistLocalArtifact(payload);
-  const stored = await store.put(bytes);
-  if (stored.contentHash !== artifact.artifactHash || stored.sizeBytes !== artifact.sizeBytes) {
-    throw new Error("PRR negotiation mounted handoff store did not bind the local draft bytes.");
+  await copyPrrArtifactExact(materialStore, handoffStore, artifact.artifactHash, artifact.sizeBytes);
+}
+
+async function copyPrrArtifactExact(
+  source: SpecialistHandoffManifestStore,
+  target: SpecialistHandoffManifestStore,
+  artifactHash: `sha256:${string}`,
+  expectedSize?: number
+): Promise<void> {
+  const bytes = await source.get(artifactHash);
+  if (!Buffer.isBuffer(bytes) || hashBytes(bytes) !== artifactHash ||
+    (expectedSize !== undefined && bytes.byteLength !== expectedSize)) {
+    throw new Error("PRR negotiation mounted material bytes are unavailable or mismatched.");
   }
-  const readback = await store.get(artifact.artifactHash);
-  if (!Buffer.isBuffer(readback) || !readback.equals(bytes)) {
-    throw new Error("PRR negotiation mounted handoff draft readback failed.");
+  if (source !== target) {
+    await assertStoreBindsHash(target, artifactHash, Buffer.from(bytes), "copied material artifact");
   }
 }
 
@@ -600,6 +634,61 @@ function parseModelOutput(outputText: string) {
     return output.runType === "prr-negotiation" ? output.value : undefined;
   } catch {
     return undefined;
+  }
+}
+
+function trustedPrrReferencesAreCurrent(
+  input: RunPrrNegotiationWorkflowInput,
+  prepared: Awaited<ReturnType<typeof prepareSpecialistRun>>
+): boolean {
+  const trusted = input.jurisdictionRuleRefs;
+  if (trusted.length === 0 || new Set(trusted).size !== trusted.length) return false;
+  const context = prrResolvedContextStrings(prepared);
+  return trusted.every((ref) => context.has(ref));
+}
+
+function prrNegotiationReferencesAreExact(
+  input: RunPrrNegotiationWorkflowInput,
+  prepared: Awaited<ReturnType<typeof prepareSpecialistRun>>,
+  output: NonNullable<ReturnType<typeof parseModelOutput>>
+): boolean {
+  const context = prrResolvedContextStrings(prepared);
+  const trustedRules = new Set(input.jurisdictionRuleRefs);
+  return output.citedRuleRefs.length > 0 &&
+    new Set(output.citedRuleRefs).size === output.citedRuleRefs.length &&
+    output.citedRuleRefs.every((ref) => trustedRules.has(ref) && context.has(ref)) &&
+    output.jurisdictionRefs.length > 0 &&
+    new Set(output.jurisdictionRefs).size === output.jurisdictionRefs.length &&
+    output.jurisdictionRefs.every((ref) => context.has(ref)) &&
+    output.deadlineRefs.length > 0 &&
+    new Set(output.deadlineRefs).size === output.deadlineRefs.length &&
+    output.deadlineRefs.every((ref) => context.has(ref));
+}
+
+function prrResolvedContextStrings(
+  prepared: Awaited<ReturnType<typeof prepareSpecialistRun>>
+): ReadonlySet<string> {
+  const values = new Set<string>();
+  for (const pack of prepared.promptArtifact.resolvedContextPacks ?? []) {
+    collectPrrContextStrings(pack.payload, values);
+    for (const ref of pack.ref.provenanceRefs) values.add(ref);
+    for (const ref of pack.ref.sourceEventIds ?? []) values.add(ref);
+    for (const ref of pack.ref.artifactHashes ?? []) values.add(ref);
+  }
+  return values;
+}
+
+function collectPrrContextStrings(value: unknown, output: Set<string>): void {
+  if (typeof value === "string") {
+    output.add(value);
+    return;
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) collectPrrContextStrings(item, output);
+    return;
+  }
+  if (value !== null && typeof value === "object") {
+    for (const item of Object.values(value)) collectPrrContextStrings(item, output);
   }
 }
 

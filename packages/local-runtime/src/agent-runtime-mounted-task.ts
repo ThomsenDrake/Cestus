@@ -9,6 +9,7 @@ import {
   buildSelectionManifestHash,
   buildTaskAttemptId,
   createAgentToolGateway,
+  createAgentRuntime,
   createContextPackRegistry,
   contextPackRefSchema,
   hashAgentToolPreview,
@@ -26,6 +27,7 @@ import {
   registerOperationalContextPackBuilders,
   registerTimelineDraftSummaryContextPack,
   renderProductionSpecialistPrompt,
+  FakeModelProvider,
   runEvidenceTriageWorkflow,
   serializePromptArtifactEnvelope,
   serializeContextPackPayload,
@@ -42,6 +44,7 @@ import {
   type InvestigativeSelectionManifestBody,
   type OperationalContextPackProvider,
   type ProviderSetupCard,
+  type PrrNegotiationFollowUpApprovalPreviewInput,
   type ContradictionFinderCandidatesOutput,
   type SourcedTimelineArtifact,
   type SpecialistHandoffReadback,
@@ -50,9 +53,11 @@ import {
   type SpecialistHandoffManifestStore,
   type VerifiedResolvedContextPack
 } from "../../agent/src/index.js";
+import { registerContextPackPayloadParserAuthority } from "../../agent/src/context-packs.js";
 import { taskOrchestrationStreamId } from "../../agent/src/task-orchestrator-events.js";
 import type { TaskOrchestratorRunnerDispatchInput } from "../../agent/src/task-orchestrator.js";
 import { FileBlobStore } from "../../ontology/src/blob-store.js";
+import { resolveJurisdictionPack } from "../../prr/src/draft-events.js";
 import { buildGovernanceProjection } from "../../ontology/src/governance-projection.js";
 import { defaultGovernancePolicy } from "../../ontology/src/governance-policy.js";
 import { buildGraphProjection } from "../../ontology/src/graph-projection.js";
@@ -90,6 +95,8 @@ import {
 } from "./portable-mounted-agent-artifact-stores.js";
 import {
   consumeMountedSourcedInvestigationDispatch,
+  createMountedInvestigationPlannerSpecialistRunner,
+  createMountedPrrNegotiationSpecialistRunner,
   createSourcedInvestigationSpecialistRunner,
   type UntrustedSpecialistRunner
 } from "./agent-runtime-specialist-runners.js";
@@ -713,6 +720,8 @@ interface MountedTaskHandoffAuthority {
 }
 
 export type MountedSourcedInvestigationRunType = "timeline-builder" | "contradiction-finder";
+export type MountedAdvisoryRunType = "investigation-planner" | "prr-negotiation";
+type MountedResidentSpecialistRunType = MountedSourcedInvestigationRunType | MountedAdvisoryRunType;
 
 export interface RunMountedSourcedInvestigationTaskInput {
   readonly handle: LocalRuntimeHandle;
@@ -721,6 +730,19 @@ export interface RunMountedSourcedInvestigationTaskInput {
   readonly runId: string;
   readonly runType: MountedSourcedInvestigationRunType;
   readonly evidenceIds: readonly string[];
+  readonly beforePromptArtifactWriteForTest?: (() => void | Promise<void>) | undefined;
+}
+
+interface RunMountedAdvisoryTaskInput {
+  readonly handle: LocalRuntimeHandle;
+  readonly now: () => string;
+  readonly taskId: string;
+  readonly runId: string;
+  readonly runType: MountedAdvisoryRunType;
+  readonly investigationId?: string;
+  readonly prrRequestId?: string;
+  readonly correspondenceId?: string;
+  readonly jurisdictionRuleRefs?: readonly string[];
   readonly beforePromptArtifactWriteForTest?: (() => void | Promise<void>) | undefined;
 }
 
@@ -753,6 +775,34 @@ export function createMountedSourcedInvestigationExecutionPort(input: {
       task: ResidentSourcedInvestigationTask,
       handoff: FactoryPortableMountedAgentHandoffProducerResultV1
     ) {
+      if (task.runType === "investigation-planner") {
+        return await runMountedAdvisoryTaskInternal({
+          handle: input.handle,
+          now: input.now,
+          taskId: task.taskId,
+          runId: task.runId,
+          runType: task.runType,
+          investigationId: task.investigationId,
+          ...(input.beforePromptArtifactWriteForTest === undefined ? {} : {
+            beforePromptArtifactWriteForTest: input.beforePromptArtifactWriteForTest
+          })
+        }, Object.freeze({ handoff }));
+      }
+      if (task.runType === "prr-negotiation") {
+        return await runMountedAdvisoryTaskInternal({
+          handle: input.handle,
+          now: input.now,
+          taskId: task.taskId,
+          runId: task.runId,
+          runType: task.runType,
+          prrRequestId: task.prrRequestId,
+          correspondenceId: task.correspondenceId,
+          jurisdictionRuleRefs: task.jurisdictionRuleRefs,
+          ...(input.beforePromptArtifactWriteForTest === undefined ? {} : {
+            beforePromptArtifactWriteForTest: input.beforePromptArtifactWriteForTest
+          })
+        }, Object.freeze({ handoff }));
+      }
       return await runMountedSourcedInvestigationTaskInternal({
         handle: input.handle,
         now: input.now,
@@ -1048,6 +1098,274 @@ async function runMountedSourcedInvestigationTaskInternal(
       if (primaryError === undefined) throw revalidationError;
     }
   }
+}
+
+async function runMountedAdvisoryTaskInternal(
+  input: RunMountedAdvisoryTaskInput,
+  factoryIssued: { readonly handoff: FactoryPortableMountedAgentHandoffProducerResultV1 }
+) {
+  if (!/^task_[a-zA-Z0-9_-]+$/.test(input.taskId) || !/^run_[a-zA-Z0-9_-]+$/.test(input.runId) ||
+    input.runType === "investigation-planner" &&
+      (input.investigationId === undefined || !/^[a-zA-Z][a-zA-Z0-9._:-]+$/.test(input.investigationId)) ||
+    input.runType === "prr-negotiation" &&
+      (input.prrRequestId === undefined || input.correspondenceId === undefined ||
+        input.jurisdictionRuleRefs === undefined || input.jurisdictionRuleRefs.length === 0)) {
+    throw new MountedResidentTaskError(400, "Mounted advisory identity is invalid.", [
+      "select one queued planner or PRR advisory task with its exact domain references"
+    ]);
+  }
+  const operationTimestamp = input.now();
+  const operationNow = () => operationTimestamp;
+  const runtime = mountedResidentTaskLocalAgentRuntimeFactory({
+    handle: input.handle,
+    actor: residentActor,
+    now: operationNow
+  });
+  const authority = await captureMountedTaskAuthority(input.handle, runtime, input.runType);
+  await authority.revalidate();
+  const eventsBeforeRun = await input.handle.ledger.readAll();
+  const projectionBeforeRun = buildAgentProjection(eventsBeforeRun);
+  const task = projectionBeforeRun.tasks.get(input.taskId);
+  if (projectionBeforeRun.identity?.residentAgentId !== residentAgentId ||
+    projectionBeforeRun.identity.workspaceId !== authority.workspaceId) {
+    throw mountedConflict("Resident identity does not match the mounted workspace.");
+  }
+  if (task === undefined || task.residentAgentId !== residentAgentId) {
+    throw new MountedResidentTaskError(404, "Mounted resident advisory task was not found.", [
+      "create the advisory task under the mounted resident agent before running it"
+    ]);
+  }
+  const evidence = exactTaskEvidenceBindings(eventsBeforeRun, input.taskId);
+  const priorTaskRuns = [...projectionBeforeRun.runs.values()].filter((run) => run.taskId === input.taskId);
+  const priorTaskAttempts = [...projectionBeforeRun.taskOrchestrator.attempts.values()]
+    .filter((attempt) => attempt.taskId === input.taskId);
+  if (task.status !== "queued" || task.runId !== undefined || priorTaskRuns.length !== 0 ||
+    priorTaskAttempts.length !== 0 || projectionBeforeRun.runs.has(input.runId)) {
+    throw mountedConflict("Mounted resident task is not an untouched queued advisory task.");
+  }
+  await verifyMountedEvidenceSourceBytes(authority, evidence);
+
+  const retryGeneration = 0;
+  const attemptId = buildTaskAttemptId({ taskId: input.taskId, runType: input.runType, retryGeneration });
+  const dispatch: TaskOrchestratorRunnerDispatchInput = Object.freeze({
+    taskId: input.taskId,
+    runType: input.runType,
+    attemptId,
+    approvedRunId: input.runId
+  });
+  const issued = factoryIssued.handoff;
+  const prepareCommonResolution = async () => {
+    await authority.revalidate();
+    await appendMountedSourcedInvestigationAttemptBinding({
+    handle: input.handle,
+    authority,
+    now: operationNow,
+    dispatch
+  });
+  await startMountedResidentSpecialistRun({
+    handle: input.handle,
+    now: operationNow,
+    taskId: input.taskId,
+    runId: input.runId,
+    runType: input.runType,
+    authority,
+    evidence,
+    ...(input.investigationId === undefined ? {} : { investigationId: input.investigationId })
+  });
+
+  const contextEvents = Object.freeze(await input.handle.ledger.readAll());
+  const prrRequestEvent = input.runType === "prr-negotiation"
+    ? exactMountedPrrRequestEvent(contextEvents, input.prrRequestId!)
+    : undefined;
+  const contextRegistry = createMountedEvidenceTriageContextRegistry({
+    authority,
+    taskId: input.taskId,
+    evidence,
+    events: contextEvents,
+    now: operationNow
+  });
+  if (input.runType === "investigation-planner") {
+    registerMountedAdvisoryPlaceholderContextPack({
+      registry: contextRegistry,
+      contextPackId: "timeline-draft-summary.v1",
+      generatedAt: operationTimestamp,
+      taskId: input.taskId,
+      sourceEventIds: sourceEventIdsFor(evidence),
+      payload: { items: [], omissions: ["No prior timeline draft is selected for this planning pass."] }
+    });
+    registerMountedAdvisoryPlaceholderContextPack({
+      registry: contextRegistry,
+      contextPackId: "contradiction-candidate-summary.v1",
+      generatedAt: operationTimestamp,
+      taskId: input.taskId,
+      sourceEventIds: sourceEventIdsFor(evidence),
+      payload: { items: [], omissions: ["No prior contradiction candidates are selected for this planning pass."] }
+    });
+  } else {
+    registerLocalRuntimeSelectedPrrContextPacks({
+      registry: contextRegistry,
+      handle: input.handle,
+      prrRequestId: input.prrRequestId!,
+      now: operationNow,
+      policyVersion: authority.policyVersion
+    });
+  }
+  const contextPacks = await resolveMountedAdvisoryContextPacks(contextRegistry, input.runType);
+  const scope = input.runType === "investigation-planner"
+    ? Object.freeze({ kind: "investigation" as const, refs: Object.freeze([input.investigationId!]) })
+    : Object.freeze({
+        kind: "prr-request" as const,
+        refs: Object.freeze([input.prrRequestId!]),
+        associatedPrrRequestId: input.prrRequestId!
+      });
+  const promptArtifact = renderProductionSpecialistPrompt({
+    runType: input.runType,
+    runId: input.runId,
+    taskId: input.taskId,
+    generatedAt: operationTimestamp,
+    scope,
+    resolvedContextPacks: contextPacks
+  });
+  const promptStore = await createMountedPromptArtifactStore({ handle: input.handle });
+  await authority.revalidate();
+  await input.beforePromptArtifactWriteForTest?.();
+  await serializeMountedTaskArtifactEffect({
+    handle: input.handle,
+    taskId: input.taskId,
+    effect: async () => {
+      await authority.revalidate();
+      await assertMountedTaskEffectAllowed(input.handle, input.taskId, input.runId, ["running"], ["running"]);
+      await promptStore.put(promptArtifact);
+    }
+  });
+  const promptReadback = await promptStore.read({
+    inputArtifactHash: promptArtifact.manifest.inputArtifactHash as ContentHash,
+    authoritativeResolvedContextPacks: contextPacks
+  });
+  if (promptReadback.witness === undefined ||
+    promptReadback.envelope.manifest.inputArtifactHash !== promptArtifact.manifest.inputArtifactHash) {
+    throw mountedConflict("Mounted advisory prompt readback did not match its exact context.");
+  }
+
+  const executionLedger = revalidatingMountedLedger(input.handle, authority, {
+    taskId: input.taskId,
+    runId: input.runId,
+    allowedTaskStatuses: ["running"],
+    allowedRunStates: ["running", "completed"]
+  });
+  const materialStore = taskFencedManifestStore(issued.binding.materialStore, input.handle, input.taskId, input.runId);
+  const manifestStore = taskFencedManifestStore(issued.binding.manifestStore, input.handle, input.taskId, input.runId);
+  for (const binding of evidence) {
+    const bytes = await authority.readSourceArtifact(binding.contentHash);
+    await putMountedSourcedDependencyExact(materialStore, binding.contentHash, bytes, "advisory evidence source");
+    await putMountedSourcedDependencyExact(manifestStore, binding.contentHash, bytes, "advisory evidence source");
+  }
+  if (prrRequestEvent !== undefined) {
+    await seedMountedJurisdictionArtifact({
+      event: prrRequestEvent,
+      contextPacks,
+      materialStore,
+      manifestStore
+    });
+  }
+  await seedContextProvenanceArtifacts(materialStore, contextPacks, contextEvents);
+  await seedContextProvenanceArtifacts(manifestStore, contextPacks, contextEvents);
+
+  const localOutput = input.runType === "investigation-planner"
+    ? mountedInvestigationPlannerOutput(input, evidence)
+    : mountedPrrNegotiationOutput(input, contextPacks);
+  const advisoryRuntime = createAgentRuntime({
+    ledger: executionLedger,
+    actor: residentActor,
+    now: operationNow,
+    providers: [new FakeModelProvider({
+      providerId: fakeProviderId,
+      modelFamilies: [fakeModelFamily],
+      responseText: JSON.stringify(localOutput)
+    })]
+  });
+  const commonResolution = Object.freeze({
+    ledger: executionLedger,
+    actor: residentActor,
+    now: operationNow,
+    contextPacks: contextRegistry,
+    scope,
+    runtime: advisoryRuntime,
+    providerReadiness: {
+      schemaVersion: "agent-provider-readiness.v1" as const,
+      generatedAt: operationTimestamp,
+      cards: [fakeProviderReadinessCard()],
+      diagnostics: []
+    },
+    providerId: fakeProviderId,
+    modelFamily: fakeModelFamily,
+    credentialRef: {
+      credentialRefId: "agent_credref_fake_local",
+      providerId: fakeProviderId,
+      kind: "local-no-secret" as const,
+      safeLabel: "Deterministic mounted local advisory provider"
+    },
+    mountedPromptReadbackWitness: promptReadback.witness
+  });
+    return Object.freeze({ commonResolution, prrRequestEvent, contextEvents });
+  };
+  const mounted = input.runType === "investigation-planner"
+    ? await createMountedInvestigationPlannerSpecialistRunner({
+        resolve: async () => {
+          const prepared = await prepareCommonResolution();
+          return Object.freeze({
+            ...prepared.commonResolution,
+            investigationId: input.investigationId!
+          });
+        }
+      }).dispatch({ dispatch, retryGeneration, handoff: issued })
+    : await createMountedPrrNegotiationSpecialistRunner({
+        resolve: async () => {
+          const prepared = await prepareCommonResolution();
+          return Object.freeze({
+            ...prepared.commonResolution,
+            prrRequestId: input.prrRequestId!,
+            correspondenceId: input.correspondenceId!,
+            jurisdictionRuleRefs: Object.freeze([...(input.jurisdictionRuleRefs ?? [])]),
+            followUpApprovalPreview: mountedPrrAdvisoryPreview({
+              prrRequestId: input.prrRequestId!,
+              correspondenceId: input.correspondenceId!,
+              requestEvent: prepared.prrRequestEvent!,
+              projectionHighWaterMark: prepared.contextEvents.length
+            })
+          });
+        }
+      }).dispatch({ dispatch, retryGeneration, handoff: issued });
+  await authority.revalidate();
+  if (mounted.result.handoff.status !== "ready-for-review" || mounted.authorityConsumption === undefined) {
+    throw mountedConflict("Mounted advisory did not produce and consume an exact reviewable handoff.");
+  }
+  const replay = await authority.withHandoffReadSnapshot({}, async (reader) =>
+    await buildSpecialistHandoffProjection({
+      events: await input.handle.ledger.readAll(),
+      manifestReader: reader,
+      runId: input.runId,
+      taskId: input.taskId
+    })
+  );
+  if (replay.state !== "task-completed" || replay.diagnostics.length !== 0 ||
+    replay.selectedHandoff?.runType !== input.runType) {
+    throw mountedConflict("Mounted advisory handoff did not replay exactly.");
+  }
+  const cockpit = buildAgentCockpit({
+    status: await runtime.status(),
+    generatedAt: operationTimestamp,
+    selectedRunId: input.runId,
+    specialistHandoffs: [replay.selectedHandoff]
+  });
+  if (cockpit.selectedRun?.runId !== input.runId || cockpit.selectedRun.handoff === undefined) {
+    throw mountedConflict("Mounted advisory handoff is unavailable in the selected run.");
+  }
+  return Object.freeze({
+    recorded: Object.freeze({ handoff: mounted.result.handoff }),
+    replay,
+    cockpit
+  });
 }
 
 export async function runMountedEvidenceTriageTask(
@@ -1665,7 +1983,8 @@ async function startMountedResidentSpecialistRun(input: {
   readonly now: () => string;
   readonly taskId: string;
   readonly runId: string;
-  readonly runType: "evidence-triage" | MountedSourcedInvestigationRunType;
+  readonly runType: "evidence-triage" | MountedResidentSpecialistRunType;
+  readonly investigationId?: string | undefined;
   readonly authority: MountedTaskAuthority;
   readonly evidence: readonly EvidenceBinding[];
   readonly beforeRunStartSnapshotForTest?: (() => void | Promise<void>) | undefined;
@@ -1701,7 +2020,8 @@ async function startMountedResidentSpecialistRun(input: {
       taskId: input.taskId,
       workspaceId: input.authority.workspaceId,
       sourceEventIds: [...sourceEventIdsFor(input.evidence)],
-      inputArtifactHashes: [...uniqueHashes(input.evidence.map((binding) => binding.contentHash))]
+      inputArtifactHashes: [...uniqueHashes(input.evidence.map((binding) => binding.contentHash))],
+      ...(input.investigationId === undefined ? {} : { investigationId: input.investigationId })
     }
   };
   const started = await ledger.append(startedEvent, {
@@ -2269,7 +2589,7 @@ async function suspendMountedTaskForRemoteApproval(input: RunMountedEvidenceTria
 async function captureMountedTaskAuthority(
   handle: LocalRuntimeHandle,
   runtime: LocalAgentRuntime,
-  requiredRunType: "evidence-triage" | MountedSourcedInvestigationRunType = "evidence-triage"
+  requiredRunType: "evidence-triage" | MountedResidentSpecialistRunType = "evidence-triage"
 ): Promise<MountedTaskAuthority> {
   let capturedWorkspace: MountedPortableWorkspace;
   let capturedManifestBytes: Buffer;
@@ -4147,6 +4467,243 @@ function exactEvidenceBindings(
       occurrenceIds: Object.freeze([...link.payload.occurrenceIds])
     });
   }));
+}
+
+function exactTaskEvidenceBindings(
+  events: readonly KnowledgeEvent[],
+  taskId: string
+): readonly EvidenceBinding[] {
+  const created = events.filter((event): event is KnowledgeEventOf<"agent.task.created"> =>
+    event.type === "agent.task.created" && event.payload.taskId === taskId
+  );
+  if (created.length !== 1) throw mountedConflict("Mounted advisory task provenance is ambiguous.");
+  const sourceEventIds = new Set(created[0]!.payload.sourceEventIds);
+  const inputArtifactHashes = new Set(created[0]!.payload.inputArtifactHashes);
+  const evidenceIds = events.filter((event): event is KnowledgeEventOf<"evidence.ingested"> =>
+    event.type === "evidence.ingested" && sourceEventIds.has(event.id) &&
+    inputArtifactHashes.has(event.payload.contentHash)
+  ).filter((event) => events.some((candidate) =>
+    candidate.type === "ingestion.evidence.linked" && sourceEventIds.has(candidate.id) &&
+    candidate.payload.evidenceId === event.payload.evidenceId &&
+    candidate.payload.contentHash === event.payload.contentHash
+  )).map((event) => event.payload.evidenceId);
+  return exactEvidenceBindings(events, evidenceIds);
+}
+
+function exactMountedPrrRequestEvent(
+  events: readonly KnowledgeEvent[],
+  prrRequestId: string
+): KnowledgeEventOf<"prr.request.created"> {
+  const matches = events.filter((event): event is KnowledgeEventOf<"prr.request.created"> =>
+    event.type === "prr.request.created" && event.payload.prrRequestId === prrRequestId
+  );
+  if (matches.length !== 1) throw mountedConflict("Mounted PRR request provenance is missing or ambiguous.");
+  return matches[0]!;
+}
+
+function registerMountedAdvisoryPlaceholderContextPack(input: {
+  readonly registry: ReturnType<typeof createContextPackRegistry>;
+  readonly contextPackId: "timeline-draft-summary.v1" | "contradiction-candidate-summary.v1";
+  readonly generatedAt: string;
+  readonly taskId: string;
+  readonly sourceEventIds: readonly string[];
+  readonly payload: AgentContextPackJsonValue;
+}): void {
+  const parser = (payload: AgentContextPackJsonValue, ref?: ContextPackRef) => {
+    if (ref?.contextPackId !== input.contextPackId || payload === null ||
+      typeof payload !== "object" || Array.isArray(payload)) {
+      throw mountedConflict("Mounted advisory summary context is invalid.");
+    }
+    return payload;
+  };
+  Object.defineProperty(parser, "cestusContextPackParserId", {
+    value: input.contextPackId,
+    enumerable: false,
+    configurable: false,
+    writable: false
+  });
+  registerContextPackPayloadParserAuthority(parser);
+  input.registry.register({
+    descriptor: {
+      contextPackId: input.contextPackId,
+      version: 1,
+      label: input.contextPackId === "timeline-draft-summary.v1"
+        ? "Mounted timeline draft summary"
+        : "Mounted contradiction candidate summary",
+      maxBytes: 16_384,
+      requiredProvenanceKinds: ["event"],
+      redactionPolicy: "safe-summary-only",
+      sourceProjection: "mounted-advisory-task-scope"
+    },
+    parsePayload: parser,
+    build: () => ({
+      contextPackId: input.contextPackId,
+      version: 1,
+      generatedAt: input.generatedAt,
+      scope: { kind: "task", id: input.taskId },
+      payload: input.payload,
+      safeSummary: input.contextPackId === "timeline-draft-summary.v1"
+        ? "No prior timeline draft is selected for this planning pass."
+        : "No prior contradiction candidates are selected for this planning pass.",
+      provenanceRefs: input.sourceEventIds.map((eventId) => `event:${eventId}`),
+      sourceEventIds: input.sourceEventIds,
+      sizeBudgetBytes: 16_384
+    })
+  });
+}
+
+async function resolveMountedAdvisoryContextPacks(
+  registry: ReturnType<typeof createContextPackRegistry>,
+  runType: MountedAdvisoryRunType
+): Promise<readonly VerifiedResolvedContextPack[]> {
+  const requirements = productionSpecialistPromptRegistrationFor(runType).contextRequirements
+    .filter((requirement) => requirement.requirementMode === "always" || runType === "prr-negotiation")
+    .sort((left, right) => left.order - right.order);
+  return Object.freeze(await Promise.all(requirements.map(async (requirement) =>
+    await registry.buildResolved(requirement.contextPackId)
+  )));
+}
+
+function mountedInvestigationPlannerOutput(
+  input: RunMountedAdvisoryTaskInput,
+  evidence: readonly EvidenceBinding[]
+) {
+  const evidenceId = evidence[0]?.evidenceId;
+  if (input.investigationId === undefined || evidenceId === undefined) {
+    throw mountedConflict("Mounted investigation planning requires exact investigation and evidence context.");
+  }
+  const suffix = input.taskId.replace(/^task_/, "");
+  const gapId = `gap_${suffix}`;
+  return Object.freeze({
+    planSummary: "Review the evidence-bound investigation gap and decide the next local task.",
+    objectiveRefs: [input.investigationId],
+    gapIds: [gapId],
+    prioritizedGaps: [{
+      gapId,
+      priority: "high" as const,
+      linkedEvidenceRefs: [evidenceId],
+      timelineRefs: [],
+      contradictionRefs: [],
+      rationale: "The selected evidence leaves a bounded question for investigator review.",
+      dependencyRefs: [input.investigationId]
+    }],
+    taskCandidates: [{
+      taskId: `task_candidate_${suffix}`,
+      summary: "Review the selected evidence and document the remaining investigation gap.",
+      priorityRationale: "This local review preserves provenance before any later action.",
+      linkedRefs: [input.investigationId, gapId],
+      approvalRequirements: ["human-review" as const]
+    }],
+    prrDraftCandidates: [],
+    safeNextSteps: ["Review the local plan and decide whether to create a separate task."]
+  });
+}
+
+function mountedPrrNegotiationOutput(
+  input: RunMountedAdvisoryTaskInput,
+  contextPacks: readonly VerifiedResolvedContextPack[]
+) {
+  const citedRuleRef = input.jurisdictionRuleRefs?.[0];
+  const jurisdictionRef = firstContextFieldString(
+    contextPacks.find((pack) => pack.ref.contextPackId === "jurisdiction-pack-summary.v1")?.payload,
+    "jurisdictionArtifactHash"
+  );
+  if (citedRuleRef === undefined || jurisdictionRef === undefined) {
+    throw mountedConflict("Mounted PRR advice requires exact jurisdiction context.");
+  }
+  return Object.freeze({
+    draftSummary: "Review a narrow public-records follow-up draft before any external send.",
+    requestFollowUpApproval: false,
+    citedRuleRefs: [citedRuleRef],
+    jurisdictionRefs: [jurisdictionRef],
+    deadlineRefs: [citedRuleRef],
+    deadlineNotes: ["Confirm the current deadline against the selected request before taking action."],
+    narrowingOptions: ["Limit any later follow-up to the selected request and records scope."],
+    feeOptions: ["Request a reviewable fee estimate if the agency raises costs."],
+    feeOrStallingSignals: ["Review the request stream before characterizing delay or fees."],
+    unresolvedQuestions: ["Has the agency acknowledged the selected request?"],
+    legalPressureNotes: ["Legal escalation remains a separate human-controlled decision."]
+  });
+}
+
+function firstContextFieldString(value: unknown, field: string): string | undefined {
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = firstContextFieldString(item, field);
+      if (found !== undefined) return found;
+    }
+    return undefined;
+  }
+  const record = plainRecord(value);
+  if (record === undefined) return undefined;
+  if (typeof record[field] === "string") return record[field];
+  for (const item of Object.values(record)) {
+    const found = firstContextFieldString(item, field);
+    if (found !== undefined) return found;
+  }
+  return undefined;
+}
+
+async function seedMountedJurisdictionArtifact(input: {
+  readonly event: KnowledgeEventOf<"prr.request.created">;
+  readonly contextPacks: readonly VerifiedResolvedContextPack[];
+  readonly materialStore: SpecialistHandoffManifestStore;
+  readonly manifestStore: SpecialistHandoffManifestStore;
+}): Promise<void> {
+  const bytes = Buffer.from(serializeContextPackPayload(resolveJurisdictionPack(input.event.payload.jurisdictionPack)));
+  const contentHash = hashBytes(bytes);
+  const referenced = input.contextPacks.some((pack) => pack.ref.artifactHashes?.includes(contentHash) === true);
+  if (!referenced) throw mountedConflict("Mounted jurisdiction artifact does not match selected PRR context.");
+  await putMountedSourcedDependencyExact(input.materialStore, contentHash, bytes, "jurisdiction pack");
+  await putMountedSourcedDependencyExact(input.manifestStore, contentHash, bytes, "jurisdiction pack");
+}
+
+function mountedPrrAdvisoryPreview(input: {
+  readonly prrRequestId: string;
+  readonly correspondenceId: string;
+  readonly requestEvent: KnowledgeEventOf<"prr.request.created">;
+  readonly projectionHighWaterMark: number;
+}): PrrNegotiationFollowUpApprovalPreviewInput {
+  const subject = "Public records request follow-up";
+  const body = "Please confirm the status of the selected public records request.";
+  return Object.freeze({
+    provider: "gmail",
+    messageSourceEventId: input.requestEvent.id,
+    message: {
+      from: "local-advisory@cestus.invalid",
+      to: ["records-office@cestus.invalid"],
+      cc: [],
+      subject,
+      subjectHash: hashBytes(Buffer.from(subject)),
+      bodyHash: hashBytes(Buffer.from(body)),
+      renderedBodyHash: hashBytes(Buffer.from(body)),
+      attachments: [],
+      requiresLegalConfirmation: false,
+      providerIdempotencyKey: `followup_${input.prrRequestId}_${input.correspondenceId}`
+    },
+    requestState: {
+      requestCreatedEventId: input.requestEvent.id,
+      status: "draft" as const,
+      jurisdictionPack: input.requestEvent.payload.jurisdictionPack,
+      confirmedStalling: false
+    },
+    providerCapability: {
+      provider: "gmail" as const,
+      canSend: false,
+      canSync: false,
+      canFetchAttachments: false,
+      capabilityRef: hashBytes(Buffer.from("mounted local advisory only"))
+    },
+    legalGateChecks: [{
+      id: "local-advisory-only",
+      ready: true,
+      locked: false,
+      detail: "This mounted execution creates local advice only."
+    }],
+    legalEvidenceBindings: [],
+    lockSnapshot: [],
+    projectionHighWaterMark: input.projectionHighWaterMark
+  });
 }
 
 function mountedTaskAdmissionStreamId(taskId: string, runId: string): string {

@@ -126,8 +126,9 @@ const sourcedNarrativeText = (label: string) => shortSafeText(label).superRefine
 });
 const id = (prefix: string) => safeText(`${prefix} identifier`).regex(new RegExp(`^${prefix}[a-zA-Z0-9_-]+$`));
 const canonicalReferencePattern = /^(?:sha256:[a-f0-9]{64}|(?=[a-zA-Z0-9._:-]{3,200}$)(?=[a-zA-Z0-9._:-]*[_:.])[a-zA-Z][a-zA-Z0-9._:-]*)$/;
+const jurisdictionRuleReferencePattern = /^jurisdiction-rule:[a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+:[a-zA-Z0-9._-]+$/;
 const ref = safeText("provider output reference").max(200).superRefine((value, ctx) => {
-  if (!canonicalReferencePattern.test(value)) {
+  if (!canonicalReferencePattern.test(value) && !jurisdictionRuleReferencePattern.test(value)) {
     ctx.addIssue({ code: "custom", message: "provider output reference must be a canonical identifier or sha256 hash" });
   }
 });

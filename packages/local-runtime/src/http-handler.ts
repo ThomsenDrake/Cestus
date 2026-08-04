@@ -5,6 +5,7 @@ import { prrWorkspaceSeedEvents } from "../../prr/src/workspace-seed.js";
 import type { IngestionWorkspaceMountResolver } from "../../ingestion/src/mount-contract.js";
 import {
   acquireMountedEvidenceTriageHandoffForLocalAgentRuntimeFactory,
+  bindMountedAdvisoryHandoffForLocalAgentRuntimeFactory,
   bindMountedSourcedInvestigationHandoffForLocalAgentRuntimeFactory,
   contextFreeLocalAgentRuntimeFactory,
   type LocalAgentRuntimeFactory
@@ -100,13 +101,31 @@ export function createLocalRuntimeHttpHandler(
         taskId: task.taskId,
         runId: task.runId
       }),
-    issueMountedSourcedInvestigationHandoff: async (wakeRuntime, task) =>
-      await bindMountedSourcedInvestigationHandoffForLocalAgentRuntimeFactory({
+    issueMountedSourcedInvestigationHandoff: async (wakeRuntime, task) => {
+      if (task.runType === "investigation-planner") {
+        return await bindMountedAdvisoryHandoffForLocalAgentRuntimeFactory({
+          wakeRuntime,
+          taskId: task.taskId,
+          runId: task.runId,
+          runType: task.runType,
+          investigationId: task.investigationId
+        });
+      }
+      if (task.runType === "prr-negotiation") {
+        return await bindMountedAdvisoryHandoffForLocalAgentRuntimeFactory({
+          wakeRuntime,
+          taskId: task.taskId,
+          runId: task.runId,
+          runType: task.runType
+        });
+      }
+      return await bindMountedSourcedInvestigationHandoffForLocalAgentRuntimeFactory({
         wakeRuntime,
         taskId: task.taskId,
         runId: task.runId,
         runType: task.runType
-      }),
+      });
+    },
     sourcedInvestigationExecution: createMountedSourcedInvestigationExecutionPort({
       handle,
       now: runtimeNow
