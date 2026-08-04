@@ -177,6 +177,7 @@ const canonicalProductionPromptTemplateMaterial: CanonicalProductionPromptTempla
         "Identifier patterns: itemId timeline_...; refs must be canonical identifiers or sha256 hashes.",
         "Precision enum choices: year, month, day, range, unknown. Uncertainty enum choices: date-uncertain, source-conflict, incomplete-source, inference-required.",
         "Every item must cite at least one exact source and all contentHashRefs must come from those verified sources. Uncertainty must cite the exact item sources it qualifies.",
+        "Keep every narrative field neutral and source-descriptive. Do not put assertion or claim acceptance, rejection, contestation, supersession, relinking, or finalization language in model-authored prose; the handoff renders the human-review step deterministically.",
         "omittedSources entries require sourceRef and reason. Use [] for timelineItems, omissionReasons, omittedSources, or unresolvedPrompts when verified context does not support grounded entries."
       ]
     }),
@@ -205,6 +206,7 @@ const canonicalProductionPromptTemplateMaterial: CanonicalProductionPromptTempla
         "Identifier patterns: candidateId contradiction_..., evidenceIds ev_..., timelineItemIds timeline_..., hashes sha256:<64 lowercase hex>.",
         "Category enum choices: direct-conflict, timeline-conflict, attribution-conflict, quantitative-conflict, scope-conflict.",
         "Compare at least two distinct exact verified refs. Preserve exact evidence hashes, assertion refs, PRR event refs, uncertainty refs, confidence caveats, alternative explanations, and requested follow-up evidence.",
+        "Keep rationale, caveat, alternatives, and follow-up prose neutral and source-descriptive. Do not put authority decisions, questions, or advice in narrative fields; encode the human step only with requiredReviewerAction.",
         "requiredReviewerAction enum choices: review, request-evidence, request-claim-link-review. Candidates are advisory only and may be [] when no grounded conflict is present."
       ]
     }),

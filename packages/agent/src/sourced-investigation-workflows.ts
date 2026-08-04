@@ -257,9 +257,7 @@ export async function executeSourcedInvestigationWorkflow(
     approvalRequirements: [],
     nextSafeActions: [{
       actionId: `action_${input.runId}_review`,
-      label: input.runType === "timeline-builder"
-        ? "Review the sourced timeline"
-        : "Review the contradiction candidates",
+      label: "Human review required",
       kind: "review",
       effect: "none",
       artifactId: outputArtifact.artifactId
