@@ -182,12 +182,13 @@ describe("checkTailnetPreviewReadiness", () => {
     const cwd = tempDir();
     writeBuiltUi(cwd);
     const exactConfig = resolveLocalRuntimeConfig({ cwd, env: previewEnv(cwd) });
+    const { authToken: _baseAuthToken, ...httpWithoutAuthToken } = exactConfig.http;
     const config = {
       ...exactConfig,
       http: {
-        ...exactConfig.http,
+        ...httpWithoutAuthToken,
         authRequired,
-        ...(authToken === undefined ? { authToken: undefined } : { authToken })
+        ...(authToken === undefined ? {} : { authToken })
       }
     };
 

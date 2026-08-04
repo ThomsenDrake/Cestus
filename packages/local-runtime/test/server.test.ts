@@ -186,7 +186,7 @@ describe("startLocalRuntimeServer", () => {
         bindMode: "tailnet",
         host: "100.99.12.34",
         authRequired,
-        ...(authToken === undefined ? { authToken: undefined } : { authToken })
+        ...(authToken === undefined ? {} : { authToken })
       }
     };
 
