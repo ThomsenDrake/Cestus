@@ -114,8 +114,10 @@ const safeText = (label: string) => z.string().min(1).max(2_000).superRefine((va
 });
 const shortSafeText = (label: string) => safeText(label).max(500);
 const sourcedNarrativeGovernedMorphology = /\b(?:accept(?:s|ed|ing)?|acceptance|reject(?:s|ed|ing)?|rejection|contest(?:s|ed|ing)?|contestation|supersed(?:e|es|ed|ing)|supersession|re[\s-]?link(?:s|ed|ing)?|finaliz(?:e|es|ed|ing)|finalization)\b/i;
+const sourcedNarrativeMatchView = (value: string) =>
+  value.normalize("NFKC").replace(/[\p{P}\p{M}\p{Cf}]+/gu, "");
 const sourcedNarrativeText = (label: string) => shortSafeText(label).superRefine((value, ctx) => {
-  if (sourcedNarrativeGovernedMorphology.test(value.normalize("NFKC"))) {
+  if (sourcedNarrativeGovernedMorphology.test(sourcedNarrativeMatchView(value))) {
     ctx.addIssue({
       code: "custom",
       message: `${label} must remain source-descriptive and use typed reviewer action fields instead of governed authority morphology`

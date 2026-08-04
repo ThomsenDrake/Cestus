@@ -672,8 +672,38 @@ describe("MVP specialist workflow descriptors", () => {
       runType: "contradiction-finder" as const,
       field: "requestedFollowupEvidence" as const,
       value: "Relink the claim after obtaining the dated source."
+    },
+    {
+      runType: "timeline-builder" as const,
+      field: "summary" as const,
+      value: "The reviewer re\u2011linked the claim."
+    },
+    {
+      runType: "timeline-builder" as const,
+      field: "uncertaintyNotes" as const,
+      value: "The reviewer re\u2014linked the claim."
+    },
+    {
+      runType: "contradiction-finder" as const,
+      field: "rationale" as const,
+      value: "The reviewer re\u00b7jected the assertion."
+    },
+    {
+      runType: "contradiction-finder" as const,
+      field: "requestedFollowupEvidence" as const,
+      value: "The reviewer re\u200bjected the assertion."
+    },
+    {
+      runType: "timeline-builder" as const,
+      field: "unresolvedPrompts" as const,
+      value: "Should the assertion be re\u034fjected?"
+    },
+    {
+      runType: "contradiction-finder" as const,
+      field: "alternativeExplanations" as const,
+      value: "A reviewer should re\u2060link the claim."
     }
-  ])("rejects governed $field prose for $runType before artifact storage", async ({ runType, field, value }) => {
+  ])("rejects governed $field prose for $runType before artifact storage: $value", async ({ runType, field, value }) => {
     const store = memoryArtifactStore();
     let rejected = false;
     if (runType === "timeline-builder") {
@@ -758,8 +788,8 @@ describe("MVP specialist workflow descriptors", () => {
     const timelineOutput = sourcedTimelineOutput();
     timelineOutput.timelineItems[0] = {
       ...timelineOutput.timelineItems[0]!,
-      summary: "Source A records March while source B records April.",
-      uncertaintyNotes: ["The exact sources use different date precision."]
+      summary: "Source A records March\u2014source B records April.",
+      uncertaintyNotes: ["The exact sources use day\u2011level and month\u2011level precision."]
     };
     timelineOutput.unresolvedPrompts = ["Request a source with day-level date precision."];
     const timeline = await executeSourcedInvestigationWorkflow({
@@ -788,8 +818,8 @@ describe("MVP specialist workflow descriptors", () => {
     const contradictionOutput = sourcedContradictionOutput();
     contradictionOutput.candidates[0] = {
       ...contradictionOutput.candidates[0]!,
-      rationale: "The exact sources record different dates for the same event.",
-      confidenceCaveat: "The comparison is limited to the selected source bytes.",
+      rationale: "The exact sources record different dates\u00b7one in March and one in April.",
+      confidenceCaveat: "The comparison is limited to selected source\u200b bytes.",
       alternativeExplanations: ["The records may describe different reporting periods."],
       requestedFollowupEvidence: ["Request a dated source that distinguishes the reporting periods."]
     };
