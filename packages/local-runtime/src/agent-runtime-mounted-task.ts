@@ -3800,7 +3800,11 @@ function groundedMountedReportPacketInput(input: {
       evidenceContentHash,
       proposedByEventId,
       acceptedByEventId,
-      sourceEventIds: Object.freeze([...sourceEventIds]),
+      sourceEventIds: Object.freeze([...uniqueStrings([
+        binding.evidenceEventId,
+        proposed.id,
+        accepted.id
+      ])].sort()),
       safeStatement
     }));
   }

@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import type { KnowledgeEvent, KnowledgeEventOf } from "../../ontology/src/contracts.js";
+import { buildGraphProjection, type GraphProjection } from "../../ontology/src/graph-projection.js";
 import {
   buildGovernanceExportPreview,
   governanceExportApprovalIds,
@@ -249,6 +250,8 @@ export function assembleLocalReportPacket(input: AssembleLocalReportPacketInput)
   const requestedEvidenceIds = unique(input.requestedEvidenceIds.map((value) =>
     validateIdentity(value, /^ev_[a-zA-Z0-9_-]+$/, "evidenceId")
   )).sort();
+  const requestedEvidenceSet = new Set(requestedEvidenceIds);
+  const graphProjection = buildGraphProjection(input.governanceEvents);
   const sources = new Map<string, {
     readonly kind: "accepted-assertion" | "reviewed-claim";
     readonly evidenceId: string;
@@ -256,40 +259,35 @@ export function assembleLocalReportPacket(input: AssembleLocalReportPacketInput)
     readonly sourceEventIds: readonly string[];
   }>();
   for (const source of input.acceptedAssertions) {
+    const grounded = groundAcceptedAssertionSource({
+      events: input.governanceEvents,
+      graphProjection,
+      requestedEvidenceSet,
+      source
+    });
     registerSource(sources, {
-      ref: validateIdentity(source.assertionId, /^[a-zA-Z][a-zA-Z0-9._:-]*$/, "assertionId"),
+      ref: grounded.assertionId,
       kind: "accepted-assertion",
-      evidenceId: validateIdentity(source.evidenceId, /^ev_[a-zA-Z0-9_-]+$/, "evidenceId"),
-      contentHash: validateHash(source.evidenceContentHash),
-      sourceEventIds: validateEventIds([
-        source.proposedByEventId,
-        source.acceptedByEventId,
-        ...source.sourceEventIds
-      ]),
+      evidenceId: grounded.evidenceId,
+      contentHash: grounded.contentHash,
+      sourceEventIds: grounded.sourceEventIds,
       statement: source.safeStatement
     });
   }
   for (const source of input.reviewedClaims) {
+    const grounded = groundReviewedClaimSource({
+      events: input.governanceEvents,
+      requestedEvidenceSet,
+      source
+    });
     registerSource(sources, {
-      ref: validateIdentity(source.claimId, /^[a-zA-Z][a-zA-Z0-9._:-]*$/, "claimId"),
+      ref: grounded.claimId,
       kind: "reviewed-claim",
-      evidenceId: validateIdentity(source.evidenceId, /^ev_[a-zA-Z0-9_-]+$/, "evidenceId"),
-      contentHash: validateHash(source.evidenceContentHash),
-      sourceEventIds: validateEventIds([source.reviewedByEventId, ...source.sourceEventIds]),
+      evidenceId: grounded.evidenceId,
+      contentHash: grounded.contentHash,
+      sourceEventIds: grounded.sourceEventIds,
       statement: source.safeStatement
     });
-  }
-  const requestedEvidenceSet = new Set(requestedEvidenceIds);
-  for (const source of sources.values()) {
-    if (!requestedEvidenceSet.has(source.evidenceId)) {
-      throw new Error("Report citations must remain within the exact governed evidence selection.");
-    }
-    const ingested = input.governanceEvents.filter((event): event is KnowledgeEventOf<"evidence.ingested"> =>
-      event.type === "evidence.ingested" && event.payload.evidenceId === source.evidenceId
-    );
-    if (ingested.length !== 1 || ingested[0]!.payload.contentHash !== source.contentHash) {
-      throw new Error("Report citation content hashes must match exact ingested evidence provenance.");
-    }
   }
 
   const sectionOrder: string[] = [];
@@ -513,6 +511,126 @@ function registerSource(
     contentHash: source.contentHash,
     sourceEventIds: Object.freeze(unique(source.sourceEventIds).sort())
   }));
+}
+
+function groundAcceptedAssertionSource(input: {
+  readonly events: readonly KnowledgeEvent[];
+  readonly graphProjection: GraphProjection;
+  readonly requestedEvidenceSet: ReadonlySet<string>;
+  readonly source: ReportAcceptedAssertionInput;
+}): {
+  readonly assertionId: string;
+  readonly evidenceId: string;
+  readonly contentHash: ContentHash;
+  readonly sourceEventIds: readonly string[];
+} {
+  const failure = (): never => {
+    throw new Error("Report accepted assertion provenance must be exact and current.");
+  };
+  const assertionId = validateIdentity(input.source.assertionId, /^as_[a-zA-Z0-9_-]+$/, "assertionId");
+  const evidenceId = validateIdentity(input.source.evidenceId, /^ev_[a-zA-Z0-9_-]+$/, "evidenceId");
+  const contentHash = validateHash(input.source.evidenceContentHash);
+  const proposedByEventId = validateIdentity(
+    input.source.proposedByEventId,
+    /^evt_[a-zA-Z0-9_-]+$/,
+    "proposedByEventId"
+  );
+  const acceptedByEventId = validateIdentity(
+    input.source.acceptedByEventId,
+    /^evt_[a-zA-Z0-9_-]+$/,
+    "acceptedByEventId"
+  );
+  if (!input.requestedEvidenceSet.has(evidenceId)) {
+    throw new Error("Report citations must remain within the exact governed evidence selection.");
+  }
+  const ingested = exactIngestedEvidence(input.events, evidenceId, contentHash);
+  const proposed = exactEventByIdAndType(input.events, proposedByEventId, "assertion.proposed");
+  const accepted = exactEventByIdAndType(input.events, acceptedByEventId, "assertion.accepted");
+  const projected = input.graphProjection.assertions.get(assertionId);
+  if (ingested === undefined || proposed === undefined || accepted === undefined ||
+    proposed.payload.assertionId !== assertionId || proposed.payload.evidenceId !== evidenceId ||
+    proposed.streamId !== `assertion_${assertionId}` || proposed.context.causationId !== ingested.id ||
+    accepted.payload.assertionId !== assertionId || accepted.streamId !== proposed.streamId ||
+    accepted.sequence <= proposed.sequence || accepted.context.causationId !== proposed.id ||
+    accepted.context.correlationId !== proposed.context.correlationId || accepted.context.actor.kind !== "human" ||
+    accepted.payload.acceptedBy !== accepted.context.actor.id || projected === undefined ||
+    projected.reviewState !== "accepted" || projected.assertionId !== assertionId ||
+    projected.evidenceId !== evidenceId || projected.proposedByEventId !== proposed.id ||
+    projected.acceptedByEventId !== accepted.id) {
+    return failure();
+  }
+  const sourceEventIds = validateEventIds(input.source.sourceEventIds);
+  const expectedLineage = [ingested.id, proposed.id, accepted.id].sort();
+  if (input.source.sourceEventIds.length !== sourceEventIds.length ||
+    !sameStrings(sourceEventIds, expectedLineage)) return failure();
+  return Object.freeze({ assertionId, evidenceId, contentHash, sourceEventIds: Object.freeze(expectedLineage) });
+}
+
+function groundReviewedClaimSource(input: {
+  readonly events: readonly KnowledgeEvent[];
+  readonly requestedEvidenceSet: ReadonlySet<string>;
+  readonly source: ReportReviewedClaimInput;
+}): {
+  readonly claimId: string;
+  readonly evidenceId: string;
+  readonly contentHash: ContentHash;
+  readonly sourceEventIds: readonly string[];
+} {
+  const failure = (): never => {
+    throw new Error("Report reviewed claim provenance must be exact and current.");
+  };
+  const claimId = validateIdentity(input.source.claimId, /^cl_[a-zA-Z0-9_-]+$/, "claimId");
+  const evidenceId = validateIdentity(input.source.evidenceId, /^ev_[a-zA-Z0-9_-]+$/, "evidenceId");
+  const contentHash = validateHash(input.source.evidenceContentHash);
+  const reviewedByEventId = validateIdentity(
+    input.source.reviewedByEventId,
+    /^evt_[a-zA-Z0-9_-]+$/,
+    "reviewedByEventId"
+  );
+  if (!input.requestedEvidenceSet.has(evidenceId)) {
+    throw new Error("Report citations must remain within the exact governed evidence selection.");
+  }
+  const ingested = exactIngestedEvidence(input.events, evidenceId, contentHash);
+  const reviewed = exactEventByIdAndType(input.events, reviewedByEventId, "claim.created");
+  const claimEvents = input.events.filter((event): event is KnowledgeEventOf<"claim.created"> =>
+    event.type === "claim.created" && event.payload.claimId === claimId
+  );
+  if (ingested === undefined || reviewed === undefined || claimEvents.length !== 1 || claimEvents[0]!.id !== reviewed.id ||
+    reviewed.payload.claimId !== claimId || reviewed.payload.statement !== input.source.safeStatement ||
+    reviewed.streamId !== `claim_${claimId}` || reviewed.context.actor.kind !== "human" ||
+    reviewed.context.causationId !== ingested.id) {
+    return failure();
+  }
+  const sourceEventIds = validateEventIds(input.source.sourceEventIds);
+  const expectedLineage = [ingested.id, reviewed.id].sort();
+  if (input.source.sourceEventIds.length !== sourceEventIds.length ||
+    !sameStrings(sourceEventIds, expectedLineage)) return failure();
+  return Object.freeze({ claimId, evidenceId, contentHash, sourceEventIds: Object.freeze(expectedLineage) });
+}
+
+function exactIngestedEvidence(
+  events: readonly KnowledgeEvent[],
+  evidenceId: string,
+  contentHash: ContentHash
+): KnowledgeEventOf<"evidence.ingested"> | undefined {
+  const matches = events.filter((event): event is KnowledgeEventOf<"evidence.ingested"> =>
+    event.type === "evidence.ingested" && event.payload.evidenceId === evidenceId
+  );
+  const ingested = matches.length === 1 ? matches[0] : undefined;
+  return ingested !== undefined && events.filter((event) => event.id === ingested.id).length === 1 &&
+    ingested.payload.contentHash === contentHash && ingested.streamId === `evidence_${evidenceId}`
+    ? ingested
+    : undefined;
+}
+
+function exactEventByIdAndType<Type extends KnowledgeEvent["type"]>(
+  events: readonly KnowledgeEvent[],
+  eventId: string,
+  type: Type
+): KnowledgeEventOf<Type> | undefined {
+  const matches = events.filter((event) => event.id === eventId);
+  const event = matches.length === 1 ? matches[0] : undefined;
+  return event?.type === type ? event as KnowledgeEventOf<Type> : undefined;
 }
 
 function validateRiskSourceRefs(
