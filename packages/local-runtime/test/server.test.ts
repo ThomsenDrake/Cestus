@@ -172,6 +172,31 @@ describe("startLocalRuntimeServer", () => {
     expect(existsSync(config.logs.dir)).toBe(false);
   });
 
+  it("rejects scoped IPv6 tailnet hosts before interface observation or runtime effects", async () => {
+    const base = configWithPortZero(resolveLocalRuntimeConfig({ cwd: tempDir(), env: {} }));
+    const config: ResolvedLocalRuntimeConfig = {
+      ...base,
+      http: {
+        ...base.http,
+        bindMode: "tailnet",
+        host: "fd7a:115c:a1e0::1%tailscale0",
+        authRequired: true,
+        authToken: "secret-local-token"
+      }
+    };
+
+    await expect(
+      startLocalRuntimeServer({
+        config,
+        networkInterfaces: () => {
+          throw new Error("interface observation must not occur before scoped IPv6 rejection");
+        }
+      })
+    ).rejects.toThrow("Tailnet local runtime host must be an explicit address in the Tailscale IPv4 or IPv6 ranges");
+    expect(existsSync(config.storage.sqlitePath)).toBe(false);
+    expect(existsSync(config.logs.dir)).toBe(false);
+  });
+
   it.each([
     { authRequired: false, authToken: "secret-local-token" },
     { authRequired: true, authToken: undefined },

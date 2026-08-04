@@ -208,7 +208,16 @@ describe("resolveLocalRuntimeConfig", () => {
     ).toThrow("Auth is required for non-loopback local runtime exposure");
   });
 
-  it.each([undefined, "0.0.0.0", "::", "127.0.0.1", "192.168.1.20", "203.0.113.20", "not-an-ip"]) (
+  it.each([
+    undefined,
+    "0.0.0.0",
+    "::",
+    "127.0.0.1",
+    "192.168.1.20",
+    "203.0.113.20",
+    "fd7a:115c:a1e0::1%tailscale0",
+    "not-an-ip"
+  ])(
     "rejects invalid tailnet host %s before resolving auth",
     (host) => {
       expect(() =>

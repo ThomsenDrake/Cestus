@@ -4,7 +4,7 @@ const tailnetHostError =
   "Tailnet local runtime host must be an explicit address in the Tailscale IPv4 or IPv6 ranges";
 
 export function isTailnetAddress(host: string): boolean {
-  if (host.trim() !== host) {
+  if (host.trim() !== host || host.includes("%")) {
     return false;
   }
   const normalized = host.toLowerCase();

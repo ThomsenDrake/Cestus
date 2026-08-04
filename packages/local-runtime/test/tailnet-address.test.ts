@@ -20,6 +20,7 @@ describe("isTailnetAddress", () => {
     "100.128.0.0",
     "fd7a:115c:a1df::1",
     "fd7a:115c:a1e1::1",
+    "fd7a:115c:a1e0::1%tailscale0",
     "not-an-ip"
   ])("rejects wildcard, loopback, LAN, public, or out-of-range address %s", (host) => {
     expect(isTailnetAddress(host)).toBe(false);

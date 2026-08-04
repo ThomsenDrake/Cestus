@@ -99,6 +99,21 @@ describe("local runtime config files", () => {
     expect(existsSync(configPath)).toBe(false);
   });
 
+  it("rejects a scoped IPv6 tailnet host before creating config or generating auth material", () => {
+    const cwd = tempDir();
+    const configPath = join(cwd, ".cestus/local/runtime.config.json");
+
+    expect(() =>
+      writeLocalRuntimeOnboardingConfig({
+        cwd,
+        env: {},
+        bindMode: "tailnet",
+        host: "fd7a:115c:a1e0::1%tailscale0"
+      })
+    ).toThrow("Tailnet local runtime host must be an explicit address in the Tailscale IPv4 or IPv6 ranges");
+    expect(existsSync(configPath)).toBe(false);
+  });
+
   it.each([" 100.99.12.34 ", " fd7a:115c:a1e0::1 "])(
     "rejects whitespace-padded tailnet host %s before creating config or generating auth material",
     (host) => {
