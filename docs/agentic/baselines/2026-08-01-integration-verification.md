@@ -2,45 +2,48 @@
 
 Status: non-authoritative baseline debt record.
 
-This records pre-cutover product-test debt once so later product slices can
-detect regressions without rediscovering or silently reclassifying the same
-failures. It is not factory authority and does not waive any new failure.
+This record preserves the final cleanup candidate's comparison to latest `neo`.
+It is not factory authority and does not waive a new or worsened failure.
 
-## Source State
+## Provenance
 
-- Integration branch: `neo`
-- Integration commit: `baab662fb6ecd79de9a34f1c3801aa76d3428848`
-- Candidate base: reference-only child
-  `f06735b3b26b7701842513d677b6589af7f92d8d`
-- Setup: clean isolated worktree followed by `npm ci`
-- Command: `npm run verify`
+- Latest `neo` base: `960504052c9a28aa35345fe906d7ad47f6901c19`.
+- Verify CI: [run 30892734349](https://github.com/ThomsenDrake/Cestus/actions/runs/30892734349).
+- Cleanup content commit: `ca9e6930b5f16904534f24b09a1a73847b6053e9`.
+- Focused fixture-repair commit: `db2cda626c88f7e082c9b43897a9b8ed0209e7a2`.
 
-## Exact Result
+## Latest `neo` CI
 
-- Typecheck: passed.
-- Vitest: 13 failed, 226 passed, 3 skipped test files.
-- Tests: 51 failed, 3,316 passed, 5 skipped.
-- UI build and the old factory gate were not reached because Vitest failed.
-
-Failed files:
+Typecheck passed. Vitest reported 6 failed, 240 passed, 3 skipped files (249),
+and 14 failed, 3,648 passed, 5 skipped tests (3,667):
 
 - `packages/agent/test/evidence-triage-workflow.test.ts`
-- `packages/agent/test/resident-loop-scheduler-completion-imports.test.ts`
 - `packages/agent/test/runtime.test.ts`
-- `packages/local-runtime/test/agent-approval-routes.test.ts`
-- `packages/local-runtime/test/agent-cockpit-routes.test.ts`
 - `packages/local-runtime/test/agent-http-routes.test.ts`
-- `packages/local-runtime/test/agent-memory-routes.test.ts`
 - `packages/local-runtime/test/agent-task-orchestrator-routes.test.ts`
-- `packages/local-runtime/test/check-resident-task-prerequisites.test.ts`
-- `packages/local-runtime/test/cli.test.ts`
-- `packages/local-runtime/test/resident-loop-factory-ports-imports.test.ts`
 - `packages/local-runtime/test/server.test.ts`
 - `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts`
 
-The failures comprise missing mounted prompt-readback witnesses, current
-resident-agent/runtime availability mismatches, one scheduler completion
-mismatch, and timeout-heavy source/import-policy checks. None of these files is
-inside the software-factory cutover scope. A later candidate must run its
-targeted checks and compare broad verification against this list; any added or
-worsened failure is a regression.
+## One Broad Candidate Run
+
+`npm run verify` ran once at `ca9e6930…`: typecheck passed, then Vitest stopped
+with 7 failed, 238 passed, 3 skipped files (248), and 15 failed, 3,629 passed,
+5 skipped tests (3,649). It included exactly the six CI failure files above
+plus the cleanup-caused fixture failure
+`packages/ui/test/request-data-boundary.test.ts`.
+
+That fixture was repaired at `db2cda62…`. The targeted
+`npx vitest run packages/ui/test/request-data-boundary.test.ts` then passed one
+file and all seven tests; `npm run factory:check` and skill validation passed
+afterward. No second broad run occurred. UI build and final readiness were not
+reached in the broad chain because known Vitest failures stop `npm run verify`;
+focused readiness validation passed separately.
+
+## Final Candidate Comparison
+
+After the targeted repair, arithmetic against that one broad run establishes
+the final candidate baseline as 6 failed, 239 passed, 3 skipped files (248),
+and 14 failed, 3,630 passed, 5 skipped tests (3,649). Relative to latest `neo`
+CI, the only count delta is removal of the expressly retired passing file
+`packages/local-runtime/test/check-resident-task-prerequisites.test.ts`, which
+contained 18 passing tests. No product failure was added or worsened.
