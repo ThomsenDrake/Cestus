@@ -35,6 +35,7 @@ import { handleAgentOntologyBootstrapRoute } from "./agent-ontology-bootstrap-ro
 import {
   MountedResidentTaskError,
   admitMountedEvidenceTriageTask,
+  projectCanonicalMountedReportPreviews,
   reconstructMountedEvidenceTriageTask,
   runMountedEvidenceTriageTask,
   type MountedEvidenceTriageProviderMode
@@ -281,12 +282,17 @@ export async function handleAgentHttpRoute(
       const retryableTaskIds = retryableTaskIdsFromEvents(events);
       const residentHistory = projectResidentCockpitHistory(events);
       const specialistHandoffs = await projectMountedCockpitHandoffs(input.handle, status, events);
+      const specialistReportPreviews = await projectMountedCockpitReportPreviews(
+        input.handle,
+        specialistHandoffs
+      );
       return json(200, buildAgentCockpit({
         status,
         approvalCockpit,
         residentPlans: residentHistory.plans,
         residentObservations: residentHistory.observations,
         specialistHandoffs,
+        specialistReportPreviews,
         ...(supervisionSnapshot === undefined ? {} : {
           supervision: buildSupervisionCockpit(status, input.now(), supervisionSnapshot, retryableTaskIds)
         }),
@@ -767,6 +773,31 @@ async function projectMountedCockpitHandoffs(
   return Object.freeze(handoffs);
 }
 
+async function projectMountedCockpitReportPreviews(
+  handle: LocalRuntimeHandle,
+  handoffs: readonly SpecialistWorkflowHandoffDto[]
+) {
+  const mounted = handle.mountedWorkspace;
+  if (mounted === undefined || !inspectPortableWorkspaceCurrentness(handle).ok) return Object.freeze([]);
+  const store = new FileBlobStore(join(mounted.paths.derivativeRoot, "specialist-handoff-manifest"));
+  requirePortableWorkspaceCurrent(handle);
+  const previews = await projectCanonicalMountedReportPreviews({
+    handoffs,
+    canonicalReader: Object.freeze({
+      async get(contentHash: `sha256:${string}`) {
+        requirePortableWorkspaceCurrent(handle);
+        try {
+          return await store.get(contentHash);
+        } finally {
+          requirePortableWorkspaceCurrent(handle);
+        }
+      }
+    })
+  });
+  requirePortableWorkspaceCurrent(handle);
+  return previews;
+}
+
 function requirePortableWorkspaceCurrent(handle: LocalRuntimeHandle): void {
   const currentness = inspectPortableWorkspaceCurrentness(handle);
   if (!currentness.ok) {
@@ -916,7 +947,7 @@ function mountedEvidenceTriageInputFromBody(value: Record<string, unknown>): {
 
 function mountedSourcedInvestigationInputFromBody(value: Record<string, unknown>): {
   readonly runId: string;
-  readonly runType: "timeline-builder" | "contradiction-finder";
+  readonly runType: "timeline-builder" | "contradiction-finder" | "report-builder";
   readonly investigationId?: string;
   readonly evidenceIds: readonly string[];
 } | {
@@ -933,7 +964,8 @@ function mountedSourcedInvestigationInputFromBody(value: Record<string, unknown>
   if (typeof value.runId !== "string" || !/^run_[a-zA-Z0-9_-]+$/.test(value.runId)) {
     return undefined;
   }
-  if (value.runType === "timeline-builder" || value.runType === "contradiction-finder") {
+  if (value.runType === "timeline-builder" || value.runType === "contradiction-finder" ||
+    value.runType === "report-builder") {
     const hasInvestigationId = Object.hasOwn(value, "investigationId");
     if (!hasOnlyKeys(value, hasInvestigationId
       ? ["runId", "runType", "investigationId", "evidenceIds"]
@@ -1180,7 +1212,7 @@ function invalidMountedSourcedInvestigationBodyDiagnostic(): {
   };
   } {
   return diagnostic("Mounted sourced investigation body is invalid.", [
-    "send the exact fields for one timeline, contradiction, investigation-planner, or PRR-negotiation command"
+    "send the exact fields for one timeline, contradiction, report, investigation-planner, or PRR-negotiation command"
   ]);
 }
 

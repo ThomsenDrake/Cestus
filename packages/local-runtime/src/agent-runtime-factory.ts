@@ -181,12 +181,12 @@ export async function bindMountedEvidenceTriageHandoffForLocalAgentRuntimeFactor
   });
 }
 
-/** The mounted factory binds only the two approved local sourced-investigation runners. */
+/** The mounted factory binds only approved local evidence-derived specialist runners. */
 export async function bindMountedSourcedInvestigationHandoffForLocalAgentRuntimeFactory(input: {
   readonly wakeRuntime: WakeSupervisorRuntime;
   readonly taskId: string;
   readonly runId: string;
-  readonly runType: "timeline-builder" | "contradiction-finder";
+  readonly runType: "timeline-builder" | "contradiction-finder" | "report-builder";
   readonly investigationId?: string;
 }): Promise<FactoryPortableMountedAgentHandoffProducerResultV1> {
   const operation = issueMountedArtifactAuthorityOperationForFactory(input.wakeRuntime);

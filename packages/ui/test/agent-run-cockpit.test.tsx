@@ -166,6 +166,46 @@ describe("AgentRunCockpit", () => {
       unmount();
     }
   });
+
+  it("renders only the safe report preview IDs, exclusion categories, and approval requirements", () => {
+    const base = cockpitFixture();
+    if (base.selectedRun === undefined) throw new Error("report cockpit fixture requires a selected run");
+    const cockpit = agentCockpitFromJson({
+      ...base,
+      selectedRun: {
+        ...base.selectedRun,
+        modelInvocations: [],
+        reportPreview: {
+          schemaVersion: "agent-report-public-safe-preview.v1",
+          mode: "preview-only",
+          includedEvidenceRefs: ["ev_source_public"],
+          excludedEvidence: [{
+            evidenceRef: "ev_source_private",
+            categories: ["private"],
+            approvalIds: ["human-approve-private-evidence-inclusion"]
+          }],
+          sensitiveOptInRequirements: [{
+            evidenceRef: "ev_source_private",
+            category: "private",
+            approvalId: "human-approve-private-evidence-inclusion"
+          }]
+        }
+      }
+    });
+
+    render(<AgentRunCockpit cockpit={cockpit} />);
+    const region = screen.getByRole("region", { name: "Agent run cockpit" });
+    fireEvent.click(within(region).getByRole("tab", { name: "Handoff" }));
+
+    expect(within(region).getByRole("region", { name: "Public-safe report preview" })).toBeInTheDocument();
+    expect(within(region).getByText("ev_source_public")).toBeInTheDocument();
+    expect(within(region).getAllByText("ev_source_private").length).toBeGreaterThan(0);
+    expect(within(region).getAllByText("private").length).toBeGreaterThan(0);
+    expect(within(region).getAllByText("human-approve-private-evidence-inclusion").length).toBeGreaterThan(0);
+    expect(JSON.stringify(cockpit.selectedRun)).not.toMatch(/private mailbox body|authorization: bearer|sk_live_/i);
+    expect(within(region).queryByText(/private mailbox body|authorization: bearer|sk_live_/i)).not.toBeInTheDocument();
+    expect(within(region).queryByRole("button", { name: /include private|export|publish/i })).not.toBeInTheDocument();
+  });
 });
 
 function sourcedSelectedRunCockpit(runType: "timeline-builder" | "contradiction-finder"): AgentCockpitDto {
