@@ -20,26 +20,31 @@ legal, export, ledger, provenance, or destructive-operation gate.
 ## Observable Acceptance Examples
 
 - Tailnet configuration without an explicit host, with `0.0.0.0`/`::`, or with
-  a loopback, private-LAN, or public address is rejected before a configuration
-  file or credential is created.
+  a loopback, private-LAN, or public address is rejected before authentication
+  material is generated and before a configuration file is created or changed.
 - Concrete addresses in `100.64.0.0/10` and `fd7a:115c:a1e0::/48` are accepted
   as tailnet-address candidates; malformed and out-of-range addresses are not.
 - Starting a tailnet runtime also verifies that its concrete address is present
   on a local network interface. An injected or stale tailnet-range address is
-  rejected before `listen` and before the HTTP handler can produce durable
-  product effects.
+  rejected at server entry, before HTTP-handler, ledger, log-directory,
+  browser-bootstrap-code, or server construction and before `listen`.
 - The readiness command performs no network listen and reports only safe facts:
   bind mode/host/port, authentication configured as a boolean, development seed
   disabled, storage strategy, resolved static-build path, and an overall ready
   result. It never prints or returns the authentication token.
 - Readiness fails when the mode is not `tailnet`, the address is wildcard or
   outside the tailnet ranges, authentication is absent, development seed is
-  enabled, storage is repository-local, or the built UI entry point is absent
-  or not a regular file.
+  enabled, any resolved durable storage path is inside the repository, or the
+  built UI entry point is absent or not a regular file. Storage safety is based
+  on resolved path containment, not a strategy label alone.
 - The operator runbook uses the authenticated local runtime and a durable
   app-data or portable-workspace store. It explicitly forbids Vite development
   serving, wildcard/LAN/public binding, provider or credential inspection,
   development seeding, PRR send, legal action, export, and publication.
+- The runbook states that an address falling within the Tailscale ranges and
+  being locally assigned does not by itself prove interface ownership or ACL
+  policy; the human operator must verify the selected address and tailnet ACLs
+  before the separately gated live preview.
 - Existing loopback development behavior and every product safety invariant
   remain unchanged.
 
@@ -86,8 +91,9 @@ performed by this slice.
 - `npm run ui:build`
 
 Success means every listed test passes, TypeScript reports `typecheck passed`,
-the production UI build completes, and no command opens a tailnet/public socket
-or reads a real credential.
+the production UI build completes, rejected configuration creates no token or
+config write, rejected server startup creates no ledger or log path, and no
+verification command opens a tailnet/public socket or reads a real credential.
 
 ## Integration Verification
 
