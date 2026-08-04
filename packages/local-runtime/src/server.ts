@@ -11,7 +11,7 @@ import type { ActorRef } from "../../prr/src/draft-events.js";
 import { resolveLocalRuntimeConfig, type ResolvedLocalRuntimeConfig } from "./config.js";
 import { createLocalRuntimeHttpHandler } from "./http-handler.js";
 import { readStaticUiFile } from "./static-files.js";
-import { assertTailnetAddress, isTailnetAddress } from "./tailnet-address.js";
+import { assertTailnetAddress, ipAddressesEquivalent, isTailnetAddress } from "./tailnet-address.js";
 
 export interface StartLocalRuntimeServerInput {
   readonly config?: ResolvedLocalRuntimeConfig;
@@ -309,7 +309,7 @@ function assertTailnetHostAssigned(
   assertTailnetAddress(config.http.host);
   const assigned = Object.values(interfaces())
     .flatMap((items) => items ?? [])
-    .some((item) => item.address === config.http.host);
+    .some((item) => ipAddressesEquivalent(item.address, config.http.host));
   if (!assigned) {
     throw new Error("Tailnet local runtime host must be assigned to a local network interface");
   }

@@ -1,5 +1,5 @@
-import { statSync } from "node:fs";
-import { isAbsolute, relative, resolve, sep } from "node:path";
+import { lstatSync, realpathSync, statSync } from "node:fs";
+import { basename, dirname, isAbsolute, relative, resolve, sep } from "node:path";
 import {
   resolveLocalRuntimeConfig,
   type LocalRuntimeConfigInput,
@@ -72,6 +72,39 @@ export function checkTailnetPreviewReadiness(
 }
 
 function isPathContainedBy(repositoryRoot: string, path: string): boolean {
-  const relativePath = relative(resolve(repositoryRoot), resolve(path));
+  const relativePath = relative(canonicalPath(repositoryRoot), canonicalPath(path));
   return relativePath === "" || (!relativePath.startsWith(`..${sep}`) && relativePath !== ".." && !isAbsolute(relativePath));
+}
+
+function canonicalPath(path: string): string {
+  const missingSegments: string[] = [];
+  let candidate = resolve(path);
+
+  while (true) {
+    try {
+      lstatSync(candidate);
+    } catch (error) {
+      if (!isMissingPathError(error)) {
+        throw new Error("Tailnet preview readiness could not resolve durable storage safely");
+      }
+
+      const parent = dirname(candidate);
+      if (parent === candidate) {
+        throw new Error("Tailnet preview readiness could not resolve durable storage safely");
+      }
+      missingSegments.push(basename(candidate));
+      candidate = parent;
+      continue;
+    }
+
+    try {
+      return resolve(realpathSync(candidate), ...missingSegments.reverse());
+    } catch {
+      throw new Error("Tailnet preview readiness could not resolve durable storage safely");
+    }
+  }
+}
+
+function isMissingPathError(error: unknown): boolean {
+  return typeof error === "object" && error !== null && "code" in error && error.code === "ENOENT";
 }

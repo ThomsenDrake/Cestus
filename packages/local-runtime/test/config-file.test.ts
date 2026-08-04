@@ -99,6 +99,38 @@ describe("local runtime config files", () => {
     expect(existsSync(configPath)).toBe(false);
   });
 
+  it("rejects a missing tailnet host before creating config or generating auth material", () => {
+    const cwd = tempDir();
+    const configPath = join(cwd, ".cestus/local/runtime.config.json");
+
+    expect(() =>
+      writeLocalRuntimeOnboardingConfig({
+        cwd,
+        env: {},
+        bindMode: "tailnet"
+      })
+    ).toThrow("Tailnet local runtime host must be an explicit address in the Tailscale IPv4 or IPv6 ranges");
+    expect(existsSync(configPath)).toBe(false);
+  });
+
+  it("rejects a missing tailnet host before changing an existing config", () => {
+    const cwd = tempDir();
+    const configDir = join(cwd, ".cestus/local");
+    const configPath = join(configDir, "runtime.config.json");
+    const existing = JSON.stringify({ http: { bindMode: "loopback", host: "127.0.0.1" } }, null, 2);
+    mkdirSync(configDir, { recursive: true });
+    writeFileSync(configPath, existing);
+
+    expect(() =>
+      writeLocalRuntimeOnboardingConfig({
+        cwd,
+        env: {},
+        bindMode: "tailnet"
+      })
+    ).toThrow("Tailnet local runtime host must be an explicit address in the Tailscale IPv4 or IPv6 ranges");
+    expect(readFileSync(configPath, "utf8")).toBe(existing);
+  });
+
   it("resets host and auth material when changing exposed config back to loopback", () => {
     const cwd = tempDir();
     writeLocalRuntimeOnboardingConfig({

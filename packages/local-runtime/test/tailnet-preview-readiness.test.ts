@@ -1,4 +1,13 @@
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, rmSync, statSync, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  rmSync,
+  statSync,
+  symlinkSync,
+  writeFileSync
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -97,6 +106,53 @@ describe("checkTailnetPreviewReadiness", () => {
         env: { ...previewEnv(cwd), CESTUS_LOCAL_LOG_DIR: ".cestus/local/logs" }
       })
     ).toThrow("Tailnet preview readiness requires durable storage outside the repository");
+  });
+
+  it("rejects app-data SQLite paths redirected into the repository through an outside symlink", () => {
+    const cwd = tempDir();
+    const outside = tempDir();
+    const redirectedAppData = join(outside, "app-data");
+    symlinkSync(cwd, redirectedAppData, "dir");
+    writeBuiltUi(cwd);
+
+    expect(() =>
+      checkTailnetPreviewReadiness({
+        cwd,
+        env: { ...previewEnv(cwd), CESTUS_APP_DATA_DIR: redirectedAppData }
+      })
+    ).toThrow("Tailnet preview readiness requires durable storage outside the repository");
+    expect(existsSync(join(cwd, "prr-ledger.sqlite"))).toBe(false);
+  });
+
+  it("rejects log paths redirected into the repository through an outside symlink", () => {
+    const cwd = tempDir();
+    const outside = tempDir();
+    const redirectedLogs = join(outside, "runtime-logs");
+    symlinkSync(cwd, redirectedLogs, "dir");
+    writeBuiltUi(cwd);
+
+    expect(() =>
+      checkTailnetPreviewReadiness({
+        cwd,
+        env: { ...previewEnv(cwd), CESTUS_LOCAL_LOG_DIR: redirectedLogs }
+      })
+    ).toThrow("Tailnet preview readiness requires durable storage outside the repository");
+    expect(existsSync(join(cwd, "runtime-logs"))).toBe(false);
+  });
+
+  it("fails closed when a durable storage path cannot be canonically resolved", () => {
+    const cwd = tempDir();
+    const outside = tempDir();
+    const danglingAppData = join(outside, "dangling-app-data");
+    symlinkSync(join(outside, "missing-target"), danglingAppData, "dir");
+    writeBuiltUi(cwd);
+
+    expect(() =>
+      checkTailnetPreviewReadiness({
+        cwd,
+        env: { ...previewEnv(cwd), CESTUS_APP_DATA_DIR: danglingAppData }
+      })
+    ).toThrow("Tailnet preview readiness could not resolve durable storage safely");
   });
 
   it("runs the CLI check without revealing auth material", async () => {

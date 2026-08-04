@@ -21,6 +21,23 @@ export function assertTailnetAddress(host: string | undefined): asserts host is 
   }
 }
 
+export function ipAddressesEquivalent(left: string, right: string): boolean {
+  const leftFamily = isIP(left);
+  const rightFamily = isIP(right);
+  if (leftFamily === 0 || leftFamily !== rightFamily) {
+    return false;
+  }
+  if (leftFamily === 4) {
+    return left === right;
+  }
+
+  return canonicalIpv6Address(left) === canonicalIpv6Address(right);
+}
+
+function canonicalIpv6Address(host: string): string {
+  return new URL(`http://[${host}]/`).hostname;
+}
+
 export function tailnetAddressError(): string {
   return tailnetHostError;
 }
