@@ -25,6 +25,10 @@ describe("isTailnetAddress", () => {
     expect(isTailnetAddress(host)).toBe(false);
   });
 
+  it.each([" 100.99.12.34 ", " fd7a:115c:a1e0::1 "])("rejects whitespace-padded address %s", (host) => {
+    expect(isTailnetAddress(host)).toBe(false);
+  });
+
   it("matches equivalent IPv6 interface address representations but not a distinct address", () => {
     expect(ipAddressesEquivalent("FD7A:115C:A1E0:0000:0000:0000:0000:0001", "fd7a:115c:a1e0::1")).toBe(true);
     expect(ipAddressesEquivalent("fd7a:115c:a1e0::1", "fd7a:115c:a1e0::2")).toBe(false);

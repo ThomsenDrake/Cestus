@@ -352,6 +352,33 @@ describe("runLocalRuntimeCli", () => {
     expect(readFileSync(configPath, "utf8")).toBe(existing);
   });
 
+  it("rejects whitespace-padded tailnet host before changing config or printing auth material", async () => {
+    const stdout: string[] = [];
+    const stderr: string[] = [];
+    tempDir = mkdtempSync(join(tmpdir(), "cestus-cli-"));
+    const configDir = join(tempDir, ".cestus/local");
+    const configPath = join(configDir, "runtime.config.json");
+    const existing = JSON.stringify({ http: { bindMode: "loopback", host: "127.0.0.1" } }, null, 2);
+    mkdirSync(configDir, { recursive: true });
+    writeFileSync(configPath, existing);
+
+    const exitCode = await runLocalRuntimeCli(
+      ["configure", "--bind", "tailnet", "--host", " 100.99.12.34 "],
+      {
+        cwd: tempDir,
+        env: {},
+        stdout: (line) => stdout.push(line),
+        stderr: (line) => stderr.push(line)
+      }
+    );
+
+    expect(exitCode).toBe(1);
+    expect(stdout).toEqual([]);
+    expect(stderr.join("\n")).toContain("Tailnet local runtime host");
+    expect(stderr.join("\n")).not.toMatch(/token|secret|password|oauth|credential|api[_-]?key|private[_-]?key|session/i);
+    expect(readFileSync(configPath, "utf8")).toBe(existing);
+  });
+
   it("uses written config for later config diagnostics", async () => {
     const stdout: string[] = [];
     tempDir = mkdtempSync(join(tmpdir(), "cestus-cli-"));
