@@ -374,6 +374,28 @@ describe("portable mounted agent artifact stores", () => {
     await expect(beforeMountedHandoffAuthorityEffect(result.controller, "final-output")).resolves.toBeUndefined();
   });
 
+  it("burns PRR authority when final output names a hash other than the exact draft derivative", async () => {
+    const fixture = authorityFixture();
+    const events = [
+      prrStartedEvent(),
+      prrModelInvocationRequestedEvent(),
+      prrModelInvocationCompletedEvent(),
+      prrDraftDerivativeEvent(),
+      finalOutputEvent({
+        payload: {
+          ...finalOutputEvent().payload,
+          outputArtifactHashes: [hash("4")]
+        }
+      })
+    ];
+    Object.defineProperty(fixture.handle.ledger, "readAll", {
+      configurable: true,
+      value: async () => events.map((event) => structuredClone(event))
+    });
+
+    await expect(issuedBinding(fixture, prrDispatch)).rejects.toThrow(/authority/i);
+  });
+
   it("burns wrong-run, wrong-task, wrong-kind, duplicate, or out-of-order PRR draft derivatives", async () => {
     const exactTranscript = () => [prrModelInvocationRequestedEvent(), prrModelInvocationCompletedEvent()];
     const mutations: readonly (readonly KnowledgeEvent[])[] = [

@@ -146,6 +146,7 @@ interface ModelInvocationCursor {
   readonly inputArtifactHash?: string;
   readonly terminalEventId?: string;
   readonly outputArtifactHash?: string;
+  readonly prrDraftDerivativeArtifactHash?: string;
 }
 
 interface DispatchPreludeCursor {
@@ -1028,10 +1029,14 @@ function advancePhase(
       phase: phase === "started-running" ? "prr-draft-derivative-running" : "prr-draft-derivative",
       eventId: record.id,
       canonical,
-      modelInvocation
+      modelInvocation: Object.freeze({
+        ...(modelInvocation as ModelInvocationCursor),
+        prrDraftDerivativeArtifactHash: outputArtifactHashes[0]!
+      })
     };
   }
   if (type === "agent.specialist-run.step.recorded") {
+    const finalOutputArtifactHashes = normalizedHashArray(payload.outputArtifactHashes);
     const finalOutputPredecessor = binding.runType === "prr-negotiation"
       ? phase === "prr-draft-derivative" || phase === "prr-draft-derivative-running"
       : phase === "started" || phase === "started-running";
@@ -1046,6 +1051,10 @@ function advancePhase(
       || typeof payload.stepSchemaId !== "string"
       || typeof payload.idempotencyKey !== "string"
       || !isHash(payload.handoffMaterialArtifactHash)
+      || (binding.runType === "prr-negotiation" && (
+        modelInvocation?.prrDraftDerivativeArtifactHash === undefined ||
+        !sameStringArrays(finalOutputArtifactHashes, [modelInvocation.prrDraftDerivativeArtifactHash])
+      ))
     ) {
       throw authorityError();
     }
@@ -1059,7 +1068,7 @@ function advancePhase(
         stepSchemaId: payload.stepSchemaId,
         handoffMaterialArtifactHash: payload.handoffMaterialArtifactHash,
         inputArtifactHashes: normalizedHashArray(payload.inputArtifactHashes),
-        outputArtifactHashes: normalizedHashArray(payload.outputArtifactHashes)
+        outputArtifactHashes: finalOutputArtifactHashes
       }),
       modelInvocation
     };

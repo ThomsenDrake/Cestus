@@ -161,7 +161,7 @@ export function createMountedInvestigationPlannerSpecialistRunner(input: {
         taskId: mounted.dispatch.taskId,
         investigationId: resolved.investigationId,
         derivativeStore: mounted.handoff.binding.materialStore,
-        handoffStore: mounted.handoff.binding.materialStore,
+        handoffStore: mounted.handoff.binding.manifestStore,
         handoffAuthorityWitness: mounted.handoff.binding.authorityWitness
       });
       assertAdvisoryResultIdentity(result.handoff, mounted.dispatch);
@@ -195,7 +195,7 @@ export function createMountedPrrNegotiationSpecialistRunner(input: {
         runId: mounted.dispatch.approvedRunId,
         taskId: mounted.dispatch.taskId,
         derivativeStore: mounted.handoff.binding.materialStore,
-        handoffStore: mounted.handoff.binding.materialStore,
+        handoffStore: mounted.handoff.binding.manifestStore,
         handoffAuthorityWitness: mounted.handoff.binding.authorityWitness
       });
       assertAdvisoryResultIdentity(result.handoff, mounted.dispatch);

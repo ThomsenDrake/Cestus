@@ -1110,6 +1110,63 @@ describe("investigation planner workflow", () => {
     expect(buildAgentProjection(events).runs.get("run_investigation_001")?.state).toBe("failed");
   });
 
+  it("rejects planner references absent from the exact resolved context before derivative or final effects", async () => {
+    const { ledger, runtime } = await preparedRuntime(
+      "investigation-planner",
+      true,
+      JSON.stringify({
+        planSummary: "Review only exact mounted context before proposing local work.",
+        objectiveRefs: ["objective_invented_001"],
+        gapIds: ["gap_invented_001"],
+        prioritizedGaps: [{
+          gapId: "gap_invented_001",
+          priority: "high",
+          linkedEvidenceRefs: ["ev_invented_001"],
+          timelineRefs: ["timeline_invented_001"],
+          contradictionRefs: ["contradiction_invented_001"],
+          rationale: "This otherwise valid structure names context that was never resolved.",
+          dependencyRefs: ["objective_invented_001"]
+        }],
+        taskCandidates: [{
+          taskId: "task_investigation_candidate_invented",
+          summary: "Review an invented source.",
+          priorityRationale: "The reference validator must reject this advisory candidate.",
+          linkedRefs: ["ev_invented_001", "gap_invented_001"],
+          approvalRequirements: ["human-review"]
+        }],
+        prrDraftCandidates: [],
+        safeNextSteps: []
+      })
+    );
+    let derivativePuts = 0;
+    const derivativeBacking = createDerivativeStore();
+    const derivativeStore = {
+      async put(content: Buffer) {
+        derivativePuts += 1;
+        return await derivativeBacking.put(content);
+      },
+      get: derivativeBacking.get
+    };
+    const handoffStore = createDerivativeStore();
+
+    const result = await runInvestigationPlannerWorkflow({
+      ...plannerWorkflowInput({
+        ledger,
+        runtime,
+        handoffStore,
+        sourceEventIds: (await ledger.readAll()).map((event) => event.id)
+      }),
+      derivativeStore
+    });
+
+    expect(result.handoff).toMatchObject({ status: "failed", outputArtifacts: [] });
+    expect(derivativePuts).toBeGreaterThan(0);
+    const eventTypes = (await ledger.readAll()).map((event) => event.type);
+    expect(eventTypes).toContain("agent.model-invocation.completed");
+    expect(eventTypes).not.toContain("agent.specialist-run.step.recorded");
+    expect(eventTypes).not.toContain("agent.tool.requested");
+  });
+
   it("rejects model output that claims tasks were created, portals were crawled, or provider bytes were transferred", async () => {
     const ledger = new InMemoryEventLedger();
     const provider = new FakeModelProvider({
@@ -1314,13 +1371,22 @@ async function portablePlannerModelInvocationFixture() {
     modelFamilies: ["fake-local"],
     responseText: JSON.stringify({
       planSummary: "Review the evidence before creating local drafts.",
-      objectiveRefs: ["objective_portable_investigation"],
+      objectiveRefs: ["objective_procurement_001"],
       gapIds: ["gap_portable_investigation"],
+      prioritizedGaps: [{
+        gapId: "gap_portable_investigation",
+        priority: "high",
+        linkedEvidenceRefs: ["ev_planner_001"],
+        timelineRefs: ["timeline_procurement_001"],
+        contradictionRefs: ["contradiction_procurement_001"],
+        rationale: "Exact mounted context identifies the remaining local review gap.",
+        dependencyRefs: ["objective_procurement_001"]
+      }],
       taskCandidates: [{
         taskId: "task_portable_candidate",
         summary: "Review the portable investigation evidence.",
         priorityRationale: "Preserve the advisory investigation boundary.",
-        linkedRefs: ["objective_portable_investigation", "gap_portable_investigation"],
+        linkedRefs: ["objective_procurement_001", "gap_portable_investigation"],
         approvalRequirements: ["human-review"]
       }],
       prrDraftCandidates: ["Draft a review request without sending it."]
@@ -1502,13 +1568,14 @@ async function portablePlannerModelInvocationFixture() {
 
 async function preparedRuntime(
   runType: "investigation-planner" | "evidence-triage" = "investigation-planner",
-  bindAttempt = true
+  bindAttempt = true,
+  responseText?: string
 ) {
   const ledger = new InMemoryEventLedger();
   const provider = new FakeModelProvider({
     providerId: "provider_fake_local",
     modelFamilies: ["fake-local"],
-    responseText: JSON.stringify({
+    responseText: responseText ?? JSON.stringify({
       planSummary: "Public instructions say investigators should review the timeline before creating local drafts.",
       objectiveRefs: ["objective_procurement_001"],
       gapIds: ["gap_contract_amendments_001"],
@@ -1823,10 +1890,10 @@ function isPlannerContextPayloadForPack(contextPackId: string, payload: AgentCon
 
 function plannerContextPayload(contextPackId: string): AgentContextPackJsonValue {
   switch (contextPackId) {
-    case "accepted-graph-projection.v1": return { items: { assertions: [{ assertionId: "assertion_planner_001", evidenceId: "ev_planner_001", evidenceContentHash: "sha256:1111111111111111111111111111111111111111111111111111111111111111", proposedByEventId: "evt_planner_context_001", acceptedByEventId: "evt_planner_context_001", sourceEventIds: ["evt_planner_context_001"], rowHash: "sha256:1111111111111111111111111111111111111111111111111111111111111111", safeStatement: "Verified planning graph statement." }], entities: [], relationships: [] } };
+    case "accepted-graph-projection.v1": return { items: { assertions: [{ assertionId: "assertion_planner_001", evidenceId: "ev_planner_001", evidenceContentHash: "sha256:1111111111111111111111111111111111111111111111111111111111111111", proposedByEventId: "evt_planner_context_001", acceptedByEventId: "evt_planner_context_001", sourceEventIds: ["evt_planner_context_001"], rowHash: "sha256:1111111111111111111111111111111111111111111111111111111111111111", safeStatement: "Verified planning graph statement." }], entities: [{ entityId: "objective_procurement_001" }], relationships: [] } };
     case "evidence-summary.v1": return { items: [{ evidenceId: "ev_planner_001", ingestionEventId: "evt_planner_context_001", contentHash: "sha256:1111111111111111111111111111111111111111111111111111111111111111", occurrenceIds: ["occurrence_planner_001"], safeNarrative: "Verified planning evidence." }] };
-    case "timeline-draft-summary.v1": return { items: [{ itemId: "timeline_planner_001", summary: "Verified timeline item." }], omissions: [] };
-    case "contradiction-candidate-summary.v1": return { items: [{ candidateId: "contradiction_planner_001", rationale: "Verified contradiction candidate." }], omissions: [] };
+    case "timeline-draft-summary.v1": return { items: [{ itemId: "timeline_procurement_001", summary: "Verified timeline item." }], omissions: [] };
+    case "contradiction-candidate-summary.v1": return { items: [{ candidateId: "contradiction_procurement_001", rationale: "Verified contradiction candidate." }], omissions: [] };
     case "governance-locks.v1": return { items: { activeLocks: [], governanceRestrictions: [{ restrictionId: "restriction_planner_001", restrictionKind: "review", affectedRef: "inv_scope_001", sourceEventIds: ["evt_planner_context_001"], projectionProvenanceRefs: ["evt_planner_context_001"], policyVersion: "v1", safeReasonCode: "review-required" }] } };
     case "agent-memory-summary.v1": return { memory: { activeMemory: [{ memoryId: "memory_planner_001", scope: "investigation", memoryKind: "summary", summary: "Verified planning memory.", confidence: 1, sourceEventIds: ["evt_planner_context_001"], artifactHashes: [] }], aggregateCounts: { active: 1 }, sourceEventIds: ["evt_planner_context_001"], artifactHashes: [] } };
     case "task-run-history.v1": return { history: { projectionHighWaterMark: 1, projectionSourceRef: "agent.projection.task-run-history", tasks: [{ taskId: "task_investigation_001", status: "running", priority: "normal", statusReasonCode: "Planning context prepared." }], runs: [], modelInvocations: [], toolRequests: [], aggregateCounts: { tasks: 1 }, sourceEventIds: ["evt_planner_context_001"], artifactHashes: [] } };

@@ -236,6 +236,49 @@ describe("untrusted specialist runner", () => {
       .not.toMatch(/mounted resident sourced evidence bytes|authorization:|provider body/i);
   }, mountedSourcedMultiWorkflowTimeoutMs);
 
+  it("reaches planner and PRR advice through the production resident mounted execution port", async () => {
+    const plannerFixture = await mountedSourcedResidentFactoryFixture();
+    const prrFixture = await mountedSourcedResidentFactoryFixture();
+
+    const [planner, prr] = await Promise.allSettled([
+      plannerFixture.supervision.executeSourcedInvestigation({
+        taskId: plannerFixture.plannerTaskId,
+        runId: plannerFixture.plannerRunId,
+        runType: "investigation-planner",
+        investigationId: "inv_sourced_factory_001"
+      } as never),
+      prrFixture.supervision.executeSourcedInvestigation({
+        taskId: prrFixture.prrTaskId,
+        runId: prrFixture.prrRunId,
+        runType: "prr-negotiation",
+        prrRequestId: "prr_req_sourced_factory_001",
+        correspondenceId: "corr_prr_sourced_factory_001",
+        jurisdictionRuleRefs: [
+          "jurisdiction-rule:us-federal-foia@0.1.0:federal-determination-20-working-days"
+        ]
+      } as never)
+    ]);
+
+    expect(planner).toMatchObject({
+      status: "fulfilled",
+      value: { cockpit: { selectedRun: { runType: "investigation-planner", state: "completed" } } }
+    });
+    expect(prr).toMatchObject({
+      status: "fulfilled",
+      value: { cockpit: { selectedRun: { runType: "prr-negotiation", state: "completed" } } }
+    });
+    for (const fixture of [plannerFixture, prrFixture]) {
+      const types = (await fixture.handle.ledger.readAll()).map((event) => event.type);
+      expect(types.filter((type) => type === "agent.specialist-handoff.recorded")).toHaveLength(1);
+      expect(types).not.toEqual(expect.arrayContaining([
+        "agent.tool.executed",
+        "agent.tool.completed",
+        "prr.followup.sent",
+        "prr.legal-escalation.confirmed"
+      ]));
+    }
+  }, mountedSourcedMultiWorkflowTimeoutMs);
+
   it("grounds production timeline items only in exact assertion and PRR ledger history", async () => {
     const fixture = await mountedSourcedResidentFactoryFixture({ canonicalDatedFacts: true });
     if (fixture.canonicalDatedFacts === undefined) throw new Error("canonical dated facts are unavailable");
@@ -992,13 +1035,17 @@ describe("untrusted specialist runner", () => {
       actor: { id: "agent_default", kind: "agent", label: "Cestus Agent" },
       now: fixture.now,
       createSupervisorOwnerId: () => "owner_sourced_blocked_retry",
-      issueMountedSourcedInvestigationHandoff: async (wakeRuntime, task) =>
-        await bindMountedSourcedInvestigationHandoffForLocalAgentRuntimeFactory({
+      issueMountedSourcedInvestigationHandoff: async (wakeRuntime, task) => {
+        if (task.runType !== "timeline-builder" && task.runType !== "contradiction-finder") {
+          throw new Error("blocked-retry fixture accepts only sourced-investigation tasks");
+        }
+        return await bindMountedSourcedInvestigationHandoffForLocalAgentRuntimeFactory({
           wakeRuntime,
           taskId: task.taskId,
           runId: task.runId,
           runType: task.runType
-        }),
+        });
+      },
       sourcedInvestigationExecution: createMountedSourcedInvestigationExecutionPort({
         handle: fixture.handle,
         now: fixture.now
@@ -1175,7 +1222,7 @@ describe("untrusted specialist runner", () => {
       events: await completed.handle.ledger.readAll(),
       manifestReader: new FileBlobStore(join(
         completedWorkspace.paths.derivativeRoot,
-        "specialist-handoff-material"
+        "specialist-handoff-manifest"
       )),
       runId: completed.dispatch.approvedRunId,
       taskId: completed.dispatch.taskId
@@ -1616,6 +1663,10 @@ async function mountedSourcedResidentFactoryFixture(options: {
   readonly timelineRunId: string;
   readonly contradictionTaskId: string;
   readonly contradictionRunId: string;
+  readonly plannerTaskId: string;
+  readonly plannerRunId: string;
+  readonly prrTaskId: string;
+  readonly prrRunId: string;
   readonly canonicalDatedFacts?: {
     readonly assertionId: string;
     readonly assertionProposedEventId: string;
@@ -1660,7 +1711,7 @@ async function mountedSourcedResidentFactoryFixture(options: {
   const setup = createAgentRuntime({ ledger: handle.ledger, actor, now, providers: [] });
   await setup.initializeDefaultIdentity({
     workspaceId,
-    allowedRunTypes: ["timeline-builder", "contradiction-finder"]
+    allowedRunTypes: ["timeline-builder", "contradiction-finder", "investigation-planner", "prr-negotiation"]
   });
   const mounted = handle.mountedWorkspace;
   if (mounted === undefined) throw new Error("sourced resident factory fixture is not mounted");
@@ -1707,6 +1758,27 @@ async function mountedSourcedResidentFactoryFixture(options: {
       occurrenceIds: ["occ_sourced_factory"]
     }
   } satisfies AppendableKnowledgeEvent<"ingestion.evidence.linked">);
+  const advisoryPrrCreated = await handle.ledger.append({
+    type: "prr.request.created",
+    version: 1,
+    streamId: "prr_req_sourced_factory_001",
+    context: {
+      actor,
+      occurredAt: sourcedNow,
+      causationId: linked.id,
+      correlationId: "corr_prr_sourced_factory_001",
+      coreVersion: "0.1.0",
+      packVersions: { core: "0.1.0", prr: "0.1.0" }
+    },
+    payload: {
+      prrRequestId: "prr_req_sourced_factory_001",
+      jurisdictionPack: { name: "us-federal-foia", version: "0.1.0" },
+      agency: { name: "Sourced Factory Records Office" },
+      requester: { name: "Sourced Factory Investigator" },
+      requestText: "Provide the selected source record.",
+      status: "draft"
+    }
+  } satisfies AppendableKnowledgeEvent<"prr.request.created">);
   let canonicalDatedFacts: {
     readonly assertionId: string;
     readonly assertionProposedEventId: string;
@@ -1940,12 +2012,16 @@ async function mountedSourcedResidentFactoryFixture(options: {
   }
   const timelineTaskId = "task_sourced_factory_timeline";
   const contradictionTaskId = "task_sourced_factory_contradiction";
+  const plannerTaskId = "task_sourced_factory_planner";
+  const prrTaskId = "task_sourced_factory_prr";
   const unrelatedTimelineTaskId = secondEvidenceId === undefined
     ? undefined
     : "task_sourced_factory_unrelated_timeline";
   for (const [taskId, title] of [
     [timelineTaskId, "Build the mounted sourced timeline"],
     [contradictionTaskId, "Find mounted sourced contradictions"],
+    [plannerTaskId, "Plan the mounted investigation"],
+    [prrTaskId, "Prepare mounted PRR advice"],
     ...(unrelatedTimelineTaskId === undefined
       ? []
       : [[unrelatedTimelineTaskId, "Build an unrelated mounted sourced timeline"] as const])
@@ -1962,6 +2038,7 @@ async function mountedSourcedResidentFactoryFixture(options: {
       priority: "normal",
       sourceEventIds: [
         ...(secondOnly ? [] : [ingested.id, linked.id, ...firstTaskSourceEventIds]),
+        ...(taskId === prrTaskId ? [advisoryPrrCreated.id] : []),
         ...(includeSecond ? secondTaskSourceEventIds : [])
       ],
       inputArtifactHashes: [
@@ -1976,13 +2053,35 @@ async function mountedSourcedResidentFactoryFixture(options: {
     actor,
     now,
     ...(options.backgroundExecution === undefined ? {} : { backgroundExecution: options.backgroundExecution }),
-    issueMountedSourcedInvestigationHandoff: async (wakeRuntime, task) =>
-      await bindMountedSourcedInvestigationHandoffForLocalAgentRuntimeFactory({
-        wakeRuntime,
-        taskId: task.taskId,
-        runId: task.runId,
-        runType: task.runType
-      }),
+    issueMountedSourcedInvestigationHandoff: async (wakeRuntime, task) => {
+      const advisory = task as unknown as {
+        readonly taskId: string;
+        readonly runId: string;
+        readonly runType: "timeline-builder" | "contradiction-finder" | "investigation-planner" | "prr-negotiation";
+        readonly investigationId?: string;
+      };
+      return advisory.runType === "investigation-planner"
+        ? await bindMountedAdvisoryHandoffForLocalAgentRuntimeFactory({
+            wakeRuntime,
+            taskId: advisory.taskId,
+            runId: advisory.runId,
+            runType: advisory.runType,
+            investigationId: advisory.investigationId ?? "inv_sourced_factory_001"
+          })
+        : advisory.runType === "prr-negotiation"
+          ? await bindMountedAdvisoryHandoffForLocalAgentRuntimeFactory({
+              wakeRuntime,
+              taskId: advisory.taskId,
+              runId: advisory.runId,
+              runType: advisory.runType
+            })
+          : await bindMountedSourcedInvestigationHandoffForLocalAgentRuntimeFactory({
+              wakeRuntime,
+              taskId: advisory.taskId,
+              runId: advisory.runId,
+              runType: advisory.runType
+            });
+    },
     sourcedInvestigationExecution: createMountedSourcedInvestigationExecutionPort({
       handle,
       now,
@@ -2005,6 +2104,10 @@ async function mountedSourcedResidentFactoryFixture(options: {
     timelineRunId: "run_sourced_factory_timeline",
     contradictionTaskId,
     contradictionRunId: "run_sourced_factory_contradiction",
+    plannerTaskId,
+    plannerRunId: "run_sourced_factory_planner",
+    prrTaskId,
+    prrRunId: "run_sourced_factory_prr",
     ...(canonicalDatedFacts === undefined ? {} : { canonicalDatedFacts }),
     ...(secondEvidenceId === undefined || secondEvidenceFacts === undefined ? {} : {
       secondEvidenceId,
@@ -2281,7 +2384,8 @@ function mountedPrrContextPayload(
           deadlineDate: "2026-08-24",
           source: "jurisdiction-pack",
           confidence: 0.9,
-          explanation: "Current jurisdiction summary supplies the advisory deadline."
+          explanation: "Current jurisdiction summary supplies the advisory deadline.",
+          deadlineRefs: ["deadline_prr_response_001"]
         },
         fee: null,
         narrowing: null,
@@ -2305,6 +2409,7 @@ function mountedPrrContextPayload(
         packName: "us-federal-foia",
         packVersion: "0.1.0",
         jurisdiction: "US federal",
+        jurisdictionRefs: ["jurisdiction_us_federal_foia"],
         citedRules: [{
           ruleRef: "rule_foia_deadline_001",
           label: "FOIA response deadline",

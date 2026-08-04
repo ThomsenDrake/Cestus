@@ -100,10 +100,22 @@ export interface ResidentAdmittedLocalTask {
   readonly runId: string;
 }
 
-export interface ResidentSourcedInvestigationTask extends ResidentAdmittedLocalTask {
-  readonly runType: "timeline-builder" | "contradiction-finder";
-  readonly evidenceIds: readonly string[];
-}
+export type ResidentSourcedInvestigationTask = ResidentAdmittedLocalTask & (
+  | {
+      readonly runType: "timeline-builder" | "contradiction-finder";
+      readonly evidenceIds: readonly string[];
+    }
+  | {
+      readonly runType: "investigation-planner";
+      readonly investigationId: string;
+    }
+  | {
+      readonly runType: "prr-negotiation";
+      readonly prrRequestId: string;
+      readonly correspondenceId: string;
+      readonly jurisdictionRuleRefs: readonly string[];
+    }
+);
 
 export interface ResidentSourcedInvestigationExecutionPort {
   execute(
