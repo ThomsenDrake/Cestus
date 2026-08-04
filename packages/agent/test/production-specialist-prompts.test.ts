@@ -1023,6 +1023,20 @@ describe("production specialist prompt registrations", () => {
     }
   });
 
+  it("keeps shared non-Slice-09 advisory instructions outside the sourced-narrative policy", () => {
+    const output = triageSafeSummary("The graph must be accepted by a human reviewer.");
+    expect(output.runType).toBe("evidence-triage");
+  });
+
+  it.each([
+    ["completed PRR send", "The PRR was sent."],
+    ["completed legal escalation", "The legal escalation was executed."],
+    ["completed provider transfer", "Provider bytes were transferred."],
+    ["completed export", "The report was exported."],
+    ["accepted ontology truth", "The graph was accepted."]
+  ])("keeps the shared $label gate fail closed", (_label, safeSummary) => {
+    expect(() => triageSafeSummary(safeSummary)).toThrow(/authority|external effect|ontology/i);
+  });
   it("rejects active-voice publication authority claims", () => {
     expect(() => triageSafeSummary("I published the report.")).toThrow(/authority|external effect|ontology/i);
   });
@@ -1407,10 +1421,14 @@ describe("production specialist prompt registrations", () => {
           evidenceRefs: ["ev_report_001"],
           assertionRefs: [],
           prrEventRefs: [],
+          contentHashRefs: ["sha256:1111111111111111111111111111111111111111111111111111111111111111"],
           summary: "The date range remains subject to source review.",
-          uncertaintyCategories: []
+          uncertaintyCategories: [],
+          uncertaintyNotes: [],
+          uncertaintySourceRefs: []
         }],
         omissionReasons: [],
+        omittedSources: [],
         unresolvedPrompts: []
       }
     });

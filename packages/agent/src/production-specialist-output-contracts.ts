@@ -54,7 +54,6 @@ const hasAuthorityEffectUnlessInstruction = (
     (actionMatcher(clause, subject, action) && !hasInstructionBeforeAction(clause, instructionModal, action))
   );
 };
-
 const hasCompletedPrrEffect = (value: string) =>
   hasSubjectAction(
     value,
@@ -114,6 +113,17 @@ const safeText = (label: string) => z.string().min(1).max(2_000).superRefine((va
   }
 });
 const shortSafeText = (label: string) => safeText(label).max(500);
+const sourcedNarrativeGovernedMorphology = /\b(?:accept(?:s|ed|ing)?|acceptance|reject(?:s|ed|ing)?|rejection|contest(?:s|ed|ing)?|contestation|supersed(?:e|es|ed|ing)|supersession|re[\s-]?link(?:s|ed|ing)?|finaliz(?:e|es|ed|ing)|finalization)\b/i;
+const sourcedNarrativeMatchView = (value: string) =>
+  value.normalize("NFKC").replace(/[\p{P}\p{M}\p{Cf}]+/gu, "");
+const sourcedNarrativeText = (label: string) => shortSafeText(label).superRefine((value, ctx) => {
+  if (sourcedNarrativeGovernedMorphology.test(sourcedNarrativeMatchView(value))) {
+    ctx.addIssue({
+      code: "custom",
+      message: `${label} must remain source-descriptive and use typed reviewer action fields instead of governed authority morphology`
+    });
+  }
+});
 const id = (prefix: string) => safeText(`${prefix} identifier`).regex(new RegExp(`^${prefix}[a-zA-Z0-9_-]+$`));
 const canonicalReferencePattern = /^(?:sha256:[a-f0-9]{64}|(?=[a-zA-Z0-9._:-]{3,200}$)(?=[a-zA-Z0-9._:-]*[_:.])[a-zA-Z][a-zA-Z0-9._:-]*)$/;
 const ref = safeText("provider output reference").max(200).superRefine((value, ctx) => {
@@ -122,7 +132,28 @@ const ref = safeText("provider output reference").max(200).superRefine((value, c
   }
 });
 const hash = z.string().regex(/^sha256:[a-f0-9]{64}$/);
-const normalizedDate = safeText("timeline date").regex(/^\d{4}(?:-\d{2}(?:-\d{2})?)?$/);
+type TimelineDatePrecision = "year" | "month" | "day";
+
+const timelineDatePrecision = (value: string): TimelineDatePrecision | undefined => {
+  const match = /^(\d{4})(?:-(\d{2})(?:-(\d{2}))?)?$/.exec(value);
+  if (match === null) return undefined;
+  const year = Number(match[1]);
+  const month = match[2] === undefined ? undefined : Number(match[2]);
+  const day = match[3] === undefined ? undefined : Number(match[3]);
+  if (year < 1) return undefined;
+  if (month === undefined) return "year";
+  if (month < 1 || month > 12) return undefined;
+  if (day === undefined) return "month";
+  const leapYear = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const daysInMonth = [31, leapYear ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1]!;
+  return day >= 1 && day <= daysInMonth ? "day" : undefined;
+};
+
+const normalizedDate = safeText("timeline date").superRefine((value, ctx) => {
+  if (timelineDatePrecision(value) === undefined) {
+    ctx.addIssue({ code: "custom", message: "timeline date must be a real normalized calendar year, month, or day" });
+  }
+});
 
 const prrNegotiationReviewOutputSchema = z.object({
   draftSummary: shortSafeText("PRR negotiation draft summary"),
@@ -153,20 +184,48 @@ const timelineBuilderSourcedTimelineOutputSchema = z.object({
   timelineItems: z.array(z.object({
     itemId: id("timeline_"), date: normalizedDate.optional(), dateRange: z.object({ start: normalizedDate, end: normalizedDate }).strict().optional(),
     precision: z.enum(["year", "month", "day", "range", "unknown"]), evidenceRefs: z.array(ref).max(24), assertionRefs: z.array(ref).max(24), prrEventRefs: z.array(ref).max(24),
-    summary: shortSafeText("timeline item summary"), uncertaintyCategories: z.array(z.enum(["date-uncertain", "source-conflict", "incomplete-source", "inference-required"])).max(8)
+    contentHashRefs: z.array(hash).min(1).max(24), summary: sourcedNarrativeText("timeline item summary"),
+    uncertaintyCategories: z.array(z.enum(["date-uncertain", "source-conflict", "incomplete-source", "inference-required"])).max(8),
+    uncertaintyNotes: z.array(sourcedNarrativeText("timeline uncertainty note")).max(12),
+    uncertaintySourceRefs: z.array(ref).max(24)
   }).strict().superRefine((value, ctx) => {
-    if (value.date === undefined && value.dateRange === undefined) ctx.addIssue({ code: "custom", message: "timeline item requires a date or date range" });
+    if ((value.date === undefined) === (value.dateRange === undefined)) {
+      ctx.addIssue({ code: "custom", message: "timeline item requires exactly one date or date range" });
+    }
+    if (value.date !== undefined && timelineDatePrecision(value.date) !== value.precision) {
+      ctx.addIssue({ code: "custom", message: "timeline date precision must match its normalized date" });
+    }
+    if (value.dateRange !== undefined) {
+      if (value.precision !== "range") {
+        ctx.addIssue({ code: "custom", message: "timeline date range requires range precision" });
+      }
+      if (value.dateRange.start > value.dateRange.end) {
+        ctx.addIssue({ code: "custom", message: "timeline date range must be ordered" });
+      }
+    }
     if (value.evidenceRefs.length + value.assertionRefs.length + value.prrEventRefs.length === 0) ctx.addIssue({ code: "custom", message: "timeline item requires at least one source ref" });
+    if (value.uncertaintyCategories.length > 0 && (value.uncertaintyNotes.length === 0 || value.uncertaintySourceRefs.length === 0)) {
+      ctx.addIssue({ code: "custom", message: "timeline uncertainty requires notes and exact source refs" });
+    }
   })).max(100),
-  omissionReasons: z.array(shortSafeText("timeline omission reason")).max(24), unresolvedPrompts: z.array(shortSafeText("timeline unresolved prompt")).max(24)
+  omissionReasons: z.array(sourcedNarrativeText("timeline omission reason")).max(24),
+  omittedSources: z.array(z.object({ sourceRef: ref, reason: sourcedNarrativeText("timeline omitted-source reason") }).strict()).max(24),
+  unresolvedPrompts: z.array(sourcedNarrativeText("timeline unresolved prompt")).max(24)
 }).strict();
 
 const contradictionFinderCandidatesOutputSchema = z.object({
   candidates: z.array(z.object({
     candidateId: id("contradiction_"), comparedSourceRefs: z.array(ref).min(2).max(24), evidenceIds: z.array(id("ev_")).max(24), evidenceContentHashes: z.array(hash).max(24), assertionIds: z.array(ref).max(24), timelineItemIds: z.array(id("timeline_")).max(24),
-    category: z.enum(["direct-conflict", "timeline-conflict", "attribution-conflict", "quantitative-conflict", "scope-conflict"]), confidence: z.number().min(0).max(1), rationale: shortSafeText("contradiction rationale"),
-    alternativeExplanations: z.array(shortSafeText("alternative explanation")).max(12), requiredReviewerAction: z.enum(["review", "request-evidence", "request-claim-link-review"])
-  }).strict()).max(48)
+    prrEventRefs: z.array(ref).max(24), category: z.enum(["direct-conflict", "timeline-conflict", "attribution-conflict", "quantitative-conflict", "scope-conflict"]),
+    confidence: z.number().min(0).max(1), confidenceCaveat: sourcedNarrativeText("contradiction confidence caveat"), rationale: sourcedNarrativeText("contradiction rationale"),
+    uncertaintyRefs: z.array(ref).max(24), alternativeExplanations: z.array(sourcedNarrativeText("alternative explanation")).min(1).max(12),
+    requestedFollowupEvidence: z.array(sourcedNarrativeText("requested follow-up evidence")).min(1).max(24),
+    requiredReviewerAction: z.enum(["review", "request-evidence", "request-claim-link-review"])
+  }).strict().superRefine((value, ctx) => {
+    if (new Set(value.comparedSourceRefs).size < 2) {
+      ctx.addIssue({ code: "custom", message: "contradiction candidate requires two distinct exact source refs" });
+    }
+  })).max(48)
 }).strict();
 
 const investigationPlannerNextStepsOutputSchema = z.object({

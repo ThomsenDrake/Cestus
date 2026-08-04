@@ -5,12 +5,14 @@ import { prrWorkspaceSeedEvents } from "../../prr/src/workspace-seed.js";
 import type { IngestionWorkspaceMountResolver } from "../../ingestion/src/mount-contract.js";
 import {
   acquireMountedEvidenceTriageHandoffForLocalAgentRuntimeFactory,
+  bindMountedSourcedInvestigationHandoffForLocalAgentRuntimeFactory,
   contextFreeLocalAgentRuntimeFactory,
   type LocalAgentRuntimeFactory
 } from "./agent-runtime-factory.js";
 import { handleAgentHttpRoute } from "./agent-http-routes.js";
 import {
   createMountedEvidenceTriageBackgroundExecutionPort,
+  createMountedSourcedInvestigationExecutionPort,
   type MountedTaskBackgroundExecutionObservation
 } from "./agent-runtime-mounted-task.js";
 import {
@@ -98,6 +100,17 @@ export function createLocalRuntimeHttpHandler(
         taskId: task.taskId,
         runId: task.runId
       }),
+    issueMountedSourcedInvestigationHandoff: async (wakeRuntime, task) =>
+      await bindMountedSourcedInvestigationHandoffForLocalAgentRuntimeFactory({
+        wakeRuntime,
+        taskId: task.taskId,
+        runId: task.runId,
+        runType: task.runType
+      }),
+    sourcedInvestigationExecution: createMountedSourcedInvestigationExecutionPort({
+      handle,
+      now: runtimeNow
+    }),
     backgroundExecution: input.residentBackgroundExecutionForTest ??
       createMountedEvidenceTriageBackgroundExecutionPort({
         handle,
