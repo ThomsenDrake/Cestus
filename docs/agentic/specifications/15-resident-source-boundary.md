@@ -233,6 +233,33 @@ changes. The correction may touch only the original Specification 15 source
 and focused tests needed for these findings, adds no new event or approval
 class, preserves all other behavior, and requires a new fresh Sol verdict.
 
+## Approved Scheduler-Terminality Recovery Run
+
+Direct human authority on 2026-08-05 starts one new bounded recovery run from
+preserved candidate commit
+`50bc5132d2300d511d4e3547b0a22276e789b75f`. It corrects only the confirmed
+fresh Sol finding that the generic scheduler treats an approved resident source
+boundary request as executable and, because this approval-only tool has no
+executor descriptor, can append `agent.tool.failed` after the human decision.
+
+Approval and denial for an exact resident source boundary request remain the
+terminal outcome of this slice. Scheduler wake must not select, claim, execute,
+complete, fail, or otherwise mutate a durably validated request with the exact
+`ingestion.source-boundary.approve` / `ledger-proposal` / `human-review`
+resident-boundary tuple. It must create no scheduler item or event for that
+request. Ordinary executable approvals and ordinary descriptorless approvals
+retain their current behavior; generic `human-review` requests do not gain
+eligibility or an exception.
+
+The run uses one new Terra / High implementer, at most two focused repairs, and
+a new fresh Sol / High final verdict. Product changes are limited to
+`packages/agent/src/scheduler.ts` and focused scheduler tests in
+`packages/agent/test/scheduler.test.ts`. Tests must first reproduce the reviewed
+post-approval wake failure and prove no execution claim, completion, failure, or
+other event is appended after the correction. This recovery may not add an
+executor, scan/import action, event type, approval class, fallback behavior, or
+external effect, and all other Specification 15 boundaries remain unchanged.
+
 ## Targeted Verification
 
 - `npm test -- packages/agent/test/approval-queue.test.ts packages/agent/test/approval-cockpit.test.ts packages/agent/test/resident-source-boundary.test.ts packages/agent/test/projection.test.ts`
