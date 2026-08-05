@@ -9,7 +9,7 @@ import { createFakeMountedWorkspace } from "./runtime-test-helpers.js";
 describe("resident source boundary", () => {
   it("discovers virtual metadata without opening file bytes and produces a path-free preview", async () => {
     const workspace = createFakeMountedWorkspace();
-    const filesystem: ResidentSourceMetadataFilesystem = {
+    const filesystem: ResidentSourceMetadataFilesystem & { readonly readFile: () => never } = {
       listDirectory: (path) => path === "/selected" ? ["notes/finding.md", "settings.json", "linked"] : [],
       lstat: (path) => ({
         path,
@@ -81,10 +81,10 @@ describe("resident source boundary", () => {
     const service = createResidentSourceBoundaryService({ workspace, filesystem });
     const first = await service.discover({
       workflowId: "workflow_identity_001", sourceCollectionId: "src_identity_001", sourceRoot: "/selected-a"
-    } as never);
+    });
     const second = await service.discover({
       workflowId: "workflow_identity_002", sourceCollectionId: "src_identity_001", sourceRoot: "/selected-b"
-    } as never);
+    });
     expect(first.preview.sourceIdentity).not.toBe("caller-controlled");
     expect(second.preview.sourceIdentity).not.toBe(first.preview.sourceIdentity);
   });

@@ -232,10 +232,11 @@ export function createLocalRuntimeHttpHandler(
     }
 
     if (path.startsWith("/api/ingestion/")) {
+      const ingestionMountResolver = input.ingestionMountResolver ?? mountedIngestionResolver(handle);
       const response = await handleIngestionHttpRoute({
         request,
         actor: input.actor,
-        ingestionMountResolver: input.ingestionMountResolver ?? mountedIngestionResolver(handle),
+        ...(ingestionMountResolver === undefined ? {} : { ingestionMountResolver }),
         ...(input.ingestionRuntimeFactory === undefined
           ? {}
           : { ingestionRuntimeFactory: input.ingestionRuntimeFactory })

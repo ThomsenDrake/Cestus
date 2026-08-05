@@ -24,7 +24,7 @@ export interface ResidentSourceBoundaryApprovalRequest extends ResidentSourceBou
       readonly estimatedEffect: string;
       readonly inputArtifactHashes: readonly string[];
       readonly residentSourceBoundary: ResidentSourceBoundaryBinding;
-    }): Promise<{ readonly payload: { readonly requiredApprovalClass: string } }>;
+    }): Promise<KnowledgeEventOf<"agent.tool.requested">>;
   };
   readonly toolRequestId: string;
   readonly taskId: string;
@@ -66,8 +66,8 @@ export async function requestResidentSourceBoundaryApproval(
     sideEffectClass: "ledger-proposal",
     requiredApprovalClass: "human-review",
     preview,
-    scope: preview.scope,
-    estimatedEffect: preview.estimatedEffect,
+    scope: "Resident source boundary approval.",
+    estimatedEffect: "Approval only authorizes a later scanning slice.",
     inputArtifactHashes: [binding.discoveryArtifactHash, binding.manifestArtifactHash],
     residentSourceBoundary: binding
   });
@@ -84,11 +84,45 @@ async function existingWorkflowRequest(
   if (requests.length === 0) return undefined;
   if (requests.length !== 1) throw new Error("Workflow has multiple resident source boundary requests.");
   const request = requests[0];
-  const previous = request.payload.residentSourceBoundary;
+  if (request === undefined) throw new Error("Workflow request lookup changed unexpectedly.");
+  const previous = request.payload.residentSourceBoundary === undefined
+    ? undefined
+    : validatedResidentSourceBoundaryBinding(request.payload.residentSourceBoundary);
   if (request.payload.toolRequestId !== toolRequestId || previous === undefined || !sameBinding(previous, binding)) {
     throw new Error("Workflow already has a different resident source boundary authority request.");
   }
   return request;
+}
+
+function validatedResidentSourceBoundaryBinding(value: {
+  readonly workflowId: string;
+  readonly workspaceId: string;
+  readonly sourceCollectionId: string;
+  readonly sourceIdentity: string;
+  readonly sourceRootHash: string;
+  readonly discoveryArtifactHash: string;
+  readonly discoveryHash: string;
+  readonly manifestArtifactHash: string;
+  readonly manifestHash: string;
+  readonly archivePolicy: "reject";
+  readonly regularFileCount: number;
+  readonly includedFileCount: number;
+  readonly excludedFileCount: number;
+  readonly includedBytes: number;
+  readonly excludedBytes: number;
+  readonly totalBytes: number;
+}): ResidentSourceBoundaryBinding {
+  for (const hash of [value.sourceRootHash, value.discoveryArtifactHash, value.discoveryHash, value.manifestArtifactHash, value.manifestHash]) {
+    if (!/^sha256:[a-f0-9]{64}$/.test(hash)) throw new Error("Resident source boundary request has an invalid hash.");
+  }
+  return Object.freeze({
+    ...value,
+    sourceRootHash: value.sourceRootHash as `sha256:${string}`,
+    discoveryArtifactHash: value.discoveryArtifactHash as `sha256:${string}`,
+    discoveryHash: value.discoveryHash as `sha256:${string}`,
+    manifestArtifactHash: value.manifestArtifactHash as `sha256:${string}`,
+    manifestHash: value.manifestHash as `sha256:${string}`
+  });
 }
 
 function sameBinding(left: ResidentSourceBoundaryBinding, right: ResidentSourceBoundaryBinding): boolean {

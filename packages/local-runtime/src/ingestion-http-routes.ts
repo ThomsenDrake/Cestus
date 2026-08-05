@@ -40,9 +40,10 @@ export async function handleIngestionHttpRoute(
     return undefined;
   }
 
+  const queryFields = route.kind === "runtime" || route.kind === "workspace" ? route.queryFields : undefined;
   const payload = route.bodyKind === "json"
     ? parseJsonBody(input.request.body)
-    : { ok: true as const, value: queryPayload(url.searchParams, route.queryFields) };
+    : { ok: true as const, value: queryPayload(url.searchParams, queryFields) };
   if (!payload.ok) {
     return json(400, payload.error);
   }
@@ -83,9 +84,11 @@ export async function handleIngestionHttpRoute(
       const service = residentSourceBoundaryService(mount.workspace, input.ingestionMountResolver);
       if (route.action === "discover") return json(200, await service.discover(requiredDiscoveryInput(payload.value)));
       if (route.action === "review-discovery") {
+        if (route.artifactHash === undefined) throw new Error("Protected discovery review requires its artifact hash.");
         return json(200, await service.readProtectedDiscovery({ actorKind: "human", discoveryArtifactHash: route.artifactHash }));
       }
       if (route.action === "review-boundary") {
+        if (route.artifactHash === undefined) throw new Error("Protected boundary review requires its artifact hash.");
         return json(200, await service.readProtectedBoundary({ actorKind: "human", manifestArtifactHash: route.artifactHash }));
       }
       const proposal = await service.proposeBoundary(requiredBoundaryProposal(payload.value));
@@ -304,7 +307,7 @@ function requiredSourceRoot(value: unknown): string {
 }
 function requiredArtifactHash(value: unknown): `sha256:${string}` {
   if (typeof value !== "string" || !/^sha256:[a-f0-9]{64}$/.test(value)) throw new Error("Invalid protected artifact hash.");
-  return value;
+  return value as `sha256:${string}`;
 }
 function requiredPathArray(value: unknown): readonly string[] {
   if (!Array.isArray(value) || value.some((item) => typeof item !== "string")) throw new Error("Boundary paths must be a string array.");
