@@ -1,7 +1,6 @@
 # Resident Source Boundary
 
-Status: draft. Human approval of this exact specification is required before
-implementation.
+Status: approved.
 
 ## Desired Behavior
 
