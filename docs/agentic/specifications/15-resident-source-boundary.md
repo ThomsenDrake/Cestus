@@ -190,6 +190,25 @@ corrections may not change accepted behavior, add product scope, or touch files
 outside the original Specification 15 Allowed Scope. The repair limit remains
 two and is not reset.
 
+## Approved Compilation Stabilization Run
+
+Direct human authority on 2026-08-05 starts one new bounded compilation-only
+run from preserved candidate commit
+`061daaf80d85df8999a28b4f0273a85b13dd9e57`. It may correct only the existing
+TypeScript diagnostics in the ten Specification 15 agent, ingestion, and
+local-runtime source or test files named by the serial `npm run typecheck`
+reproduction. It may not alter accepted runtime behavior, widen a type,
+suppress a diagnostic, weaken validation or a test, or touch another file.
+
+The run uses one new Terra / High implementer and at most two focused repairs.
+Every typecheck invocation is serial and must be observed through its actual
+process exit; an early tool yield is not success. After typecheck passes, the
+complete Specification 15 targeted verification remains mandatory, followed
+by the existing fresh Sol, integration-verification, normal-history, origin,
+and CI gates. If the compiler failure survives this run's two repairs, preserve
+the candidate and reimplement the remaining slice more narrowly rather than
+resetting this run again.
+
 ## Targeted Verification
 
 - `npm test -- packages/agent/test/approval-queue.test.ts packages/agent/test/approval-cockpit.test.ts packages/agent/test/resident-source-boundary.test.ts packages/agent/test/projection.test.ts`
