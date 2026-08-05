@@ -157,8 +157,35 @@ approval remain human-gated. Any content read, scan, live SSD access, import,
 credential use, provider invocation, or external effect is outside this slice
 and remains separately human-gated.
 
+## Approved Recovery Boundary
+
+The 2026-08-05 bounded recovery corrects only the candidate regression that
+globally admitted the generic `human-review` sentinel into the canonical agent
+approval queue and cockpit. Generic requests, approvals, denials, locks, DTOs,
+and approval-class metadata using `human-review` remain rejected fail-closed at
+those canonical boundaries.
+
+Only an `agent.tool.requested` event whose durable validated payload contains
+the structured `residentSourceBoundary` binding and the exact
+`ingestion.source-boundary.approve` tool ID, `ledger-proposal` side-effect
+class, and `human-review` required approval class may be projected into the
+existing approval cockpit and handled by the existing authenticated approval
+and denial routes. This eligibility must be derived from the durable validated
+event binding, never from caller-supplied queue or cockpit DTO input. It must
+not introduce a new approval class, reinterpret another approval class, admit
+another `human-review` workflow, add another decision route, or weaken any
+generic sentinel test.
+
+Recovery changes are limited to the existing agent projection, approval queue,
+approval cockpit, resident-boundary helper, their focused tests, and the
+existing local-runtime resident-boundary route test only when needed to prove
+the end-to-end decision path. All other Specification 15 behavior and scope
+remain unchanged. This recovery has at most two focused repairs and requires a
+new Terra / High implementer plus a fresh Sol / High final verdict.
+
 ## Targeted Verification
 
+- `npm test -- packages/agent/test/approval-queue.test.ts packages/agent/test/approval-cockpit.test.ts packages/agent/test/resident-source-boundary.test.ts packages/agent/test/projection.test.ts`
 - `npm test -- packages/ingestion/test/resident-source-boundary.test.ts packages/ingestion/test/local-filesystem.test.ts`
 - `npm test -- packages/ontology/test/contracts.test.ts packages/agent/test/resident-source-boundary.test.ts packages/agent/test/resident-loop-tool-gateway.test.ts`
 - `npm test -- packages/local-runtime/test/agent-resident-source-boundary-routes.test.ts packages/local-runtime/test/ingestion-http-routes.test.ts packages/local-runtime/test/portable-workspace-lifecycle.test.ts packages/local-runtime/test/agent-http-routes.test.ts`
