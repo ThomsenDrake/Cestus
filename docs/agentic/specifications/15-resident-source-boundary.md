@@ -209,6 +209,30 @@ and CI gates. If the compiler failure survives this run's two repairs, preserve
 the candidate and reimplement the remaining slice more narrowly rather than
 resetting this run again.
 
+## Approved Sol Finding Repair Scope
+
+Direct human authority on 2026-08-05 expands this run only to correct the three
+confirmed findings from the fresh Sol `fix-first` verdict on commit
+`e697ed527195a9e30893b2391c42231f28c8ad04`:
+
+1. The default mounted ingestion resolver must be available only to resident
+   source-boundary endpoints, validate the exact portable-workspace tuple on
+   every resolution, and expose only the capabilities this slice needs. It may
+   not activate scan, import, provider, or other existing ingestion routes.
+2. Resident boundary authority must use a durable, atomic workflow
+   compare-and-append fence. Concurrent different tool-request IDs for one
+   workflow may create at most one request, and replay or malformed existing
+   requests fail closed. Ephemeral per-service maps are not workflow authority.
+3. Ontology and gateway validation must require the complete
+   `ingestion.source-boundary.approve` / `ledger-proposal` / `human-review`
+   tuple whenever the structured boundary binding is present.
+
+This is focused repair 1 of at most 2 for the compilation-stabilization run.
+Tests for each finding must fail for the reviewed defect before production
+changes. The correction may touch only the original Specification 15 source
+and focused tests needed for these findings, adds no new event or approval
+class, preserves all other behavior, and requires a new fresh Sol verdict.
+
 ## Targeted Verification
 
 - `npm test -- packages/agent/test/approval-queue.test.ts packages/agent/test/approval-cockpit.test.ts packages/agent/test/resident-source-boundary.test.ts packages/agent/test/projection.test.ts`
