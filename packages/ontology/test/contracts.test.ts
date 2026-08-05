@@ -33,7 +33,7 @@ describe("event contracts", () => {
       toolId: "ingestion.source-boundary.approve",
       toolVersion: "1.0.0",
       requestedBy: "agent_default",
-      sideEffectClass: "local-derivative",
+      sideEffectClass: "ledger-proposal",
       requiredApprovalClass: "human-review",
       previewHash: "sha256:1111111111111111111111111111111111111111111111111111111111111111",
       scope: "Resident source boundary approval.",
@@ -57,6 +57,16 @@ describe("event contracts", () => {
       streamId: "agent_tool_request_toolreq_boundary_001", sequence: 1, context: agentContext,
       payload: { ...payload, residentSourceBoundary: { ...payload.residentSourceBoundary, sourceRoot: "/selected" } }
     }).success).toBe(false);
+    for (const [label, changedPayload] of [
+      ["tool", { ...payload, toolId: "ingestion.source-boundary.preview" }],
+      ["side effect", { ...payload, sideEffectClass: "local-derivative" }],
+      ["approval class", { ...payload, requiredApprovalClass: "ledger-review" }]
+    ] as const) {
+      expect(validateKnowledgeEvent({
+        id: `evt_boundary_request_wrong_${label.replace(" ", "_")}`, type: "agent.tool.requested", version: 1,
+        streamId: "agent_tool_request_toolreq_boundary_001", sequence: 1, context: agentContext, payload: changedPayload
+      }).success, `rejects a boundary binding with the wrong ${label} tuple component`).toBe(false);
+    }
   });
   it("contains agent guidance for every event contract", () => {
     for (const contract of Object.values(eventContracts)) {

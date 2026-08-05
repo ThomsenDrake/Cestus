@@ -2500,6 +2500,7 @@ const agentToolRequestedPayloadSchema = z.object({
   }
   if (toolRequest.residentSourceBoundary !== undefined && (
     toolRequest.toolId !== "ingestion.source-boundary.approve" ||
+    toolRequest.sideEffectClass !== "ledger-proposal" ||
     toolRequest.requiredApprovalClass !== "human-review"
   )) {
     ctx.addIssue({

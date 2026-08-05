@@ -20,6 +20,7 @@ import {
 } from "./agent-runtime-mounted-task.js";
 import {
   createResidentSupervisionRuntime,
+  inspectPortableWorkspaceCurrentness,
   type ResidentBackgroundExecutionPort
 } from "./wake-supervisor-runtime.js";
 import { authorizedLocalRuntimeRequest } from "./auth.js";
@@ -232,7 +233,11 @@ export function createLocalRuntimeHttpHandler(
     }
 
     if (path.startsWith("/api/ingestion/")) {
-      const ingestionMountResolver = input.ingestionMountResolver ?? mountedIngestionResolver(handle);
+      const ingestionMountResolver = input.ingestionMountResolver ?? (
+        path.startsWith("/api/ingestion/resident-source-boundaries/")
+          ? mountedBoundaryIngestionResolver(handle)
+          : undefined
+      );
       const response = await handleIngestionHttpRoute({
         request,
         actor: input.actor,
@@ -315,25 +320,49 @@ export function createLocalRuntimeHttpHandler(
   return handler;
 }
 
-function mountedIngestionResolver(handle: ReturnType<typeof createSqlitePrrRuntime>): IngestionWorkspaceMountResolver | undefined {
-  const mounted = handle.mountedWorkspace;
-  if (mounted === undefined) return undefined;
-  const workspace: MountedWorkspace = {
-    workspaceId: mounted.workspaceId,
-    label: mounted.label,
-    ledger: handle.ledger,
-    blobStore: new FileBlobStore(mounted.paths.blobRoot),
-    derivativeStore: new FileBlobStore(mounted.paths.derivativeRoot),
-    jobStateRoot: mounted.paths.jobRoot,
-    capabilities: mountedWorkspaceCapabilities({
-      canReadLedger: true,
-      canAppendLedger: true,
-      canWriteBlobs: true,
-      canWriteDerivatives: true,
-      canWriteJobState: true
-    })
+function mountedBoundaryIngestionResolver(handle: ReturnType<typeof createSqlitePrrRuntime>): IngestionWorkspaceMountResolver | undefined {
+  if (handle.mountedWorkspace === undefined) return undefined;
+  return {
+    resolve: async () => {
+      if (!inspectPortableWorkspaceCurrentness(handle).ok) {
+        return {
+          ok: false as const,
+          error: {
+            code: "INGESTION_WORKSPACE_NOT_MOUNTED" as const,
+            message: "Portable workspace is unavailable or no longer current.",
+            allowedRepairActions: ["mount the portable workspace", "retry the ingestion action"]
+          }
+        };
+      }
+      const mounted = handle.mountedWorkspace;
+      if (mounted === undefined) {
+        return {
+          ok: false as const,
+          error: {
+            code: "INGESTION_WORKSPACE_NOT_MOUNTED" as const,
+            message: "Portable workspace is unavailable or no longer current.",
+            allowedRepairActions: ["mount the portable workspace", "retry the ingestion action"]
+          }
+        };
+      }
+      const workspace: MountedWorkspace = {
+        workspaceId: mounted.workspaceId,
+        label: mounted.label,
+        ledger: handle.ledger,
+        blobStore: new FileBlobStore(mounted.paths.blobRoot),
+        derivativeStore: new FileBlobStore(mounted.paths.derivativeRoot),
+        jobStateRoot: mounted.paths.jobRoot,
+        capabilities: mountedWorkspaceCapabilities({
+          canReadLedger: true,
+          canAppendLedger: true,
+          canWriteBlobs: false,
+          canWriteDerivatives: true,
+          canWriteJobState: false
+        })
+      };
+      return { ok: true as const, workspace };
+    }
   };
-  return { resolve: async () => ({ ok: true as const, workspace }) };
 }
 
 function draftRequestInputFromBody(value: unknown): CreateDraftRequestInput | undefined {

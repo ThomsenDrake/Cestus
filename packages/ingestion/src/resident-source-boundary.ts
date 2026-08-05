@@ -149,7 +149,6 @@ export function createResidentSourceBoundaryService(
   input: ResidentSourceBoundaryServiceInput
 ): ResidentSourceBoundaryService {
   const filesystem = input.filesystem ?? nodeMetadataFilesystem;
-  const workflowBindings = new Map<string, { readonly workspaceId: string; readonly sourceCollectionId: string; readonly sourceIdentity: string; readonly sourceRootHash: `sha256:${string}` }>();
   const assertReady = async (write: boolean) => {
     await input.assertCurrent?.();
     if (!input.workspace.capabilities.canReadLedger || (write && !input.workspace.capabilities.canWriteDerivatives)) {
@@ -167,15 +166,6 @@ export function createResidentSourceBoundaryService(
       const sourceIdentity = observedSourceIdentity(rootMetadata);
       const entries = collectMetadata(filesystem, sourceRoot);
       const sourceRootHash = digest(sourceRoot);
-      const existing = workflowBindings.get(value.workflowId);
-      if (existing !== undefined && (
-        existing.workspaceId !== input.workspace.workspaceId ||
-        existing.sourceCollectionId !== value.sourceCollectionId ||
-        existing.sourceIdentity !== sourceIdentity ||
-        existing.sourceRootHash !== sourceRootHash
-      )) {
-        throw new Error("Workflow is already bound to a different mounted resident source.");
-      }
       const unsigned = {
         schemaVersion: "resident-source-discovery.v1" as const,
         workflowId: value.workflowId,
@@ -190,12 +180,6 @@ export function createResidentSourceBoundaryService(
       // All hostile filesystem input has been confined before this sole write.
       await assertReady(true);
       const stored = await input.workspace.derivativeStore.put(Buffer.from(stableJson(artifact)));
-      workflowBindings.set(value.workflowId, Object.freeze({
-        workspaceId: input.workspace.workspaceId,
-        sourceCollectionId: value.sourceCollectionId,
-        sourceIdentity,
-        sourceRootHash
-      }));
       const totals = totalsFor(entries);
       return Object.freeze({
         workflowId: value.workflowId,
