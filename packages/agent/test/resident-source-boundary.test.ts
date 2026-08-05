@@ -91,4 +91,22 @@ describe("resident source boundary approval", () => {
     await expect(requestResidentSourceBoundaryApproval({ ...input, toolRequestId: "toolreq_boundary_replay_002", manifestHash: hash("6") })).rejects.toThrow(/different|workflow/i);
     expect((await ledger.readAll()).filter((event) => event.type === "agent.tool.requested")).toHaveLength(1);
   });
+
+  it("atomically admits at most one boundary request when concurrent request IDs claim one workflow", async () => {
+    const ledger = new InMemoryEventLedger();
+    const gateway = createAgentToolGateway({ ledger, actor: { id: "agent_default", kind: "agent", label: "Resident" }, now: () => "2026-08-05T12:00:00.000Z" });
+    const hash = (value: string) => `sha256:${value.repeat(64).slice(0, 64)}` as `sha256:${string}`;
+    const shared = {
+      ledger, gateway, taskId: "task_boundary_concurrent_001", runId: "run_boundary_concurrent_001",
+      workflowId: "workflow_concurrent_001", workspaceId: "ws_concurrent_001", sourceCollectionId: "src_concurrent_001", sourceIdentity: `source_${"d".repeat(64)}`,
+      sourceRootHash: hash("1"), discoveryArtifactHash: hash("2"), discoveryHash: hash("3"), manifestArtifactHash: hash("4"), manifestHash: hash("5"), archivePolicy: "reject" as const,
+      regularFileCount: 1, includedFileCount: 1, excludedFileCount: 0, includedBytes: 8, excludedBytes: 0, totalBytes: 8
+    };
+    const outcomes = await Promise.allSettled([
+      requestResidentSourceBoundaryApproval({ ...shared, toolRequestId: "toolreq_boundary_concurrent_001" }),
+      requestResidentSourceBoundaryApproval({ ...shared, toolRequestId: "toolreq_boundary_concurrent_002" })
+    ]);
+    expect(outcomes.filter((outcome) => outcome.status === "fulfilled")).toHaveLength(1);
+    expect((await ledger.readAll()).filter((event) => event.type === "agent.tool.requested")).toHaveLength(1);
+  });
 });

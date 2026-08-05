@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import type { ActorRef, AppendableKnowledgeEvent, KnowledgeEventOf } from "../../ontology/src/contracts.js";
+import type { ActorRef, AppendableKnowledgeEvent, KnowledgeEvent, KnowledgeEventOf } from "../../ontology/src/contracts.js";
 import type { AppendOptions, EventLedger } from "../../ontology/src/event-ledger.js";
 import { approvalClassForSideEffect, type AgentApprovalClass } from "./permission-policy.js";
 import type { AgentToolSideEffectClass } from "./projection-types.js";
@@ -150,7 +150,9 @@ export interface FailAgentToolInput {
 export function createAgentToolGateway(input: CreateAgentToolGatewayInput) {
   const gateway = {
     async requestTool(command: RequestAgentToolInput) {
-      await assertNewToolRequest(input.ledger, command.toolRequestId);
+      if (command.residentSourceBoundary === undefined) {
+        await assertNewToolRequest(input.ledger, command.toolRequestId);
+      }
       const preview = sanitizeAgentToolPreview(command.preview);
       const previewHash = hashAgentToolPreview(preview);
       const requiredApprovalClass = command.requiredApprovalClass ?? approvalClassForSideEffect(command.sideEffectClass);
@@ -166,6 +168,19 @@ export function createAgentToolGateway(input: CreateAgentToolGatewayInput) {
       const residentSourceBoundary = command.residentSourceBoundary === undefined
         ? undefined
         : copyResidentSourceBoundaryBinding(command.residentSourceBoundary);
+      if (residentSourceBoundary !== undefined) {
+        assertResidentSourceBoundaryRequestTuple(command.toolId, command.sideEffectClass, requiredApprovalClass);
+      }
+      const boundarySnapshot = residentSourceBoundary === undefined ? undefined : await input.ledger.readAll();
+      if (boundarySnapshot !== undefined && residentSourceBoundary !== undefined) {
+        assertNewToolRequestFromSnapshot(boundarySnapshot, command.toolRequestId);
+        if (boundarySnapshot.some((event) =>
+          event.type === "agent.tool.requested" &&
+          event.payload.residentSourceBoundary?.workflowId === residentSourceBoundary.workflowId
+        )) {
+          throw new Error("Resident source boundary workflow already has a durable request.");
+        }
+      }
       const event: AppendableKnowledgeEvent<"agent.tool.requested"> = {
         type: "agent.tool.requested",
         version: 1,
@@ -187,7 +202,10 @@ export function createAgentToolGateway(input: CreateAgentToolGatewayInput) {
           ...(residentSourceBoundary === undefined ? {} : { residentSourceBoundary })
         }
       };
-      return appendToolEvent(input.ledger, event, { expectedNextSequence: 1 });
+      return appendToolEvent(input.ledger, event, {
+        expectedNextSequence: 1,
+        ...(boundarySnapshot === undefined ? {} : { expectedGlobalEventCount: boundarySnapshot.length })
+      });
     },
 
     async approveTool(command: ApproveAgentToolInput) {
@@ -453,6 +471,20 @@ function copyResidentSourceBoundaryBinding(value: ResidentSourceBoundaryBinding)
     excludedBytes: record.excludedBytes as number,
     totalBytes: record.totalBytes as number
   });
+}
+
+function assertResidentSourceBoundaryRequestTuple(
+  toolId: string,
+  sideEffectClass: AgentToolSideEffectClass,
+  requiredApprovalClass: AgentApprovalClass
+): void {
+  if (
+    toolId !== "ingestion.source-boundary.approve" ||
+    sideEffectClass !== "ledger-proposal" ||
+    requiredApprovalClass !== "human-review"
+  ) {
+    throw new Error("Resident source boundary binding requires the exact boundary authority tuple.");
+  }
 }
 
 export function hashAgentToolPreview(preview: AgentToolPreview): `sha256:${string}` {
@@ -799,7 +831,11 @@ type ToolRequestEvent =
 
 async function assertNewToolRequest(ledger: EventLedger, toolRequestId: string): Promise<void> {
   const events = await ledger.readStream(toolRequestStreamId(toolRequestId));
-  if (events.some((event) => event.type === "agent.tool.requested")) {
+  assertNewToolRequestFromSnapshot(events, toolRequestId);
+}
+
+function assertNewToolRequestFromSnapshot(events: readonly KnowledgeEvent[], toolRequestId: string): void {
+  if (events.some((event) => event.type === "agent.tool.requested" && event.streamId === toolRequestStreamId(toolRequestId))) {
     throw new Error("Tool request already exists; create a new toolRequestId for a changed preview.");
   }
 }

@@ -1,5 +1,5 @@
 import { AsyncLocalStorage } from "node:async_hooks";
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
@@ -2745,6 +2745,26 @@ describe("agent HTTP routes", () => {
     expect(response.body).not.toContain("Source text sentinel that must not echo back.");
     expect(response.body).not.toContain("evt_route_diagnostic");
     expect(isAgentSecretSafeText(response.body)).toBe(true);
+  });
+
+  it("does not synthesize ingestion authority outside boundary routes and rejects stale boundary mounts before writes", async () => {
+    const config = portableConfig("ws_boundary_resolver_scope");
+    if (config.storage.strategy !== "portable-workspace") throw new Error("boundary resolver test requires portable storage");
+    const sourceRoot = join(config.storage.workspaceRoot, "selected");
+    mkdirSync(sourceRoot);
+    const handler = testHandler({ config });
+
+    const ordinaryRoute = await handler({ method: "GET", url: "/api/ingestion/sources" });
+    expect(ordinaryRoute.status).toBe(503);
+
+    rmSync(join(config.storage.workspaceRoot, "cestus-workspace.json"));
+    const staleBoundary = await handler({
+      method: "POST",
+      url: "/api/ingestion/resident-source-boundaries/discover",
+      body: JSON.stringify({ workflowId: "workflow_stale_boundary_001", sourceCollectionId: "src_stale_boundary_001", sourceRoot })
+    });
+    expect(staleBoundary.status).toBe(503);
+    expect(readdirSync(join(config.storage.workspaceRoot, "derivatives"))).toEqual([]);
   });
 });
 

@@ -88,7 +88,15 @@ async function existingWorkflowRequest(
   const previous = request.payload.residentSourceBoundary === undefined
     ? undefined
     : validatedResidentSourceBoundaryBinding(request.payload.residentSourceBoundary);
-  if (request.payload.toolRequestId !== toolRequestId || previous === undefined || !sameBinding(previous, binding)) {
+  if (
+    request.payload.toolRequestId !== toolRequestId ||
+    request.payload.toolId !== "ingestion.source-boundary.approve" ||
+    request.payload.sideEffectClass !== "ledger-proposal" ||
+    request.payload.requiredApprovalClass !== "human-review" ||
+    previous === undefined ||
+    request.payload.previewHash !== hashResidentSourceBoundaryPreview(previous) ||
+    !sameBinding(previous, binding)
+  ) {
     throw new Error("Workflow already has a different resident source boundary authority request.");
   }
   return request;
