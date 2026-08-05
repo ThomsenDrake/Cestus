@@ -1,4 +1,5 @@
 import type { ContextPackRef } from "./context-packs.js";
+import { hasProjectedResidentSourceBoundaryReview } from "./projection.js";
 import { assertAgentSecretSafeText } from "./secret-safety.js";
 
 export const agentApprovalQueueClassValues = [
@@ -64,6 +65,8 @@ export interface AgentApprovalQueueRequestDto {
   readonly requestedAt: string;
   readonly state: string;
   readonly residentSourceBoundaryReview?: AgentResidentSourceBoundaryReviewDto;
+  /** Runtime-only projection source; it is not represented in queue output. */
+  readonly residentSourceBoundaryProjection?: object;
 }
 
 export interface AgentToolApprovalDto {
@@ -401,7 +404,7 @@ function freezeRequest(request: AgentApprovalQueueRequestDto): NormalizedAgentAp
     : freezeResidentSourceBoundaryReview(request.residentSourceBoundaryReview);
   const requiredApprovalClass = normalizeAgentApprovalClass(
     request.requiredApprovalClass,
-    residentSourceBoundaryReview !== undefined
+    residentSourceBoundaryReview !== undefined && hasTrustedResidentSourceBoundaryProjection(request)
   );
   assertSecretSafeStrings([
     [request.toolRequestId, "toolRequestId"],
@@ -424,6 +427,24 @@ function freezeRequest(request: AgentApprovalQueueRequestDto): NormalizedAgentAp
     contextPackRefs: freezeContextPackRefs(request.contextPackRefs),
     ...(residentSourceBoundaryReview === undefined ? {} : { residentSourceBoundaryReview })
   });
+}
+
+function hasTrustedResidentSourceBoundaryProjection(request: AgentApprovalQueueRequestDto): boolean {
+  const projection = request.residentSourceBoundaryProjection;
+  if (!hasProjectedResidentSourceBoundaryReview(projection) || projection === null || typeof projection !== "object") {
+    return false;
+  }
+  const source = projection as Partial<AgentApprovalQueueRequestDto>;
+  return (
+    source.toolRequestId === request.toolRequestId &&
+    source.runId === request.runId &&
+    source.toolId === request.toolId &&
+    source.sideEffectClass === request.sideEffectClass &&
+    source.requiredApprovalClass === request.requiredApprovalClass &&
+    source.previewHash === request.previewHash &&
+    source.residentSourceBoundaryReview?.schemaVersion === request.residentSourceBoundaryReview?.schemaVersion &&
+    source.residentSourceBoundaryReview?.requestEventId === request.residentSourceBoundaryReview?.requestEventId
+  );
 }
 
 function freezeResidentSourceBoundaryReview(

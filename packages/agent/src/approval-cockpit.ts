@@ -12,6 +12,9 @@ import {
 } from "./approval-queue.js";
 import { browserSafeContextPackRefSchema } from "./browser-safe-context-refs.js";
 import { assertAgentSecretSafeText } from "./secret-safety.js";
+import {
+  hasProjectedResidentSourceBoundaryReview
+} from "./projection.js";
 import type { AgentStatusDto } from "./runtime-types.js";
 
 const schemaVersion = "agent-approval-cockpit.v1" as const;
@@ -423,6 +426,7 @@ function isResidentSourceBoundaryRequest(
 } {
   const review = request.residentSourceBoundaryReview;
   return (
+    hasProjectedResidentSourceBoundaryReview(request) &&
     request.toolId === "ingestion.source-boundary.approve" &&
     request.sideEffectClass === "ledger-proposal" &&
     request.requiredApprovalClass === "human-review" &&
@@ -440,7 +444,7 @@ function projectRequestForQueue(
   assertAgentSecretSafeText(request.estimatedEffect, "approval cockpit request estimatedEffect");
   const residentSourceBoundaryRequest = isResidentSourceBoundaryRequest(request);
 
-  return Object.freeze({
+  const queueRequest = Object.freeze({
     toolRequestId: request.toolRequestId,
     runId: request.runId,
     taskId: taskId ?? request.runId,
@@ -459,6 +463,10 @@ function projectRequestForQueue(
     requestedAt: request.requestedAt,
     state: request.state,
     ...(residentSourceBoundaryRequest ? { residentSourceBoundaryReview: request.residentSourceBoundaryReview } : {})
+  });
+  return Object.freeze({
+    ...queueRequest,
+    ...(residentSourceBoundaryRequest ? { residentSourceBoundaryProjection: request } : {})
   });
 }
 
