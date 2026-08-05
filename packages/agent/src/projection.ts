@@ -47,6 +47,13 @@ export interface BuildAgentProjectionOptions {
   readonly now?: string | Date | undefined;
 }
 
+const residentSourceBoundaryReviewBrand = new WeakSet<object>();
+
+/** Runtime-only authority. It is never serialized into the agent status DTO. */
+export function hasProjectedResidentSourceBoundaryReview(value: unknown): value is object {
+  return value !== null && typeof value === "object" && residentSourceBoundaryReviewBrand.has(value);
+}
+
 export function buildAgentProjection(events: readonly KnowledgeEvent[], options: BuildAgentProjectionOptions = {}): AgentProjection {
   let identity: AgentProjectionIdentity | undefined;
   const taskOrchestrator = buildTaskOrchestratorProjection(events, { now: options.now });
@@ -298,40 +305,47 @@ export function buildAgentProjection(events: readonly KnowledgeEvent[], options:
         break;
       }
 
-      case "agent.tool.requested":
+      case "agent.tool.requested": {
+        const residentSourceBoundaryReview = projectResidentSourceBoundaryReview(event);
+        const toolRequest = {
+          toolRequestId: event.payload.toolRequestId,
+          runId: event.payload.runId,
+          toolId: event.payload.toolId,
+          toolVersion: event.payload.toolVersion,
+          requestedBy: event.payload.requestedBy,
+          sideEffectClass: event.payload.sideEffectClass,
+          requiredApprovalClass: event.payload.requiredApprovalClass,
+          previewHash: event.payload.previewHash,
+          scope: event.payload.scope,
+          estimatedEffect: event.payload.estimatedEffect,
+          state: "requested" as const,
+          requestedAt: event.context.occurredAt,
+          sourceEventIds: freezeArray(event.payload.sourceEventIds ?? []),
+          inputArtifactHashes: freezeArray(event.payload.inputArtifactHashes ?? []),
+          resultEventIds: freezeArray([]),
+          artifactHashes: freezeArray([]),
+          readModelChanges: freezeArray([]),
+          allowedActions: freezeArray([]),
+          ...(residentSourceBoundaryReview === undefined ? {} : { residentSourceBoundaryReview }),
+          ...nextProvenance(undefined, event)
+        };
+        if (residentSourceBoundaryReview !== undefined) {
+          residentSourceBoundaryReviewBrand.add(toolRequest);
+        }
         toolRequests.set(
           event.payload.toolRequestId,
-          freezeProjected({
-            toolRequestId: event.payload.toolRequestId,
-            runId: event.payload.runId,
-            toolId: event.payload.toolId,
-            toolVersion: event.payload.toolVersion,
-            requestedBy: event.payload.requestedBy,
-            sideEffectClass: event.payload.sideEffectClass,
-            requiredApprovalClass: event.payload.requiredApprovalClass,
-            previewHash: event.payload.previewHash,
-            scope: event.payload.scope,
-            estimatedEffect: event.payload.estimatedEffect,
-            state: "requested",
-            requestedAt: event.context.occurredAt,
-            sourceEventIds: freezeArray(event.payload.sourceEventIds ?? []),
-            inputArtifactHashes: freezeArray(event.payload.inputArtifactHashes ?? []),
-            resultEventIds: freezeArray([]),
-            artifactHashes: freezeArray([]),
-            readModelChanges: freezeArray([]),
-            allowedActions: freezeArray([]),
-            ...nextProvenance(undefined, event)
-          })
+          freezeProjected(toolRequest)
         );
         rememberRunToolRequest(runs, event.payload.runId, event.payload.toolRequestId, event);
         break;
+      }
 
       case "agent.tool.approved": {
         const previous = toolRequests.get(event.payload.toolRequestId);
         if (previous) {
           toolRequests.set(
             event.payload.toolRequestId,
-            freezeProjected({
+            freezeToolRequest(previous, {
               ...previous,
               state: "approved",
               approvedBy: event.payload.approvedBy,
@@ -351,7 +365,7 @@ export function buildAgentProjection(events: readonly KnowledgeEvent[], options:
         if (previous && toolRequestCanAcceptExecutionClaim(previous.state)) {
           toolRequests.set(
             event.payload.toolRequestId,
-            freezeProjected({
+            freezeToolRequest(previous, {
               ...previous,
               state: "executing",
               executionClaimedBy: event.payload.claimedBy,
@@ -371,7 +385,7 @@ export function buildAgentProjection(events: readonly KnowledgeEvent[], options:
         if (previous) {
           toolRequests.set(
             event.payload.toolRequestId,
-            freezeProjected({
+            freezeToolRequest(previous, {
               ...previous,
               state: "denied",
               deniedBy: event.payload.deniedBy,
@@ -390,7 +404,7 @@ export function buildAgentProjection(events: readonly KnowledgeEvent[], options:
         if (previous) {
           toolRequests.set(
             event.payload.toolRequestId,
-            freezeProjected({
+            freezeToolRequest(previous, {
               ...previous,
               state: "completed",
               completedAt: event.payload.completedAt,
@@ -418,7 +432,7 @@ export function buildAgentProjection(events: readonly KnowledgeEvent[], options:
         if (previous) {
           toolRequests.set(
             event.payload.toolRequestId,
-            freezeProjected({
+            freezeToolRequest(previous, {
               ...previous,
               state: "failed",
               failedAt: event.payload.failedAt,
@@ -627,6 +641,37 @@ export function buildAgentProjection(events: readonly KnowledgeEvent[], options:
   };
 
   return freezeProjected(projection);
+}
+
+function freezeToolRequest<T extends object>(previous: unknown, value: T): T {
+  const frozen = freezeProjected(value);
+  if (hasProjectedResidentSourceBoundaryReview(previous)) {
+    residentSourceBoundaryReviewBrand.add(frozen);
+  }
+  return frozen;
+}
+
+function projectResidentSourceBoundaryReview(event: Extract<KnowledgeEvent, { readonly type: "agent.tool.requested" }>) {
+  const binding = event.payload.residentSourceBoundary;
+  if (
+    binding === undefined ||
+    event.payload.toolId !== "ingestion.source-boundary.approve" ||
+    event.payload.sideEffectClass !== "ledger-proposal" ||
+    event.payload.requiredApprovalClass !== "human-review" ||
+    binding.archivePolicy !== "reject" ||
+    binding.regularFileCount !== binding.includedFileCount + binding.excludedFileCount ||
+    binding.totalBytes !== binding.includedBytes + binding.excludedBytes ||
+    !/^source_[a-f0-9]{64}$/.test(binding.sourceIdentity) ||
+    ![binding.sourceRootHash, binding.discoveryArtifactHash, binding.discoveryHash, binding.manifestArtifactHash, binding.manifestHash]
+      .every((hash) => /^sha256:[a-f0-9]{64}$/.test(hash))
+  ) {
+    return undefined;
+  }
+
+  return Object.freeze({
+    schemaVersion: "resident-source-boundary-review.v1" as const,
+    requestEventId: event.id
+  });
 }
 
 type AgentModelRequestedEvent = Extract<KnowledgeEvent, { type: "agent.model-invocation.requested" }>;

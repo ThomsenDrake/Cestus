@@ -7,10 +7,14 @@ import {
   type AgentApprovalQueueInputApprovalClass,
   type AgentApprovalQueueItemDto,
   type AgentApprovalQueueOutput,
-  type AgentApprovalQueueRequestDto
+  type AgentApprovalQueueRequestDto,
+  type AgentResidentSourceBoundaryReviewDto
 } from "./approval-queue.js";
 import { browserSafeContextPackRefSchema } from "./browser-safe-context-refs.js";
 import { assertAgentSecretSafeText } from "./secret-safety.js";
+import {
+  hasProjectedResidentSourceBoundaryReview
+} from "./projection.js";
 import type { AgentStatusDto } from "./runtime-types.js";
 
 const schemaVersion = "agent-approval-cockpit.v1" as const;
@@ -47,6 +51,13 @@ function approvalClassIdentifierSchema(label: string) {
   );
 }
 
+function queueItemApprovalClassSchema(label: string) {
+  return secretSafeIdentifierSchema(label).refine(
+    (value) => value !== "none",
+    { message: `${label} must be a canonical approval-class identifier.` }
+  );
+}
+
 const affectedRefSchema = z.object({
   kind: secretSafeIdentifierSchema("affected ref kind"),
   id: secretSafeIdentifierSchema("affected ref id"),
@@ -69,7 +80,7 @@ const approvalQueueApprovalSchema = z.object({
   approvedPreviewHash: secretSafeIdentifierSchema("approval cockpit approved preview hash"),
   approvedAt: z.string().datetime(),
   rationale: secretSafeIdentifierSchema("approval cockpit approval rationale"),
-  approvalClass: approvalClassIdentifierSchema("approval cockpit approval class").optional()
+  approvalClass: queueItemApprovalClassSchema("approval cockpit approval class").optional()
 }).strict();
 
 const approvalQueueDenialSchema = z.object({
@@ -77,7 +88,7 @@ const approvalQueueDenialSchema = z.object({
   deniedBy: secretSafeIdentifierSchema("approval cockpit denied by"),
   deniedAt: z.string().datetime(),
   rationale: secretSafeIdentifierSchema("approval cockpit denial rationale"),
-  approvalClass: approvalClassIdentifierSchema("approval cockpit denial approval class").optional()
+  approvalClass: queueItemApprovalClassSchema("approval cockpit denial approval class").optional()
 }).strict();
 
 const approvalQueueCompletionSchema = z.object({
@@ -100,7 +111,7 @@ const approvalQueueFailureSchema = z.object({
 
 const approvalQueueRiskSchema = z.object({
   sideEffectClass: secretSafeIdentifierSchema("approval cockpit risk side-effect class"),
-  approvalClass: approvalClassIdentifierSchema("approval cockpit risk approval class"),
+  approvalClass: queueItemApprovalClassSchema("approval cockpit risk approval class"),
   previewSummary: secretSafeIdentifierSchema("approval cockpit risk preview summary"),
   affectedRefs: z.array(affectedRefSchema),
   contextPackRefs: z.array(browserSafeContextPackRefSchema),
@@ -109,7 +120,7 @@ const approvalQueueRiskSchema = z.object({
 }).strict();
 
 const approvalContractSchema = z.object({
-  requiredApprovalClass: approvalClassIdentifierSchema("approval cockpit contract approval class"),
+  requiredApprovalClass: queueItemApprovalClassSchema("approval cockpit contract approval class"),
   approvalRouteAppendsOnly: z.literal(true),
   denialRouteAppendsOnly: z.literal(true),
   rationaleRequired: z.literal(true),
@@ -135,6 +146,12 @@ const stalenessSchema = z.object({
   guidance: z.string().min(1).optional()
 }).strict();
 
+const residentSourceBoundaryReviewSchema = z.object({
+  schemaVersion: z.literal("resident-source-boundary-review.v1"),
+  requestEventId: secretSafeIdentifierSchema("approval cockpit resident source boundary request event id")
+    .regex(/^evt_[a-zA-Z0-9_-]+$/)
+}).strict();
+
 const cockpitItemSchema = z.object({
   toolRequestId: secretSafeIdentifierSchema("approval cockpit tool request id"),
   runId: secretSafeIdentifierSchema("approval cockpit run id"),
@@ -142,8 +159,8 @@ const cockpitItemSchema = z.object({
   toolId: secretSafeIdentifierSchema("approval cockpit tool id"),
   toolVersion: z.union([z.number(), secretSafeIdentifierSchema("approval cockpit tool version")]),
   sideEffectClass: secretSafeIdentifierSchema("approval cockpit side-effect class"),
-  approvalClass: approvalClassIdentifierSchema("approval cockpit item approval class"),
-  requiredApprovalClass: approvalClassIdentifierSchema("approval cockpit item required approval class"),
+  approvalClass: queueItemApprovalClassSchema("approval cockpit item approval class"),
+  requiredApprovalClass: queueItemApprovalClassSchema("approval cockpit item required approval class"),
   previewHash: secretSafeIdentifierSchema("approval cockpit preview hash"),
   currentPreviewHash: secretSafeIdentifierSchema("approval cockpit current preview hash").optional(),
   previewSummary: secretSafeIdentifierSchema("approval cockpit preview summary"),
@@ -159,11 +176,35 @@ const cockpitItemSchema = z.object({
   denial: approvalQueueDenialSchema.optional(),
   completion: approvalQueueCompletionSchema.optional(),
   failure: approvalQueueFailureSchema.optional(),
+  residentSourceBoundaryReview: residentSourceBoundaryReviewSchema.optional(),
   providerByteTransferNote: secretSafeIdentifierSchema("approval cockpit provider byte transfer note").optional(),
   staleness: stalenessSchema,
   approvalContract: approvalContractSchema,
   review: reviewSchema
-}).strict();
+}).strict().superRefine((item, ctx) => {
+  const usesHumanReview = item.approvalClass === "human-review" ||
+    item.requiredApprovalClass === "human-review" ||
+    item.risk.approvalClass === "human-review" ||
+    item.approval?.approvalClass === "human-review" ||
+    item.denial?.approvalClass === "human-review" ||
+    item.approvalContract.requiredApprovalClass === "human-review";
+  if (!usesHumanReview) return;
+
+  if (
+    item.approvalClass !== "human-review" ||
+    item.requiredApprovalClass !== "human-review" ||
+    item.risk.approvalClass !== "human-review" ||
+    item.residentSourceBoundaryReview === undefined ||
+    !item.affectedRefs.some((ref) =>
+      ref.kind === "event" && ref.id === item.residentSourceBoundaryReview?.requestEventId
+    )
+  ) {
+    ctx.addIssue({
+      code: "custom",
+      message: "human-review cockpit items require durable resident source boundary provenance."
+    });
+  }
+});
 
 const cockpitQueueSchema = z.object({
   generatedAt: z.string().datetime(),
@@ -369,7 +410,30 @@ export function buildAgentApprovalCockpit(input: BuildAgentApprovalCockpitInput)
 }
 
 function requestBelongsInApprovalCockpit(request: AgentStatusDto["toolRequests"][number]): boolean {
+  if (request.requiredApprovalClass === "human-review") {
+    if (!isResidentSourceBoundaryRequest(request)) {
+      throw new Error("human-review cockpit requests require durable resident source boundary provenance.");
+    }
+    return true;
+  }
   return request.requiredApprovalClass !== "none";
+}
+
+function isResidentSourceBoundaryRequest(
+  request: AgentStatusDto["toolRequests"][number]
+): request is AgentStatusDto["toolRequests"][number] & {
+  readonly residentSourceBoundaryReview: AgentResidentSourceBoundaryReviewDto;
+} {
+  const review = request.residentSourceBoundaryReview;
+  return (
+    hasProjectedResidentSourceBoundaryReview(request) &&
+    request.toolId === "ingestion.source-boundary.approve" &&
+    request.sideEffectClass === "ledger-proposal" &&
+    request.requiredApprovalClass === "human-review" &&
+    review?.schemaVersion === "resident-source-boundary-review.v1" &&
+    /^evt_[a-zA-Z0-9_-]+$/.test(review.requestEventId) &&
+    request.eventIds.includes(review.requestEventId)
+  );
 }
 
 function projectRequestForQueue(
@@ -378,24 +442,31 @@ function projectRequestForQueue(
 ): AgentApprovalQueueRequestDto {
   assertAgentSecretSafeText(request.scope, "approval cockpit request scope");
   assertAgentSecretSafeText(request.estimatedEffect, "approval cockpit request estimatedEffect");
+  const residentSourceBoundaryRequest = isResidentSourceBoundaryRequest(request);
 
-  return Object.freeze({
+  const queueRequest = Object.freeze({
     toolRequestId: request.toolRequestId,
     runId: request.runId,
     taskId: taskId ?? request.runId,
     toolId: request.toolId,
     toolVersion: request.toolVersion,
     sideEffectClass: request.sideEffectClass,
-    requiredApprovalClass: normalizeApprovalClass(request.requiredApprovalClass),
+    requiredApprovalClass: normalizeApprovalClass(request.requiredApprovalClass, residentSourceBoundaryRequest),
     previewHash: request.previewHash,
     previewSummary: request.estimatedEffect,
     affectedRefs: freezeAffectedRefs([
+      ...(residentSourceBoundaryRequest ? request.eventIds.map((id) => ({ kind: "event", id })) : []),
       ...request.sourceEventIds.map((id) => ({ kind: "event", id })),
       ...request.inputArtifactHashes.map((hash) => ({ kind: "artifact", id: hash, hash }))
     ]),
     contextPackRefs: Object.freeze([]),
     requestedAt: request.requestedAt,
-    state: request.state
+    state: request.state,
+    ...(residentSourceBoundaryRequest ? { residentSourceBoundaryReview: request.residentSourceBoundaryReview } : {})
+  });
+  return Object.freeze({
+    ...queueRequest,
+    ...(residentSourceBoundaryRequest ? { residentSourceBoundaryProjection: request } : {})
   });
 }
 
@@ -410,7 +481,9 @@ function projectApprovalForQueue(request: AgentStatusDto["toolRequests"][number]
     approvedPreviewHash: request.approvedPreviewHash,
     approvedAt: request.approvedAt,
     rationale: request.approvalRationale,
-    ...(request.approvalClass === undefined ? {} : { approvalClass: normalizeApprovalClass(request.approvalClass) })
+    ...(request.approvalClass === undefined ? {} : {
+      approvalClass: normalizeApprovalClass(request.approvalClass, isResidentSourceBoundaryRequest(request))
+    })
   })];
 }
 
@@ -424,7 +497,9 @@ function projectDenialForQueue(request: AgentStatusDto["toolRequests"][number]) 
     deniedBy: request.deniedBy,
     deniedAt: request.deniedAt,
     rationale: request.denialRationale,
-    ...(request.approvalClass === undefined ? {} : { approvalClass: normalizeApprovalClass(request.approvalClass) })
+    ...(request.approvalClass === undefined ? {} : {
+      approvalClass: normalizeApprovalClass(request.approvalClass, isResidentSourceBoundaryRequest(request))
+    })
   })];
 }
 
@@ -710,7 +785,8 @@ function freezeAffectedRefs(refs: readonly AgentAffectedRefDto[]): readonly Agen
 }
 
 function normalizeApprovalClass(
-  value: string
+  value: string,
+  allowResidentSourceBoundaryHumanReview = false
 ): AgentApprovalQueueInputApprovalClass {
   switch (value) {
     case "external-message-send":
@@ -724,8 +800,10 @@ function normalizeApprovalClass(
     case "accepted-graph-review":
     case "ledger-review":
       return value;
-    case "none":
     case "human-review":
+      if (allowResidentSourceBoundaryHumanReview) return value;
+      throw new Error(`Unsupported approval class for cockpit queue: ${value}`);
+    case "none":
       throw new Error(`Unsupported approval class for cockpit queue: ${value}`);
     default:
       assertAgentSecretSafeText(value, "approval cockpit approval class");

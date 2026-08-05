@@ -1,0 +1,299 @@
+# Resident Source Boundary
+
+Status: approved.
+
+## Desired Behavior
+
+A mounted workspace's resident Cestus Agent can prepare one human-selected
+local source for later ingestion without reading file contents. The slice
+creates a stable workflow, a protected metadata discovery artifact, one exact
+protected boundary manifest, and an existing `human-review` approval or denial
+for that boundary. It ends at the boundary decision. Scanning, content hashes,
+import permits, raw evidence import, ontology proposals, and ontology truth are
+separate later slices.
+
+Each attempt has a stable `workflowId` bound to the mounted workspace, source
+collection, source identity, selected source root, discovery artifact, boundary
+manifest, and boundary approval request. Exact source roots and relative paths
+exist only in authenticated mounted derivative storage and authenticated human
+protected readback. Ordinary ledger events, resident events, diagnostics, and
+safe previews contain only secret-safe identifiers, hashes, counts, byte totals,
+file-type totals, and approval references.
+
+An authenticated human selects the source root. Discovery uses directory
+enumeration and filesystem metadata only: relative paths, regular-file type,
+size, modification time, device, inode, and symlink status. It does not open a
+file, hash file contents, expand an archive, parse evidence, invoke a provider,
+or follow a symlink. It rejects traversal and out-of-root entries. The protected
+discovery artifact is immutable and content-addressed; its public preview is
+path-free and content-free.
+
+The resident prepares an exact boundary proposal from that protected discovery.
+Every discovered regular file is partitioned exactly once into included or
+excluded relative paths. Omitted, duplicated, overlapping, undiscovered,
+absolute, escaping, symlink, device, socket, or directory entries fail closed.
+This slice supports archive policy `reject` only; archive files cannot be
+included. The protected boundary manifest binds the workflow, workspace,
+source collection, source identity, a secret-safe source-root hash, discovery
+artifact and hash, exact included and excluded metadata, archive policy,
+counts, byte totals, and a stable manifest hash.
+
+The resident creates one `ingestion.source-boundary.approve` tool request using
+the existing `human-review` approval class. Its durable structured binding
+contains the workflow, workspace, source collection, source identity,
+source-root hash, discovery artifact/hash, manifest artifact/hash, and safe
+counts. The request contains no raw path. An authenticated human can review the
+exact protected boundary and approve or deny that exact current preview through
+the existing agent approval routes. The resident cannot approve or deny it. A
+mismatched workflow, workspace, source, root hash, discovery, manifest, preview,
+actor, duplicate decision, stale mount, or replaced derivative artifact creates
+no authority.
+
+Approval and denial are terminal for the exact request. Repeating an identical
+human decision returns the existing terminal result or fails safely without a
+second authority event. A denial creates no scan, permit, import approval,
+blob, evidence item, occurrence, parse job, or completion event. Approval
+authorizes only the later scanning slice; this slice exposes no scan, import,
+run, resume, provider, or ontology-acceptance action.
+
+Portable-workspace identity, append-only ledger behavior, projection
+rebuildability, evidence provenance, secret safety, consume-time approval
+validation, provider-byte-transfer approval, PRR-send gates, legal locks, and
+no-fallback-write behavior remain unchanged.
+
+## Observable Acceptance Examples
+
+- A virtual fixture advertises `notes/finding.md`, `tables/rows.csv`,
+  `settings.json`, and a symlink through metadata seams.
+  The advertised files do not exist on disk, and any content-read, content-hash,
+  archive, parser, or provider seam throws. Discovery still succeeds using only
+  directory enumeration and `lstat`, excludes the symlink, stores exact metadata
+  only in the mounted derivative artifact, and emits a path-free safe preview.
+  A separate virtual directory entry that resolves outside the selected root is
+  rejected before any protected artifact or ledger event is written.
+- Protected discovery readback is unavailable without local-runtime
+  authentication, to an agent actor, after workspace replacement, or when the
+  derivative artifact does not belong to the mounted workspace. An authenticated
+  human receives the exact relative-path metadata needed to review a boundary.
+- A proposal includes `notes/finding.md` and `tables/rows.csv` and excludes
+  `settings.json`. Omitting `settings.json`, including it and excluding it,
+  adding an undiscovered path, selecting a symlink, or including `archive.zip`
+  is rejected before an approval request is appended.
+- The safe boundary preview contains the workflow ID, source identity,
+  source-root hash, discovery and manifest hashes, file counts, and byte totals,
+  but contains no source root, relative path, raw content, credential, or
+  provider detail. The protected authenticated human review shows the exact
+  include/exclude set.
+- An agent approval or denial attempt is rejected. A human decision for another
+  workflow, workspace, source identity, root hash, discovery artifact, manifest
+  artifact, or preview hash appends no decision authority.
+- Repeating the same authenticated human approval after an interrupted response
+  creates at most one `agent.tool.approved` event. Approval followed by denial,
+  denial followed by approval, or a second different human decision fails
+  closed without changing the terminal decision.
+- After either decision, there are no file-content reads, content hashes,
+  scans, import permits, canonical import approvals, blobs, evidence items,
+  occurrence links, parse jobs, imports, provider calls, or network effects.
+- Standard verification uses temporary or virtual fixtures only and never reads
+  the attached SSD, starts a live runtime, binds a socket, looks up a credential,
+  invokes a provider, sends a PRR, publishes, or performs an external transfer.
+
+## Allowed Scope
+
+- `packages/ingestion/src/**` only for metadata-only discovery, protected
+  discovery and boundary artifacts, canonical path confinement, immutable safe
+  previews, and authenticated mounted readback.
+- `packages/ingestion/test/**` for virtual metadata-only, traversal, symlink,
+  exact partition, archive rejection, protected-storage, replacement, and
+  no-fallback fixtures.
+- `packages/ontology/src/contracts.ts` only for the minimum structured resident
+  boundary binding required on the existing agent tool request, plus focused
+  contract tests.
+- `packages/agent/src/**` only for resident boundary request construction,
+  exact current-preview validation, and reuse of the existing tool approval and
+  denial gateway.
+- `packages/agent/test/**` for focused structured-binding, non-human decision,
+  stale/mismatched decision, terminal replay, and secret-safety tests.
+- `packages/local-runtime/src/**` only for authenticated mounted discovery and
+  protected discovery/boundary review and proposal composition. Reuse the
+  existing agent approval and denial routes for the human decision; do not add a
+  second decision path. No scan, import-run, or resume route may be added.
+- `packages/local-runtime/test/**` for authenticated mounted workflow,
+  actor-boundary, replacement, read-only/unavailable mount, protected readback,
+  secret-safety, denial, terminal replay, and no-fallback fixtures.
+- Reuse the existing mounted derivative store, `human-review` approval class,
+  tool gateway, ledger, resident identity, authentication policy, and portable
+  workspace composition. Do not add a generic approval service, ledger, blob
+  store, scanner, scheduler, resident identity, or fallback storage path.
+- Do not modify the ingestion import service, canonical import execution,
+  scheduler execution, UI workflow presentation, ontology proposal or accepted
+  truth, provider credentials or selection, provider transfer, PRR, legal,
+  export, publication, destructive repair, or unrelated product-design
+  references.
+- Do not inspect or copy implementation from Specification 14's preserved
+  candidate branch. Implement from the current `neo` contracts and this
+  specification only.
+
+## Relevant Context Entry Points
+
+- `AGENTS.md`
+- `docs/agentic/software-factory.md`
+- `.agents/skills/cestus-software-factory/SKILL.md`
+- `docs/agentic/specifications/02-portable-ingestion-evidence-corpus.md`
+- `docs/agentic/specifications/07-resident-agent-mounted-task.md`
+- `packages/ingestion/src/local-filesystem.ts`
+- `packages/ingestion/src/mount-contract.ts`
+- `packages/agent/src/tool-gateway.ts`
+- `packages/agent/src/projection.ts`
+- `packages/local-runtime/src/ingestion-http-routes.ts`
+- `packages/local-runtime/src/http-handler.ts`
+- `packages/local-runtime/src/runtime-factory.ts`
+
+## Risk Lane
+
+Red. This slice changes resident and human authority around local filesystem
+metadata and protected path disclosure. Exact source-root selection and boundary
+approval remain human-gated. Any content read, scan, live SSD access, import,
+credential use, provider invocation, or external effect is outside this slice
+and remains separately human-gated.
+
+## Approved Recovery Boundary
+
+The 2026-08-05 bounded recovery corrects only the candidate regression that
+globally admitted the generic `human-review` sentinel into the canonical agent
+approval queue and cockpit. Generic requests, approvals, denials, locks, DTOs,
+and approval-class metadata using `human-review` remain rejected fail-closed at
+those canonical boundaries.
+
+Only an `agent.tool.requested` event whose durable validated payload contains
+the structured `residentSourceBoundary` binding and the exact
+`ingestion.source-boundary.approve` tool ID, `ledger-proposal` side-effect
+class, and `human-review` required approval class may be projected into the
+existing approval cockpit and handled by the existing authenticated approval
+and denial routes. This eligibility must be derived from the durable validated
+event binding, never from caller-supplied queue or cockpit DTO input. It must
+not introduce a new approval class, reinterpret another approval class, admit
+another `human-review` workflow, add another decision route, or weaken any
+generic sentinel test.
+
+Recovery changes are limited to the existing agent projection, approval queue,
+approval cockpit, resident-boundary helper, their focused tests, and the
+existing local-runtime resident-boundary route test only when needed to prove
+the end-to-end decision path. All other Specification 15 behavior and scope
+remain unchanged. This recovery has at most two focused repairs and requires a
+new Terra / High implementer plus a fresh Sol / High final verdict.
+
+Direct human authority on 2026-08-05 expands the second and final repair only
+to compile-only corrections in the existing Specification 15 ingestion,
+ontology, agent, and local-runtime files named by `npm run typecheck`. Those
+corrections may not change accepted behavior, add product scope, or touch files
+outside the original Specification 15 Allowed Scope. The repair limit remains
+two and is not reset.
+
+## Approved Compilation Stabilization Run
+
+Direct human authority on 2026-08-05 starts one new bounded compilation-only
+run from preserved candidate commit
+`061daaf80d85df8999a28b4f0273a85b13dd9e57`. It may correct only the existing
+TypeScript diagnostics in the ten Specification 15 agent, ingestion, and
+local-runtime source or test files named by the serial `npm run typecheck`
+reproduction. It may not alter accepted runtime behavior, widen a type,
+suppress a diagnostic, weaken validation or a test, or touch another file.
+
+The run uses one new Terra / High implementer and at most two focused repairs.
+Every typecheck invocation is serial and must be observed through its actual
+process exit; an early tool yield is not success. After typecheck passes, the
+complete Specification 15 targeted verification remains mandatory, followed
+by the existing fresh Sol, integration-verification, normal-history, origin,
+and CI gates. If the compiler failure survives this run's two repairs, preserve
+the candidate and reimplement the remaining slice more narrowly rather than
+resetting this run again.
+
+## Approved Sol Finding Repair Scope
+
+Direct human authority on 2026-08-05 expands this run only to correct the three
+confirmed findings from the fresh Sol `fix-first` verdict on commit
+`e697ed527195a9e30893b2391c42231f28c8ad04`:
+
+1. The default mounted ingestion resolver must be available only to resident
+   source-boundary endpoints, validate the exact portable-workspace tuple on
+   every resolution, and expose only the capabilities this slice needs. It may
+   not activate scan, import, provider, or other existing ingestion routes.
+2. Resident boundary authority must use a durable, atomic workflow
+   compare-and-append fence. Concurrent different tool-request IDs for one
+   workflow may create at most one request, and replay or malformed existing
+   requests fail closed. Ephemeral per-service maps are not workflow authority.
+3. Ontology and gateway validation must require the complete
+   `ingestion.source-boundary.approve` / `ledger-proposal` / `human-review`
+   tuple whenever the structured boundary binding is present.
+
+This is focused repair 1 of at most 2 for the compilation-stabilization run.
+Tests for each finding must fail for the reviewed defect before production
+changes. The correction may touch only the original Specification 15 source
+and focused tests needed for these findings, adds no new event or approval
+class, preserves all other behavior, and requires a new fresh Sol verdict.
+
+## Approved Scheduler-Terminality Recovery Run
+
+Direct human authority on 2026-08-05 starts one new bounded recovery run from
+preserved candidate commit
+`50bc5132d2300d511d4e3547b0a22276e789b75f`. It corrects only the confirmed
+fresh Sol finding that the generic scheduler treats an approved resident source
+boundary request as executable and, because this approval-only tool has no
+executor descriptor, can append `agent.tool.failed` after the human decision.
+
+Approval and denial for an exact resident source boundary request remain the
+terminal outcome of this slice. Scheduler wake must not select, claim, execute,
+complete, fail, or otherwise mutate a durably validated request with the exact
+`ingestion.source-boundary.approve` / `ledger-proposal` / `human-review`
+resident-boundary tuple. It must create no scheduler item or event for that
+request. Ordinary executable approvals and ordinary descriptorless approvals
+retain their current behavior; generic `human-review` requests do not gain
+eligibility or an exception.
+
+The run uses one new Terra / High implementer, at most two focused repairs, and
+a new fresh Sol / High final verdict. Product changes are limited to
+`packages/agent/src/scheduler.ts` and focused scheduler tests in
+`packages/agent/test/scheduler.test.ts`. Tests must first reproduce the reviewed
+post-approval wake failure and prove no execution claim, completion, failure, or
+other event is appended after the correction. This recovery may not add an
+executor, scan/import action, event type, approval class, fallback behavior, or
+external effect, and all other Specification 15 boundaries remain unchanged.
+
+## Targeted Verification
+
+- `npm test -- packages/agent/test/approval-queue.test.ts packages/agent/test/approval-cockpit.test.ts packages/agent/test/resident-source-boundary.test.ts packages/agent/test/projection.test.ts`
+- `npm test -- packages/ingestion/test/resident-source-boundary.test.ts packages/ingestion/test/local-filesystem.test.ts`
+- `npm test -- packages/ontology/test/contracts.test.ts packages/agent/test/resident-source-boundary.test.ts packages/agent/test/resident-loop-tool-gateway.test.ts`
+- `npm test -- packages/local-runtime/test/agent-resident-source-boundary-routes.test.ts packages/local-runtime/test/ingestion-http-routes.test.ts packages/local-runtime/test/portable-workspace-lifecycle.test.ts packages/local-runtime/test/agent-http-routes.test.ts`
+- `npm run typecheck`
+- `npm run ui:build`
+- `npm run factory:check`
+
+Success means the named suites prove metadata-only discovery, exact protected
+partitioning, structured boundary authority, authenticated exact readback,
+human-only approve/deny, terminal replay, mount replacement and no-fallback
+rejection, secret-safe ordinary surfaces, and zero content, import, provider,
+network, or external effects. Typecheck, build, and factory readiness must all
+exit zero before review.
+
+## Integration Verification
+
+Update the candidate normally against the latest `neo`, obtain a fresh Sol
+`ship` verdict on the final diff, then run `npm run verify` once on the final
+merged candidate. Compare it with
+`docs/agentic/baselines/2026-08-01-integration-verification.md` and the latest
+`neo` CI; reject any new or worsened failure. Integrate only with normal Git
+history. Push only configured `origin` and observe CI; do not open a pull
+request or force-push.
+
+## Escalation Conditions
+
+Escalate for a source-root choice the human has not made, any content read or
+hash before boundary approval, archive expansion, automatic or standing
+boundary approval, unauthenticated exact-path disclosure, a new approval class,
+fallback storage, live SSD access, scanning or import behavior, credentials or
+provider access, external byte transfer, ontology truth changes,
+PRR/legal/export/publication behavior, destructive migration or data loss, an
+unavailable dependency, or the same concrete failure surviving two focused
+repair attempts.

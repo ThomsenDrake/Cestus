@@ -106,6 +106,7 @@ export * from "./sourced-investigation-workflows.js";
 export * from "./sourced-investigation-context-packs.js";
 export * from "./report-builder-workflow.js";
 export * from "./tool-gateway.js";
+export * from "./resident-source-boundary.js";
 export * from "./investigative-context-packs.js";
 export * from "./task-orchestrator-events.js";
 export * from "./task-orchestrator-types.js";

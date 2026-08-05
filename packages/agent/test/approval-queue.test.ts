@@ -201,6 +201,26 @@ describe("agent approval queue", () => {
     expect(deniedQueue.denied[0]?.denial?.approvalClass).toBe("evidence-retention-review");
   });
 
+  it("rejects a caller-supplied resident boundary marker and matching event ref", () => {
+    expect(() =>
+      buildAgentApprovalQueue(queueInput({
+        requests: [{
+          ...baseRequest,
+          toolRequestId: "toolreq_untrusted_boundary",
+          toolId: "ingestion.source-boundary.approve",
+          sideEffectClass: "ledger-proposal",
+          requiredApprovalClass: "human-review",
+          affectedRefs: [{ kind: "event", id: "evt_untrusted_boundary_request" }],
+          residentSourceBoundaryReview: {
+            schemaVersion: "resident-source-boundary-review.v1",
+            requestEventId: "evt_untrusted_boundary_request"
+          }
+        }],
+        currentPreviewHashes: { toolreq_untrusted_boundary: matchingPreviewHash }
+      }))
+    ).toThrow(/approval class|resident source boundary/i);
+  });
+
   it.each([
     "none",
     "human-review"

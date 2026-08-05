@@ -2464,13 +2464,49 @@ const agentToolRequestedPayloadSchema = z.object({
   scope: secretSafeTextSchema,
   estimatedEffect: secretSafeTextSchema,
   sourceEventIds: agentSourceEventIdsSchema.optional(),
-  inputArtifactHashes: agentArtifactHashesSchema.optional()
+  inputArtifactHashes: agentArtifactHashesSchema.optional(),
+  residentSourceBoundary: z.object({
+    workflowId: secretSafeStringSchema.min(3),
+    workspaceId: secretSafeStringSchema.min(3),
+    sourceCollectionId: secretSafeStringSchema.min(3),
+    sourceIdentity: z.string().regex(/^source_[a-f0-9]{64}$/),
+    sourceRootHash: agentArtifactHashSchema,
+    discoveryArtifactHash: agentArtifactHashSchema,
+    discoveryHash: agentArtifactHashSchema,
+    manifestArtifactHash: agentArtifactHashSchema,
+    manifestHash: agentArtifactHashSchema,
+    archivePolicy: z.literal("reject"),
+    regularFileCount: z.number().int().nonnegative(),
+    includedFileCount: z.number().int().nonnegative(),
+    excludedFileCount: z.number().int().nonnegative(),
+    includedBytes: z.number().int().nonnegative(),
+    excludedBytes: z.number().int().nonnegative(),
+    totalBytes: z.number().int().nonnegative()
+  }).strict().superRefine((binding, ctx) => {
+    if (binding.regularFileCount !== binding.includedFileCount + binding.excludedFileCount) {
+      ctx.addIssue({ code: "custom", path: ["regularFileCount"], message: "boundary counts must partition regular files" });
+    }
+    if (binding.totalBytes !== binding.includedBytes + binding.excludedBytes) {
+      ctx.addIssue({ code: "custom", path: ["totalBytes"], message: "boundary byte totals must partition regular files" });
+    }
+  }).optional()
 }).strict().superRefine((toolRequest, ctx) => {
   if (!agentApprovalClassMatchesSideEffect(toolRequest.sideEffectClass, toolRequest.requiredApprovalClass)) {
     ctx.addIssue({
       code: "custom",
       path: ["requiredApprovalClass"],
       message: "requiredApprovalClass must match the sideEffectClass risk"
+    });
+  }
+  if (toolRequest.residentSourceBoundary !== undefined && (
+    toolRequest.toolId !== "ingestion.source-boundary.approve" ||
+    toolRequest.sideEffectClass !== "ledger-proposal" ||
+    toolRequest.requiredApprovalClass !== "human-review"
+  )) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["residentSourceBoundary"],
+      message: "resident source boundary binding requires the human-review boundary tool"
     });
   }
 });

@@ -79,6 +79,29 @@ describe("agent tool gateway", () => {
     expect((await ledger.readAll()).map((event) => event.type)).toEqual(["agent.tool.requested"]);
   });
 
+  it("rejects every wrong boundary authority tuple before appending", async () => {
+    const ledger = new InMemoryEventLedger();
+    const gateway = createAgentToolGateway({ ledger, actor: agentActor, now: fixedNow });
+    const hash = (value: string) => `sha256:${value.repeat(64).slice(0, 64)}` as `sha256:${string}`;
+    const boundary = {
+      workflowId: "workflow_gateway_tuple_001", workspaceId: "ws_gateway_tuple_001", sourceCollectionId: "src_gateway_tuple_001", sourceIdentity: `source_${"e".repeat(64)}`,
+      sourceRootHash: hash("1"), discoveryArtifactHash: hash("2"), discoveryHash: hash("3"), manifestArtifactHash: hash("4"), manifestHash: hash("5"), archivePolicy: "reject" as const,
+      regularFileCount: 1, includedFileCount: 1, excludedFileCount: 0, includedBytes: 8, excludedBytes: 0, totalBytes: 8
+    };
+    const request = {
+      residentAgentId: "agent_default", taskId: "task_gateway_tuple_001", runId: "run_gateway_tuple_001", toolVersion: "1.0.0",
+      preview: { summary: "Request the exact resident source boundary approval." }, residentSourceBoundary: boundary
+    };
+    for (const [suffix, tuple] of [
+      ["tool", { toolId: "ingestion.source-boundary.preview", sideEffectClass: "ledger-proposal" as const, requiredApprovalClass: "human-review" as const }],
+      ["side_effect", { toolId: "ingestion.source-boundary.approve", sideEffectClass: "local-derivative" as const, requiredApprovalClass: "human-review" as const }],
+      ["approval", { toolId: "ingestion.source-boundary.approve", sideEffectClass: "ledger-proposal" as const, requiredApprovalClass: "ledger-review" as const }]
+    ] as const) {
+      await expect(gateway.requestTool({ ...request, ...tuple, toolRequestId: `toolreq_boundary_tuple_${suffix}` })).rejects.toThrow(/boundary|sideEffectClass|requiredApprovalClass/i);
+    }
+    expect(await ledger.readAll()).toEqual([]);
+  });
+
   it("requires human approval and exact preview hash before completion", async () => {
     const ledger = new InMemoryEventLedger();
     const gateway = createAgentToolGateway({ ledger, actor: agentActor, now: fixedNow });

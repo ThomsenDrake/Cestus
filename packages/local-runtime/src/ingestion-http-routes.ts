@@ -6,6 +6,11 @@ import type {
 import type { IngestionErrorCode, IngestionRuntimeError } from "../../ingestion/src/runtime-types.js";
 import type { LocalRuntimeRequest, LocalRuntimeResponse } from "./http-handler.js";
 import {
+  createResidentSourceBoundaryService,
+  type ResidentSourceBoundaryService
+} from "../../ingestion/src/resident-source-boundary.js";
+import { createAgentToolGateway, requestResidentSourceBoundaryApproval } from "../../agent/src/index.js";
+import {
   defaultLocalIngestionRuntimeFactory,
   type LocalIngestionRuntimeFactory
 } from "./ingestion-runtime-factory.js";
@@ -35,9 +40,10 @@ export async function handleIngestionHttpRoute(
     return undefined;
   }
 
+  const queryFields = route.kind === "runtime" || route.kind === "workspace" ? route.queryFields : undefined;
   const payload = route.bodyKind === "json"
     ? parseJsonBody(input.request.body)
-    : { ok: true as const, value: queryPayload(url.searchParams, route.queryFields) };
+    : { ok: true as const, value: queryPayload(url.searchParams, queryFields) };
   if (!payload.ok) {
     return json(400, payload.error);
   }
@@ -64,6 +70,63 @@ export async function handleIngestionHttpRoute(
 
   if (!mount.ok) {
     return json(503, ingestionErrorBody(mount.error));
+  }
+
+  if (route.kind === "resident-source-boundary") {
+    if (input.actor.kind !== "human") {
+      return json(403, ingestionErrorBody({
+        code: "INGESTION_RUNTIME_INTERNAL",
+        message: "Resident source boundary selection and protected readback require a human actor.",
+        allowedRepairActions: ["sign in as an authenticated human operator"]
+      }));
+    }
+    try {
+      const service = residentSourceBoundaryService(mount.workspace, input.ingestionMountResolver);
+      if (route.action === "discover") return json(200, await service.discover(requiredDiscoveryInput(payload.value)));
+      if (route.action === "review-discovery") {
+        if (route.artifactHash === undefined) throw new Error("Protected discovery review requires its artifact hash.");
+        return json(200, await service.readProtectedDiscovery({ actorKind: "human", discoveryArtifactHash: route.artifactHash }));
+      }
+      if (route.action === "review-boundary") {
+        if (route.artifactHash === undefined) throw new Error("Protected boundary review requires its artifact hash.");
+        return json(200, await service.readProtectedBoundary({ actorKind: "human", manifestArtifactHash: route.artifactHash }));
+      }
+      const proposal = await service.proposeBoundary(requiredBoundaryProposal(payload.value));
+      const request = await requestResidentSourceBoundaryApproval({
+        ledger: mount.workspace.ledger,
+        gateway: createAgentToolGateway({
+          ledger: mount.workspace.ledger,
+          actor: { id: "agent_default", kind: "agent", label: "Resident Cestus Agent" },
+          now: () => new Date().toISOString()
+        }),
+        toolRequestId: requiredIdentifier(payload.value.toolRequestId, "tool request id"),
+        taskId: requiredIdentifier(payload.value.taskId, "task id"),
+        runId: requiredIdentifier(payload.value.runId, "run id"),
+        workflowId: proposal.workflowId,
+        workspaceId: proposal.workspaceId,
+        sourceCollectionId: proposal.sourceCollectionId,
+        sourceIdentity: proposal.sourceIdentity,
+        sourceRootHash: proposal.sourceRootHash,
+        discoveryArtifactHash: proposal.discoveryArtifactHash,
+        discoveryHash: proposal.discoveryHash,
+        manifestArtifactHash: proposal.manifestArtifactHash,
+        manifestHash: proposal.manifestHash,
+        archivePolicy: proposal.archivePolicy,
+        regularFileCount: proposal.includedFileCount + proposal.excludedFileCount,
+        includedFileCount: proposal.includedFileCount,
+        excludedFileCount: proposal.excludedFileCount,
+        includedBytes: proposal.includedBytes,
+        excludedBytes: proposal.excludedBytes,
+        totalBytes: proposal.totalBytes
+      });
+      return json(200, { ...proposal, toolRequestId: request.payload.toolRequestId, previewHash: request.payload.previewHash });
+    } catch (error) {
+      return json(409, ingestionErrorBody({
+        code: "INGESTION_RUNTIME_INTERNAL",
+        message: "Resident source boundary request was rejected before a protected write or authority decision.",
+        allowedRepairActions: ["review the mounted workspace and exact boundary selection"]
+      }));
+    }
   }
 
   const runtimeFactory = input.ingestionRuntimeFactory ?? defaultLocalIngestionRuntimeFactory;
@@ -109,11 +172,20 @@ function runtimePayload(
   return payload;
 }
 
-type Route = RuntimeRoute | {
+type WorkspaceRoute = {
   readonly kind: "workspace";
   readonly bodyKind: "query";
   readonly queryFields?: readonly string[];
 };
+
+type ResidentSourceBoundaryRoute = {
+  readonly kind: "resident-source-boundary";
+  readonly bodyKind: "json" | "query";
+  readonly action: "discover" | "propose" | "review-discovery" | "review-boundary";
+  readonly artifactHash?: `sha256:${string}`;
+};
+
+type Route = RuntimeRoute | WorkspaceRoute | ResidentSourceBoundaryRoute;
 
 type RuntimeRoute = {
   readonly kind: "runtime";
@@ -132,6 +204,21 @@ type RuntimeRoute = {
 };
 
 function routeFor(method: string, path: string): Route | undefined {
+  if (method === "POST" && path === "/api/ingestion/resident-source-boundaries/discover") {
+    return { kind: "resident-source-boundary", bodyKind: "json", action: "discover" };
+  }
+  if (method === "POST" && path === "/api/ingestion/resident-source-boundaries/propose") {
+    return { kind: "resident-source-boundary", bodyKind: "json", action: "propose" };
+  }
+  const protectedReview = /^\/api\/ingestion\/resident-source-boundaries\/(discoveries|manifests)\/(sha256:[a-f0-9]{64})$/.exec(path);
+  if (method === "GET" && protectedReview !== null) {
+    return {
+      kind: "resident-source-boundary",
+      bodyKind: "query",
+      action: protectedReview[1] === "discoveries" ? "review-discovery" : "review-boundary",
+      artifactHash: protectedReview[2] as `sha256:${string}`
+    };
+  }
   if (method === "GET" && path === "/api/ingestion/workspace") {
     return { kind: "workspace", bodyKind: "query" };
   }
@@ -164,6 +251,67 @@ function routeFor(method: string, path: string): Route | undefined {
   }
 
   return undefined;
+}
+
+function residentSourceBoundaryService(
+  workspace: Extract<IngestionMountResult, { readonly ok: true }> ["workspace"],
+  resolver: IngestionWorkspaceMountResolver | undefined
+): ResidentSourceBoundaryService {
+  return createResidentSourceBoundaryService({
+    workspace,
+    assertCurrent: async () => {
+      if (!workspace.capabilities.canReadLedger || !workspace.capabilities.canWriteDerivatives) {
+        throw new Error("Mounted workspace is unavailable or read-only.");
+      }
+      if (resolver === undefined) throw new Error("Mounted workspace resolver is unavailable.");
+      const current = await resolver.resolve({});
+      if (!current.ok || current.workspace.workspaceId !== workspace.workspaceId) {
+        throw new Error("Mounted workspace was replaced or became unavailable.");
+      }
+    }
+  });
+}
+
+function requiredDiscoveryInput(payload: Record<string, unknown>) {
+  if (Object.hasOwn(payload, "sourceIdentity")) throw new Error("Source identity is observed from selected-root metadata.");
+  assertOnlyFields(payload, ["workflowId", "sourceCollectionId", "sourceRoot"]);
+  return {
+    workflowId: requiredIdentifier(payload.workflowId, "workflow id"),
+    sourceCollectionId: requiredIdentifier(payload.sourceCollectionId, "source collection id"),
+    sourceRoot: requiredSourceRoot(payload.sourceRoot)
+  };
+}
+
+function requiredBoundaryProposal(payload: Record<string, unknown>) {
+  assertOnlyFields(payload, ["workflowId", "discoveryArtifactHash", "includedRelativePaths", "excludedRelativePaths", "toolRequestId", "taskId", "runId"]);
+  return {
+    workflowId: requiredIdentifier(payload.workflowId, "workflow id"),
+    discoveryArtifactHash: requiredArtifactHash(payload.discoveryArtifactHash),
+    includedRelativePaths: requiredPathArray(payload.includedRelativePaths),
+    excludedRelativePaths: requiredPathArray(payload.excludedRelativePaths),
+    archivePolicy: "reject" as const
+  };
+}
+
+function assertOnlyFields(payload: Record<string, unknown>, allowed: readonly string[]): void {
+  if (Object.keys(payload).some((key) => !allowed.includes(key))) throw new Error("Resident source boundary request contains an unsupported authority field.");
+}
+
+function requiredIdentifier(value: unknown, label: string): string {
+  if (typeof value !== "string" || !/^[A-Za-z0-9_-]{3,200}$/.test(value)) throw new Error(`Invalid ${label}.`);
+  return value;
+}
+function requiredSourceRoot(value: unknown): string {
+  if (typeof value !== "string" || value.length === 0 || value.length > 4096 || value.includes("\0")) throw new Error("Invalid selected source root.");
+  return value;
+}
+function requiredArtifactHash(value: unknown): `sha256:${string}` {
+  if (typeof value !== "string" || !/^sha256:[a-f0-9]{64}$/.test(value)) throw new Error("Invalid protected artifact hash.");
+  return value as `sha256:${string}`;
+}
+function requiredPathArray(value: unknown): readonly string[] {
+  if (!Array.isArray(value) || value.some((item) => typeof item !== "string")) throw new Error("Boundary paths must be a string array.");
+  return value;
 }
 
 function workspaceDto(mount: IngestionMountResult | MountResolverFailure) {

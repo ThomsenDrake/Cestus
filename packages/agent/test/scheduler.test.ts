@@ -10,6 +10,7 @@ import {
   type AgentApprovedToolExecutorDescriptor,
   type AgentToolPreview
 } from "../src/index.js";
+import { requestResidentSourceBoundaryApproval } from "../src/resident-source-boundary.js";
 
 const agentActor = { id: "actor_cestus_agent", kind: "agent" as const, label: "Cestus Agent" };
 const schedulerActor = { id: "actor_agent_scheduler", kind: "system" as const, label: "Agent Scheduler" };
@@ -328,6 +329,94 @@ describe("agent scheduler wake", () => {
       category: "permission-denied"
     });
     expect((await ledger.readAll()).map((event) => event.type)).toContain("agent.tool.failed");
+  });
+
+  it("continues to fail a generic human-review request without a descriptor", async () => {
+    const ledger = new InMemoryEventLedger();
+    await requestAndApprove(
+      ledger,
+      previewFor("toolreq_missing_descriptor_human_review"),
+      "toolreq_missing_descriptor_human_review",
+      { sideEffectClass: "ledger-proposal", requiredApprovalClass: "human-review" }
+    );
+    const scheduler = createAgentScheduler({
+      ledger,
+      actor: schedulerActor,
+      now: () => "2026-07-09T12:00:00.000Z",
+      descriptors: []
+    });
+
+    const result = await scheduler.wake();
+
+    expect(result.failedCount).toBe(1);
+    expect(result.items[0]).toMatchObject({
+      toolRequestId: "toolreq_missing_descriptor_human_review",
+      approvalClass: "human-review",
+      state: "failed",
+      category: "permission-denied"
+    });
+    expect((await ledger.readAll()).map((event) => event.type)).toContain("agent.tool.failed");
+  });
+
+  it("does not select an approved exact resident source boundary request for execution", async () => {
+    const ledger = new InMemoryEventLedger();
+    const gateway = createAgentToolGateway({
+      ledger,
+      actor: agentActor,
+      now: () => "2026-08-05T12:00:00.000Z"
+    });
+    const hash = (value: string) => `sha256:${value.repeat(64).slice(0, 64)}` as `sha256:${string}`;
+    const requested = await requestResidentSourceBoundaryApproval({
+      ledger,
+      gateway,
+      toolRequestId: "toolreq_scheduler_boundary_terminal",
+      taskId: "task_scheduler_boundary_terminal",
+      runId: "run_scheduler_boundary_terminal",
+      workflowId: "workflow_scheduler_boundary_terminal",
+      workspaceId: "ws_scheduler_boundary_terminal",
+      sourceCollectionId: "src_scheduler_boundary_terminal",
+      sourceIdentity: `source_${"a".repeat(64)}`,
+      sourceRootHash: hash("1"),
+      discoveryArtifactHash: hash("2"),
+      discoveryHash: hash("3"),
+      manifestArtifactHash: hash("4"),
+      manifestHash: hash("5"),
+      archivePolicy: "reject",
+      regularFileCount: 1,
+      includedFileCount: 1,
+      excludedFileCount: 0,
+      includedBytes: 8,
+      excludedBytes: 0,
+      totalBytes: 8
+    });
+    await gateway.approveTool({
+      toolRequestId: requested.payload.toolRequestId,
+      actor: humanActor,
+      approvedPreviewHash: requested.payload.previewHash,
+      rationale: "Human approved this exact resident source boundary."
+    });
+    const eventCountAfterApproval = (await ledger.readAll()).length;
+    const scheduler = createAgentScheduler({
+      ledger,
+      actor: schedulerActor,
+      now: () => "2026-08-05T12:00:00.000Z",
+      descriptors: []
+    });
+
+    const result = await scheduler.wake();
+    const events = await ledger.readAll();
+
+    expect(result).toMatchObject({
+      examinedCount: 0,
+      resumedCount: 0,
+      completedCount: 0,
+      blockedCount: 0,
+      failedCount: 0,
+      eventIds: [],
+      items: []
+    });
+    expect(events).toHaveLength(eventCountAfterApproval);
+    expect(events.map((event) => event.type)).toEqual(["agent.tool.requested", "agent.tool.approved"]);
   });
 
   it("fails closed before execution when the rebuilt preview is stale", async () => {
@@ -663,7 +752,15 @@ function fakeDescriptor(
   };
 }
 
-async function requestAndApprove(ledger: InMemoryEventLedger, preview: AgentToolPreview, toolRequestId: string) {
+async function requestAndApprove(
+  ledger: InMemoryEventLedger,
+  preview: AgentToolPreview,
+  toolRequestId: string,
+  options?: {
+    readonly sideEffectClass?: "ledger-review" | "ledger-proposal";
+    readonly requiredApprovalClass?: "ledger-review" | "human-review";
+  }
+) {
   const gateway = createAgentToolGateway({ ledger, actor: agentActor, now: () => "2026-07-09T12:00:00.000Z" });
   const requested = await gateway.requestTool({
     toolRequestId,
@@ -672,8 +769,8 @@ async function requestAndApprove(ledger: InMemoryEventLedger, preview: AgentTool
     runId: "run_scheduler",
     toolId: "agent.test.effect",
     toolVersion: "1.0.0",
-    sideEffectClass: "ledger-review",
-    requiredApprovalClass: "ledger-review",
+    sideEffectClass: options?.sideEffectClass ?? "ledger-review",
+    requiredApprovalClass: options?.requiredApprovalClass ?? "ledger-review",
     preview
   });
   expect(requested.payload.previewHash).toBe(hashAgentToolPreview(preview));
