@@ -8,8 +8,7 @@ export const agentApprovalQueueClassValues = [
   "export-publication",
   "destructive-repair",
   "accepted-graph-review",
-  "ledger-review",
-  "human-review"
+  "ledger-review"
 ] as const;
 
 export const agentApprovalQueueLegacyApprovalClassAliases = [
@@ -25,8 +24,14 @@ export type AgentApprovalQueueApprovalClass = string;
 export type AgentApprovalQueueInputApprovalClass = string;
 
 const forbiddenSentinelApprovalClasses = new Set<AgentApprovalQueueInputApprovalClass>([
-  "none"
+  "none",
+  "human-review"
 ]);
+
+export interface AgentResidentSourceBoundaryReviewDto {
+  readonly schemaVersion: "resident-source-boundary-review.v1";
+  readonly requestEventId: string;
+}
 
 export interface AgentAffectedRefDto {
   readonly kind: string;
@@ -58,6 +63,7 @@ export interface AgentApprovalQueueRequestDto {
   readonly contextPackRefs: readonly ContextPackRef[];
   readonly requestedAt: string;
   readonly state: string;
+  readonly residentSourceBoundaryReview?: AgentResidentSourceBoundaryReviewDto;
 }
 
 export interface AgentToolApprovalDto {
@@ -175,8 +181,18 @@ export function buildAgentApprovalQueue(input: AgentApprovalQueueInput): AgentAp
   assertAgentSecretSafeText(input.now, "approval queue generatedAt");
   assertSafeCurrentPreviewHashes(input.currentPreviewHashes);
 
-  const approvalsByRequest = lastByToolRequestId(input.approvals.map(freezeApproval));
-  const denialsByRequest = lastByToolRequestId(input.denials.map(freezeDenial));
+  const normalizedRequests = input.requests.map(freezeRequest);
+  const residentSourceBoundaryRequestIds = new Set(
+    normalizedRequests
+      .filter((request) => request.requiredApprovalClass === "human-review")
+      .map((request) => request.toolRequestId)
+  );
+  const approvalsByRequest = lastByToolRequestId(input.approvals.map((approval) =>
+    freezeApproval(approval, residentSourceBoundaryRequestIds)
+  ));
+  const denialsByRequest = lastByToolRequestId(input.denials.map((denial) =>
+    freezeDenial(denial, residentSourceBoundaryRequestIds)
+  ));
   const completionsByRequest = lastByToolRequestId(input.completed.map(freezeCompletion));
   const failuresByRequest = lastByToolRequestId(input.failures.map(freezeFailure));
   const activeLocks = freezeActiveLocks(input.activeLocks);
@@ -189,8 +205,7 @@ export function buildAgentApprovalQueue(input: AgentApprovalQueueInput): AgentAp
   const completed: AgentApprovalQueueItemDto[] = [];
   const failed: AgentApprovalQueueItemDto[] = [];
 
-  for (const request of input.requests) {
-    const normalizedRequest = freezeRequest(request);
+  for (const normalizedRequest of normalizedRequests) {
     const approval = approvalsByRequest.get(normalizedRequest.toolRequestId);
     const denial = denialsByRequest.get(normalizedRequest.toolRequestId);
     const completion = completionsByRequest.get(normalizedRequest.toolRequestId);
@@ -340,6 +355,9 @@ function buildQueueItem(
     activeLocks,
     blockingReasons: frozenBlockingReasons,
     risk,
+    ...(request.residentSourceBoundaryReview === undefined ? {} : {
+      residentSourceBoundaryReview: request.residentSourceBoundaryReview
+    }),
     ...(currentPreviewHash === undefined ? {} : { currentPreviewHash }),
     ...(related.approval === undefined ? {} : { approval: related.approval }),
     ...(related.denial === undefined ? {} : { denial: related.denial }),
@@ -378,7 +396,13 @@ function lastByToolRequestId<T extends { readonly toolRequestId: string }>(items
 }
 
 function freezeRequest(request: AgentApprovalQueueRequestDto): NormalizedAgentApprovalQueueRequestDto {
-  const requiredApprovalClass = normalizeAgentApprovalClass(request.requiredApprovalClass);
+  const residentSourceBoundaryReview = request.residentSourceBoundaryReview === undefined
+    ? undefined
+    : freezeResidentSourceBoundaryReview(request.residentSourceBoundaryReview);
+  const requiredApprovalClass = normalizeAgentApprovalClass(
+    request.requiredApprovalClass,
+    residentSourceBoundaryReview !== undefined
+  );
   assertSecretSafeStrings([
     [request.toolRequestId, "toolRequestId"],
     [request.runId, "runId"],
@@ -397,7 +421,24 @@ function freezeRequest(request: AgentApprovalQueueRequestDto): NormalizedAgentAp
     ...request,
     requiredApprovalClass,
     affectedRefs: freezeAffectedRefs(request.affectedRefs),
-    contextPackRefs: freezeContextPackRefs(request.contextPackRefs)
+    contextPackRefs: freezeContextPackRefs(request.contextPackRefs),
+    ...(residentSourceBoundaryReview === undefined ? {} : { residentSourceBoundaryReview })
+  });
+}
+
+function freezeResidentSourceBoundaryReview(
+  review: AgentResidentSourceBoundaryReviewDto
+): AgentResidentSourceBoundaryReviewDto {
+  if (review.schemaVersion !== "resident-source-boundary-review.v1") {
+    throw new Error("Unsupported resident source boundary review schema.");
+  }
+  assertAgentSecretSafeText(review.requestEventId, "resident source boundary request event id");
+  if (!/^evt_[a-zA-Z0-9_-]+$/.test(review.requestEventId)) {
+    throw new Error("Resident source boundary review requires a durable request event id.");
+  }
+  return Object.freeze({
+    schemaVersion: review.schemaVersion,
+    requestEventId: review.requestEventId
   });
 }
 
@@ -472,7 +513,10 @@ function freezeContextPackRefs(refs: readonly ContextPackRef[]): readonly Contex
   }));
 }
 
-function freezeApproval(approval: AgentToolApprovalDto): NormalizedAgentToolApprovalDto {
+function freezeApproval(
+  approval: AgentToolApprovalDto,
+  residentSourceBoundaryRequestIds: ReadonlySet<string>
+): NormalizedAgentToolApprovalDto {
   assertSecretSafeStrings([
     [approval.toolRequestId, "approval toolRequestId"],
     [approval.approvedBy, "approvedBy"],
@@ -481,7 +525,9 @@ function freezeApproval(approval: AgentToolApprovalDto): NormalizedAgentToolAppr
     [approval.rationale, "approval rationale"],
     [approval.approvalClass, "approval class"]
   ]);
-  const approvalClass = approval.approvalClass === undefined ? undefined : normalizeAgentApprovalClass(approval.approvalClass);
+  const approvalClass = approval.approvalClass === undefined
+    ? undefined
+    : normalizeAgentApprovalClass(approval.approvalClass, residentSourceBoundaryRequestIds.has(approval.toolRequestId));
   return Object.freeze({
     toolRequestId: approval.toolRequestId,
     approvedBy: approval.approvedBy,
@@ -492,7 +538,10 @@ function freezeApproval(approval: AgentToolApprovalDto): NormalizedAgentToolAppr
   });
 }
 
-function freezeDenial(denial: AgentToolDenialDto): NormalizedAgentToolDenialDto {
+function freezeDenial(
+  denial: AgentToolDenialDto,
+  residentSourceBoundaryRequestIds: ReadonlySet<string>
+): NormalizedAgentToolDenialDto {
   assertSecretSafeStrings([
     [denial.toolRequestId, "denial toolRequestId"],
     [denial.deniedBy, "deniedBy"],
@@ -500,7 +549,9 @@ function freezeDenial(denial: AgentToolDenialDto): NormalizedAgentToolDenialDto 
     [denial.rationale, "denial rationale"],
     [denial.approvalClass, "denial approval class"]
   ]);
-  const approvalClass = denial.approvalClass === undefined ? undefined : normalizeAgentApprovalClass(denial.approvalClass);
+  const approvalClass = denial.approvalClass === undefined
+    ? undefined
+    : normalizeAgentApprovalClass(denial.approvalClass, residentSourceBoundaryRequestIds.has(denial.toolRequestId));
   return Object.freeze({
     toolRequestId: denial.toolRequestId,
     deniedBy: denial.deniedBy,
@@ -560,9 +611,12 @@ function freezeApprovalClasses(
   }));
 }
 
-function normalizeAgentApprovalClass(value: AgentApprovalQueueInputApprovalClass): AgentApprovalQueueApprovalClass {
+function normalizeAgentApprovalClass(
+  value: AgentApprovalQueueInputApprovalClass,
+  allowResidentSourceBoundaryHumanReview = false
+): AgentApprovalQueueApprovalClass {
   assertAgentSecretSafeText(value, "approval class");
-  if (forbiddenSentinelApprovalClasses.has(value)) {
+  if (forbiddenSentinelApprovalClasses.has(value) && !(value === "human-review" && allowResidentSourceBoundaryHumanReview)) {
     throw new Error(`Unsupported approval class for canonical approval queue: ${value}`);
   }
   switch (value) {
@@ -579,6 +633,7 @@ function normalizeAgentApprovalClass(value: AgentApprovalQueueInputApprovalClass
     case "destructive-repair":
     case "accepted-graph-review":
     case "ledger-review":
+    case "human-review":
       return value;
   }
 

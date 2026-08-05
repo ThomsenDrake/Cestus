@@ -502,6 +502,25 @@ describe("agent approval cockpit dto", () => {
       })
     ).toThrow(/approval class|direct effect/i);
   });
+
+  it("rejects a matching human-review boundary tuple without durable projected provenance", () => {
+    expect(() =>
+      buildAgentApprovalCockpit({
+        status: agentStatus({
+          toolRequests: [providerTransferRequest({
+            toolId: "ingestion.source-boundary.approve",
+            sideEffectClass: "ledger-proposal",
+            requiredApprovalClass: "human-review",
+            residentSourceBoundaryReview: {
+              schemaVersion: "resident-source-boundary-review.v1",
+              requestEventId: "evt_untrusted_boundary_request"
+            }
+          })]
+        }),
+        generatedAt: "2026-08-05T12:00:00.000Z"
+      })
+    ).toThrow(/durable|resident source boundary|approval class/i);
+  });
 });
 
 function agentStatus(overrides: Partial<AgentStatusDto> = {}): AgentStatusDto {
