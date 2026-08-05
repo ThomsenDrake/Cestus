@@ -183,6 +183,13 @@ the end-to-end decision path. All other Specification 15 behavior and scope
 remain unchanged. This recovery has at most two focused repairs and requires a
 new Terra / High implementer plus a fresh Sol / High final verdict.
 
+Direct human authority on 2026-08-05 expands the second and final repair only
+to compile-only corrections in the existing Specification 15 ingestion,
+ontology, agent, and local-runtime files named by `npm run typecheck`. Those
+corrections may not change accepted behavior, add product scope, or touch files
+outside the original Specification 15 Allowed Scope. The repair limit remains
+two and is not reset.
+
 ## Targeted Verification
 
 - `npm test -- packages/agent/test/approval-queue.test.ts packages/agent/test/approval-cockpit.test.ts packages/agent/test/resident-source-boundary.test.ts packages/agent/test/projection.test.ts`
