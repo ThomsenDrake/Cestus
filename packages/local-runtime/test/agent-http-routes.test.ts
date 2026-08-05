@@ -1,5 +1,5 @@
 import { AsyncLocalStorage } from "node:async_hooks";
-import { cpSync, existsSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
@@ -12,6 +12,7 @@ import {
   type AgentToolPreview
 } from "../../agent/src/index.js";
 import type { AppendableKnowledgeEvent, KnowledgeEventOf } from "../../ontology/src/contracts.js";
+import type { EventLedger } from "../../ontology/src/event-ledger.js";
 import { AssertionService } from "../../ontology/src/assertion-service.js";
 import { FileBlobStore } from "../../ontology/src/blob-store.js";
 import { GovernanceService } from "../../ontology/src/governance-service.js";
@@ -2522,6 +2523,65 @@ describe("agent HTTP routes", () => {
     expect(accepted.body).not.toMatch(/prr\.request\.sent|legal-escalation|accepted graph|provider byte transfer/i);
   });
 
+  it("uses authenticated existing approval routes for an exact mounted resident source boundary", async () => {
+    const base = portableConfig("ws_boundary_http");
+    const config = { ...base, http: { ...base.http, authRequired: true, authToken: "boundary-route-token" } };
+    if (config.storage.strategy !== "portable-workspace") throw new Error("boundary fixture requires a portable workspace");
+    const root = join(config.storage.workspaceRoot, "selected");
+    mkdirSync(join(root, "notes"), { recursive: true });
+    mkdirSync(join(root, "tables"), { recursive: true });
+    writeFileSync(join(root, "notes", "finding.md"), "finding sentinel");
+    writeFileSync(join(root, "tables", "rows.csv"), "rows sentinel");
+    writeFileSync(join(root, "settings.json"), "settings sentinel");
+    writeFileSync(join(root, "archive.zip"), "archive sentinel");
+    symlinkSync(join(root, "settings.json"), join(root, "linked-settings"));
+    const handler = testHandler({ config, residentIdentityBootstrapForTest: async ({ workspaceId }) => readyResidentIdentityLifecycle(workspaceId) });
+    const headers = { authorization: "Bearer boundary-route-token" };
+    const discover = await handler({ method: "POST", url: "/api/ingestion/resident-source-boundaries/discover", headers, body: JSON.stringify({ workflowId: "workflow_boundary_http_001", sourceCollectionId: "src_boundary_http_001", sourceRoot: root }) });
+    expect(discover.status).toBe(200);
+    expect(discover.body).not.toContain(root);
+    expect(discover.body).not.toContain("finding.md");
+    const discovery = JSON.parse(discover.body) as { discoveryArtifactHash: string };
+    const readDiscovery = await handler({ method: "GET", url: `/api/ingestion/resident-source-boundaries/discoveries/${discovery.discoveryArtifactHash}`, headers });
+    expect(readDiscovery.status).toBe(200);
+    expect(readDiscovery.body).toContain("notes/finding.md");
+    expect(readDiscovery.body).toContain("linked-settings");
+    const proposal = await handler({ method: "POST", url: "/api/ingestion/resident-source-boundaries/propose", headers, body: JSON.stringify({ workflowId: "workflow_boundary_http_001", discoveryArtifactHash: discovery.discoveryArtifactHash, includedRelativePaths: ["notes/finding.md", "tables/rows.csv"], excludedRelativePaths: ["archive.zip", "settings.json"], toolRequestId: "toolreq_boundary_http_001", taskId: "task_boundary_http_001", runId: "run_boundary_http_001" }) });
+    expect(proposal.status).toBe(200);
+    expect(proposal.body).not.toContain("settings.json");
+    const boundary = JSON.parse(proposal.body) as { toolRequestId: string; previewHash: string; manifestArtifactHash: string };
+    const readBoundary = await handler({ method: "GET", url: `/api/ingestion/resident-source-boundaries/manifests/${boundary.manifestArtifactHash}`, headers });
+    expect(readBoundary.status).toBe(200);
+    expect(readBoundary.body).toContain("notes/finding.md");
+    expect(readBoundary.body).toContain("settings.json");
+    const wrong = await handler({ method: "POST", url: `/api/agent/approvals/${boundary.toolRequestId}/approve`, headers, body: JSON.stringify({ approvedPreviewHash: `sha256:${"0".repeat(64)}`, rationale: "Wrong preview must not decide." }) });
+    expect(wrong.status, wrong.body).toBe(409);
+    const approved = await handler({ method: "POST", url: `/api/agent/approvals/${boundary.toolRequestId}/approve`, headers, body: JSON.stringify({ approvedPreviewHash: boundary.previewHash, rationale: "Human approves this exact protected boundary." }) });
+    expect(approved.status).toBe(200);
+    const duplicate = await handler({ method: "POST", url: `/api/agent/approvals/${boundary.toolRequestId}/approve`, headers, body: JSON.stringify({ approvedPreviewHash: boundary.previewHash, rationale: "Duplicate authority is forbidden." }) });
+    const opposite = await handler({ method: "POST", url: `/api/agent/approvals/${boundary.toolRequestId}/deny`, headers, body: JSON.stringify({ rationale: "Opposite terminal authority is forbidden." }) });
+    expect(duplicate.status).toBe(409);
+    expect(opposite.status).toBe(400);
+    const events = await allEvents(config);
+    const request = events.find((event): event is KnowledgeEventOf<"agent.tool.requested"> => event.type === "agent.tool.requested" && event.payload.toolRequestId === boundary.toolRequestId);
+    expect(request?.payload.residentSourceBoundary).toMatchObject({ regularFileCount: 4, includedFileCount: 2, excludedFileCount: 2, archivePolicy: "reject" });
+    expect(events.filter((event) => event.type === "agent.tool.approved" && event.payload.toolRequestId === boundary.toolRequestId)).toHaveLength(1);
+    expect(events.filter((event) => event.type === "agent.tool.denied" && event.payload.toolRequestId === boundary.toolRequestId)).toHaveLength(0);
+    expect(events.filter((event) => /^(ingestion\.scan|ingestion\.import|evidence\.|agent\.tool\.completed)/.test(event.type))).toHaveLength(0);
+    const deniedDiscovery = await handler({ method: "POST", url: "/api/ingestion/resident-source-boundaries/discover", headers, body: JSON.stringify({ workflowId: "workflow_boundary_http_002", sourceCollectionId: "src_boundary_http_001", sourceRoot: root }) });
+    const deniedDiscoveryBody = JSON.parse(deniedDiscovery.body) as { discoveryArtifactHash: string };
+    const deniedProposal = await handler({ method: "POST", url: "/api/ingestion/resident-source-boundaries/propose", headers, body: JSON.stringify({ workflowId: "workflow_boundary_http_002", discoveryArtifactHash: deniedDiscoveryBody.discoveryArtifactHash, includedRelativePaths: ["notes/finding.md", "tables/rows.csv"], excludedRelativePaths: ["archive.zip", "settings.json"], toolRequestId: "toolreq_boundary_http_002", taskId: "task_boundary_http_002", runId: "run_boundary_http_002" }) });
+    expect(deniedProposal.status).toBe(200);
+    const deniedBoundary = JSON.parse(deniedProposal.body) as { toolRequestId: string; previewHash: string };
+    const denied = await handler({ method: "POST", url: `/api/agent/approvals/${deniedBoundary.toolRequestId}/deny`, headers, body: JSON.stringify({ rationale: "Human denies this exact protected boundary." }) });
+    const deniedOpposite = await handler({ method: "POST", url: `/api/agent/approvals/${deniedBoundary.toolRequestId}/approve`, headers, body: JSON.stringify({ approvedPreviewHash: deniedBoundary.previewHash, rationale: "Opposite terminal authority is forbidden." }) });
+    expect(denied.status).toBe(200);
+    expect(deniedOpposite.status).toBe(409);
+    const afterDenied = await allEvents(config);
+    expect(afterDenied.filter((event) => event.type === "agent.tool.denied" && event.payload.toolRequestId === deniedBoundary.toolRequestId)).toHaveLength(1);
+    expect(afterDenied.filter((event) => event.type === "agent.tool.approved" && event.payload.toolRequestId === deniedBoundary.toolRequestId)).toHaveLength(0);
+  });
+
   it("does not double-execute an approved descriptor across concurrent scheduler wake posts", async () => {
     const previewBarrier = createBarrier(2);
     let executions = 0;
@@ -2685,6 +2745,26 @@ describe("agent HTTP routes", () => {
     expect(response.body).not.toContain("Source text sentinel that must not echo back.");
     expect(response.body).not.toContain("evt_route_diagnostic");
     expect(isAgentSecretSafeText(response.body)).toBe(true);
+  });
+
+  it("does not synthesize ingestion authority outside boundary routes and rejects stale boundary mounts before writes", async () => {
+    const config = portableConfig("ws_boundary_resolver_scope");
+    if (config.storage.strategy !== "portable-workspace") throw new Error("boundary resolver test requires portable storage");
+    const sourceRoot = join(config.storage.workspaceRoot, "selected");
+    mkdirSync(sourceRoot);
+    const handler = testHandler({ config });
+
+    const ordinaryRoute = await handler({ method: "GET", url: "/api/ingestion/sources" });
+    expect(ordinaryRoute.status).toBe(503);
+
+    rmSync(join(config.storage.workspaceRoot, "cestus-workspace.json"));
+    const staleBoundary = await handler({
+      method: "POST",
+      url: "/api/ingestion/resident-source-boundaries/discover",
+      body: JSON.stringify({ workflowId: "workflow_stale_boundary_001", sourceCollectionId: "src_stale_boundary_001", sourceRoot })
+    });
+    expect(staleBoundary.status).toBe(503);
+    expect(readdirSync(join(config.storage.workspaceRoot, "derivatives"))).toEqual([]);
   });
 });
 
@@ -3341,10 +3421,55 @@ async function seededApprovedToolHandler(
       residentIdentityBootstrapForTest: async ({ workspaceId }) => readyResidentIdentityLifecycle(workspaceId),
       agentRuntimeFactory: (input) => defaultLocalAgentRuntimeFactory({
         ...input,
-        approvedToolExecutors: [descriptorFactory(preview)]
+        approvedToolExecutors: [schedulerFixtureDescriptor(input.handle.ledger, preview, descriptorFactory(preview))]
       })
     }),
     previewHash
+  };
+}
+
+function schedulerFixtureDescriptor(
+  ledger: EventLedger,
+  preview: AgentToolPreview,
+  descriptor: AgentApprovedToolExecutorDescriptor
+): AgentApprovedToolExecutorDescriptor {
+  return {
+    ...descriptor,
+    async executeApproved(input) {
+      const result = await descriptor.executeApproved(input);
+      const previewHash = hashAgentToolPreview(preview);
+      const events = await ledger.readAll();
+      const request = events.find((event): event is KnowledgeEventOf<"agent.tool.requested"> => event.type === "agent.tool.requested" && event.payload.previewHash === previewHash);
+      const claim = [...events].reverse().find((event) =>
+        event.type === "agent.tool.execution.claimed" && request !== undefined && event.payload.toolRequestId === request.payload.toolRequestId
+      );
+      if (request === undefined || claim === undefined) throw new Error("scheduler fixture requires a durable request and claim");
+      const evidence = await ledger.append({
+        type: "diagnostic.recorded",
+        version: 1,
+        streamId: `diagnostic_scheduler_fixture_${request.payload.toolRequestId}`,
+        context: {
+          actor: { id: "actor_scheduler_fixture", kind: "system", label: "Scheduler fixture" },
+          occurredAt: "2026-07-07T20:00:00.000Z",
+          causationId: claim.id,
+          correlationId: `corr_${request.payload.toolRequestId}`,
+          coreVersion: "0.1.0",
+          packVersions: { core: "0.1.0", agent: "0.1.0" }
+        },
+        payload: {
+          diagnosticId: `diag_scheduler_fixture_${request.payload.toolRequestId}`,
+          severity: "info",
+          category: "validation",
+          message: "Scheduler fixture appended independently durable domain evidence.",
+          repairHint: {
+            contract: "scheduler fixture",
+            violatedPath: "result.eventIds",
+            allowedActions: ["inspect scheduler fixture"]
+          }
+        }
+      });
+      return { ...result, eventIds: [evidence.id] };
+    }
   };
 }
 

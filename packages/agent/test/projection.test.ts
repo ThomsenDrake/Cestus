@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { buildAgentCockpit } from "../src/cockpit.js";
 import { buildAgentProjection } from "../src/projection.js";
+import { InMemoryEventLedger } from "../../ontology/src/event-ledger.js";
+import { requestResidentSourceBoundaryApproval } from "../src/resident-source-boundary.js";
+import { createAgentToolGateway } from "../src/tool-gateway.js";
 import { buildTaskAttemptId, taskOrchestrationStreamId } from "../src/task-orchestrator-events.js";
 import type { AgentStatusDto } from "../src/runtime-types.js";
 import { goldenAgentLedgerEvents } from "./fixtures/golden-agent-ledger.js";
@@ -10,6 +13,46 @@ const hash222 = "sha256:22222222222222222222222222222222222222222222222222222222
 const hash333 = "sha256:3333333333333333333333333333333333333333333333333333333333333333";
 
 describe("buildAgentProjection", () => {
+  it("derives resident boundary review provenance only from the exact durable request binding", async () => {
+    const ledger = new InMemoryEventLedger();
+    const hash = (value: string) => `sha256:${value.repeat(64).slice(0, 64)}` as `sha256:${string}`;
+    await requestResidentSourceBoundaryApproval({
+      ledger,
+      gateway: createAgentToolGateway({
+        ledger,
+        actor: { id: "agent_default", kind: "agent", label: "Resident" },
+        now: () => "2026-08-05T12:00:00.000Z"
+      }),
+      toolRequestId: "toolreq_boundary_projection_001",
+      taskId: "task_boundary_projection_001",
+      runId: "run_boundary_projection_001",
+      workflowId: "workflow_projection_001",
+      workspaceId: "ws_projection_001",
+      sourceCollectionId: "src_projection_001",
+      sourceIdentity: `source_${"d".repeat(64)}`,
+      sourceRootHash: hash("1"),
+      discoveryArtifactHash: hash("2"),
+      discoveryHash: hash("3"),
+      manifestArtifactHash: hash("4"),
+      manifestHash: hash("5"),
+      archivePolicy: "reject",
+      regularFileCount: 1,
+      includedFileCount: 1,
+      excludedFileCount: 0,
+      includedBytes: 8,
+      excludedBytes: 0,
+      totalBytes: 8
+    });
+
+    const request = buildAgentProjection(await ledger.readAll()).toolRequests.get("toolreq_boundary_projection_001");
+
+    expect(request?.residentSourceBoundaryReview).toMatchObject({
+      schemaVersion: "resident-source-boundary-review.v1",
+      requestEventId: expect.stringMatching(/^evt_/)
+    });
+    expect(JSON.stringify(request?.residentSourceBoundaryReview)).not.toContain("/selected");
+  });
+
   it("rebuilds resident identity, tasks, runs, tools, memory, permissions, and locks", () => {
     const projection = buildAgentProjection(goldenAgentLedgerEvents);
 

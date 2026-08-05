@@ -76,7 +76,9 @@ export function createAgentScheduler(input: CreateAgentSchedulerInput) {
     async wake(): Promise<AgentSchedulerWakeResultDto> {
       const events = await input.ledger.readAll();
       const projection = buildAgentProjection(events);
-      const candidates = [...projection.toolRequests.values()].filter(isApprovedOpenRequest);
+      const candidates = [...projection.toolRequests.values()].filter(
+        (request) => isApprovedOpenRequest(request) && !isTerminalResidentSourceBoundaryRequest(request)
+      );
       const items: AgentSchedulerItemSummaryDto[] = [];
       const eventIds: string[] = [];
 
@@ -164,6 +166,10 @@ function isApprovedOpenRequest(request: ProjectedAgentToolRequest): boolean {
     request.completedAt === undefined &&
     request.failedAt === undefined &&
     request.deniedAt === undefined;
+}
+
+function isTerminalResidentSourceBoundaryRequest(request: ProjectedAgentToolRequest): boolean {
+  return request.residentSourceBoundaryReview !== undefined;
 }
 
 async function consumeApprovedRequest(
