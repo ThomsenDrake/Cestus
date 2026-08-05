@@ -2464,13 +2464,42 @@ const agentToolRequestedPayloadSchema = z.object({
   scope: secretSafeTextSchema,
   estimatedEffect: secretSafeTextSchema,
   sourceEventIds: agentSourceEventIdsSchema.optional(),
-  inputArtifactHashes: agentArtifactHashesSchema.optional()
+  inputArtifactHashes: agentArtifactHashesSchema.optional(),
+  residentSourceBoundary: z.object({
+    workflowId: secretSafeStringSchema.min(3),
+    workspaceId: secretSafeStringSchema.min(3),
+    sourceCollectionId: secretSafeStringSchema.min(3),
+    sourceIdentity: secretSafeStringSchema.min(3),
+    sourceRootHash: agentArtifactHashSchema,
+    discoveryArtifactHash: agentArtifactHashSchema,
+    discoveryHash: agentArtifactHashSchema,
+    manifestArtifactHash: agentArtifactHashSchema,
+    manifestHash: agentArtifactHashSchema,
+    regularFileCount: z.number().int().nonnegative(),
+    includedFileCount: z.number().int().nonnegative(),
+    excludedFileCount: z.number().int().nonnegative(),
+    totalBytes: z.number().int().nonnegative()
+  }).strict().superRefine((binding, ctx) => {
+    if (binding.regularFileCount !== binding.includedFileCount + binding.excludedFileCount) {
+      ctx.addIssue({ code: "custom", path: ["regularFileCount"], message: "boundary counts must partition regular files" });
+    }
+  }).optional()
 }).strict().superRefine((toolRequest, ctx) => {
   if (!agentApprovalClassMatchesSideEffect(toolRequest.sideEffectClass, toolRequest.requiredApprovalClass)) {
     ctx.addIssue({
       code: "custom",
       path: ["requiredApprovalClass"],
       message: "requiredApprovalClass must match the sideEffectClass risk"
+    });
+  }
+  if (toolRequest.residentSourceBoundary !== undefined && (
+    toolRequest.toolId !== "ingestion.source-boundary.approve" ||
+    toolRequest.requiredApprovalClass !== "human-review"
+  )) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["residentSourceBoundary"],
+      message: "resident source boundary binding requires the human-review boundary tool"
     });
   }
 });
