@@ -73,4 +73,21 @@ describe("resident source boundary approval", () => {
     })).rejects.toThrow(/denied|closed/i);
     expect((await ledger.readAll()).filter((event) => event.type === "agent.tool.denied")).toHaveLength(1);
   });
+
+  it("replays one exact workflow request and rejects a changed authority binding", async () => {
+    const ledger = new InMemoryEventLedger();
+    const gateway = createAgentToolGateway({ ledger, actor: { id: "agent_default", kind: "agent", label: "Resident" }, now: () => "2026-08-05T12:00:00.000Z" });
+    const hash = (value: string) => `sha256:${value.repeat(64).slice(0, 64)}` as `sha256:${string}`;
+    const input = {
+      ledger, gateway, toolRequestId: "toolreq_boundary_replay_001", taskId: "task_boundary_replay_001", runId: "run_boundary_replay_001",
+      workflowId: "workflow_replay_001", workspaceId: "ws_replay_001", sourceCollectionId: "src_replay_001", sourceIdentity: `source_${"c".repeat(64)}`,
+      sourceRootHash: hash("1"), discoveryArtifactHash: hash("2"), discoveryHash: hash("3"), manifestArtifactHash: hash("4"), manifestHash: hash("5"), archivePolicy: "reject" as const,
+      regularFileCount: 2, includedFileCount: 1, excludedFileCount: 1, includedBytes: 4, excludedBytes: 6, totalBytes: 10
+    };
+    const first = await requestResidentSourceBoundaryApproval(input);
+    const replay = await requestResidentSourceBoundaryApproval(input);
+    expect(replay.id).toBe(first.id);
+    await expect(requestResidentSourceBoundaryApproval({ ...input, toolRequestId: "toolreq_boundary_replay_002", manifestHash: hash("6") })).rejects.toThrow(/different|workflow/i);
+    expect((await ledger.readAll()).filter((event) => event.type === "agent.tool.requested")).toHaveLength(1);
+  });
 });

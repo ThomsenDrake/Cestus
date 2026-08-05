@@ -271,6 +271,7 @@ function residentSourceBoundaryService(
 
 function requiredDiscoveryInput(payload: Record<string, unknown>) {
   if (Object.hasOwn(payload, "sourceIdentity")) throw new Error("Source identity is observed from selected-root metadata.");
+  assertOnlyFields(payload, ["workflowId", "sourceCollectionId", "sourceRoot"]);
   return {
     workflowId: requiredIdentifier(payload.workflowId, "workflow id"),
     sourceCollectionId: requiredIdentifier(payload.sourceCollectionId, "source collection id"),
@@ -279,6 +280,7 @@ function requiredDiscoveryInput(payload: Record<string, unknown>) {
 }
 
 function requiredBoundaryProposal(payload: Record<string, unknown>) {
+  assertOnlyFields(payload, ["workflowId", "discoveryArtifactHash", "includedRelativePaths", "excludedRelativePaths", "toolRequestId", "taskId", "runId"]);
   return {
     workflowId: requiredIdentifier(payload.workflowId, "workflow id"),
     discoveryArtifactHash: requiredArtifactHash(payload.discoveryArtifactHash),
@@ -286,6 +288,10 @@ function requiredBoundaryProposal(payload: Record<string, unknown>) {
     excludedRelativePaths: requiredPathArray(payload.excludedRelativePaths),
     archivePolicy: "reject" as const
   };
+}
+
+function assertOnlyFields(payload: Record<string, unknown>, allowed: readonly string[]): void {
+  if (Object.keys(payload).some((key) => !allowed.includes(key))) throw new Error("Resident source boundary request contains an unsupported authority field.");
 }
 
 function requiredIdentifier(value: unknown, label: string): string {

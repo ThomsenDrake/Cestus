@@ -3,6 +3,8 @@ import { type ActorRef, type CreateDraftRequestInput } from "../../prr/src/draft
 import type { DeadlineCalculator, PrrRuntimeNow } from "../../prr/src/runtime.js";
 import { prrWorkspaceSeedEvents } from "../../prr/src/workspace-seed.js";
 import type { IngestionWorkspaceMountResolver } from "../../ingestion/src/mount-contract.js";
+import { mountedWorkspaceCapabilities, type MountedWorkspace } from "../../ingestion/src/mount-contract.js";
+import { FileBlobStore } from "../../ontology/src/blob-store.js";
 import {
   acquireMountedEvidenceTriageHandoffForLocalAgentRuntimeFactory,
   bindMountedAdvisoryHandoffForLocalAgentRuntimeFactory,
@@ -233,9 +235,7 @@ export function createLocalRuntimeHttpHandler(
       const response = await handleIngestionHttpRoute({
         request,
         actor: input.actor,
-        ...(input.ingestionMountResolver === undefined
-          ? {}
-          : { ingestionMountResolver: input.ingestionMountResolver }),
+        ingestionMountResolver: input.ingestionMountResolver ?? mountedIngestionResolver(handle),
         ...(input.ingestionRuntimeFactory === undefined
           ? {}
           : { ingestionRuntimeFactory: input.ingestionRuntimeFactory })
@@ -312,6 +312,27 @@ export function createLocalRuntimeHttpHandler(
     return closePromise;
   };
   return handler;
+}
+
+function mountedIngestionResolver(handle: ReturnType<typeof createSqlitePrrRuntime>): IngestionWorkspaceMountResolver | undefined {
+  const mounted = handle.mountedWorkspace;
+  if (mounted === undefined) return undefined;
+  const workspace: MountedWorkspace = {
+    workspaceId: mounted.workspaceId,
+    label: mounted.label,
+    ledger: handle.ledger,
+    blobStore: new FileBlobStore(mounted.paths.blobRoot),
+    derivativeStore: new FileBlobStore(mounted.paths.derivativeRoot),
+    jobStateRoot: mounted.paths.jobRoot,
+    capabilities: mountedWorkspaceCapabilities({
+      canReadLedger: true,
+      canAppendLedger: true,
+      canWriteBlobs: true,
+      canWriteDerivatives: true,
+      canWriteJobState: true
+    })
+  };
+  return { resolve: async () => ({ ok: true as const, workspace }) };
 }
 
 function draftRequestInputFromBody(value: unknown): CreateDraftRequestInput | undefined {

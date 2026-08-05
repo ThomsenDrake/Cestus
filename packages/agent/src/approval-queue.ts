@@ -8,7 +8,8 @@ export const agentApprovalQueueClassValues = [
   "export-publication",
   "destructive-repair",
   "accepted-graph-review",
-  "ledger-review"
+  "ledger-review",
+  "human-review"
 ] as const;
 
 export const agentApprovalQueueLegacyApprovalClassAliases = [
@@ -24,8 +25,7 @@ export type AgentApprovalQueueApprovalClass = string;
 export type AgentApprovalQueueInputApprovalClass = string;
 
 const forbiddenSentinelApprovalClasses = new Set<AgentApprovalQueueInputApprovalClass>([
-  "none",
-  "human-review"
+  "none"
 ]);
 
 export interface AgentAffectedRefDto {
