@@ -275,6 +275,9 @@ export async function assertResidentSourceBoundaryApprovalCurrent(input: {
   readonly binding: ResidentSourceBoundaryApprovalBinding;
   readonly assertCurrent?: () => void | Promise<void>;
 }): Promise<void> {
+  if (input.binding.workspaceId !== input.workspace.workspaceId) {
+    throw new Error("Resident source boundary approval does not bind the current mounted workspace.");
+  }
   const service = createResidentSourceBoundaryService({
     workspace: input.workspace,
     ...(input.assertCurrent === undefined ? {} : { assertCurrent: input.assertCurrent })
@@ -390,6 +393,9 @@ async function readDiscovery(workspace: MountedWorkspace, hash: `sha256:${string
   assertCanonicalArtifactBytes(bytes, parsed);
   validateDiscoveryArtifact(parsed);
   const discovery = parsed as ProtectedDiscoveryArtifact;
+  if (discovery.workspaceId !== workspace.workspaceId) {
+    throw new Error("Protected discovery artifact does not belong to the current mounted workspace.");
+  }
   const { discoveryHash, ...unsigned } = discovery;
   if (digest(stableJson(unsigned)) !== discoveryHash) throw new Error("Protected discovery hash is invalid.");
   return discovery;
@@ -402,6 +408,9 @@ async function readBoundary(workspace: MountedWorkspace, hash: `sha256:${string}
   assertCanonicalArtifactBytes(bytes, parsed);
   validateBoundaryManifestShape(parsed);
   const manifest = parsed as ProtectedBoundaryManifest;
+  if (manifest.workspaceId !== workspace.workspaceId) {
+    throw new Error("Protected boundary manifest does not belong to the current mounted workspace.");
+  }
   const { manifestHash, ...unsigned } = manifest;
   if (digest(stableJson(unsigned)) !== manifestHash) throw new Error("Protected boundary manifest hash is invalid.");
   const discovery = await readDiscovery(workspace, manifest.discoveryArtifactHash);
