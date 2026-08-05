@@ -42,6 +42,7 @@ describe("resident source boundary approval", () => {
     expect(JSON.stringify(event)).not.toContain("/selected");
     expect(event?.payload).toMatchObject({
       toolId: "ingestion.source-boundary.approve",
+      sideEffectClass: "ledger-proposal",
       residentSourceBoundary: { workflowId: "workflow_001", manifestHash: hash("5") }
     });
   });

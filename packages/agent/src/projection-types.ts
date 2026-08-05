@@ -319,6 +319,11 @@ export interface ProjectedAgentToolRequest extends ProjectedAgentProvenance {
   readonly failureMessage?: string | undefined;
   readonly retryable?: boolean | undefined;
   readonly allowedActions: readonly string[];
+  /** Opaque, path-free proof that the exact durable boundary binding was validated during projection. */
+  readonly residentSourceBoundaryReview?: {
+    readonly schemaVersion: "resident-source-boundary-review.v1";
+    readonly requestEventId: string;
+  } | undefined;
 }
 
 export interface ProjectedAgentMemory extends ProjectedAgentProvenance {

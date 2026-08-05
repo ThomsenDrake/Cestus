@@ -17,7 +17,7 @@ export interface ResidentSourceBoundaryApprovalRequest extends ResidentSourceBou
       readonly runId: string;
       readonly toolId: string;
       readonly toolVersion: string;
-      readonly sideEffectClass: "local-derivative";
+      readonly sideEffectClass: "ledger-proposal";
       readonly requiredApprovalClass: "human-review";
       readonly preview: AgentToolPreview;
       readonly scope: string;
@@ -63,7 +63,7 @@ export async function requestResidentSourceBoundaryApproval(
     runId: value.runId,
     toolId: "ingestion.source-boundary.approve",
     toolVersion: "1.0.0",
-    sideEffectClass: "local-derivative",
+    sideEffectClass: "ledger-proposal",
     requiredApprovalClass: "human-review",
     preview,
     scope: preview.scope,

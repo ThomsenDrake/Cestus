@@ -299,6 +299,7 @@ export function buildAgentProjection(events: readonly KnowledgeEvent[], options:
       }
 
       case "agent.tool.requested":
+        const residentSourceBoundaryReview = projectResidentSourceBoundaryReview(event);
         toolRequests.set(
           event.payload.toolRequestId,
           freezeProjected({
@@ -320,6 +321,7 @@ export function buildAgentProjection(events: readonly KnowledgeEvent[], options:
             artifactHashes: freezeArray([]),
             readModelChanges: freezeArray([]),
             allowedActions: freezeArray([]),
+            ...(residentSourceBoundaryReview === undefined ? {} : { residentSourceBoundaryReview }),
             ...nextProvenance(undefined, event)
           })
         );
@@ -627,6 +629,29 @@ export function buildAgentProjection(events: readonly KnowledgeEvent[], options:
   };
 
   return freezeProjected(projection);
+}
+
+function projectResidentSourceBoundaryReview(event: Extract<KnowledgeEvent, { readonly type: "agent.tool.requested" }>) {
+  const binding = event.payload.residentSourceBoundary;
+  if (
+    binding === undefined ||
+    event.payload.toolId !== "ingestion.source-boundary.approve" ||
+    event.payload.sideEffectClass !== "ledger-proposal" ||
+    event.payload.requiredApprovalClass !== "human-review" ||
+    binding.archivePolicy !== "reject" ||
+    binding.regularFileCount !== binding.includedFileCount + binding.excludedFileCount ||
+    binding.totalBytes !== binding.includedBytes + binding.excludedBytes ||
+    !/^source_[a-f0-9]{64}$/.test(binding.sourceIdentity) ||
+    ![binding.sourceRootHash, binding.discoveryArtifactHash, binding.discoveryHash, binding.manifestArtifactHash, binding.manifestHash]
+      .every((hash) => /^sha256:[a-f0-9]{64}$/.test(hash))
+  ) {
+    return undefined;
+  }
+
+  return Object.freeze({
+    schemaVersion: "resident-source-boundary-review.v1" as const,
+    requestEventId: event.id
+  });
 }
 
 type AgentModelRequestedEvent = Extract<KnowledgeEvent, { type: "agent.model-invocation.requested" }>;
