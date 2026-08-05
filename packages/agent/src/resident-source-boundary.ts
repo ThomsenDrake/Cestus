@@ -4,8 +4,11 @@ import {
   type ResidentSourceBoundaryApprovalBinding
 } from "../../ingestion/src/resident-source-boundary.js";
 import type { MountedWorkspace } from "../../ingestion/src/mount-contract.js";
+import type { EventLedger } from "../../ontology/src/event-ledger.js";
+import type { KnowledgeEventOf } from "../../ontology/src/contracts.js";
 
 export interface ResidentSourceBoundaryApprovalRequest extends ResidentSourceBoundaryBinding {
+  readonly ledger: EventLedger;
   readonly gateway: {
     requestTool(input: {
       readonly toolRequestId: string;
@@ -42,11 +45,16 @@ export async function requestResidentSourceBoundaryApproval(
     discoveryHash: value.discoveryHash,
     manifestArtifactHash: value.manifestArtifactHash,
     manifestHash: value.manifestHash,
+    archivePolicy: value.archivePolicy,
     regularFileCount: value.regularFileCount,
     includedFileCount: value.includedFileCount,
     excludedFileCount: value.excludedFileCount,
+    includedBytes: value.includedBytes,
+    excludedBytes: value.excludedBytes,
     totalBytes: value.totalBytes
   };
+  const existing = await existingWorkflowRequest(value.ledger, binding, value.toolRequestId);
+  if (existing !== undefined) return existing;
   const preview = residentSourceBoundaryPreview(binding);
   return await value.gateway.requestTool({
     toolRequestId: value.toolRequestId,
@@ -65,6 +73,37 @@ export async function requestResidentSourceBoundaryApproval(
   });
 }
 
+async function existingWorkflowRequest(
+  ledger: EventLedger,
+  binding: ResidentSourceBoundaryBinding,
+  toolRequestId: string
+): Promise<KnowledgeEventOf<"agent.tool.requested"> | undefined> {
+  const requests = (await ledger.readAll()).filter((event): event is KnowledgeEventOf<"agent.tool.requested"> =>
+    event.type === "agent.tool.requested" && event.payload.residentSourceBoundary?.workflowId === binding.workflowId
+  );
+  if (requests.length === 0) return undefined;
+  if (requests.length !== 1) throw new Error("Workflow has multiple resident source boundary requests.");
+  const request = requests[0];
+  const previous = request.payload.residentSourceBoundary;
+  if (request.payload.toolRequestId !== toolRequestId || previous === undefined || !sameBinding(previous, binding)) {
+    throw new Error("Workflow already has a different resident source boundary authority request.");
+  }
+  return request;
+}
+
+function sameBinding(left: ResidentSourceBoundaryBinding, right: ResidentSourceBoundaryBinding): boolean {
+  return (
+    left.workflowId === right.workflowId && left.workspaceId === right.workspaceId &&
+    left.sourceCollectionId === right.sourceCollectionId && left.sourceIdentity === right.sourceIdentity &&
+    left.sourceRootHash === right.sourceRootHash && left.discoveryArtifactHash === right.discoveryArtifactHash &&
+    left.discoveryHash === right.discoveryHash && left.manifestArtifactHash === right.manifestArtifactHash &&
+    left.manifestHash === right.manifestHash && left.regularFileCount === right.regularFileCount &&
+    left.includedFileCount === right.includedFileCount && left.excludedFileCount === right.excludedFileCount &&
+    left.archivePolicy === right.archivePolicy && left.includedBytes === right.includedBytes && left.excludedBytes === right.excludedBytes &&
+    left.totalBytes === right.totalBytes
+  );
+}
+
 export function residentSourceBoundaryPreview(binding: ResidentSourceBoundaryBinding): AgentToolPreview {
   return Object.freeze({
     summary: "Human review is required for a resident source boundary.",
@@ -77,9 +116,12 @@ export function residentSourceBoundaryPreview(binding: ResidentSourceBoundaryBin
     sourceRootHash: binding.sourceRootHash,
     discoveryHash: binding.discoveryHash,
     manifestHash: binding.manifestHash,
+    archivePolicy: binding.archivePolicy,
     regularFileCount: binding.regularFileCount,
     includedFileCount: binding.includedFileCount,
     excludedFileCount: binding.excludedFileCount,
+    includedBytes: binding.includedBytes,
+    excludedBytes: binding.excludedBytes,
     totalBytes: binding.totalBytes,
     artifactHashes: [binding.discoveryArtifactHash, binding.manifestArtifactHash]
   });

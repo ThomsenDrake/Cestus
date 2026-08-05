@@ -69,9 +69,12 @@ export interface ResidentSourceBoundaryBinding {
   readonly discoveryHash: `sha256:${string}`;
   readonly manifestArtifactHash: `sha256:${string}`;
   readonly manifestHash: `sha256:${string}`;
+  readonly archivePolicy: "reject";
   readonly regularFileCount: number;
   readonly includedFileCount: number;
   readonly excludedFileCount: number;
+  readonly includedBytes: number;
+  readonly excludedBytes: number;
   readonly totalBytes: number;
 }
 
@@ -402,8 +405,8 @@ function copyResidentSourceBoundaryBinding(value: ResidentSourceBoundaryBinding)
   const record = dataRecordFromObject(value, "resident source boundary binding");
   rejectUnsupportedKeys(record, [
     "workflowId", "workspaceId", "sourceCollectionId", "sourceIdentity", "sourceRootHash",
-    "discoveryArtifactHash", "discoveryHash", "manifestArtifactHash", "manifestHash",
-    "regularFileCount", "includedFileCount", "excludedFileCount", "totalBytes"
+    "discoveryArtifactHash", "discoveryHash", "manifestArtifactHash", "manifestHash", "archivePolicy",
+    "regularFileCount", "includedFileCount", "excludedFileCount", "includedBytes", "excludedBytes", "totalBytes"
   ], "resident source boundary binding");
   for (const key of ["workflowId", "workspaceId", "sourceCollectionId", "sourceIdentity"] as const) {
     assertNonEmptySecretSafeString(record[key], `resident source boundary ${key}`);
@@ -411,16 +414,23 @@ function copyResidentSourceBoundaryBinding(value: ResidentSourceBoundaryBinding)
       throw new Error(`resident source boundary ${key} must be a path-free identifier.`);
     }
   }
+  if (typeof record.sourceIdentity !== "string" || !/^source_[a-f0-9]{64}$/.test(record.sourceIdentity)) {
+    throw new Error("resident source boundary sourceIdentity must be an observed root fingerprint.");
+  }
   for (const key of ["sourceRootHash", "discoveryArtifactHash", "discoveryHash", "manifestArtifactHash", "manifestHash"] as const) {
     if (typeof record[key] !== "string" || !artifactHashPattern.test(record[key])) {
       throw new Error(`resident source boundary ${key} must be a sha256 hash.`);
     }
   }
-  for (const key of ["regularFileCount", "includedFileCount", "excludedFileCount", "totalBytes"] as const) {
+  if (record.archivePolicy !== "reject") throw new Error("resident source boundary archive policy must reject archives.");
+  for (const key of ["regularFileCount", "includedFileCount", "excludedFileCount", "includedBytes", "excludedBytes", "totalBytes"] as const) {
     if (!Number.isSafeInteger(record[key]) || (record[key] as number) < 0) throw new Error(`resident source boundary ${key} must be non-negative.`);
   }
   if (record.regularFileCount !== (record.includedFileCount as number) + (record.excludedFileCount as number)) {
     throw new Error("resident source boundary counts must partition regular files.");
+  }
+  if (record.totalBytes !== (record.includedBytes as number) + (record.excludedBytes as number)) {
+    throw new Error("resident source boundary byte totals must partition regular files.");
   }
   return Object.freeze({
     workflowId: record.workflowId as string,
@@ -432,9 +442,12 @@ function copyResidentSourceBoundaryBinding(value: ResidentSourceBoundaryBinding)
     discoveryHash: record.discoveryHash as `sha256:${string}`,
     manifestArtifactHash: record.manifestArtifactHash as `sha256:${string}`,
     manifestHash: record.manifestHash as `sha256:${string}`,
+    archivePolicy: "reject",
     regularFileCount: record.regularFileCount as number,
     includedFileCount: record.includedFileCount as number,
     excludedFileCount: record.excludedFileCount as number,
+    includedBytes: record.includedBytes as number,
+    excludedBytes: record.excludedBytes as number,
     totalBytes: record.totalBytes as number
   });
 }

@@ -3341,10 +3341,55 @@ async function seededApprovedToolHandler(
       residentIdentityBootstrapForTest: async ({ workspaceId }) => readyResidentIdentityLifecycle(workspaceId),
       agentRuntimeFactory: (input) => defaultLocalAgentRuntimeFactory({
         ...input,
-        approvedToolExecutors: [descriptorFactory(preview)]
+        approvedToolExecutors: [schedulerFixtureDescriptor(input.handle.ledger, preview, descriptorFactory(preview))]
       })
     }),
     previewHash
+  };
+}
+
+function schedulerFixtureDescriptor(
+  ledger: SQLiteEventLedger,
+  preview: AgentToolPreview,
+  descriptor: AgentApprovedToolExecutorDescriptor
+): AgentApprovedToolExecutorDescriptor {
+  return {
+    ...descriptor,
+    async executeApproved() {
+      const result = await descriptor.executeApproved();
+      const previewHash = hashAgentToolPreview(preview);
+      const events = await ledger.readAll();
+      const request = events.find((event) => event.type === "agent.tool.requested" && event.payload.previewHash === previewHash);
+      const claim = [...events].reverse().find((event) =>
+        event.type === "agent.tool.execution.claimed" && request !== undefined && event.payload.toolRequestId === request.payload.toolRequestId
+      );
+      if (request === undefined || claim === undefined) throw new Error("scheduler fixture requires a durable request and claim");
+      const evidence = await ledger.append({
+        type: "diagnostic.recorded",
+        version: 1,
+        streamId: `diagnostic_scheduler_fixture_${request.payload.toolRequestId}`,
+        context: {
+          actor: { id: "actor_scheduler_fixture", kind: "system", label: "Scheduler fixture" },
+          occurredAt: "2026-07-07T20:00:00.000Z",
+          causationId: claim.id,
+          correlationId: `corr_${request.payload.toolRequestId}`,
+          coreVersion: "0.1.0",
+          packVersions: { core: "0.1.0", agent: "0.1.0" }
+        },
+        payload: {
+          diagnosticId: `diag_scheduler_fixture_${request.payload.toolRequestId}`,
+          severity: "info",
+          category: "validation",
+          message: "Scheduler fixture appended independently durable domain evidence.",
+          repairHint: {
+            contract: "scheduler fixture",
+            violatedPath: "result.eventIds",
+            allowedActions: ["inspect scheduler fixture"]
+          }
+        }
+      });
+      return { ...result, eventIds: [evidence.id] };
+    }
   };
 }
 

@@ -13,6 +13,7 @@ describe("resident source boundary approval", () => {
     });
     const hash = (value: string) => `sha256:${value.repeat(64).slice(0, 64)}` as `sha256:${string}`;
     const requested = await requestResidentSourceBoundaryApproval({
+      ledger,
       gateway,
       toolRequestId: "toolreq_boundary_001",
       taskId: "task_boundary_001",
@@ -20,15 +21,18 @@ describe("resident source boundary approval", () => {
       workflowId: "workflow_001",
       workspaceId: "ws_001",
       sourceCollectionId: "src_001",
-      sourceIdentity: "source_001",
+      sourceIdentity: `source_${"a".repeat(64)}`,
       sourceRootHash: hash("1"),
       discoveryArtifactHash: hash("2"),
       discoveryHash: hash("3"),
       manifestArtifactHash: hash("4"),
       manifestHash: hash("5"),
+      archivePolicy: "reject",
       regularFileCount: 3,
       includedFileCount: 2,
       excludedFileCount: 1,
+      includedBytes: 13,
+      excludedBytes: 8,
       totalBytes: 21
     });
     const event = (await ledger.readAll())[0];
@@ -51,10 +55,11 @@ describe("resident source boundary approval", () => {
     });
     const hash = (value: string) => `sha256:${value.repeat(64).slice(0, 64)}` as `sha256:${string}`;
     const request = await requestResidentSourceBoundaryApproval({
+      ledger,
       gateway, toolRequestId: "toolreq_boundary_002", taskId: "task_boundary_002", runId: "run_boundary_002",
-      workflowId: "workflow_002", workspaceId: "ws_002", sourceCollectionId: "src_002", sourceIdentity: "source_002",
+      workflowId: "workflow_002", workspaceId: "ws_002", sourceCollectionId: "src_002", sourceIdentity: `source_${"b".repeat(64)}`,
       sourceRootHash: hash("1"), discoveryArtifactHash: hash("2"), discoveryHash: hash("3"),
-      manifestArtifactHash: hash("4"), manifestHash: hash("5"), regularFileCount: 1, includedFileCount: 1, excludedFileCount: 0, totalBytes: 8
+      manifestArtifactHash: hash("4"), manifestHash: hash("5"), archivePolicy: "reject", regularFileCount: 1, includedFileCount: 1, excludedFileCount: 0, includedBytes: 8, excludedBytes: 0, totalBytes: 8
     });
     await expect(gateway.denyTool({
       toolRequestId: "toolreq_boundary_002", actor: { id: "agent_other", kind: "agent", label: "Other" }, rationale: "No."

@@ -39,13 +39,13 @@ describe("event contracts", () => {
       scope: "Resident source boundary approval.",
       estimatedEffect: "Approval only authorizes a later scanning slice.",
       residentSourceBoundary: {
-        workflowId: "workflow_001", workspaceId: "ws_001", sourceCollectionId: "src_001", sourceIdentity: "source_001",
+        workflowId: "workflow_001", workspaceId: "ws_001", sourceCollectionId: "src_001", sourceIdentity: `source_${"a".repeat(64)}`,
         sourceRootHash: "sha256:2222222222222222222222222222222222222222222222222222222222222222",
         discoveryArtifactHash: "sha256:3333333333333333333333333333333333333333333333333333333333333333",
         discoveryHash: "sha256:4444444444444444444444444444444444444444444444444444444444444444",
         manifestArtifactHash: "sha256:5555555555555555555555555555555555555555555555555555555555555555",
         manifestHash: "sha256:6666666666666666666666666666666666666666666666666666666666666666",
-        regularFileCount: 2, includedFileCount: 1, excludedFileCount: 1, totalBytes: 10
+        archivePolicy: "reject", regularFileCount: 2, includedFileCount: 1, excludedFileCount: 1, includedBytes: 5, excludedBytes: 5, totalBytes: 10
       }
     };
     expect(validateKnowledgeEvent({
