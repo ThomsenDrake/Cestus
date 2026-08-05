@@ -55,6 +55,24 @@ export interface RequestAgentToolInput {
   readonly scope?: string;
   readonly estimatedEffect?: string;
   readonly inputArtifactHashes?: readonly string[];
+  readonly residentSourceBoundary?: ResidentSourceBoundaryBinding;
+}
+
+/** Durable, path-free authority binding for a resident source boundary request. */
+export interface ResidentSourceBoundaryBinding {
+  readonly workflowId: string;
+  readonly workspaceId: string;
+  readonly sourceCollectionId: string;
+  readonly sourceIdentity: string;
+  readonly sourceRootHash: `sha256:${string}`;
+  readonly discoveryArtifactHash: `sha256:${string}`;
+  readonly discoveryHash: `sha256:${string}`;
+  readonly manifestArtifactHash: `sha256:${string}`;
+  readonly manifestHash: `sha256:${string}`;
+  readonly regularFileCount: number;
+  readonly includedFileCount: number;
+  readonly excludedFileCount: number;
+  readonly totalBytes: number;
 }
 
 export interface ApproveAgentToolInput {
@@ -142,6 +160,9 @@ export function createAgentToolGateway(input: CreateAgentToolGatewayInput) {
         command.inputArtifactHashes ?? preview.artifactHashes,
         "input artifact hash"
       );
+      const residentSourceBoundary = command.residentSourceBoundary === undefined
+        ? undefined
+        : copyResidentSourceBoundaryBinding(command.residentSourceBoundary);
       const event: AppendableKnowledgeEvent<"agent.tool.requested"> = {
         type: "agent.tool.requested",
         version: 1,
@@ -159,7 +180,8 @@ export function createAgentToolGateway(input: CreateAgentToolGatewayInput) {
           scope,
           estimatedEffect,
           ...optionalArray("sourceEventIds", sourceEventIds),
-          ...optionalArray("inputArtifactHashes", inputArtifactHashes)
+          ...optionalArray("inputArtifactHashes", inputArtifactHashes),
+          ...(residentSourceBoundary === undefined ? {} : { residentSourceBoundary })
         }
       };
       return appendToolEvent(input.ledger, event, { expectedNextSequence: 1 });
@@ -202,12 +224,14 @@ export function createAgentToolGateway(input: CreateAgentToolGatewayInput) {
     },
 
     async denyTool(command: DenyAgentToolInput) {
+      const state = await readToolRequestState(input.ledger, command.toolRequestId);
       if (command.actor.kind !== "human" && command.actor.kind !== "system") {
         throw new Error("Tool denial requires a human or policy actor.");
       }
+      if (state.request.payload.residentSourceBoundary !== undefined && command.actor.kind !== "human") {
+        throw new Error("Resident source boundary denial requires a human actor.");
+      }
       assertAgentSecretSafeText(command.rationale, "denial rationale");
-
-      const state = await readToolRequestState(input.ledger, command.toolRequestId);
       assertNotTerminal(state, "denied");
 
       const event: AppendableKnowledgeEvent<"agent.tool.denied"> = {
@@ -372,6 +396,47 @@ export function createAgentToolGateway(input: CreateAgentToolGatewayInput) {
 
   const { completeTool: _structuralCompletion, ...publicGateway } = gateway;
   return Object.freeze(publicGateway);
+}
+
+function copyResidentSourceBoundaryBinding(value: ResidentSourceBoundaryBinding): ResidentSourceBoundaryBinding {
+  const record = dataRecordFromObject(value, "resident source boundary binding");
+  rejectUnsupportedKeys(record, [
+    "workflowId", "workspaceId", "sourceCollectionId", "sourceIdentity", "sourceRootHash",
+    "discoveryArtifactHash", "discoveryHash", "manifestArtifactHash", "manifestHash",
+    "regularFileCount", "includedFileCount", "excludedFileCount", "totalBytes"
+  ], "resident source boundary binding");
+  for (const key of ["workflowId", "workspaceId", "sourceCollectionId", "sourceIdentity"] as const) {
+    assertNonEmptySecretSafeString(record[key], `resident source boundary ${key}`);
+    if (typeof record[key] !== "string" || /[\\/]/.test(record[key])) {
+      throw new Error(`resident source boundary ${key} must be a path-free identifier.`);
+    }
+  }
+  for (const key of ["sourceRootHash", "discoveryArtifactHash", "discoveryHash", "manifestArtifactHash", "manifestHash"] as const) {
+    if (typeof record[key] !== "string" || !artifactHashPattern.test(record[key])) {
+      throw new Error(`resident source boundary ${key} must be a sha256 hash.`);
+    }
+  }
+  for (const key of ["regularFileCount", "includedFileCount", "excludedFileCount", "totalBytes"] as const) {
+    if (!Number.isSafeInteger(record[key]) || (record[key] as number) < 0) throw new Error(`resident source boundary ${key} must be non-negative.`);
+  }
+  if (record.regularFileCount !== (record.includedFileCount as number) + (record.excludedFileCount as number)) {
+    throw new Error("resident source boundary counts must partition regular files.");
+  }
+  return Object.freeze({
+    workflowId: record.workflowId as string,
+    workspaceId: record.workspaceId as string,
+    sourceCollectionId: record.sourceCollectionId as string,
+    sourceIdentity: record.sourceIdentity as string,
+    sourceRootHash: record.sourceRootHash as `sha256:${string}`,
+    discoveryArtifactHash: record.discoveryArtifactHash as `sha256:${string}`,
+    discoveryHash: record.discoveryHash as `sha256:${string}`,
+    manifestArtifactHash: record.manifestArtifactHash as `sha256:${string}`,
+    manifestHash: record.manifestHash as `sha256:${string}`,
+    regularFileCount: record.regularFileCount as number,
+    includedFileCount: record.includedFileCount as number,
+    excludedFileCount: record.excludedFileCount as number,
+    totalBytes: record.totalBytes as number
+  });
 }
 
 export function hashAgentToolPreview(preview: AgentToolPreview): `sha256:${string}` {

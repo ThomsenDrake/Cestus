@@ -8,6 +8,8 @@ import {
   buildTaskOrchestratorProjection,
   createResidentAgentDomainAdapterRegistry,
   createAgentToolGateway,
+  assertResidentSourceBoundaryCurrentPreview,
+  hashResidentSourceBoundaryPreview,
   isAgentSecretSafeText,
   type AgentMemoryKind,
   type AgentMemoryScope,
@@ -22,6 +24,7 @@ import {
 import { buildResidentPlanObservationProjectionV2 } from "../../agent/src/plan-observation-projection.js";
 import type { ActorRef, AppendableKnowledgeEvent, KnowledgeEvent } from "../../ontology/src/contracts.js";
 import { FileBlobStore } from "../../ontology/src/blob-store.js";
+import { mountedWorkspaceCapabilities, type MountedWorkspace } from "../../ingestion/src/mount-contract.js";
 import { hasPrecommitGuardedAppend } from "../../ontology/src/sqlite-event-ledger.js";
 import { buildSpecialistHandoffProjection } from "../../agent/src/specialist-handoff-projection.js";
 import type { LocalRuntimeRequest, LocalRuntimeResponse } from "./http-handler.js";
@@ -447,6 +450,7 @@ export async function handleAgentHttpRoute(
           }
 
           try {
+            await assertBoundResidentSourceBoundaryCurrent(input.handle, snapshotEvents, approvalRoute.toolRequestId);
             const gateway = createAgentToolGateway({
               ledger: input.handle.ledger,
               actor: localApprovalGatewayActor,
@@ -489,6 +493,7 @@ export async function handleAgentHttpRoute(
         }
 
         try {
+          await assertBoundResidentSourceBoundaryCurrent(input.handle, snapshotEvents, approvalRoute.toolRequestId);
           const gateway = createAgentToolGateway({
             ledger: input.handle.ledger,
             actor: localApprovalGatewayActor,
@@ -603,6 +608,48 @@ export async function handleAgentHttpRoute(
       diagnostic("Agent runtime route failed.", ["retry the local agent request", "inspect agent diagnostics"])
     );
   }
+}
+
+async function assertBoundResidentSourceBoundaryCurrent(
+  handle: LocalRuntimeHandle,
+  events: readonly KnowledgeEvent[],
+  toolRequestId: string
+): Promise<void> {
+  const request = events.find((event) => event.type === "agent.tool.requested" && event.payload.toolRequestId === toolRequestId);
+  if (request === undefined || request.type !== "agent.tool.requested" || request.payload.residentSourceBoundary === undefined) return;
+  const workspace = mountedBoundaryWorkspace(handle);
+  if (workspace === undefined) throw new Error("Resident source boundary approval requires a mounted workspace.");
+  if (hashResidentSourceBoundaryPreview(request.payload.residentSourceBoundary) !== request.payload.previewHash) {
+    throw new Error("Resident source boundary request preview is not the exact current safe binding.");
+  }
+  await assertResidentSourceBoundaryCurrentPreview({
+    workspace,
+    binding: request.payload.residentSourceBoundary,
+    assertCurrent: () => {
+      const current = inspectPortableWorkspaceCurrentness(handle);
+      if (!current.ok) throw new Error("Mounted workspace is stale or unavailable.");
+    }
+  });
+}
+
+function mountedBoundaryWorkspace(handle: LocalRuntimeHandle): MountedWorkspace | undefined {
+  const mounted = handle.mountedWorkspace;
+  if (mounted === undefined) return undefined;
+  return {
+    workspaceId: mounted.workspaceId,
+    label: mounted.label,
+    ledger: handle.ledger,
+    blobStore: new FileBlobStore(mounted.paths.blobRoot),
+    derivativeStore: new FileBlobStore(mounted.paths.derivativeRoot),
+    jobStateRoot: mounted.paths.jobRoot,
+    capabilities: mountedWorkspaceCapabilities({
+      canReadLedger: true,
+      canAppendLedger: false,
+      canWriteBlobs: false,
+      canWriteDerivatives: false,
+      canWriteJobState: false
+    })
+  };
 }
 
 type LocalAgentRuntime = ReturnType<LocalAgentRuntimeFactory>;

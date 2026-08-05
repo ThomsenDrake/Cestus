@@ -26,6 +26,38 @@ const agentContext = {
 } as const;
 
 describe("event contracts", () => {
+  it("accepts only the path-free structured resident source-boundary binding", () => {
+    const payload = {
+      toolRequestId: "toolreq_boundary_001",
+      runId: "run_boundary_001",
+      toolId: "ingestion.source-boundary.approve",
+      toolVersion: "1.0.0",
+      requestedBy: "agent_default",
+      sideEffectClass: "local-derivative",
+      requiredApprovalClass: "human-review",
+      previewHash: "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+      scope: "Resident source boundary approval.",
+      estimatedEffect: "Approval only authorizes a later scanning slice.",
+      residentSourceBoundary: {
+        workflowId: "workflow_001", workspaceId: "ws_001", sourceCollectionId: "src_001", sourceIdentity: "source_001",
+        sourceRootHash: "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+        discoveryArtifactHash: "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+        discoveryHash: "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+        manifestArtifactHash: "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+        manifestHash: "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+        regularFileCount: 2, includedFileCount: 1, excludedFileCount: 1, totalBytes: 10
+      }
+    };
+    expect(validateKnowledgeEvent({
+      id: "evt_boundary_request", type: "agent.tool.requested", version: 1,
+      streamId: "agent_tool_request_toolreq_boundary_001", sequence: 1, context: agentContext, payload
+    }).success).toBe(true);
+    expect(validateKnowledgeEvent({
+      id: "evt_boundary_request_raw", type: "agent.tool.requested", version: 1,
+      streamId: "agent_tool_request_toolreq_boundary_001", sequence: 1, context: agentContext,
+      payload: { ...payload, residentSourceBoundary: { ...payload.residentSourceBoundary, sourceRoot: "/selected" } }
+    }).success).toBe(false);
+  });
   it("contains agent guidance for every event contract", () => {
     for (const contract of Object.values(eventContracts)) {
       expect(contract.description.length).toBeGreaterThan(20);
