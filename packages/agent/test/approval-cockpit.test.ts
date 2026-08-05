@@ -513,7 +513,7 @@ describe("agent approval cockpit dto", () => {
             requiredApprovalClass: "human-review",
             residentSourceBoundaryReview: {
               schemaVersion: "resident-source-boundary-review.v1",
-              requestEventId: "evt_untrusted_boundary_request"
+              requestEventId: "evt_agent_tool_requested_provider_transfer"
             }
           })]
         }),
