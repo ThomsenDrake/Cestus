@@ -234,6 +234,9 @@ export function createAgentToolGateway(input: CreateAgentToolGatewayInput) {
       if (state.request.payload.residentSourceBoundary !== undefined && command.actor.kind !== "human") {
         throw new Error("Resident source boundary denial requires a human actor.");
       }
+      if (state.request.payload.residentSourceBoundary !== undefined && state.approval !== undefined) {
+        throw new Error("Approved resident source boundary requests cannot be denied.");
+      }
       assertAgentSecretSafeText(command.rationale, "denial rationale");
       assertNotTerminal(state, "denied");
 
