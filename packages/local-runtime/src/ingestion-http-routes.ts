@@ -90,6 +90,7 @@ export async function handleIngestionHttpRoute(
       }
       const proposal = await service.proposeBoundary(requiredBoundaryProposal(payload.value));
       const request = await requestResidentSourceBoundaryApproval({
+        ledger: mount.workspace.ledger,
         gateway: createAgentToolGateway({
           ledger: mount.workspace.ledger,
           actor: { id: "agent_default", kind: "agent", label: "Resident Cestus Agent" },
@@ -107,9 +108,12 @@ export async function handleIngestionHttpRoute(
         discoveryHash: proposal.discoveryHash,
         manifestArtifactHash: proposal.manifestArtifactHash,
         manifestHash: proposal.manifestHash,
+        archivePolicy: proposal.archivePolicy,
         regularFileCount: proposal.includedFileCount + proposal.excludedFileCount,
         includedFileCount: proposal.includedFileCount,
         excludedFileCount: proposal.excludedFileCount,
+        includedBytes: proposal.includedBytes,
+        excludedBytes: proposal.excludedBytes,
         totalBytes: proposal.totalBytes
       });
       return json(200, { ...proposal, toolRequestId: request.payload.toolRequestId, previewHash: request.payload.previewHash });
@@ -266,10 +270,10 @@ function residentSourceBoundaryService(
 }
 
 function requiredDiscoveryInput(payload: Record<string, unknown>) {
+  if (Object.hasOwn(payload, "sourceIdentity")) throw new Error("Source identity is observed from selected-root metadata.");
   return {
     workflowId: requiredIdentifier(payload.workflowId, "workflow id"),
     sourceCollectionId: requiredIdentifier(payload.sourceCollectionId, "source collection id"),
-    sourceIdentity: requiredIdentifier(payload.sourceIdentity, "source identity"),
     sourceRoot: requiredSourceRoot(payload.sourceRoot)
   };
 }
