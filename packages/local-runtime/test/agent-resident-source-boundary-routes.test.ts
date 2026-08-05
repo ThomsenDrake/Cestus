@@ -3,6 +3,7 @@ import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { handleIngestionHttpRoute } from "../src/ingestion-http-routes.js";
 import { createFakeMountedWorkspace } from "../../ingestion/test/runtime-test-helpers.js";
+import type { IngestionMountResult } from "../../ingestion/src/mount-contract.js";
 
 describe("resident source boundary routes", () => {
   it("rejects a non-human source-boundary request before it can discover or write a derivative", async () => {
@@ -66,7 +67,7 @@ describe("resident source boundary routes", () => {
     let calls = 0;
     const replaced = await handleIngestionHttpRoute({
       request: { method: "POST", url: "/api/ingestion/resident-source-boundaries/discover", body }, actor: human,
-      ingestionMountResolver: { resolve: vi.fn(async () => ++calls === 1 ? ({ ok: true as const, workspace }) : ({ ok: false as const, error: { code: "INGESTION_WORKSPACE_NOT_MOUNTED", message: "Replaced mount.", allowedRepairActions: [] } })) }
+      ingestionMountResolver: { resolve: vi.fn(async (): Promise<IngestionMountResult> => ++calls === 1 ? ({ ok: true as const, workspace }) : ({ ok: false as const, error: { code: "INGESTION_WORKSPACE_NOT_MOUNTED", message: "Replaced mount.", allowedRepairActions: [] } })) }
     });
     expect(replaced?.status).toBe(409);
     const readOnly = { ...workspace, capabilities: { ...workspace.capabilities, canWriteDerivatives: false } };

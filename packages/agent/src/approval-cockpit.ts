@@ -716,8 +716,6 @@ function approvalClassLabel(approvalClass: typeof agentApprovalQueueClassValues[
       return "Accepted graph review";
     case "ledger-review":
       return "Ledger review";
-    case "human-review":
-      return "Human review";
   }
 }
 
@@ -737,8 +735,6 @@ function approvalClassRequiredFor(approvalClass: typeof agentApprovalQueueClassV
       return "Applies accepted graph review decisions to shared ontology state.";
     case "ledger-review":
       return "Commits ledger review actions that require explicit human judgment.";
-    case "human-review":
-      return "Approves the exact protected resident source boundary for a later slice.";
   }
 }
 

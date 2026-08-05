@@ -18,6 +18,7 @@ import {
   type AgentCockpitResidentPlanDto,
   type AgentStatusDto,
   type AgentTaskPriority,
+  type ResidentSourceBoundaryBinding,
   type ResidentIdentityLifecycleDto,
   type SpecialistWorkflowHandoffDto
 } from "../../agent/src/index.js";
@@ -619,16 +620,48 @@ async function assertBoundResidentSourceBoundaryCurrent(
   if (request === undefined || request.type !== "agent.tool.requested" || request.payload.residentSourceBoundary === undefined) return;
   const workspace = mountedBoundaryWorkspace(handle);
   if (workspace === undefined) throw new Error("Resident source boundary approval requires a mounted workspace.");
-  if (hashResidentSourceBoundaryPreview(request.payload.residentSourceBoundary) !== request.payload.previewHash) {
+  const binding = validatedResidentSourceBoundaryBinding(request.payload.residentSourceBoundary);
+  if (hashResidentSourceBoundaryPreview(binding) !== request.payload.previewHash) {
     throw new Error("Resident source boundary request preview is not the exact current safe binding.");
   }
   await assertResidentSourceBoundaryCurrentPreview({
     workspace,
-    binding: request.payload.residentSourceBoundary,
+    binding,
     assertCurrent: () => {
       const current = inspectPortableWorkspaceCurrentness(handle);
       if (!current.ok) throw new Error("Mounted workspace is stale or unavailable.");
     }
+  });
+}
+
+function validatedResidentSourceBoundaryBinding(value: {
+  readonly workflowId: string;
+  readonly workspaceId: string;
+  readonly sourceCollectionId: string;
+  readonly sourceIdentity: string;
+  readonly sourceRootHash: string;
+  readonly discoveryArtifactHash: string;
+  readonly discoveryHash: string;
+  readonly manifestArtifactHash: string;
+  readonly manifestHash: string;
+  readonly archivePolicy: "reject";
+  readonly regularFileCount: number;
+  readonly includedFileCount: number;
+  readonly excludedFileCount: number;
+  readonly includedBytes: number;
+  readonly excludedBytes: number;
+  readonly totalBytes: number;
+}): ResidentSourceBoundaryBinding {
+  for (const hash of [value.sourceRootHash, value.discoveryArtifactHash, value.discoveryHash, value.manifestArtifactHash, value.manifestHash]) {
+    if (!/^sha256:[a-f0-9]{64}$/.test(hash)) throw new Error("Resident source boundary request has an invalid hash.");
+  }
+  return Object.freeze({
+    ...value,
+    sourceRootHash: value.sourceRootHash as `sha256:${string}`,
+    discoveryArtifactHash: value.discoveryArtifactHash as `sha256:${string}`,
+    discoveryHash: value.discoveryHash as `sha256:${string}`,
+    manifestArtifactHash: value.manifestArtifactHash as `sha256:${string}`,
+    manifestHash: value.manifestHash as `sha256:${string}`
   });
 }
 

@@ -158,7 +158,7 @@ export function createResidentSourceBoundaryService(
   };
 
   return Object.freeze({
-    async discover(value) {
+    async discover(value: ResidentSourceDiscoveryInput) {
       await assertReady(true);
       assertIdentity(value.workflowId, "workflow id");
       assertIdentity(value.sourceCollectionId, "source collection id");
@@ -214,7 +214,7 @@ export function createResidentSourceBoundaryService(
       });
     },
 
-    async proposeBoundary(value) {
+    async proposeBoundary(value: ResidentSourceBoundaryProposalInput) {
       await assertReady(true);
       assertIdentity(value.workflowId, "workflow id");
       if (value.archivePolicy !== undefined && value.archivePolicy !== "reject") throw new Error("Archive policy must be reject.");
@@ -271,13 +271,13 @@ export function createResidentSourceBoundaryService(
       });
     },
 
-    async readProtectedDiscovery(value) {
+    async readProtectedDiscovery(value: { readonly actorKind: "human" | "agent" | "system"; readonly discoveryArtifactHash: `sha256:${string}` }) {
       await assertReady(false);
       requireHuman(value.actorKind);
       return await readDiscovery(input.workspace, value.discoveryArtifactHash);
     },
 
-    async readProtectedBoundary(value) {
+    async readProtectedBoundary(value: { readonly actorKind: "human" | "agent" | "system"; readonly manifestArtifactHash: `sha256:${string}` }) {
       await assertReady(false);
       requireHuman(value.actorKind);
       return await readBoundary(input.workspace, value.manifestArtifactHash);
@@ -438,8 +438,9 @@ function assertCanonicalArtifactBytes(bytes: Buffer, value: Record<string, unkno
   if (bytes.toString("utf8") !== stableJson(value)) throw new Error("Protected derivative artifact is not canonically encoded.");
 }
 
-function validateDiscoveryArtifact(value: Record<string, unknown>): void {
+function validateDiscoveryArtifact(value: Record<string, unknown>): asserts value is Record<string, unknown> & ProtectedDiscoveryArtifact {
   assertExactKeys(value, ["schemaVersion", "workflowId", "workspaceId", "sourceCollectionId", "sourceIdentity", "sourceRoot", "sourceRootHash", "entries", "discoveryHash"]);
+  if (value.schemaVersion !== "resident-source-discovery.v1") throw new Error("Protected discovery schema is invalid.");
   assertIdentity(value.workflowId, "workflow id"); assertIdentity(value.workspaceId, "workspace id");
   assertIdentity(value.sourceCollectionId, "source collection id"); assertObservedSourceIdentity(value.sourceIdentity);
   if (typeof value.sourceRoot !== "string" || resolve(value.sourceRoot) !== value.sourceRoot) throw new Error("Protected discovery source root is invalid.");
@@ -448,8 +449,9 @@ function validateDiscoveryArtifact(value: Record<string, unknown>): void {
   validateCanonicalEntries(value.entries);
 }
 
-function validateBoundaryManifestShape(value: Record<string, unknown>): void {
+function validateBoundaryManifestShape(value: Record<string, unknown>): asserts value is Record<string, unknown> & ProtectedBoundaryManifest {
   assertExactKeys(value, ["schemaVersion", "workflowId", "workspaceId", "sourceCollectionId", "sourceIdentity", "sourceRootHash", "discoveryArtifactHash", "discoveryHash", "archivePolicy", "included", "excluded", "counts", "byteTotals", "manifestHash"]);
+  if (value.schemaVersion !== "resident-source-boundary-manifest.v1") throw new Error("Protected boundary manifest schema is invalid.");
   assertIdentity(value.workflowId, "workflow id"); assertIdentity(value.workspaceId, "workspace id");
   assertIdentity(value.sourceCollectionId, "source collection id"); assertObservedSourceIdentity(value.sourceIdentity);
   for (const key of ["sourceRootHash", "discoveryArtifactHash", "discoveryHash", "manifestHash"] as const) assertHash(value[key]);
@@ -498,13 +500,13 @@ function validateCanonicalEntries(entries: readonly unknown[]): void {
 
 function record(value: unknown): Record<string, unknown> { if (value === null || typeof value !== "object" || Array.isArray(value)) throw new Error("Protected artifact object is invalid."); return value as Record<string, unknown>; }
 function assertExactKeys(value: Record<string, unknown>, keys: readonly string[]): void { if (Object.keys(value).length !== keys.length || Object.keys(value).some((key) => !keys.includes(key))) throw new Error("Protected artifact contains unexpected fields."); }
-function assertHash(value: unknown): void { if (typeof value !== "string" || !/^sha256:[a-f0-9]{64}$/.test(value)) throw new Error("Protected artifact hash is invalid."); }
+function assertHash(value: unknown): asserts value is `sha256:${string}` { if (typeof value !== "string" || !/^sha256:[a-f0-9]{64}$/.test(value)) throw new Error("Protected artifact hash is invalid."); }
 function assertNonnegativeInteger(value: unknown): void { if (!Number.isSafeInteger(value) || (value as number) < 0) throw new Error("Protected artifact count is invalid."); }
 function assertObservedSourceIdentity(value: unknown): void { if (typeof value !== "string" || !/^source_[a-f0-9]{64}$/.test(value)) throw new Error("Protected artifact source identity is invalid."); }
 
 const nodeMetadataFilesystem: ResidentSourceMetadataFilesystem = Object.freeze({
-  listDirectory: (absolutePath) => readdirSync(absolutePath),
-  lstat: (absolutePath) => {
+  listDirectory: (absolutePath: string): readonly string[] => readdirSync(absolutePath),
+  lstat: (absolutePath: string): ReturnType<ResidentSourceMetadataFilesystem["lstat"]> => {
     const stat = lstatSync(absolutePath);
     return {
       path: absolutePath,
@@ -547,6 +549,6 @@ function stable(value: unknown): unknown {
   return value;
 }
 function compareCodeUnits(left: string, right: string): number { return left < right ? -1 : left > right ? 1 : 0; }
-function assertIdentity(value: string, label: string): void { if (!/^[A-Za-z0-9_-]{3,200}$/.test(value)) throw new Error(`Invalid ${label}.`); }
+function assertIdentity(value: unknown, label: string): asserts value is string { if (typeof value !== "string" || !/^[A-Za-z0-9_-]{3,200}$/.test(value)) throw new Error(`Invalid ${label}.`); }
 function requireHuman(actorKind: string): void { if (actorKind !== "human") throw new Error("Protected resident boundary readback requires an authenticated human actor."); }
 function isArchivePath(path: string): boolean { return /\.(zip|tar|tgz|gz|bz2|xz|7z|rar)$/i.test(path); }

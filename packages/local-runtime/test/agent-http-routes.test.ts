@@ -12,6 +12,7 @@ import {
   type AgentToolPreview
 } from "../../agent/src/index.js";
 import type { AppendableKnowledgeEvent, KnowledgeEventOf } from "../../ontology/src/contracts.js";
+import type { EventLedger } from "../../ontology/src/event-ledger.js";
 import { AssertionService } from "../../ontology/src/assertion-service.js";
 import { FileBlobStore } from "../../ontology/src/blob-store.js";
 import { GovernanceService } from "../../ontology/src/governance-service.js";
@@ -2562,7 +2563,7 @@ describe("agent HTTP routes", () => {
     expect(duplicate.status).toBe(409);
     expect(opposite.status).toBe(400);
     const events = await allEvents(config);
-    const request = events.find((event) => event.type === "agent.tool.requested" && event.payload.toolRequestId === boundary.toolRequestId);
+    const request = events.find((event): event is KnowledgeEventOf<"agent.tool.requested"> => event.type === "agent.tool.requested" && event.payload.toolRequestId === boundary.toolRequestId);
     expect(request?.payload.residentSourceBoundary).toMatchObject({ regularFileCount: 4, includedFileCount: 2, excludedFileCount: 2, archivePolicy: "reject" });
     expect(events.filter((event) => event.type === "agent.tool.approved" && event.payload.toolRequestId === boundary.toolRequestId)).toHaveLength(1);
     expect(events.filter((event) => event.type === "agent.tool.denied" && event.payload.toolRequestId === boundary.toolRequestId)).toHaveLength(0);
@@ -3408,17 +3409,17 @@ async function seededApprovedToolHandler(
 }
 
 function schedulerFixtureDescriptor(
-  ledger: SQLiteEventLedger,
+  ledger: EventLedger,
   preview: AgentToolPreview,
   descriptor: AgentApprovedToolExecutorDescriptor
 ): AgentApprovedToolExecutorDescriptor {
   return {
     ...descriptor,
-    async executeApproved() {
-      const result = await descriptor.executeApproved();
+    async executeApproved(input) {
+      const result = await descriptor.executeApproved(input);
       const previewHash = hashAgentToolPreview(preview);
       const events = await ledger.readAll();
-      const request = events.find((event) => event.type === "agent.tool.requested" && event.payload.previewHash === previewHash);
+      const request = events.find((event): event is KnowledgeEventOf<"agent.tool.requested"> => event.type === "agent.tool.requested" && event.payload.previewHash === previewHash);
       const claim = [...events].reverse().find((event) =>
         event.type === "agent.tool.execution.claimed" && request !== undefined && event.payload.toolRequestId === request.payload.toolRequestId
       );

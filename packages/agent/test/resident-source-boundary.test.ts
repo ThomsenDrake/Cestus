@@ -84,7 +84,7 @@ describe("resident source boundary approval", () => {
       workflowId: "workflow_replay_001", workspaceId: "ws_replay_001", sourceCollectionId: "src_replay_001", sourceIdentity: `source_${"c".repeat(64)}`,
       sourceRootHash: hash("1"), discoveryArtifactHash: hash("2"), discoveryHash: hash("3"), manifestArtifactHash: hash("4"), manifestHash: hash("5"), archivePolicy: "reject" as const,
       regularFileCount: 2, includedFileCount: 1, excludedFileCount: 1, includedBytes: 4, excludedBytes: 6, totalBytes: 10
-    };
+    } as const;
     const first = await requestResidentSourceBoundaryApproval(input);
     const replay = await requestResidentSourceBoundaryApproval(input);
     expect(replay.id).toBe(first.id);
