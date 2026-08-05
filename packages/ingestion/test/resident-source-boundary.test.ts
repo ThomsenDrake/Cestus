@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import {
+  assertResidentSourceBoundaryApprovalCurrent,
   createResidentSourceBoundaryService,
   type ResidentSourceMetadataFilesystem
 } from "../src/resident-source-boundary.js";
@@ -102,6 +103,61 @@ describe("resident source boundary", () => {
     await expect(createResidentSourceBoundaryService({ workspace }).readProtectedDiscovery({
       actorKind: "human", discoveryArtifactHash: stored.contentHash
     })).rejects.toThrow(/canonical|duplicate/i);
+  });
+
+  it("rejects copied foreign protected artifacts and foreign bindings in the current mounted workspace", async () => {
+    const foreign = { ...createFakeMountedWorkspace(), workspaceId: "ws_foreign_001" };
+    const current = { ...createFakeMountedWorkspace(), workspaceId: "ws_current_001" };
+    const filesystem: ResidentSourceMetadataFilesystem = {
+      listDirectory: (path) => path === "/selected" ? ["a.txt"] : [],
+      lstat: (path) => ({
+        path,
+        type: path === "/selected" ? "directory" : "file",
+        sizeBytes: path === "/selected" ? 0 : 8,
+        mtimeMs: 1,
+        device: 1,
+        inode: path === "/selected" ? 1 : 2
+      })
+    };
+    const foreignService = createResidentSourceBoundaryService({ workspace: foreign, filesystem });
+    const discovery = await foreignService.discover({
+      workflowId: "workflow_foreign_001", sourceCollectionId: "src_foreign_001", sourceRoot: "/selected"
+    });
+    const boundary = await foreignService.proposeBoundary({
+      workflowId: "workflow_foreign_001", discoveryArtifactHash: discovery.discoveryArtifactHash,
+      includedRelativePaths: ["a.txt"], excludedRelativePaths: []
+    });
+    await current.derivativeStore.put(await foreign.derivativeStore.get(discovery.discoveryArtifactHash));
+    await current.derivativeStore.put(await foreign.derivativeStore.get(boundary.manifestArtifactHash));
+    const currentService = createResidentSourceBoundaryService({ workspace: current });
+
+    await expect(currentService.readProtectedDiscovery({
+      actorKind: "human", discoveryArtifactHash: discovery.discoveryArtifactHash
+    })).rejects.toThrow(/workspace/i);
+    await expect(currentService.readProtectedBoundary({
+      actorKind: "human", manifestArtifactHash: boundary.manifestArtifactHash
+    })).rejects.toThrow(/workspace/i);
+    await expect(assertResidentSourceBoundaryApprovalCurrent({
+      workspace: current,
+      binding: {
+        workflowId: boundary.workflowId,
+        workspaceId: boundary.workspaceId,
+        sourceCollectionId: boundary.sourceCollectionId,
+        sourceIdentity: boundary.sourceIdentity,
+        sourceRootHash: boundary.sourceRootHash,
+        discoveryArtifactHash: boundary.discoveryArtifactHash,
+        discoveryHash: boundary.discoveryHash,
+        manifestArtifactHash: boundary.manifestArtifactHash,
+        manifestHash: boundary.manifestHash,
+        archivePolicy: boundary.archivePolicy,
+        regularFileCount: boundary.includedFileCount + boundary.excludedFileCount,
+        includedFileCount: boundary.includedFileCount,
+        excludedFileCount: boundary.excludedFileCount,
+        includedBytes: boundary.includedBytes,
+        excludedBytes: boundary.excludedBytes,
+        totalBytes: boundary.totalBytes
+      }
+    })).rejects.toThrow(/workspace/i);
   });
 });
 
