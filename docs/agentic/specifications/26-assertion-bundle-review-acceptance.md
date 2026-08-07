@@ -24,13 +24,17 @@ approved entity type before Specification 27 resolves it. It appears in the
 accepted assertion projection but not as a resolved graph node until entity
 resolution.
 
+The common version-two assertion object is a tagged union of typed scalar and
+typed entity-reference objects. This specification emits scalar objects only;
+Specification 27 is the sole v1 path for entity-reference assertion pairs.
+
 Version-two `assertion.proposed` replaces one `evidenceId` with a self-
 contained `evidenceReferences` array. Each reference binds evidence ID/hash,
 ingestion/occurrence events, optional derivative ID/hash, exact source/block/
 page/region/table/cell anchors, extraction invocation/pass, and modality path.
 At least one and at most 32 references are allowed. The proposal also binds
 boundary revision/hash, bundle/candidate identities, provisional subject,
-predicate, canonical typed scalar object, confidence, and canonical assertion
+predicate, canonical tagged scalar object, confidence, and canonical assertion
 hash. Version-one history remains readable/rebuildable; the new path emits
 only version two.
 
