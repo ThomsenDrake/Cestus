@@ -32,6 +32,11 @@ opaque credential-reference identity; region/retention policy; budget
 configuration revision and displayed estimate; and concurrency configuration
 revision. Credential bytes are never present.
 
+For each selected PDF, the preview binds its locally validated page count, the
+canonical sequence of zero-based OCR windows of at most 50 pages, planned call
+count, and repeated inline-transfer byte total. The budget estimate uses exact
+planned pages rather than an unbound approximation.
+
 Selecting a DOCX/XLSX parent also selects its complete Specification 19
 embedded-raster inventory for mandatory OCR. The preview separately discloses
 child count/bytes and binds every child part identity, media type, digest, and
@@ -127,6 +132,9 @@ entry failure never expands authority or mutates the approved subset.
 - Selecting an image binds its exact automatic-Mistral policy. Changing
   endpoint, adapter, credential reference, region/retention, budget, or
   concurrency requires a new preview. No provider call occurs in this slice.
+- Selecting a PDF binds its exact page count/window plan and discloses that the
+  same inline PDF bytes are transferred once per window. A changed page count,
+  window policy, call count, or repeated-transfer total makes approval stale.
 - Selecting a DOCX/XLSX fixture binds and discloses every inventoried embedded
   raster. A changed, omitted, added, or excessive child makes the selection
   stale or the parent unselectable.

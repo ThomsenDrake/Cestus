@@ -59,7 +59,8 @@ not guessed. Plain text, Markdown, CSV, and TSV require valid UTF-8 with an
 optional UTF-8 BOM. CSV/TSV must parse consistently with the extension's
 delimiter and bounded row/field rules.
 
-PDF requires a bounded valid PDF structure. Encryption/password protection,
+PDF requires a bounded valid PDF structure and records an exact locally
+validated page count for later OCR planning. Encryption/password protection,
 embedded-file containers, active launch/JavaScript actions, malformed
 cross-reference structures, and trailing polyglots are excluded. DOCX/XLSX
 must be bounded valid OOXML ZIP packages with required content types and parts.
@@ -162,6 +163,8 @@ idempotent; conflicting identity reuse fails closed.
 - Every admitted extension has matching signature/structure fixtures; mismatch,
   invalid encoding/delimiters, active/encrypted/polyglot PDF, malicious OOXML,
   animated/decompression-bomb image, generic ZIP, SVG, and GIF are excluded.
+- PDF fixtures record deterministic page counts without extracting competing
+  local text; malformed or excessive page trees are excluded.
 - JSON arrays/exports are ordinary, standalone content objects are
   `review-required`, known config is pre-open excluded, private JWK/JWKS is
   protected, and public-only JWK/JWKS is ordinary.
