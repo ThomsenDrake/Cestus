@@ -65,7 +65,12 @@ cross-reference structures, and trailing polyglots are excluded. DOCX/XLSX
 must be bounded valid OOXML ZIP packages with required content types and parts.
 OOXML rejects encryption, macros, executable payloads, traversal names, links,
 duplicate/colliding entries, overlapping ranges, undeclared parts, excessive
-entries/expansion, and unsupported external content.
+entries/expansion, and unsupported external content. Classification inventories
+every supported embedded raster by parent entry, package part URI,
+relationship identity, media type, byte count, and SHA-256. Unsupported,
+malformed, encrypted, animated, excessive, or uninventoryable embedded media
+makes the parent unselectable; embedded images cannot be silently omitted from
+later mandatory OCR.
 
 Images require a matching supported signature and bounded metadata decode.
 Animated WebP/HEIF and malformed or decompression-over-limit images are
@@ -97,6 +102,12 @@ boundary change. Exceeding the global entry/byte cap makes the manifest
 incomplete and therefore unapprovable; traversal cannot silently truncate
 authority.
 
+An OOXML parent additionally permits at most 1,000 embedded raster children,
+64 MiB compressed/member bytes per child, and 512 MiB total embedded raster
+bytes. Every child also passes the standalone image signature, dimension,
+pixel, frame, and metadata policy. Child bytes and hashes are consumed from the
+same parent descriptor observation used for package classification.
+
 After a candidate passes stat-only checks, Cestus opens it exactly once through
 the pinned root. Classification and digest/commitment consume the same bounded
 stream between checked pre-read and post-read descriptor identities. The read
@@ -124,7 +135,8 @@ per-entry exception; the same attempt never reopens the path to try again.
 Manifest entries are ordered by normalized relative-path bytes. Each contains
 fixed-version safe path identity, source/stat identity, detected type, size,
 eligibility/reason, review requirement, and an ordinary digest or protected
-commitment. Excluded entries contain no content-derived identifier. The
+commitment. An OOXML entry also contains its ordered embedded-raster child
+inventory and child-manifest hash. Excluded entries contain no content-derived identifier. The
 manifest uses a versioned canonical serialization with fixed field order,
 integer encoding, Unicode rules, and entry ordering, then receives a SHA-256
 identity.
@@ -153,6 +165,9 @@ idempotent; conflicting identity reuse fails closed.
 - JSON arrays/exports are ordinary, standalone content objects are
   `review-required`, known config is pre-open excluded, private JWK/JWKS is
   protected, and public-only JWK/JWKS is ordinary.
+- An OOXML fixture with supported embedded rasters records every exact child;
+  unsupported, excessive, mismatched, or omitted child media makes the parent
+  unselectable.
 - A changed file becomes `changed-during-scan` while stable siblings remain in
   the manifest. Root, mount, boundary, or confinement replacement invalidates
   the entire result.

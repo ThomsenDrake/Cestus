@@ -32,6 +32,14 @@ opaque credential-reference identity; region/retention policy; budget
 configuration revision and displayed estimate; and concurrency configuration
 revision. Credential bytes are never present.
 
+Selecting a DOCX/XLSX parent also selects its complete Specification 19
+embedded-raster inventory for mandatory OCR. The preview separately discloses
+child count/bytes and binds every child part identity, media type, digest, and
+byte count. A child cannot be silently omitted or independently deselected; an
+unselectable child makes the parent unselectable. Embedded children remain
+derivatives of their parent evidence rather than independent top-level
+evidence records.
+
 Any bound OCR configuration change makes the preview stale and requires a new
 decision. The provider-resolved model may vary behind the explicitly approved
 latest alias and is recorded by Specification 23. This approval authorizes only
@@ -119,6 +127,9 @@ entry failure never expands authority or mutates the approved subset.
 - Selecting an image binds its exact automatic-Mistral policy. Changing
   endpoint, adapter, credential reference, region/retention, budget, or
   concurrency requires a new preview. No provider call occurs in this slice.
+- Selecting a DOCX/XLSX fixture binds and discloses every inventoried embedded
+  raster. A changed, omitted, added, or excessive child makes the selection
+  stale or the parent unselectable.
 - A stable ordinary file streams into a private staged object and becomes
   visible only with matching prepared, blob, evidence, and lineage records.
 - A protected `.env` creates no raw stage/blob/hash; only its successful
