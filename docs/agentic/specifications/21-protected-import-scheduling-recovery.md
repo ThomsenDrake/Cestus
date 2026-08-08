@@ -31,7 +31,24 @@ Nonterminal attempt states are `queued`, `preflighting`, `observing`,
 Terminal attempt states are `committed`, `reused-identical-evidence`,
 `changed`, `missing`, `quarantined`, `blocked-stale-approval`,
 `blocked-readiness`, `cancelled-before-start`, `cancelled-before-commit`,
-`not-run-safety-stop`, and `failed-integrity`.
+`interrupted-before-commit`, `not-run-safety-stop`,
+`stopped-safety-failure-before-prepare`, and `failed-integrity`. An attempt
+never leaves a terminal state.
+
+The selected-entry projection is distinct from attempts. Its nonterminal states
+are `pending`, `active`, `awaiting-resolution`, `prepared`, and
+`recovery-required`. Its terminal outcomes are `committed`,
+`reused-identical-evidence`, `changed`, `missing`, `blocked-stale-approval`,
+`blocked-readiness-final`, `cancelled-before-start`, `cancelled-before-commit`,
+`not-run-safety-stop`, `stopped-safety-failure`, `failed-integrity`, and
+`excluded-by-human`. A
+`quarantined`, transient `blocked-readiness`, or `interrupted-before-commit`
+attempt leaves its entry `awaiting-resolution` while a permitted linked attempt
+or disposition remains;
+the immutable attempt itself is still terminal. A linked retry transitions the
+entry from `awaiting-resolution` to `active` without changing the old attempt.
+Only an exclusion, explicit permanent-readiness disposition, or another final
+resolution makes that entry terminal.
 
 Every transition records fixed secret-safe reason codes, timestamps,
 predecessor identity, and relevant approval/policy versions. It contains no
@@ -54,19 +71,47 @@ may create one bounded replacement attempt. Interruption after `prepared`
 resumes exact Specification 20 finalization without source reopen or new
 approval.
 
-After bounded failed prepared-finalization attempts, the entry and batch remain
+One prepared obligation permits three automatic finalization invocations total:
+the initial invocation plus two recovery invocations. The persisted count is
+incremented and flushed when an owner acquires the exact finalization lease,
+before touching canonical storage/ledger, and restart never resets it. A crash,
+storage error, or ledger error after acquisition consumes the invocation; an
+owner that fails before acquisition does not. After three unsuccessful
+invocations, the entry and batch remain
 nonterminal `recovery-required` and raise a genuine integrity/storage exception.
 They may not falsely report completion, abandon the prepared commitment, or
 substitute bytes. Repair resumes the same obligation.
+
+After the operator repairs the named storage/ledger condition, one
+authenticated resume action may grant one additional finalization invocation
+for the unchanged prepared identity. It does not reset history or permit source
+reopen/substitution. Failure returns to `recovery-required`; there is no
+automatic loop.
 
 Entry-local mutation, disappearance, classification, redaction, or content-
 policy failure does not stop stable siblings. Root/mount/boundary replacement,
 batch-wide approval invalidity, destination replacement, ledger failure,
 canonical-storage integrity failure, or confinement loss stops new work.
-Unstarted entries become `not-run-safety-stop`; pre-prepare active entries
-terminate safely; prepared entries remain recovery obligations. Protected-
-runtime unavailability affects protected entries without stopping independent
-ordinary entries.
+Unstarted entries become `not-run-safety-stop`. For every active attempt that
+has not reached `prepared`, the systemic-stop owner compare-and-appends exactly
+one `stopped-safety-failure-before-prepare` attempt result and its selected
+entry transitions from `active`, `pending`, or `awaiting-resolution` to the
+terminal `stopped-safety-failure` outcome. That transition binds the systemic
+safety-failure identity/class, batch, attempt, selected public manifest-entry
+ID, current approval/policy/boundary/destination bindings, and one fixed
+secret-safe reason code; it contains no source content, protected hash,
+credential, model text, traceback, or reversible token. It discards only
+tracked private pre-prepare staging and never performs another source open,
+replacement attempt, or downstream job for that entry. Prepared/finalizing or
+already `recovery-required` work is never converted to either stop outcome: it
+remains the exact recovery obligation.
+
+Recovery replays the same fenced stop transition and terminal selected-entry
+outcome idempotently; a restarted owner may not allocate a new attempt or
+resume a terminal stopped entry. After a repaired systemic condition, executing
+such an entry again requires a new exact batch/approval, while the preserved
+attempt/result remains provenance. Protected-runtime unavailability affects
+protected entries without stopping independent ordinary entries.
 
 Pre-evidence quarantine uses a new append-only
 `ingestion.observation.quarantined` contract, not `evidence.quarantined`. It
@@ -86,10 +131,11 @@ failure, such as a worker crash or restored readiness, when source, approval,
 manifest, policy, model, posture, and destination bindings are identical.
 Syntax ambiguity, residual-secret detection, mutation, missing input, stale
 authority, and integrity failure never auto-retry. A second transient failure
-becomes terminal quarantine/blocked state. Restart cannot reset retry count.
+creates another terminal quarantined attempt and leaves the entry
+`awaiting-resolution` with no automatic retry. Restart cannot reset retry count.
 There is no unbounded loop, blind path reopen, or alternate worker/storage path.
 
-A human may exclude a quarantined selected entry from further attempts, retry
+A human may append `excluded-by-human` for a quarantined selected entry, retry
 after restoring identical approved runtime/configuration, approve one exact
 manually sanitized replacement under Specification 18, or create a new
 scan/manifest/approval if a binding must change. The resident may recommend one
@@ -97,15 +143,19 @@ resolution and request review but cannot approve it. Exclusion only reduces
 execution; it cannot add/substitute entries. Manual replacement approval binds
 one digest and creates a new linked attempt.
 
-Batch terminal states are:
+The batch projection derives only from selected-entry aggregates, never by
+counting terminal attempts. Batch terminal states are:
 
-- `completed` when every selected entry committed or reused;
+- `completed` when every selected entry is terminal as committed or reused;
 - `completed-with-exceptions` when every selected entry is terminal with at
-  least one changed, missing, quarantined, blocked, excluded, or integrity
+  least one changed, missing, blocked, excluded, or integrity
   result and no cancellation/systemic stop;
 - `cancelled` when human cancellation is fully accounted for; and
-- `stopped-safety-failure` when every selected entry is terminal after a
-  systemic stop.
+- `stopped-safety-failure` when a bound systemic safety failure occurred and
+  every selected entry is terminal. Entries terminal before the stop preserve
+  their own outcome; unstarted entries are `not-run-safety-stop` and
+  pre-prepare active entries are `stopped-safety-failure`. Any `prepared`,
+  `finalizing`, or `recovery-required` entry prevents this aggregation.
 
 A batch containing any unresolved `prepared` or `recovery-required` entry is
 never terminal. Terminal counts derive from immutable entry states and must
@@ -132,6 +182,9 @@ successful siblings unless it reveals a systemic safety failure.
   attempt and performs at most the permitted replacement attempt after full
   revalidation. Post-prepare crash resumes exact finalization without source
   reopen.
+- A quarantined attempt is terminal while its selected entry remains awaiting
+  resolution. Retry creates one linked attempt; exclusion finalizes the entry.
+  Batch totals count the entry once and never count both attempts.
 - A malformed protected fixture creates metadata-only
   `ingestion.observation.quarantined` with no evidence ID, content, plain hash,
   model text, or credential-shaped field. Successful siblings still commit.
@@ -144,6 +197,15 @@ successful siblings unless it reveals a systemic safety failure.
 - Batch terminal counts exactly equal selected count for completion,
   exceptions, cancellation, and safety-stop fixtures. Unresolved prepared work
   keeps the batch `recovery-required` and nonterminal.
+- A root, boundary, destination, ledger, canonical-storage, or confinement
+  systemic-stop fixture terminalizes an active pre-prepare entry exactly once
+  as `stopped-safety-failure` with its bound safe reason, while unstarted
+  siblings are `not-run-safety-stop`. Replay preserves those results; a
+  prepared sibling remains recovery-required and prevents the batch
+  `stopped-safety-failure` aggregate.
+- Prepared-finalization fault injection proves the initial-plus-two automatic
+  bound persists across restart; a fourth automatic invocation is impossible,
+  while one explicit unchanged-obligation resume grants exactly one attempt.
 - Standard verification uses fake schedulers, clocks, workers, ledgers,
   storage, and observations. It does not read the attached SSD, process a real
   credential, execute the model, invoke a provider, bind a socket, send a PRR,

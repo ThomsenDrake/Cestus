@@ -56,6 +56,23 @@ human approves that exact plan. Import/Mistral authority cannot satisfy it, and
 the resident cannot approve it. Local residents need no external-transfer
 approval but retain every model/tool/schema gate.
 
+Each planned remote call has a deterministic call identity and one-use transfer
+capability within the approval. Immediately before bytes leave, Cestus
+conditionally appends and flushes `resident.transfer.dispatched`, consuming
+that call and recording exact approved byte counts/hashes without content. A
+crash, timeout, or reset after dispatch but before a durable validated response
+is `transfer-outcome-uncertain`; it never automatically retransmits or creates
+a new call. A validated response is durably stored against the call before
+candidate publication, and replay reuses that exact stored response.
+
+If the dispatched result is unavailable, a human may abandon the invocation or
+approve one new invocation plan that explicitly discloses the possible prior
+transfer/cost and counts all replacement bytes/calls. The old capability stays
+consumed. A rerun caused by invalid output, model drift, or human choice always
+uses a new invocation identity and, for a remote resident, a new exact transfer
+approval. Local calls use the same durable call/result states without an
+external-transfer capability.
+
 The extraction adapter has tools, function calls, connectors, browsing, code
 execution, memory writes, workspace writes, and delegation disabled. Tool
 schemas are absent. It cannot access credentials, source paths, arbitrary
@@ -107,7 +124,8 @@ only. OCR and raw anchors remain distinguishable.
 Terminal results are `candidate-bundle-generated`,
 `review-only-bundle-generated`, `blocked-transfer-approval`,
 `blocked-capability`, `blocked-context-limit`, `failed-input`,
-`failed-model-drift`, `failed-provider`, and `failed-output`. A committed bundle
+`failed-model-drift`, `failed-provider`, `failed-output`, and
+`transfer-outcome-uncertain`. A committed bundle
 is immutable and binds plan, responses, model identities, derivatives, anchors,
 and transfer approval. Same-invocation replay is idempotent; new model/rerun
 creates a new bundle.
@@ -126,6 +144,10 @@ creates a new bundle.
 - Remote invocation needs an exact human transfer approval for every planned
   pack/raw byte. Local invocation needs no external transfer approval. Import/
   OCR authority and resident-originated approval both fail.
+- Crash immediately before dispatch consumes/transfers nothing; crash after the
+  durable dispatch record never retransmits. A stored valid response replays
+  locally. An uncertain outcome requires abandonment or a new human approval
+  that discloses/counts the possible prior and replacement transfers.
 - Prompt-injection evidence cannot enable a tool, connector, memory write,
   workspace/ledger mutation, credential access, or unrelated network request.
 - Canonical packing is deterministic and preserves all blocks within eight
@@ -194,7 +216,7 @@ transfer or model invocation.
 
 ## Targeted Verification
 
-- `npm test -- packages/agent/test/provider-capability-modalities.test.ts packages/agent/test/provider-byte-transfer.test.ts packages/agent/test/resident-model-selection.test.ts packages/agent/test/resident-candidate-extraction.test.ts packages/agent/test/resident-extraction-isolation.test.ts`
+- `npm test -- packages/agent/test/provider-capability-modalities.test.ts packages/agent/test/provider-byte-transfer.test.ts packages/agent/test/resident-transfer-dispatch-recovery.test.ts packages/agent/test/resident-model-selection.test.ts packages/agent/test/resident-candidate-extraction.test.ts packages/agent/test/resident-extraction-isolation.test.ts`
 - `npm test -- packages/ontology-bootstrap/test/contracts.test.ts packages/ontology-bootstrap/test/candidate-bundles.test.ts`
 - `npm test -- packages/local-runtime/test/resident-artifact-derivation.test.ts packages/local-runtime/test/resident-transfer-approval.test.ts`
 - `npm run typecheck`

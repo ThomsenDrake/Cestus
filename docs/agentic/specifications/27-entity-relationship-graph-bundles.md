@@ -20,21 +20,27 @@ A provisional subject may resolve only when its candidate bundle is immutable;
 required identity-key/canonical-label scalar assertions are accepted/current;
 entity type exists in current boundary; accepted values satisfy a complete
 identity-key alternative and merge constraints; support refers to that subject
-or an exact consolidated equivalent; and no identity/cardinality conflict
+or an exact consolidated equivalent; and no hard identity/cardinality conflict
 exists.
 
-Choices are deterministic new entity, one uniquely matching existing entity,
-or unresolved identity conflict. The resident recommends one but nothing is
-preselected.
+Eligibility is deterministic: zero existing entities matching the complete
+canonical identity key permits exactly the derived new entity; one compatible
+existing match permits exactly that existing entity; more than one match,
+conflicting/incomplete keys, incompatibility, a key mapping to different
+existing entities, or any request to merge resolved IDs is a hard identity
+conflict and permits only `preserve unresolved`. No review offers both new and
+existing as simultaneously eligible alternatives. The resident recommends the
+eligible disposition but nothing is preselected.
 
 New entity ID derives from workspace, stable entity-type definition, and
 canonical identity-key values; revision is provenance rather than identity.
 Provisional candidates with identical complete keys may consolidate while
 preserving all candidates/assertions. Resolving into an existing entity appends
 support/provisional mapping and never rewrites the original event. Label
-similarity, confidence, aliases, or incomplete keys never auto-merge. Multiple
-matches/conflicting keys/incompatibility become review-only. V1 forbids merging
-two resolved entity IDs and preserves that as a later-work identity conflict.
+similarity, confidence, aliases, or incomplete keys never auto-merge. Hard
+conflicts are review-only and cannot be resolved to an entity in this slice.
+V1 forbids merging two resolved entity IDs and preserves that as a later-work
+identity conflict.
 
 Version-two `entity.resolved` binds entity ID/type/label, complete identity key
 and boundary definitions, provisional/candidate identities, accepted scalar
@@ -74,14 +80,18 @@ conflicts require individual action. Recommendations remain unselected.
 Deselecting a new entity makes dependent relationships ineligible and changes
 selection hash; approval never adjusts dependencies silently.
 
-Identity conflict resolves to exactly one existing/new entity or remains
-unresolved. Relationship domain/range/cardinality conflict selects one
-permitted alternative or preserves none accepted. Existing graph truth cannot
+An ordinary zero-match or unique-match resolution approves its sole eligible
+new/existing entity. A hard identity conflict can only remain unresolved.
+Relationship domain/range/cardinality conflict selects one boundary-permitted
+alternative when one exists or preserves none accepted. Existing graph truth cannot
 be overwritten. Preserved conflicts retain all alternatives/evidence/anchors/
 recommendation. No resolution merges existing entities.
 
-An authenticated human rejects or approves one exact nonempty graph selection
-and unresolved dispositions. Human-authored `ontology.graph.bundle.approved`
+An authenticated human rejects or approves one exact nonempty graph decision.
+A decision is nonempty when it contains at least one selected entity/
+relationship/support effect or at least one explicit unresolved-conflict
+disposition; a preserved-conflict-only graph decision is valid. Human-authored
+`ontology.graph.bundle.approved`
 is a one-use ledger capability binding boundary, assertion/graph projections,
 candidates, dependencies, selected effects, and hashes. The resident may
 request/execute but cannot approve/add/substitute/reorder. Edits create a new
@@ -134,6 +144,9 @@ satisfy new dependencies. Ledger-only rebuild reproduces graph/conflicts.
   its old preview.
 - Preserved identity/relationship conflicts accept no alternative and retain
   evidence/recommendation without preselection or existing-entity merge.
+- A bundle containing only hard identity/relationship conflicts may commit
+  preserved-conflict records and its summary with zero entity/relationship/
+  assertion effects; replay reproduces the conflict-only decision.
 - Human edit, agent approval, stale boundary/assertion/graph/candidate, or
   selection expansion creates no events.
 - Crash/concurrency during the atomic batch exposes the entire ordered graph

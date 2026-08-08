@@ -64,8 +64,10 @@ Existing accepted truth cannot be overwritten/superseded here; such conflicts
 remain unresolved. Preserved records retain every alternative/evidence path
 and non-authoritative recommendation without preselection.
 
-An authenticated human may reject or approve one exact nonempty selection and
-exact unresolved-conflict dispositions. Human-authored
+An authenticated human may reject or approve one exact nonempty decision. A
+decision is nonempty when it contains at least one selected assertion or at
+least one explicit `preserve unresolved` conflict disposition; a preserved-
+conflict-only decision is valid and accepts no assertion. Human-authored
 `ontology.assertion.bundle.approved` binds bundle/selection, boundary, graph
 projection, evidence high-watermark, actor, and rationale. It is a one-use
 ledger-backed capability, not a bearer token. The resident may request and
@@ -117,6 +119,9 @@ truth-bundle tool may emit accepted assertions under consumed human authority.
 - A single-valued conflict accepts at most one or preserves all unresolved with
   no accepted alternative. Compatible multivalue assertions follow boundary
   cardinality. Existing-truth conflict cannot overwrite it.
+- A bundle containing only one preserved conflict commits its conflict record
+  and bundle summary atomically with zero proposal/acceptance events; replay
+  reproduces the unresolved conflict and does not reject it as empty.
 - Human edit changes bundle/selection hash and invalidates prior approval. A
   resident approval attempt or selection expansion appends nothing.
 - Crash before atomic truth commit leaves only reusable approval; crash during
