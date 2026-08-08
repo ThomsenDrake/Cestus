@@ -15,7 +15,12 @@ The Ingestion workspace has one persistent, keyboard-operable stage strip in
 this order: Source, Security, Manifest, Processing, Candidates, Boundary,
 Truth, and Graph. A stage has exactly one of unavailable, blocked,
 action-required, running, partially-complete, complete, abandoned, or
-recovery-required. Its summary exposes safe counts, binding hashes, blocking
+recovery-required. State precedence is deterministic: terminal `abandoned` or
+`complete` first; otherwise `recovery-required`, `unavailable`,
+`action-required`, `running`, `partially-complete`, then `blocked`. A stage is
+`partially-complete` only when at least one selected artifact has a successful
+terminal outcome and remaining work is blocked; the blocker remains a
+diagnostic, not a second state. Its summary exposes safe counts, binding hashes, blocking
 diagnostics, and at most one recommended next safe action. Loading, degraded,
 stale, or incomplete state is never labeled ready, synced, live, or complete.
 
@@ -25,6 +30,57 @@ immutable, ledger-rebuildable, read-only history. Browser state is never the
 session authority; reload reconstructs the selected session, stage states,
 approvals, work, terminal outcomes, and next allowed action from browser-safe
 runtime projections.
+
+The append-only session contract consists of
+`ingestion.bootstrap.session.started`, `ingestion.bootstrap.stage.observed`,
+`ingestion.bootstrap.session.completed`, and
+`ingestion.bootstrap.session.abandoned`. Session start, completion, and
+abandonment are named-human actions authenticated from the tailnet session at
+consume time. The server derives the principal, resolves it to the one locally
+configured named human, and requires it to equal the immutable session
+operator; a resident, system process, absent/unavailable tailnet session, or
+client-supplied actor field fails before append. `started` conditionally checks
+that no active session exists and binds workspace, source-boundary workflow,
+server-derived operator, and initial contract revisions. Stage observations
+bind only authoritative underlying event/high-watermark identities and derived
+state; they create no new approval. Completed/abandoned are one terminal event
+and never reopen. Projection replay enforces exclusivity and derives
+stage/session history.
+
+At completion consumption, the server rereads and binds the authoritative
+heads/high-watermarks for all eight stages; a browser's claimed stage state is
+not authority. It appends `completed` only when all predicates hold together:
+Source has one current approved exact boundary and non-stale terminal manifest;
+Security has a current validated posture for every selected artifact that
+requires it and no unresolved security action; Manifest has one current exact
+selection and unconsumed/stale approval is absent; Processing has the bound
+Specification 21 batch terminal with every selected entry accounted for and no
+`prepared`, `finalizing`, or `recovery-required` obligation; Candidates has no
+active extraction/invocation and every eligible committed artifact has its
+immutable terminal candidate bundle or explicit terminal no-candidate result;
+Boundary has no pending required revision/request decision for that candidate
+set; Truth has a terminal human disposition for every applicable bundle, with
+an explicitly preserved unresolved conflict allowed only where Specification 26
+permits it; and Graph has a terminal human disposition for every applicable
+entity/relationship bundle, with an explicitly preserved unresolved conflict
+allowed only where Specification 27 permits it. A pending required ontology
+decision, stale binding, missing terminal disposition, or any nonterminal work
+rejects completion without an event.
+
+At abandonment consumption, the same authenticated operator and authoritative
+stage heads are required. Source must have no active scan; Security no in-flight
+posture action; Manifest no active mutation; Processing no lease and no
+selected entry `prepared`, `finalizing`, or `recovery-required`; Candidates no
+active extraction/invocation; and Boundary, Truth, and Graph no uncommitted
+terminal action. Cancellation/stop recovery must first reach that exact
+Specification 21 safe state. Abandonment does not approve, reject, cancel,
+retry, erase, or otherwise mutate source, security, manifest, processing,
+candidate, boundary, truth, or graph product work. Pending Boundary, Truth,
+and Graph decisions remain pending underlying work and their stage observations
+are `abandoned`, never `complete`; later work requires a new session or its own
+existing authorized route. Thus no terminal session event strands a
+prepared/recovery obligation or relabels unresolved ontology decisions as
+complete.
 
 Source, Security, Manifest, and Processing operate in Ingestion. Candidates
 opens a focused Agent review mode. Boundary, Truth, and Graph open focused
@@ -61,8 +117,9 @@ The credential value, authentication header, or secret-shaped provider data is
 never browser-visible. Disabling the page budget is a separate explicit human
 action with an impact warning but is not the insecure-store double
 confirmation. Mistral unavailability blocks image, embedded-image, and PDF
-artifacts; eligible text artifacts may continue independently, and the session
-is partially complete/blocked rather than failed or complete.
+artifacts; eligible text artifacts may continue independently. Before any text
+success the stage is `blocked`; after at least one successful text outcome it
+is `partially-complete`. It is never both and never falsely complete.
 
 After exact source approval, safe classification/manifest preparation begins
 automatically within Specifications 18-20. The Manifest stage groups
@@ -73,13 +130,17 @@ occurrences may be bulk-selected; review-required JSON always requires an
 individual decision and never enters bulk selection.
 
 Before final manifest approval, the interface displays the exact approved
-boundary, manifest hash, selected occurrence count, protected-file count,
-estimated canonical storage growth, OCR page estimate, repeated-PDF-transfer
-disclosure, external-transfer scope, Mistral policy/budget posture, and named
-operator. Final approval creates the exact one-use capability defined by
-Specification 20. Changing selection, boundary, manifest, model policy,
-budget posture, or transfer posture invalidates prior confirmation. The UI
-never silently expands a recommendation or stale approval.
+boundary, opaque public manifest ID and its keyed commitment, selected
+occurrence count, protected-file count, estimated canonical storage growth,
+OCR page estimate, repeated-PDF-transfer disclosure, external-transfer scope,
+Mistral policy/budget posture, and named operator. The protected canonical
+manifest SHA-256 is available only through Specification 19's authenticated
+protected readback and never this display, DTO, event, projection, diagnostic,
+or log. Final approval creates the exact one-use capability defined by
+Specification 20. Changing selection, boundary, manifest identity/commitment,
+model policy, budget posture, or transfer posture invalidates prior
+confirmation. The UI never silently expands a recommendation or stale
+approval.
 
 The Processing stage displays per-artifact pipeline rows, not a single opaque
 progress claim. A row uses safe workspace-relative occurrence identity and
@@ -97,24 +158,29 @@ pipelining permits eligible text to reach review while media waits for OCR.
 Session completion requires one durable terminal outcome for every selected
 occurrence and no unresolved prepared operation.
 
-Actions derive only from Specification 21 state. A classified transient
-failure may expose the single unchanged-binding retry. Quarantine displays the
-resident recommendation without preselection. Ambiguous OCR billing requires
-human acknowledgement before its one permitted retry. Cancellation explains
-the unstarted, pre-commit, or prepared posture: unstarted/pre-commit work
-terminalizes safely; prepared work completes its atomic commit. A systemic
-stop schedules no new work and presents recovery-required without falsely
-terminalizing unfinished work. Resume appears only for a runtime-validated
-recovery action with unchanged required bindings.
+The session-lifecycle action list is closed: authenticated named-human start,
+completion, and abandonment use the server-derived tailnet identity and the
+consume-time predicates above; no resident, system, or client actor may invoke
+them. Processing actions otherwise derive only from Specification 21 state. A
+classified transient failure may expose the single unchanged-binding retry.
+Quarantine displays the resident recommendation without preselection. Ambiguous
+OCR billing requires human acknowledgement before its one permitted retry.
+Cancellation explains the unstarted, pre-commit, or prepared posture:
+unstarted/pre-commit work terminalizes safely; prepared work completes its
+atomic commit. A systemic stop schedules no new work and presents
+recovery-required without falsely terminalizing unfinished work. Resume appears
+only for a runtime-validated recovery action with unchanged required bindings.
 
 Candidates summarizes Specification 24 extraction in Ingestion and deep-links
-to Agent. Each review item shows safe candidate content, exact resident
+to a read-only Agent inspection mode. Each item shows safe candidate content, exact resident
 backend/provider/model/capability/invocation, modality path, evidence/anchors,
 confidence, transfer approval, OCR evidence, direct-image observations when
 supported, conflicts, and review-only reasons. A malformed or failed model
 invocation has no silent fallback/repair. Resident recommendations are
-visually distinct from human selections and initially unselected. Conflicts
-and review-only candidates require individual decisions.
+visually distinct from later human truth/graph selections. Candidate mode
+creates no disposition, selection, approval, or truth event; conflicts and
+review-only requirements receive their individual decisions only in the bound
+Boundary, Truth, or Graph stage defined by Specifications 25-27.
 
 Boundary deep-links to Ontology and presents the closed-world revision from
 Specification 25, requested terms/rules, cardinality/identity effects, and
@@ -191,6 +257,9 @@ human authority, or weaken any product safety gate.
   is keyboard selectable, reports textual state, and preserves the active
   session across safe reload and Agent/Ontology round trips.
 - With one active session, a second start is rejected without a ledger event.
+  Start, completion, and abandonment derive the same configured named human
+  from the authenticated tailnet session; resident, system, missing-session,
+  stale-session, and client-supplied actor attempts append no event.
   Completed/abandoned sessions are selectable read-only and expose no mutable
   actions.
 - Discovery shows removable-root candidates and an unselected resident
@@ -200,15 +269,26 @@ human authority, or weaken any product safety gate.
   bundle posture. OS-store failure offers the warning and two confirmations;
   no passphrase value reaches a DTO or later render.
 - Missing Mistral readiness blocks image/PDF rows but permits eligible text
-  rows to advance. The session says partially complete/blocked, never complete.
+  rows to advance. The stage is `blocked` before a success and
+  `partially-complete` after one, never both or complete.
+- Candidate inspection is read-only and survives reload through immutable
+  Specification 24 bundles; selections/dispositions occur only in later exact
+  Boundary, Truth, or Graph review.
 - Manifest recommendations start unselected; explicit selection includes
   ordinary recommended entries only. Review-required JSON stays unselected
-  until an individual action. Selection/model/budget change invalidates the
-  old exact approval.
+  until an individual action. The approval display exposes only the opaque
+  public manifest ID and keyed commitment, never the protected canonical
+  SHA-256; selection/model/budget/manifest-binding change invalidates the old
+  exact approval.
 - Processing reconstructs every artifact from projection state. Transient
   failure exposes at most one unchanged-binding retry; quarantine has an
   unselected recommendation; prepared cancellation finishes atomic work;
   systemic stop shows recovery-required and schedules nothing new.
+- Completion rejects a stale stage head, nonterminal source/security/manifest/
+  processing/candidate work, or a pending required Boundary, Truth, or Graph
+  decision. Abandonment rejects active work or any prepared/recovery obligation,
+  leaves pending ontology decisions pending rather than complete, and erases or
+  mutates no underlying product work.
 - Candidate review shows exact active resident model/backend and both OCR and
   direct-image paths where applicable. Conflict/review-only material cannot
   enter a bulk decision, and malformed output has no fallback model.
@@ -257,8 +337,17 @@ human authority, or weaken any product safety gate.
   exact action forwarding, and current projections required by this UI.
 - `packages/local-runtime/test/**` for route authorization, DTO redaction,
   staleness, idempotency, session exclusivity, zero-effects, and handoff tests.
-- `packages/agent/src/**`, `packages/ingestion/src/**`,
-  `packages/ontology-bootstrap/src/**`, and `packages/ontology/src/**` only for
+- `packages/ontology/src/contracts.ts`, the existing atomic event ledger, and
+  focused projections/tests only for the four version-one bootstrap-session
+  events, conditional single-active-session append, terminality, and rebuild.
+- `packages/ingestion/src/bootstrap-session.ts` and focused adjacent projection/
+  read modules only for session start, authoritative stage observation,
+  terminal completion/abandonment, exclusivity, and history; these commands
+  create no import/boundary/truth approval.
+- `packages/ingestion/test/bootstrap-session.test.ts` for concurrent start,
+  replay, stage-state precedence, terminal immutability, and ledger rebuild.
+- `packages/agent/src/**`, other `packages/ingestion/src/**`,
+  `packages/ontology-bootstrap/src/**`, and other `packages/ontology/src/**` only for
   missing browser-safe read projections or exact already-authorized command
   adapters; do not change Specifications 16-27 product semantics.
 - Do not modify provider/model algorithms, OCR/redaction behavior, secret
@@ -308,6 +397,7 @@ must not execute the live effect.
 - `npm test -- packages/ui/test/ingestion-workspace.test.tsx packages/ui/test/ingestion-bootstrap-stages.test.tsx packages/ui/test/ingestion-source-security.test.tsx packages/ui/test/ingestion-manifest-processing.test.tsx`
 - `npm test -- packages/ui/test/agent-candidate-review.test.tsx packages/ui/test/ontology-boundary-review.test.tsx packages/ui/test/ontology-truth-review.test.tsx packages/ui/test/ontology-graph-review.test.tsx`
 - `npm test -- packages/ui/test/bootstrap-app-integration.test.tsx packages/ui/test/operator-app-integration.test.tsx packages/ui/test/shell.test.tsx`
+- `npm test -- packages/ontology/test/contracts.test.ts packages/ingestion/test/bootstrap-session.test.ts`
 - `npm test -- packages/local-runtime/test/bootstrap-operator-routes.test.ts packages/local-runtime/test/bootstrap-operator-safety.test.ts`
 - `npm run typecheck`
 - `npm run ui:build`

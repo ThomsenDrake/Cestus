@@ -12,9 +12,12 @@ observation to an exact import decision without creating a stable secret hash
 or offline guessing oracle.
 
 The normal backend is the operating system Secret Service. The product-facing
-port exposes only `createKey`, `rotateKey`, `computeCommitment`, and
-`verifyCommitment`; callers never receive key bytes. Backend adapters may hold
-key material only for the bounded operation needed to satisfy that port.
+port exposes only `createKey`, `rotateKey`, `computeCommitment(profile, frame)`,
+and `verifyCommitment(profile, frame, publicRecord)`; callers never receive key
+bytes. `profile` is closed to exactly `cestus.source-observation.v1` and
+`source-manifest-authority.v1`; there is no generic HMAC, digest, export, or
+caller-defined-domain operation. Backend adapters may hold key material only
+for the bounded operation needed to satisfy that port.
 
 If Secret Service is unavailable, Cestus fails closed by default. A human may
 activate a reduced-security file-backed backend only after two authenticated
@@ -33,21 +36,74 @@ logs, diagnostics, events, or crash output. Decrypted key material exists only
 inside the bounded commitment adapter process or its private session keyring
 and is cleared on shutdown.
 
+The passphrase is the exact UTF-8 encoding of the human-entered Unicode scalar
+sequence; Cestus performs no Unicode normalization, trimming, case conversion,
+or implicit trailing-newline removal. Invalid Unicode input is rejected. Each
+encryption uses a fresh cryptographically random 96-bit GCM nonce under the
+newly derived wrapping key and a 128-bit authentication tag. Nonce reuse for
+the same wrapping-key identity is rejected before encryption.
+
 The fallback directory is mode `0700`; its atomically published encrypted key
-files are mode `0600`. Each file authenticates its format version, workspace,
-key identifier, key version, KDF parameters, salt, nonce, ciphertext, and
-security-posture identity as AEAD associated data. Partial writes, symlinks,
+files are mode `0600`. AES-GCM authenticates ciphertext through the ordinary
+AEAD construction; its associated data separately authenticates the format
+version, workspace, key identifier/version, KDF parameters, salt, nonce,
+ciphertext/tag algorithms and declared lengths, and security-posture identity.
+Partial writes, symlinks,
 unexpected owners, hard links, permissive modes, malformed parameters, or
 authentication failure leave the backend unavailable. There is no plaintext,
 alternate-path, or no-encryption fallback.
 
-Commitments use HMAC-SHA-256 over a canonical, length-delimited domain that
-includes the commitment-contract version, workspace identity, source
-collection identity, source-boundary revision, immutable manifest entry
-identity, a fresh 256-bit observation nonce, and the exact observed bytes.
-Public records contain the contract version, key identifier/version, nonce,
-and HMAC output. Two observations of the same bytes are intentionally
-non-comparable. Verification uses constant-time comparison.
+The version-one file is an RFC 8785 JSON Canonicalization Scheme (JCS) object,
+encoded as UTF-8 with no BOM and exactly one trailing LF. Before that LF its
+exact members are `formatVersion`, `workspaceId`, `keyId`, `keyVersion`, `kdf`,
+`salt`, `nonce`, `ciphertext`, `tag`, and `securityPostureId`. `formatVersion`
+is `1`; `kdf` is exactly `{"algorithm":"argon2id","version":19,
+"memoryKiB":65536,"iterations":3,"parallelism":1,"outputBytes":32}`.
+Extra/duplicate members, non-JCS escaping or number/string encoding, and a
+different LF policy are rejected. Binary values are lowercase hexadecimal
+with exact decoded lengths: salt 32 bytes, nonce 12, ciphertext 32, and tag 16.
+
+Associated data is the RFC 8785 encoding, with no trailing LF, of exactly
+`formatVersion`, `workspaceId`, `keyId`, `keyVersion`, `kdf`, `salt`, `nonce`,
+`securityPostureId`, `cipherAlgorithm:"aes-256-gcm"`,
+`ciphertextBytes:32`, and `tagBytes:16`. The `ciphertext` and `tag` values are
+not associated-data members; GCM authenticates them through its ciphertext and
+tag inputs. RFC 8785 supplies member ordering, JSON escaping, Unicode, and
+integer serialization, so no private length-prefix convention is left to an
+adapter. Malformed encodings, incorrect lengths, truncated tags, and a
+duplicate nonce under the same key-file identity fail before decryption.
+
+Commitments use HMAC-SHA-256 over an exact binary frame. It begins with ASCII
+`cestus.source-observation.v1` plus one NUL byte. Each following field is one
+unsigned-byte tag, one unsigned 64-bit big-endian byte length, then that many
+bytes: tag 1 workspace ID UTF-8, 2 source-collection ID UTF-8, 3 boundary
+revision UTF-8, 4 immutable manifest-entry ID UTF-8, 5 the raw 32-byte fresh
+observation nonce, and 6 the exact observed bytes. IDs are their authoritative
+stored Unicode scalar sequences encoded as UTF-8 with no normalization. Tags
+must appear exactly once in ascending order; missing/extra tags, non-minimal or
+overflowing lengths, invalid ID UTF-8, and trailing bytes are rejected.
+For `source-manifest-authority.v1`, the frame begins with ASCII
+`source-manifest-authority.v1` plus one NUL byte. Each following field has the
+same unsigned-byte-tag/unsigned-64-bit-big-endian-length/value encoding. Tags
+1 through 6 appear once in ascending order: 1 record class as ASCII
+`manifest` or `entry`, 2 workspace ID UTF-8, 3 source-collection ID UTF-8, 4
+source-boundary revision UTF-8, 5 the raw 32-byte canonical classification-
+policy SHA-256, and 6 the raw 32-byte public manifest ID. A `manifest` frame
+then has exactly tag 8, the exact protected canonical manifest bytes. An
+`entry` frame then has exactly tag 7, the raw 32-byte public entry ID, followed
+by tag 8, the exact protected canonical entry bytes. Tags must be ordered;
+record classes, public-ID lengths, policy-hash length, UTF-8, and trailing
+bytes are validated before HMAC. Specification 19 alone supplies those
+protected canonical bytes and public IDs. A caller can compute or verify only
+one of these two closed profiles and only with its complete exact frame; it
+cannot substitute a raw protected SHA-256 or ask the port to reveal key bytes.
+
+Public records contain the profile, contract version, key identifier/version,
+and profile-permitted public binding values plus HMAC output: the
+source-observation profile additionally contains its nonce; the
+source-manifest-authority profile contains its record class and public
+manifest/entry ID as applicable. Two observations of the same bytes are
+intentionally non-comparable. Verification uses constant-time comparison.
 
 Rotation creates a new current key version and retains older referenced keys
 for verification. It never rewrites existing records or automatically deletes
@@ -57,8 +113,8 @@ current authority is required.
 
 One append-only security-posture contract records the selected backend,
 workspace binding, current key version, fallback warning/confirmation
-identities, and activation state. Only an authenticated human may activate,
-disable, rotate, or select the fallback. The resident may request review but
+identities, and activation state. Only an authenticated human may create,
+activate, disable, rotate, or select a key/backend, including the fallback. The resident may request review but
 cannot approve or mutate posture. Identical request replay is idempotent;
 stale or conflicting posture changes fail closed. Disabling the fallback
 never deletes a key referenced by a durable observation and leaves a persistent
@@ -78,6 +134,14 @@ remain unchanged.
 - The same bytes observed twice produce different public nonce/commitment
   pairs. Changing workspace, source collection, boundary revision, manifest
   entry, nonce, or bytes invalidates verification.
+- Cross-implementation fixtures use the exact tagged big-endian HMAC frame and
+  RFC 8785 fallback-file/associated-data bytes; altered tags, field order,
+  lengths, escaping, KDF members, or trailing-LF policy fail closed.
+- Fixtures prove that the non-exporting port accepts both and only the closed
+  `cestus.source-observation.v1` and `source-manifest-authority.v1` profiles.
+  Manifest and entry frames with a swapped class, policy hash, public ID, or
+  protected canonical bytes fail verification without exposing a key or a raw
+  protected SHA-256.
 - Rotation makes the new version current while old observations continue to
   verify with retained old versions. Missing old material produces
   `unverifiable`, never a replacement commitment.
@@ -87,7 +151,9 @@ remain unchanged.
   concurrent activation, or replay against another workspace fails.
 - The fallback ciphertext cannot be opened with a wrong passphrase, modified
   associated data, permissive file mode, symlink, hard link, changed owner, or
-  truncated write. No plaintext key or passphrase reaches a fake log, event,
+  truncated write/tag. Invalid UTF-8 passphrases, normalization differences,
+  malformed canonical fields/lengths, and forced nonce reuse fail closed. No
+  plaintext key or passphrase reaches a fake log, event,
   exception, environment snapshot, or process argument capture.
 - A crash before atomic publication leaves the previous posture/key current; a
   crash after publication yields one complete authenticated key version.
@@ -96,6 +162,8 @@ remain unchanged.
 - Disabling fallback use preserves every referenced encrypted key and keeps
   the reduced-security warning visible until no fallback-backed observation is
   active or referenced.
+- Resident/system key creation, stale or concurrent create, and conflicting
+  replay fail before key generation or posture mutation.
 - Standard verification uses synthetic bytes and fake secret backends. It does
   not inspect a credential, open the attached SSD, download a model, invoke a
   provider, or start a listening runtime.

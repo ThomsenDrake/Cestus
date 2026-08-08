@@ -19,6 +19,13 @@ stale, replaced, unmounted, remounted, or mismatched root fails before
 traversal. The resident may request a new boundary but cannot create or approve
 one.
 
+The approved boundary's exact `included` set is authoritative. Before every
+candidate content open, including consume-time reopen, Cestus proves membership
+of the normalized path identity in that set and absence from its exact human-
+excluded set. A human-excluded path may receive only the boundary's already-
+authorized safe metadata; it is never opened, sniffed, hashed, parsed, or
+committed even when its extension would otherwise be eligible.
+
 All traversal and file opens are descriptor-relative. Linux `openat2` is
 required with `RESOLVE_BENEATH`, `RESOLVE_NO_SYMLINKS`,
 `RESOLVE_NO_MAGICLINKS`, and `RESOLVE_NO_XDEV`. Directories and files use
@@ -42,6 +49,39 @@ an exact basename, component, suffix, or mode/signature-independent rule with
 focused fixtures; implementation may not add heuristic wildcard exclusions.
 Protected `.env`/`.env.*` leaf names are the sole configuration-path exception.
 
+The initial exact table is serialized as
+`packages/ingestion/policy/source-classification-policy.v1.json`; its hash is
+part of every scan attempt/manifest. It contains only these version-one rules:
+
+- excluded component basenames: `.git`, `.hg`, `.svn`, `.idea`, `.vscode`,
+  `.cestus`, `node_modules`, `vendor`, `bower_components`, `.cache`, `cache`,
+  `__pycache__`, `.pytest_cache`, `.mypy_cache`, `.ruff_cache`, `.tox`, `.nox`,
+  `.venv`, `venv`, `dist`, `build`, `out`, `target`, `coverage`,
+  `.nyc_output`, `tmp`, `temp`, `.tmp`, `.Trash`, `$RECYCLE.BIN`, and
+  `System Volume Information`;
+- excluded leaf basenames: `package.json`, `package-lock.json`, `yarn.lock`,
+  `pnpm-lock.yaml`, `bun.lock`, `bun.lockb`, `Cargo.toml`, `Cargo.lock`,
+  `go.mod`, `go.sum`, `pyproject.toml`, `poetry.lock`, `Pipfile`,
+  `Pipfile.lock`, `requirements.txt`, `Gemfile`, `Gemfile.lock`,
+  `composer.json`, `composer.lock`, `tsconfig.json`, `jsconfig.json`,
+  `config.json`, `settings.json`, `credentials.json`, `secrets.json`,
+  `service-account.json`, `manifest.json`, `launch.json`, `tasks.json`,
+  `.editorconfig`, `.gitignore`, `.gitattributes`, `.npmrc`, `.yarnrc`,
+  `.pypirc`, `.netrc`, `Dockerfile`, `docker-compose.yml`,
+  `docker-compose.yaml`, `Makefile`, and `CMakeLists.txt`;
+- excluded leaf rules: every dot-prefixed leaf except `.env` and `.env.*`;
+  suffixes `.yaml`, `.yml`, `.toml`, `.ini`, `.cfg`, `.conf`, `.config`,
+  `.xml`, `.properties`, `.lock`, `.log`, `.tmp`, `.temp`, `.swp`, `.swo`,
+  `.bak`, `.zip`, `.tar`, `.gz`, `.tgz`, `.bz2`, `.xz`, `.7z`, `.rar`,
+  `.iso`, `.dmg`, `.exe`, `.dll`, `.so`, `.dylib`, `.bin`, `.appimage`,
+  `.msi`, `.deb`, `.rpm`, `.apk`, `.jar`, `.class`, `.wasm`, `.sh`,
+  `.bash`, `.zsh`, `.fish`, `.ps1`, `.bat`, `.cmd`, `.py`, `.js`, `.jsx`,
+  `.ts`, `.tsx`, `.rb`, `.php`, `.pl`, and `.lua`; and terminal suffix `~`.
+
+The machine-readable table must equal this list after canonical serialization;
+it may not add a name, prefix, suffix, glob, signature, or heuristic during
+implementation.
+
 Excluded and over-limit entries receive safe path/stat metadata and a fixed
 reason only. They are never opened, hashed, signature-sniffed, parsed,
 committed, or passed to a model.
@@ -50,7 +90,7 @@ Candidates are limited to:
 
 - `.md`, `.markdown`, `.txt`, `.csv`, and `.tsv`;
 - `.pdf`, `.docx`, and `.xlsx`;
-- `.png`, `.jpg`, `.jpeg`, `.webp`, `.heic`, `.heif`, `.tif`, and `.tiff`;
+- static `.png`, `.jpg`, `.jpeg`, and `.webp`;
 - `.json`; and
 - protected `.env` and `.env.*` exceptions.
 
@@ -74,12 +114,14 @@ makes the parent unselectable; embedded images cannot be silently omitted from
 later mandatory OCR.
 
 Images require a matching supported signature and bounded metadata decode.
-Animated WebP/HEIF and malformed or decompression-over-limit images are
-excluded. Multipage TIFF is an image document, not animation. SVG, GIF,
-archives, and generic ZIP are excluded.
+Animated WebP and malformed or decompression-over-limit images are excluded.
+HEIC, HEIF, TIFF, BMP, AVIF, SVG, GIF, archives, and generic ZIP are excluded
+in version one so every selectable image uses Specification 23's exact inline
+OCR transport allowlist.
 
 Recognized JSON configuration paths are excluded before open. Remaining JSON
-uses duplicate-key rejection and strict size/depth/node limits. Private or
+is subject to one enforceable 1 MiB stat cap before open and uses duplicate-key
+rejection and strict depth/node limits. Private or
 symmetric JWK/JWKS is protected for Specification 18; public-only JWK/JWKS is
 ordinary. Arrays and explicit export envelopes are ordinary content
 candidates. Standalone content objects are eligible as `review-required` and
@@ -87,19 +129,34 @@ never preselected. Their preview summary contains only structural counts/types
 and recognized-envelope information, never values or credential-like content.
 Malformed or structurally ambiguous JSON is excluded.
 
-Initial limits are:
+Initial byte/page limits use decimal provider-facing bytes where stated:
 
-- 64 MiB per text, tabular, or ordinary JSON artifact;
-- 1 MiB per protected `.env` or private JWK/JWKS;
-- 256 MiB per PDF or OOXML document;
-- 512 MiB per image;
+- 64 MiB per text or tabular artifact;
+- 1 MiB per JSON artifact, whether ordinary or protected;
+- 1 MiB per protected `.env`;
+- 50,000,000 bytes and 1,000 pages per PDF;
+- 256 MiB per OOXML document;
+- 20,000,000 bytes per static image;
 - 100,000 discovered directory entries; and
 - 50 GiB total eligible bytes represented by one manifest.
 
-The checked-in classification policy additionally specifies exact OOXML entry,
-expanded-byte, member, and compression-ratio caps and exact image dimension,
-decoded-pixel, frame/page, and metadata caps. Changing a cap is a product
-boundary change. Exceeding the global entry/byte cap makes the manifest
+CSV/TSV additionally permits at most 1,000,000 logical rows, 16,384 columns,
+10,000,000 cells, 1 MiB decoded UTF-8 bytes per field, and 8 MiB per physical
+record. Ordinary JSON permits depth 32, 10,000 total nodes, and 1 MiB decoded
+UTF-8 bytes per string. PDF permits at most 2,000,000 indirect objects, 256
+cross-reference sections, page-tree depth 128, object/array nesting depth 256,
+10,000 objects per object stream, 64 MiB decoded bytes per stream, 512 MiB
+aggregate decoded stream bytes, and 100:1 per-stream and aggregate compression
+ratios. A parser cannot substitute a larger library default.
+
+OOXML permits at most 10,000 ZIP members, 1 GiB total expanded bytes, 256 MiB
+per non-raster member, 64 MiB central-directory bytes, 100:1 per-member and
+aggregate compression ratios, 16 MiB per XML part, XML depth 64, 256 attributes
+per element, 8 MiB per text node, and 100,000 relationships. Images permit
+width/height at most 32,768 pixels, 100,000,000 decoded pixels, one frame,
+400 MiB decoded RGBA bytes, and 8 MiB metadata. These values and the pathname
+table are the complete initial machine-readable policy. Changing one is a
+product boundary change. Exceeding the global entry/byte cap makes the manifest
 incomplete and therefore unapprovable; traversal cannot silently truncate
 authority.
 
@@ -109,7 +166,8 @@ bytes. Every child also passes the standalone image signature, dimension,
 pixel, frame, and metadata policy. Child bytes and hashes are consumed from the
 same parent descriptor observation used for package classification.
 
-After a candidate passes stat-only checks, Cestus opens it exactly once through
+After a candidate passes approved-included membership and stat-only checks,
+Cestus opens it exactly once through
 the pinned root. Classification and digest/commitment consume the same bounded
 stream between checked pre-read and post-read descriptor identities. The read
 must reach EOF with the expected byte count. Device, mount, inode, type, size,
@@ -133,14 +191,50 @@ cannot complete until EOF, byte count, post-read identity, classification, and
 manifest digest/commitment all match. A changed or missing source is a terminal
 per-entry exception; the same attempt never reopens the path to try again.
 
-Manifest entries are ordered by normalized relative-path bytes. Each contains
-fixed-version safe path identity, source/stat identity, detected type, size,
+The full manifest, including normalized relative paths, remains only in
+protected mounted derivative storage with authenticated human readback. It has
+an internal RFC 8785 canonical SHA-256 identity that never leaves that protected
+surface. The protected canonical manifest and each protected canonical entry
+are UTF-8 RFC 8785 bytes with no BOM or trailing LF; the full manifest also
+uses normalized-relative-path byte ordering. At manifest creation Cestus also
+generates one random 256-bit public manifest ID and one random 256-bit public
+entry ID per entry. It calls Specification 16's non-exporting
+`source-manifest-authority.v1` profile, never a generic commitment operation:
+the manifest frame carries record class `manifest`, workspace/source/boundary,
+the raw canonical-policy SHA-256, public manifest ID, and exact protected
+canonical manifest bytes; each entry frame carries record class `entry`, those
+same workspace/source/boundary/policy/manifest bindings, its public entry ID,
+and exact protected canonical entry bytes. Public IDs and keyed commitments,
+not raw hashes of path-bearing data, are used in ordinary bindings. Guessing a
+path therefore cannot be verified without the workspace key. Ordinary ledger
+events, diagnostics, resident projections, and logs expose only those opaque
+path-free IDs/commitments, aggregate counts, and safe reasons.
+Protected manifest entries are ordered by normalized relative-path bytes. Each
+contains fixed-version safe path identity, source/stat identity, detected type, size,
 eligibility/reason, review requirement, and an ordinary digest or protected
 commitment. An OOXML entry also contains its ordered embedded-raster child
 inventory and child-manifest hash. Excluded entries contain no content-derived identifier. The
-manifest uses a versioned canonical serialization with fixed field order,
-integer encoding, Unicode rules, and entry ordering, then receives a SHA-256
-identity.
+manifest receives its protected SHA-256 identity. The public manifest/entry
+commitments are exactly the Specification 16
+`source-manifest-authority.v1` profile records above. Raw paths, protected
+SHA-256 identities, and unkeyed path-derived hashes never enter an ordinary
+preview, event, projection, diagnostic, log, or resident surface.
+
+Each explicit scan request first conditionally claims one durable scan-attempt
+identity bound to boundary/root/policy. Only its lease holder may observe an
+entry. Before opening any candidate content, it reserves that entry's final
+random public ID and, for a protected entry, its observation nonce in the
+protected manifest draft, flushes the draft and directory, and advances the
+lease only after the reservation is durable. The content open must reuse that
+reserved identity/nonce. After EOF and validation, the result is separately
+checkpointed and flushed before the lease advances; a crash between reservation
+and result can resume only with the same nonce and exact descriptor observation,
+never by allocating a replacement nonce. Completed per-entry results are
+durably checkpointed in the protected manifest draft before the lease advances.
+Identical replay returns that attempt's existing result; concurrent or
+conflicting reuse fails before a second authoritative observation. A new scan
+request uses a new attempt identity and therefore may create fresh protected
+nonces.
 
 The manifest is append-only and immutable. It cannot gain entries, change a
 classification, or expand selection. Specification 20 may attach exactly one
@@ -152,6 +246,9 @@ idempotent; conflicting identity reuse fails closed.
 
 - A missing, denied, stale, replaced, remounted, or agent-approved-only
   Specification 15 boundary permits no directory or content open.
+- A path present under the root but absent from the human-approved `included`
+  set, or present in the human-excluded set, remains metadata-only during scan
+  and consume even when it has an eligible extension.
 - `openat2` flag capture proves every traversal/consume open uses the required
   resolution flags. Missing kernel support has no path-based fallback.
 - Fixture symlinks, magic links, nested mounts, hard links, devices, sockets,
@@ -179,6 +276,19 @@ idempotent; conflicting identity reuse fails closed.
   publication without a second path open.
 - Repeated stable scans yield canonical entry ordering and serialization.
   Entry/global cap overflow produces an incomplete, unapprovable manifest.
+- Dictionary guesses against known relative paths cannot reproduce any public
+  manifest/entry commitment without the injected workspace key; ordinary
+  preview/event/log captures contain no protected SHA-256 or path-derived hash.
+- Manifest and entry fixtures use Specification 16's named closed profile and
+  exact frame branches. A generic profile, wrong record class, policy hash,
+  public manifest/entry ID, or canonical protected bytes fails without a path
+  or protected SHA-256 reaching an ordinary surface.
+- Duplicate/concurrent wakes for one scan-attempt identity reuse checkpointed
+  protected nonces/results and produce one manifest; conflicting reuse performs
+  no second content observation.
+- Crash injection after durable nonce reservation, after content open, and
+  before/after result flush proves resume reuses the reserved nonce and never
+  performs a second authoritative observation with a replacement nonce.
 - Standard verification uses synthetic temporary/virtual trees and injected
   syscall adapters. It does not read the attached SSD, create evidence, use a
   credential, run a model, invoke a provider, bind a socket, send a PRR, or
@@ -190,9 +300,11 @@ idempotent; conflicting identity reuse fails closed.
   confined traversal/observation, pre-open pathname policy, deterministic
   format classification, bounded streaming digest/commitment, canonical
   immutable manifests, and the consume-time observation port.
+- `packages/ingestion/policy/source-classification-policy.v1.json` only for the
+  exact canonical pathname/container/image cap table stated here.
 - `packages/ingestion/test/**` for injected syscall/confinement, virtual tree,
   exclusion/no-open, classification, malicious container, cap, mutation,
-  manifest, and consume-time fixtures.
+  manifest, scan-attempt fencing, path privacy, and consume-time fixtures.
 - `packages/local-runtime/src/**` only for authenticated mounted scan request,
   protected human manifest readback, safe resident projection, and injected
   platform adapter wiring.

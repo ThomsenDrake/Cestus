@@ -38,11 +38,20 @@ members per predicate, 16 identity-key alternatives per type, and inheritance
 depth 16. Cycles, dangling references, contradictory cardinalities, impossible
 identity rules, and ambiguous inverses fail.
 
-The resident may append `ontology.boundary.change.requested`. It grants no
-authority and changes no projection. It binds current parent revision/hash,
+The resident may construct and request append of
+`ontology.boundary.change.requested`, but append requires an authenticated
+human's explicit one-use approval of that exact request. The append approval
+binds current parent revision/hash, complete request/proposal/diff/impact hashes,
+supporting references, resident invocation, and human actor. It cannot approve
+the proposed boundary revision or any truth. Consume time revalidates the
+unchanged current parent and exact request; stale or edited requests append
+nothing. The approval and requested event commit atomically, with the human as
+approval actor and resident/service as non-authoritative executor metadata.
+
+The requested event grants no authority and changes no projection. It binds current parent revision/hash,
 complete proposed snapshot/hash, canonical diff, supporting candidate/evidence
 references, rationale/alternatives, compatibility/impact analysis, and
-requester model/invocation. Identical requests are idempotent; conflicting ID
+requester model/invocation and consumed human append approval. Identical requests are idempotent; conflicting ID
 reuse fails. Secret-bearing, ungrounded, invalid, or stale-parent requests do
 not append. The resident may recommend but cannot decide.
 
@@ -89,9 +98,11 @@ events alone.
 
 ## Observable Acceptance Examples
 
-- A resident request for a valid exact child revision appends one non-
-  authoritative request and leaves current boundary/graph unchanged. A
-  resident approval attempt appends nothing.
+- A resident request for a valid exact child revision remains a preview until a
+  human explicitly approves appending that exact request. The atomic append
+  creates one non-authoritative request and leaves current boundary/graph
+  unchanged. Resident approval, stale approval, edit, or replay expansion
+  appends nothing.
 - A human approves the first complete snapshot; only its closed-world IDs
   become eligible for later acceptance.
 - Editing one label/rule after preview changes proposal/hash and invalidates the

@@ -33,9 +33,12 @@ Every request uses `model: "mistral-ocr-latest"`,
 prompt or annotation schema.
 
 Standalone/embedded images use `document.type: "image_url"` and an inline
-`data:<exact-media-type>;base64,...` value. PDFs use
+`data:<exact-media-type>;base64,...` value, where the exact version-one
+transport allowlist is `image/png`, `image/jpeg`, and `image/webp`. Image bytes
+must satisfy Specification 19's 20,000,000-byte/static-image policy. PDFs use
 `document.type: "document_url"` and inline
-`data:application/pdf;base64,...`. No public URL, file upload, signed URL,
+`data:application/pdf;base64,...` and must satisfy its 50,000,000-byte/1,000-page
+policy. No public URL, file upload, signed URL,
 provider library, persistent provider file, or response image copy is created.
 Base64 is streamed without an additional whole-artifact encoded copy.
 
@@ -45,10 +48,16 @@ exact `pages` range and streams the original PDF bytes inline. Specification
 20 discloses call count and repeated-transfer total. All windows compose into
 one final artifact derivative.
 
-Optional budget enforcement is a per-workspace UTC calendar-month page cap. A
-standalone/embedded image reserves one page; a PDF reserves its complete local
-page count. The whole artifact reservation appends atomically before first
-transfer, and concurrent jobs cannot oversubscribe it. Each response reconciles
+Optional budget enforcement is a per-workspace UTC calendar-month page cap.
+Before each call attempt, a standalone/embedded image reserves one page and a
+PDF window reserves its exact page count atomically against the UTC month in
+which that call will dispatch; concurrent jobs cannot oversubscribe it. If the
+month changes after reservation but before dispatch, the unused old-month
+reservation is atomically released and the call must reserve the new month
+before credential access/encoding. Calls already dispatched retain their
+original month attribution. A PDF crossing rollover therefore holds separate
+reservations in each actual dispatch month and may pause between windows when
+the new month lacks capacity. Each response reconciles
 `usage_info.pages_processed` with its exact window. Usage above reservation or
 inconsistent accounting stops safely.
 
@@ -62,12 +71,26 @@ OCR concurrency defaults to two calls. An authenticated human may configure
 one through four. The resident cannot change it. Windows for one artifact stay
 ordered; different artifacts pipeline within the global limit.
 
-Invocation states are `planned`, `reserved`, `sending`, `response-received`,
+An artifact-run identity binds evidence/child, approval, endpoint/policy,
+alias, adapter, budget/concurrency revisions, derivation generation, and a
+rerun ordinal. The initial run has ordinal zero and no rerun decision. Every
+later ordinal requires one authenticated human one-use rerun decision bound to
+the prior run/outcome, exact approval/policy/generation, displayed possible
+duplicate spend/call/byte plan, and next ordinal; that decision ID is part of
+the new run identity and is consumed before any credential access. The resident
+cannot request execution as though it were that decision, and replay cannot
+create another run. A
+window identity adds its exact page range. Each network call attempt adds class
+and ordinal: `initial:0`, `throttle:1`, `throttle:2`, or
+`human-duplicate:1`. Attempt states are `planned`, `reserved`, `dispatching`,
+`response-received`,
 `validating`, `committed`, `blocked-credential`, `blocked-budget`,
 `blocked-policy`, `failed-input`, `failed-provider`, `billing-uncertain`, and
-`abandoned`. Every window has deterministic client identity and compare-and-
-append transitions. Duplicate wakes cannot create another call after
-`sending`.
+`abandoned`. Every transition is compare-and-append and durable. The
+`dispatching` append consumes that exact call capability before bytes leave;
+a crash/reset after it is billing-uncertain and cannot auto-dispatch the same
+or another attempt. A committed response is stored durably and replay reuses
+it.
 
 Timeout, post-send reset, malformed/incomplete success, 5xx, or any potentially
 processed outcome receives no automatic retry. It becomes
@@ -76,8 +99,12 @@ provider documents no OCR idempotency guarantee, one possible duplicate-
 billing retry requires explicit human acknowledgment bound to that exact
 window; the human may instead abandon the artifact. An explicit unprocessed
 throttling response with bounded `Retry-After` may schedule at most two
-throttle retries without sleeping a worker or making a new reservation. Counts
-survive restart. No Batch API, upload, older model, local OCR, resident vision,
+throttle attempts without sleeping a worker; a provider-proven unprocessed
+throttle releases its attempt reservation before the next attempt reserves in
+its actual month. The one human-duplicate acknowledgment is itself one-use and
+consumed before dispatch. Thus one window has at most four calls total: initial,
+two proven-unprocessed throttle attempts, and one acknowledged possibly
+duplicate call. Counts survive restart. No Batch API, upload, older model, local OCR, resident vision,
 or alternate-provider fallback exists.
 
 A valid response contains every requested page index exactly once, valid
@@ -104,19 +131,32 @@ Replay of one committed invocation returns the exact stored result without a
 call. A newly requested derivation run always calls `mistral-ocr-latest`; an old
 cached derivative cannot be presented as current latest.
 
+Multiple source occurrences that deduplicate to one evidence identity share
+one artifact run and committed derivative only when approval, policy, and
+derivation-generation bindings are identical. A different approval, policy,
+generation creates a new initial artifact-run identity and performs fresh
+latest-alias calls. An explicit rerun creates a new identity only through the
+one-use human rerun authority and monotonically next ordinal above.
+Window/attempt identities are never reused across runs.
+
 Publication waits for every required window. Canonical composition orders by
 original page and creates Specification 22 anchors containing parent evidence/
 child identity, page, block ordinal/type, box, Markdown range, table locator,
-word range/confidence, dimensions, and invocation/window identity. Images use
-page zero. A PDF has no partial visible derivative. Committed provenance stores
-canonical response/derivative hashes, never credentials or request base64.
-Artifact-local failure does not block successful siblings.
+word range/confidence, dimensions, and distinct invocation and window
+identities. Those are exactly Specification 22's closed `ocr-page-block`
+locator fields `page`, `blockOrdinal`, `blockType`, `box`, `markdownRange`,
+`tableLocator`, `wordRange`, `wordConfidence`, `dimensions`, `invocationId`,
+and `windowId`; provider response names are normalized before anchor
+serialization. Images use page zero. A PDF has no partial visible derivative.
+Committed provenance stores canonical response/derivative hashes, never
+credentials or request base64. Artifact-local failure does not block successful
+siblings.
 
 ## Observable Acceptance Examples
 
 - A selected PNG sends one exact inline `image_url` request. A selected 120-
   page PDF plans ranges `0-49`, `50-99`, and `100-119`, discloses three complete
-  PDF transfers, reserves 120 pages, and publishes one derivative only after
+  PDF transfers, reserves 50/50/20 pages in each call's actual UTC month, and publishes one derivative only after
   all three validate.
 - A selected DOCX child raster uses its exact parent/part/digest binding. An
   unselected, changed, added, or omitted child permits no credential access or
@@ -125,17 +165,28 @@ Artifact-local failure does not block successful siblings.
   concurrency, page count, or window-plan drift blocks before byte encoding.
 - No request follows a redirect, uses a public/uploaded file, or requests
   response image bytes.
-- Concurrent reservations cannot exceed the monthly cap. UTC rollover,
+- Concurrent reservations cannot exceed the monthly cap. A rollover before
+  dispatch moves the unused reservation atomically; a cross-month PDF charges
+  each window to its dispatch month. UTC rollover,
   disabled enforcement, usage reconciliation, ambiguous retained reservation,
   and configuration actor authority are deterministic.
-- Duplicate wakes after `sending` produce no second call. A documented
-  unprocessed throttle may schedule two bounded retries; ambiguous results do
-  not retry until exact human acknowledgment.
+- Duplicate wakes after `dispatching` produce no second call. Crash after
+  dispatch becomes billing-uncertain. A documented unprocessed throttle may
+  schedule two bounded attempts; ambiguous results do not retry until the one
+  exact human acknowledgment, and total calls never exceed four.
+- HEIC/HEIF/TIFF/BMP/AVIF/GIF or over-20,000,000-byte images and
+  over-50,000,000-byte/1,000-page
+  PDFs are unselectable upstream and never reach credential access.
 - Missing/alias-only model, mixed concrete models across windows, schema/cap/
-  usage failures, invalid anchors, unsafe metadata, and response image data
-  prevent derivative publication.
+  usage failures, invalid closed `ocr-page-block` locator fields (including
+  conflated invocation/window identity), unsafe metadata, and response image
+  data prevent derivative publication.
 - Same-invocation replay reuses exact output. A new derivation request invokes
   the latest alias again rather than claiming a cache is latest.
+- Identical rerun requests are idempotent; only one authenticated human
+  one-use decision can create the next ordinal, and resident, stale, skipped-
+  ordinal, replayed, or concurrently consumed decisions make no credential or
+  network effect.
 - Standard verification uses fake HTTP/secret/budget/clock/storage adapters and
   synthetic artifacts. It uses no real credential, provider call, spending,
   SSD read, socket bind, resident invocation, PRR, publication, or ontology
@@ -198,15 +249,15 @@ fakes and performs no call.
 
 ## Targeted Verification
 
-- `npm test -- packages/ingestion/test/mistral-ocr-contract.test.ts packages/ingestion/test/mistral-ocr-normalization.test.ts packages/ingestion/test/mistral-ocr-anchors.test.ts packages/ingestion/test/mistral-ocr-composition.test.ts`
+- `npm test -- packages/ingestion/test/mistral-ocr-contract.test.ts packages/ingestion/test/mistral-ocr-normalization.test.ts packages/ingestion/test/mistral-ocr-anchors.test.ts packages/ingestion/test/mistral-ocr-composition.test.ts packages/ingestion/test/mistral-ocr-invocation-identity.test.ts`
 - `npm test -- packages/agent/test/mistral-ocr-authority.test.ts`
-- `npm test -- packages/local-runtime/test/mistral-ocr-adapter.test.ts packages/local-runtime/test/mistral-ocr-budget.test.ts packages/local-runtime/test/mistral-ocr-scheduler.test.ts packages/local-runtime/test/mistral-ocr-ambiguity.test.ts`
+- `npm test -- packages/local-runtime/test/mistral-ocr-adapter.test.ts packages/local-runtime/test/mistral-ocr-budget.test.ts packages/local-runtime/test/mistral-ocr-scheduler.test.ts packages/local-runtime/test/mistral-ocr-ambiguity.test.ts packages/local-runtime/test/mistral-ocr-dispatch-crash.test.ts`
 - `npm run typecheck`
 - `npm run ui:build`
 - `npm run factory:check`
 
 Success means every command exits zero and proves exact approval-bound inline
-OCR for every required artifact/page, 50-page planning, atomic optional budget,
+OCR for every required artifact/page, 50-page planning, cross-month atomic optional budget,
 bounded human-controlled concurrency, non-retrying ambiguous billing, strict
 resolved-model/schema provenance, canonical anchors/composition, latest-alias
 cache semantics, secret safety, and zero live/external effects.

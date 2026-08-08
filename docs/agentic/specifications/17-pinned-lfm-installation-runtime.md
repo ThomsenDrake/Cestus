@@ -42,6 +42,24 @@ filename, size, and SHA-256 digest. Source distributions, mutable version
 ranges, dependency resolution during activation, GPU packages, and reliance on
 the host Python are forbidden.
 
+The authoritative initial transitive set is the complete checked-in
+`packages/ingestion/model-workers/lfm-pii/bundle-manifest.v1.json`. It contains
+the exact CPython 3.12 patch/release/distribution, every archive/member and
+wheel URL/final host/filename/size/SHA-256, dependency edge, permitted
+redirect, installed relative path/mode, and aggregate download/expansion
+limit. `self-test.v1.json` contains exact UTF-8 synthetic input, canonical
+expected label/span/score ranges, tokenizer identity, and canonical response
+hash. `sandbox-policy.v1.json` contains the exact policy below in
+machine-readable form. All three files are required implementation outputs of
+this executable specification, are part of the approved product contract once
+created, and must be complete in the implementation candidate before any test
+may claim readiness. They receive the same fresh Sol review as the code. This
+design-only document is not itself a download/lockfile and does not authorize
+inventing or approving an incomplete one. Setup approval binds the reviewed
+files' content hashes; an absent placeholder, unresolved dependency, or
+difference between document and machine-readable policy blocks setup and
+integration.
+
 Changing any URL, redirect allowlist, byte count, digest, CPython distribution,
 wheel, dependency, custom-code file, tokenizer, decoder, model revision,
 sandbox contract, or self-test vector requires a new explicit setup approval.
@@ -85,6 +103,39 @@ clears the environment and reconstructs a strict fixed allowlist. Runtime
 downloads, telemetry, remote-code resolution, update checks, and subprocesses
 outside the fixed bundle are disabled.
 
+The version-one launcher uses `--die-with-parent`, `--new-session`,
+`--unshare-all`, `--clearenv`, and `--cap-drop ALL`; mounts only the verified
+bundle at `/opt/lfm` read-only, a fresh `/proc`, bubblewrap's minimal private
+`/dev`, empty tmpfs `/tmp`, and empty `/run`; and starts in `/opt/lfm`. No host
+root, `/home`, workspace, source, credential, ledger, cache, or host `/tmp`
+path is mounted. The only environment entries are fixed
+`PATH=/opt/lfm/python/bin`, `PYTHONNOUSERSITE=1`, `PYTHONDONTWRITEBYTECODE=1`,
+`HF_HUB_OFFLINE=1`, `TRANSFORMERS_OFFLINE=1`,
+`TOKENIZERS_PARALLELISM=false`, `HOME=/nonexistent`, and `TMPDIR=/tmp`;
+locale/timezone are fixed by the worker protocol.
+
+The checked seccomp policy is default-deny and its reviewed allowlist is
+architecture-specific for Linux x86-64; a different architecture is unavailable
+until its separate policy is reviewed. Consequently every socket syscall is
+denied, including `socket`, `socketpair`, `connect`, `bind`, `listen`, `accept`,
+`accept4`, `getsockname`, `getpeername`, `getsockopt`, `setsockopt`, `shutdown`,
+`send`, `sendto`, `sendmsg`, `sendmmsg`, `recv`, `recvfrom`, `recvmsg`,
+`recvmmsg`, and legacy `socketcall`. Mount/namespace/keyring/perf/ptrace/BPF
+syscalls, `fork`, `vfork`, `clone3`, and process-forming `clone` are absent from
+the allowlist; `clone` is allowed only when all required VM/files/fs/sighand/
+thread flags are present and every namespace/process flag is absent.
+
+Bubblewrap's sole target is a manifest-hashed native `lfm-runner` linked to the
+pinned bundle `libpython`. After startup and before `Py_Initialize`, that runner
+sets no-dump/resource posture and installs the final default-deny filter, which
+omits `execve` and `execveat`. It then initializes the pinned interpreter and
+loads only the manifest-hashed worker module in the same process; there is no
+interpreter exec and no Python/custom-model code runs before the final filter.
+Only after model initialization and a policy-attestation self-check does it
+report the protocol-ready frame. No descriptor or input bytes are released
+before that frame. Failure to install or attest bubblewrap or the final filter
+makes the worker unavailable.
+
 Source text enters only through a bounded pipe or sealed anonymous memory
 object and never through a path or command argument. The versioned,
 length-delimited response channel carries structured spans, labels, scores,
@@ -93,6 +144,23 @@ file descriptors, input, token context, output, and wall time are capped.
 Malformed requests/results, unknown protocol fields, excessive output,
 timeouts, worker crashes, sandbox loss, or resource exhaustion fail closed and
 emit only fixed secret-safe error codes.
+
+Version-one limits are 1 MiB request payload, 4,096 tokenizer tokens per
+inference window, 8,192 returned spans and 2 MiB response payload per request,
+6 GiB resident memory, 8 runnable threads, 16 total tasks, 64 file descriptors,
+64 MiB private temporary storage, 480 CPU-seconds, and 120 seconds wall time.
+The machine policy maps these values exactly: cgroup v2
+`memory.max=6442450944` and `pids.max=16`; runner `RLIMIT_CORE=0`,
+`RLIMIT_CPU=480`, `RLIMIT_NOFILE=64`, `RLIMIT_NPROC=16`, and
+`RLIMIT_FSIZE=2097152`; a 64 MiB size-capped tmpfs mounted at `/tmp`; external
+monotonic deadline 120 seconds; and fixed `OMP_NUM_THREADS=8`,
+`MKL_NUM_THREADS=8`, `OPENBLAS_NUM_THREADS=8`, and
+`TOKENIZERS_PARALLELISM=false`. The framed protocol enforces 1,048,576 request
+bytes, 4,096 tokens/window, 8,192 spans, and 2,097,152 response bytes before
+allocation/publication. The cgroup/rlimit owner is outside the sandbox. Crossing any limit kills the
+worker and emits no partial span set. The worker may run only the already-
+initialized verified embedded interpreter plus imported code/data from the
+manifest; it cannot execute or spawn another executable.
 
 ## Observable Acceptance Examples
 
@@ -109,10 +177,19 @@ emit only fixed secret-safe error codes.
   manifest, permission, or activation pointer prevents all model input.
 - The sandbox has no usable network, home, workspace, source, credential,
   ledger, host temporary directory, or writable bundle path. A synthetic
-  attempt to open one or spawn an unlisted executable fails.
+  attempt to open one, create/listen/connect a socket, create a namespace,
+  ptrace, or execute after the ready frame fails.
 - Inputs and outputs exceeding configured byte/token/span limits, malformed
   protocol frames, timeouts, crashes, and missing `bubblewrap` fail closed with
   no unsandboxed retry.
+- Policy tests assert the exact bubblewrap argument/mount/environment sequence,
+  native-runner-before-Python final seccomp ordering, thread-only clone mask,
+  complete socket denial, and every numeric cgroup/rlimit
+  boundary against the three approved machine-readable contracts.
+- An implementation candidate missing a complete CPython/wheel manifest,
+  exact synthetic self-test, native-runner identity, or machine policy cannot
+  pass targeted verification or receive setup authority; no placeholder is a
+  shippable contract.
 - Explicit rollback revalidates and atomically activates the retained prior
   bundle. Stale, resident-originated, automatic, or referenced-bundle deletion
   requests fail.
