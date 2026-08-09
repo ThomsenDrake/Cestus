@@ -55,7 +55,7 @@ failed input and on shutdown.
 
 Compute and verify are injected into ingestion as a narrow service. Runtime
 composition injects the fresh 32-byte nonce source required by Specification
-16A-R2a-R1; the ingestion service acquires exactly one nonce for each compute attempt,
+16A-R2a-R2.3; the ingestion service acquires exactly one nonce for each compute attempt,
 and compute-operation callers cannot supply or override it. Source observation
 returns only the exact public record. The service opens no source file and admits no
 evidence. Consume-time calls reread mounted currentness, posture head, selected
