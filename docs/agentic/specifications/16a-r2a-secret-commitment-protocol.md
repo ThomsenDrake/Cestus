@@ -354,8 +354,11 @@ the changed frame and delegates normally so the port can return `mismatch`.
   result. Public binding substitutions reject before port use; changing only
   observed bytes delegates and may mismatch. A valid but different key reference
   is structurally accepted here and is authority-validated only by R2b.
-- Exports contain no create, rotate, backend, HMAC, digest, key-export, authority,
-  current-selection, Secret Service, credential, fallback, or runtime operation.
+- Beyond the explicitly required builders, parser, normalizer, protocol types,
+  synthetic port contract, and `createSecretSourceCommitmentService` factory,
+  exports contain no key creation/rotation, backend, HMAC, digest, key-export,
+  mutation-authority, current-selection, Secret Service, credential, fallback, or
+  runtime operation.
 
 ## Allowed Scope
 
