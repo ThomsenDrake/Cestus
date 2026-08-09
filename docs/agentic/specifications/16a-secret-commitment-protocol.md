@@ -13,7 +13,7 @@ without weakening between:
 4. `16a-r2b-secret-commitment-authority.md` — authority-owned key mutation,
    non-exporting backend, and closed product port.
 
-Specifications 16B through 16D remain blocked until both replacements are
+Specifications 16B through 16D remain blocked until all four replacements are
 integrated and their required verification is accepted. Failed Specification 16,
 16A, 16A-R1, R2a, and R2a-R1 implementation candidates are history only and must not be
 inspected, reused, merged, or pushed.

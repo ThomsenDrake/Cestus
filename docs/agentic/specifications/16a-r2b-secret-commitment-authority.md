@@ -259,13 +259,13 @@ never known no-effect. A malformed/wrong lookup result or lookup exception becom
 wrong-length, or throwing HMAC result becomes `unavailable`. No exception or
 diagnostic includes client data or secret material.
 
-Port compute/verify normalization is exact. Compute parses the R2a-R1 frame first;
+Port compute/verify normalization is exact. Compute parses the integrated R2.2 frame first;
 invalid profile/frame rejects before authority/backend. Authority current-key throw,
 malformed, or unavailable maps to `unavailable/authority-unavailable`; `none` maps
 to `unavailable/key-unavailable`. Backend HMAC missing maps to `key-unavailable`,
 and malformed/throwing/unavailable maps to `backend-unavailable`. A computed record
 is constructed only from parsed public bindings, the authority key reference, and
-one copied 32-byte HMAC, then passes R2a-R1 normalization before return.
+one copied 32-byte HMAC, then passes integrated R2.1 normalization before return.
 
 Verify normalizes the record and frame first. Profile/class/public-binding mismatch
 returns `rejected/record-reference-invalid` before authority/backend. Authority
