@@ -7,7 +7,9 @@ Specifications 16A-R2a-R2.1 through R2.3, 16A-R2b, and 16B through 16D.
 
 This document remains the complete product and safety contract for secret
 commitments. Direct implementation as one factory slice is superseded by seven
-approved executable specifications, processed in this exact order:
+approved delivery specifications, processed in this exact order. R2.2 document
+approval does not authorize implementation: its two explicit human policy choices
+must be incorporated and receive a new fresh-Sol approval first.
 
 1. Specification 16A-R2a-R2.1 — public records and exact normalization;
 2. Specification 16A-R2a-R2.2 — trap-safe bytes and exact frame codecs;
