@@ -22,6 +22,8 @@ const idValidValues = ["ascii-id", "nul\u0000id", "non-bmp-\u{1F680}", "café", 
 const idInvalidValues = ["", "lone-high-\uD800", "lone-low-\uDC00"];
 const invalidHexValues = [uppercaseHex, oddHex, shortHex, longHex, nonHex];
 const invalidKeyVersions = [0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1, Infinity, Number.NaN];
+const nonStringRuntimeValues: readonly unknown[] = [undefined, null, 1, false, {}, []];
+const nonNumberRuntimeValues: readonly unknown[] = [undefined, null, "1", 1n, {}, []];
 
 function observationFixture(): SourceObservationCommitmentRecord {
   return {
@@ -83,6 +85,7 @@ interface RecordInventory {
   readonly forbiddenFields: readonly string[];
   readonly replacementProfile: SecretCommitmentProfile;
   readonly replacementRecordClass?: "manifest" | "entry";
+  readonly hasAuthorityRecordClass: boolean;
 }
 
 const inventories: readonly RecordInventory[] = [
@@ -98,7 +101,8 @@ const inventories: readonly RecordInventory[] = [
     hexFields: ["nonceHex", "hmacHex"],
     forbiddenFields: ["recordClass", "classificationPolicyHashHex", "publicManifestIdHex", "publicEntryIdHex", "unexpectedField"],
     replacementProfile: "source-manifest-authority.v1",
-    replacementRecordClass: "manifest"
+    replacementRecordClass: "manifest",
+    hasAuthorityRecordClass: false
   },
   {
     name: "manifest authority",
@@ -112,7 +116,8 @@ const inventories: readonly RecordInventory[] = [
     hexFields: ["classificationPolicyHashHex", "publicManifestIdHex", "hmacHex"],
     forbiddenFields: ["manifestEntryId", "nonceHex", "publicEntryIdHex", "unexpectedField"],
     replacementProfile: "cestus.source-observation.v1",
-    replacementRecordClass: "entry"
+    replacementRecordClass: "entry",
+    hasAuthorityRecordClass: true
   },
   {
     name: "entry authority",
@@ -127,7 +132,8 @@ const inventories: readonly RecordInventory[] = [
     hexFields: ["classificationPolicyHashHex", "publicManifestIdHex", "publicEntryIdHex", "hmacHex"],
     forbiddenFields: ["manifestEntryId", "nonceHex", "unexpectedField"],
     replacementProfile: "cestus.source-observation.v1",
-    replacementRecordClass: "manifest"
+    replacementRecordClass: "manifest",
+    hasAuthorityRecordClass: true
   }
 ];
 
@@ -195,6 +201,27 @@ function throwingProxy(record: object, counter: { calls: number }): object {
   });
 }
 
+function countingTransparentProxy(record: object, counter: { calls: number }): object {
+  return new Proxy(record, {
+    get(target, property, receiver) {
+      counter.calls += 1;
+      return Reflect.get(target, property, receiver);
+    },
+    getOwnPropertyDescriptor(target, property) {
+      counter.calls += 1;
+      return Reflect.getOwnPropertyDescriptor(target, property);
+    },
+    getPrototypeOf(target) {
+      counter.calls += 1;
+      return Reflect.getPrototypeOf(target);
+    },
+    ownKeys(target) {
+      counter.calls += 1;
+      return Reflect.ownKeys(target);
+    }
+  });
+}
+
 const compilationComputeResult: ComputeCommitmentResult = { status: "computed", record: observationFixture() };
 const compilationVerifyResult: VerifyCommitmentResult = { status: "valid" };
 const compilationPort: SecretCommitmentComputePort = {
@@ -229,6 +256,7 @@ describe("secret commitment public record normalization contract", () => {
     const forbiddenFields = inventories.reduce((total, inventory) => total + inventory.forbiddenFields.length, 0);
     const idFieldCount = inventories.reduce((total, inventory) => total + inventory.idFields.length, 0);
     const hexFieldCount = inventories.reduce((total, inventory) => total + inventory.hexFields.length, 0);
+    const authorityRecordClassCount = inventories.filter((inventory) => inventory.hasAuthorityRecordClass).length;
 
     expect(inventories).toHaveLength(3);
     expect(requiredFields).toBe(36);
@@ -239,10 +267,37 @@ describe("secret commitment public record normalization contract", () => {
     expect(forbiddenFields).toBe(5 + 4 + 3);
     expect(idFieldCount * idValidValues.length).toBe(80);
     expect(idFieldCount * idInvalidValues.length).toBe(48);
+    expect(idFieldCount * nonStringRuntimeValues.length).toBe(96);
     expect(hexFieldCount * invalidHexValues.length).toBe(45);
+    expect(hexFieldCount * nonStringRuntimeValues.length).toBe(54);
     expect(inventories.length * invalidKeyVersions.length).toBe(18);
+    expect(inventories.length * nonNumberRuntimeValues.length).toBe(18);
+    expect(inventories.length * nonStringRuntimeValues.length).toBe(18);
+    expect(inventories.length * nonNumberRuntimeValues.length).toBe(18);
+    expect(authorityRecordClassCount * nonStringRuntimeValues.length).toBe(12);
     expect(inventories.length * 2).toBe(6);
     expect(inventories.filter((inventory) => inventory.replacementRecordClass !== undefined)).toHaveLength(3);
+  });
+
+  test("rejects every hostile outer runtime shape without throwing", () => {
+    const cases: { readonly label: string; readonly value: unknown }[] = [
+      { label: "undefined", value: undefined },
+      { label: "null", value: null },
+      { label: "boolean", value: true },
+      { label: "number", value: 1 },
+      { label: "string", value: "record" },
+      { label: "bigint", value: 1n },
+      { label: "symbol", value: Symbol("record") },
+      { label: "function", value: () => undefined },
+      { label: "plain array", value: [] },
+      { label: "populated array", value: [observationFixture()] }
+    ];
+
+    expect(cases).toHaveLength(10);
+    for (const testCase of cases) {
+      expect(() => normalizeSecretCommitmentPublicRecord(testCase.value), testCase.label).not.toThrow();
+      expect(normalizeSecretCommitmentPublicRecord(testCase.value), testCase.label).toBeUndefined();
+    }
   });
 
   for (const inventory of inventories) {
@@ -295,9 +350,10 @@ describe("secret commitment public record normalization contract", () => {
       Object.defineProperty(withEnumerableSymbol, enumerableSymbol, { enumerable: true, value: "symbol" });
       Object.defineProperty(withNonEnumerableSymbol, nonEnumerableSymbol, { enumerable: false, value: "symbol" });
       const wrongPrototype = Object.assign(Object.create(null), inventory.fixture());
-      const transparentProxy = new Proxy(inventory.fixture(), {});
-      const proxyCounter = { calls: 0 };
-      const hostileProxy = throwingProxy(inventory.fixture(), proxyCounter);
+      const transparentCounter = { calls: 0 };
+      const transparentProxy = countingTransparentProxy(inventory.fixture(), transparentCounter);
+      const throwingCounter = { calls: 0 };
+      const hostileProxy = throwingProxy(inventory.fixture(), throwingCounter);
       const cases = [
         { label: "enumerable symbol", value: withEnumerableSymbol },
         { label: "non-enumerable symbol", value: withNonEnumerableSymbol },
@@ -311,7 +367,8 @@ describe("secret commitment public record normalization contract", () => {
         expect(() => normalizeSecretCommitmentPublicRecord(testCase.value), testCase.label).not.toThrow();
         expect(normalizeSecretCommitmentPublicRecord(testCase.value), testCase.label).toBeUndefined();
       }
-      expect(proxyCounter.calls).toBe(0);
+      expect(transparentCounter.calls).toBe(0);
+      expect(throwingCounter.calls).toBe(0);
     });
 
     test(`${inventory.name}: accepts every exact ID scalar-value spelling`, () => {
@@ -337,18 +394,30 @@ describe("secret commitment public record normalization contract", () => {
         for (const value of idInvalidValues) {
           cases.push({ label: `${field} rejects invalid ID`, value: withDataField(inventory.fixture(), field, value) });
         }
+        for (const value of nonStringRuntimeValues) {
+          cases.push({ label: `${field} rejects non-string ID`, value: withDataField(inventory.fixture(), field, value) });
+        }
       }
       for (const field of inventory.hexFields) {
         for (const value of invalidHexValues) {
           cases.push({ label: `${field} rejects invalid hex`, value: withDataField(inventory.fixture(), field, value) });
         }
+        for (const value of nonStringRuntimeValues) {
+          cases.push({ label: `${field} rejects non-string hex`, value: withDataField(inventory.fixture(), field, value) });
+        }
       }
       for (const value of invalidKeyVersions) {
         cases.push({ label: "keyVersion rejects invalid number", value: withDataField(inventory.fixture(), "keyVersion", value) });
       }
+      for (const value of nonNumberRuntimeValues) {
+        cases.push({ label: "keyVersion rejects non-number", value: withDataField(inventory.fixture(), "keyVersion", value) });
+      }
 
       expect(cases).toHaveLength(
-        inventory.idFields.length * 3 + inventory.hexFields.length * 5 + invalidKeyVersions.length
+        inventory.idFields.length * (idInvalidValues.length + nonStringRuntimeValues.length)
+          + inventory.hexFields.length * (invalidHexValues.length + nonStringRuntimeValues.length)
+          + invalidKeyVersions.length
+          + nonNumberRuntimeValues.length
       );
       for (const testCase of cases) {
         expect(normalizeSecretCommitmentPublicRecord(testCase.value), testCase.label).toBeUndefined();
@@ -363,6 +432,28 @@ describe("secret commitment public record normalization contract", () => {
       ];
 
       expect(cases).toHaveLength(3);
+      for (const testCase of cases) {
+        expect(normalizeSecretCommitmentPublicRecord(testCase.value), testCase.label).toBeUndefined();
+      }
+    });
+
+    test(`${inventory.name}: rejects wrong runtime discriminant types`, () => {
+      const cases: { readonly label: string; readonly value: object }[] = [];
+      for (const value of nonStringRuntimeValues) {
+        cases.push({ label: "profile rejects non-string", value: withDataField(inventory.fixture(), "profile", value) });
+      }
+      for (const value of nonNumberRuntimeValues) {
+        cases.push({ label: "contractVersion rejects non-number", value: withDataField(inventory.fixture(), "contractVersion", value) });
+      }
+      if (inventory.hasAuthorityRecordClass) {
+        for (const value of nonStringRuntimeValues) {
+          cases.push({ label: "recordClass rejects non-string", value: withDataField(inventory.fixture(), "recordClass", value) });
+        }
+      }
+
+      const expectedCaseCount = nonStringRuntimeValues.length + nonNumberRuntimeValues.length
+        + (inventory.hasAuthorityRecordClass ? nonStringRuntimeValues.length : 0);
+      expect(cases).toHaveLength(expectedCaseCount);
       for (const testCase of cases) {
         expect(normalizeSecretCommitmentPublicRecord(testCase.value), testCase.label).toBeUndefined();
       }
