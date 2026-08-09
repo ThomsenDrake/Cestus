@@ -1,24 +1,25 @@
 # Secret Commitment Backend And Security Posture
 
 Status: approved umbrella contract; implementation execution is superseded by
-Specifications 16A through 16D.
+Specifications 16A-R2a, 16A-R2b, and 16B through 16D.
 
 ## Approved Implementation Decomposition
 
 This document remains the complete product and safety contract for secret
-commitments. Direct implementation as one factory slice is superseded by four
+commitments. Direct implementation as one factory slice is superseded by five
 approved executable specifications, processed in this exact order:
 
-1. Specification 16A — closed commitment protocol and Secret Service adapter;
-2. Specification 16B — durable mounted key and posture authority;
-3. Specification 16C — encrypted fallback storage and private session backend;
-4. Specification 16D — runtime composition and protected-operation gates.
+1. Specification 16A-R2a — pure commitment protocol and ingestion domain service;
+2. Specification 16A-R2b — authority-owned mutation and Secret Service boundary;
+3. Specification 16B — durable mounted key and posture authority;
+4. Specification 16C — encrypted fallback storage and private session backend;
+5. Specification 16D — runtime composition and protected-operation gates.
 
 The decomposition changes only delivery shape. It does not weaken, defer beyond
 16D, or reinterpret any requirement below. Specifications 17 through 28 remain
-blocked until 16D is integrated and its CI comparison is accepted. The two
-preserved failed Specification 16 candidates are history only and are not
-implementation input for 16A through 16D.
+blocked until 16D is integrated and its CI comparison is accepted. Preserved
+failed Specification 16 and 16A candidates are history only and are not
+implementation input for 16A-R2a through 16D.
 
 ## Desired Behavior
 
