@@ -64,7 +64,12 @@ interface SecretSourceCommitmentService {
 ```
 
 Factory, nested port, nonce function, methods, method inputs, records, byte fields,
-and port results use the integrated trap-safe classifiers before reflection or use.
+and fulfilled port results use the integrated trap-safe classifiers before product
+reflection or use. JavaScript Promise resolution necessarily performs `Get("then")`
+on an outer object returned by `nextNonce`, `computeCommitment`, or
+`verifyCommitment` before the service regains control. That language-mandated outer
+assimilation is the sole exception to zero-trap classification; the service performs
+no additional trap-capable operation before rejecting the fulfilled Proxy.
 The factory closes over exact non-Proxy function references and returns one frozen
 exact service. Production uses exact indexed method types from
 `SecretCommitmentComputePort`; no `any`, `Function`, double cast, string/byte cast,
@@ -83,9 +88,13 @@ here for R2b authority validation. Verify compares all record-carried bindings b
 port use. Payload-only change delegates so the port may return mismatch.
 
 Invalid input/record/nonce/result/binding returns `rejected/invalid-record` without a
-later port call. Throwing nonce returns `unavailable/nonce-unavailable`; throwing
-compute/verify returns `unavailable/backend-unavailable`. Exact permitted compute and
-verify result members propagate as new frozen exact objects.
+later port call. A transparent outer Proxy fulfilled by the nonce or port dependency
+therefore maps to `rejected/invalid-record` after its unavoidable single `then` get.
+A Proxy whose `then` get throws is a rejected dependency: nonce maps to
+`unavailable/nonce-unavailable`, and compute/verify maps to
+`unavailable/backend-unavailable`. Other throwing/rejected nonce and port calls use
+the same respective unavailable mappings. Exact permitted compute and verify result
+members propagate as new frozen exact objects.
 
 ## Observable Acceptance Examples
 
@@ -99,8 +108,12 @@ verify result members propagate as new frozen exact objects.
   builders/parser/normalizer. Manifest and entry cannot substitute one another.
 - Factory and each method generate null/array/prototype/inherited/missing/extra/
   symbol/non-enumerable/accessor/transparent-Proxy/throwing-Proxy cases. Nested port,
-  functions, records, results, and every byte field receive the same relevant cases
-  with zero trap/accessor calls and exact port-call counts.
+  functions, method inputs, records, fulfilled result members, and every byte field
+  receive the same relevant cases with zero trap/accessor calls and exact port-call
+  counts. Separate outer async-result cases prove exactly the one unavoidable
+  Promise-assimilation `then` get: transparent fulfilled Proxy uses the invalid-record
+  mapping, while a throwing `then` get uses the dependency-specific unavailable
+  mapping, with no further trap call.
 - Every permitted compute/verify union member propagates; every wrong status/reason,
   missing/extra/symbol/accessor/Proxy member rejects. Computed results independently
   substitute profile, class, nonce, every public binding, and key reference; only a
