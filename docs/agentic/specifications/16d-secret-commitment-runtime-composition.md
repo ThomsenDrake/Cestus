@@ -53,8 +53,10 @@ for that fallback version unavailable and fails closed; it never selects Secret
 Service, a digest, or another key as a substitute. Secret buffers are cleared after
 failed input and on shutdown.
 
-Compute and verify are injected into ingestion as a narrow service. Source
-observation uses a fresh 32-byte nonce supplied by the approved observing caller and
+Compute and verify are injected into ingestion as a narrow service. Runtime
+composition injects the fresh 32-byte nonce source required by Specification
+16A-R2a; the ingestion service acquires exactly one nonce for each compute attempt,
+and compute-operation callers cannot supply or override it. Source observation
 returns only the exact public record. The service opens no source file and admits no
 evidence. Consume-time calls reread mounted currentness, posture head, selected
 backend/version, activation proof, and referenced-key availability before HMAC.
@@ -103,8 +105,9 @@ ontology truth, PRR/legal gates, and no-fallback-write behavior remain unchanged
 - Route and service calls reject caller-controlled path, passphrase, key, backend
   internals, actor spoofing, generic HMAC/digest, unsupported profiles, and raw
   protected SHA-256.
-- The composed observation service uses exact 16A frames/records and different
-  nonces for same-byte observations; changing any binding invalidates verification.
+- The composed observation service injects the nonce source, uses exact 16A
+  frames/records, rejects any caller nonce input, and produces different nonces for
+  same-byte observations; changing any binding invalidates verification.
 - Standard verification never opens the attached SSD, reads a source file, looks up
   a real credential/secret, downloads a model, invokes a provider, transfers bytes,
   starts a listening server, or performs any PRR/legal/export/destructive action.
