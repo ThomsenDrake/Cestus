@@ -1,12 +1,12 @@
 # Specification 16A-R1 — Superseded Secret Commitment Slice
 
-Status: superseded by approved replacement Specifications 16A-R2a and 16A-R2b.
+Status: superseded by approved replacement Specifications 16A-R2a-R1 and 16A-R2b.
 
 Specification 16A-R1 is not an implementation input. Its product and safety
 requirements remain preserved by the Specification 16 umbrella and are allocated
 without weakening between:
 
-1. `16a-r2a-secret-commitment-protocol.md` — pure protocol, codecs, records, and
+1. `16a-r2a-r1-secret-commitment-protocol.md` — pure protocol, codecs, records, and
    ingestion compute/verify domain service; then
 2. `16a-r2b-secret-commitment-authority.md` — authority-owned key mutation,
    non-exporting backend, and closed product port.
