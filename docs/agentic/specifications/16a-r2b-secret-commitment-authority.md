@@ -1,11 +1,11 @@
 # Specification 16A-R2b — Authority-Owned Secret Commitment Boundary
 
-Status: approved replacement slice 2 of 2. Execute only after 16A-R2a is integrated.
+Status: approved replacement slice 2 of 2. Execute only after 16A-R2a-R1 is integrated.
 
 ## Desired Behavior
 
 Cestus implements the closed non-exporting key mutation and commitment boundary
-over the exact protocol contracts and codecs integrated by Specification 16A-R2a.
+over the exact protocol contracts and codecs integrated by Specification 16A-R2a-R1.
 The product-facing `SecretCommitmentPort` extends
 `SecretCommitmentComputePort` with only `createKey` and `rotateKey`; it therefore
 exports exactly four operations and no generic HMAC, digest, key export,
@@ -259,13 +259,13 @@ never known no-effect. A malformed/wrong lookup result or lookup exception becom
 wrong-length, or throwing HMAC result becomes `unavailable`. No exception or
 diagnostic includes client data or secret material.
 
-Port compute/verify normalization is exact. Compute parses the R2a frame first;
+Port compute/verify normalization is exact. Compute parses the R2a-R1 frame first;
 invalid profile/frame rejects before authority/backend. Authority current-key throw,
 malformed, or unavailable maps to `unavailable/authority-unavailable`; `none` maps
 to `unavailable/key-unavailable`. Backend HMAC missing maps to `key-unavailable`,
 and malformed/throwing/unavailable maps to `backend-unavailable`. A computed record
 is constructed only from parsed public bindings, the authority key reference, and
-one copied 32-byte HMAC, then passes R2a normalization before return.
+one copied 32-byte HMAC, then passes R2a-R1 normalization before return.
 
 Verify normalizes the record and frame first. Profile/class/public-binding mismatch
 returns `rejected/record-reference-invalid` before authority/backend. Authority
@@ -306,7 +306,7 @@ is never substituted for an old reference.
   inherited, accessor, symbol, non-enumerable, extra/missing fields, wrong exact
   reference, wrong HMAC length, and thrown client method without accessor
   invocation, publication, comparison, or leakage.
-- Both exact 16A-R2a profiles compute and verify. A third profile, malformed frame
+- Both exact 16A-R2a-R1 profiles compute and verify. A third profile, malformed frame
   or record, class swap, binding substitution, lost/unavailable key, and comparator
   throw fail closed with the specified result and call counts.
 - Reconstructing only the port never loses authority state. Static/export tests
@@ -320,7 +320,7 @@ is never substituted for an old reference.
 - `packages/agent/src/os-secret-store.ts` only if an indispensable adjacent closed
   client seam is required without changing existing credential behavior
 - `packages/agent/test/os-secret-store.test.ts` only for that adjacent seam
-- Consume but do not modify the integrated 16A-R2a contract, codec, ingestion
+- Consume but do not modify the integrated 16A-R2a-R1 contract, codec, ingestion
   source, or tests.
 - Do not modify package manifests, local-runtime, source scanning, evidence, UI,
   ontology truth, providers, PRR, legal, export, publication, or destructive code.
@@ -332,7 +332,7 @@ is never substituted for an old reference.
 - `docs/agentic/software-factory.md`
 - `.agents/skills/cestus-software-factory/SKILL.md`
 - `docs/agentic/specifications/16-secret-commitment-backend.md`
-- `docs/agentic/specifications/16a-r2a-secret-commitment-protocol.md`
+- `docs/agentic/specifications/16a-r2a-r1-secret-commitment-protocol.md`
 - `packages/agent/src/secret-commitment-contract.ts`
 - `packages/agent/test/secret-commitment-contract.test.ts`
 - `packages/agent/src/os-secret-store.ts`
@@ -365,7 +365,7 @@ dependencies, open a pull request, force-push, or transfer external bytes.
 ## Escalation Conditions
 
 Escalate for port-owned lifecycle/current state, a creation exception classified
-as known no-effect, a key-exporting/generic crypto API, changed 16A-R2a protocol,
+as known no-effect, a key-exporting/generic crypto API, changed 16A-R2a-R1 protocol,
 automatic creation or version selection, real key use, unavailable existing local
 dependencies, scope outside named agent files, or the same concrete failure
 surviving two focused repairs.
