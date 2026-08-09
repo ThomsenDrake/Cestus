@@ -121,17 +121,22 @@ files must import the established Node host primitives from `node:util/types`.
 - Accept bytes only when `isProxy(value)` is false, `isUint8Array(value)` is true,
   and `Object.getPrototypeOf(value) === Uint8Array.prototype`. Buffer instances,
   subclasses, altered or cross-realm prototypes, and typed-array Proxies fail.
-  Capture `Uint8Array.prototype.slice` once as a trusted intrinsic and call it with
-  `Reflect.apply` to create the snapshot inside a fail-closed `try`; do not read or
-  invoke caller-controlled `length`, numeric values, `buffer`, `byteLength`,
-  `byteOffset`, `slice`, `constructor`, or iterator properties while copying. A
-  detached view or intrinsic-copy exception rejects without escaping.
-- After the intrinsic snapshot succeeds, inspect the original non-Proxy byte value's
-  own descriptors without property reads. Its only allowed own keys are canonical
-  decimal indices corresponding exactly to the copied length, and every such member
-  must be an enumerable data descriptor. Reject symbols, holes, added string fields,
-  and shadowed `length`, `buffer`, `slice`, `constructor`, or iterator members without
-  invoking them. All later length and byte reads use only the fresh snapshot.
+  Capture the intrinsic `%TypedArray%.prototype.length` getter and
+  `Uint8Array.prototype.set` once. Obtain the internal length by `Reflect.apply` of
+  that getter inside a fail-closed `try`; a detached view rejects without escaping.
+- Before copying, inspect the original non-Proxy byte value's own keys and descriptors
+  without property reads. Its only allowed own keys are canonical decimal indices
+  `0` through internal-length-minus-one in order, and every such member must be an
+  enumerable data descriptor. Reject symbols, holes, added string fields, and
+  shadowed `length`, `buffer`, `byteLength`, `byteOffset`, `slice`, `set`,
+  `constructor`, or iterator members without invoking them.
+- Allocate a fresh captured-intrinsic `Uint8Array` of the validated internal length,
+  then use `Reflect.apply` of the captured intrinsic `set` with the original as the
+  typed-array source. This non-species copy must be inside a fail-closed `try` and
+  must not read or invoke caller-controlled `length`, numeric values, `buffer`,
+  `byteLength`, `byteOffset`, `slice`, `set`, `constructor`, or iterator properties.
+  Any allocation or intrinsic-copy exception rejects. All later length and byte reads
+  use only the fresh snapshot.
 - Accept an ordinary object only when `isProxy(value)` is false, its prototype is
   exactly `Object.prototype`, every own key is a string in the required set, and
   each own descriptor is enumerable data. Inspect descriptors without reading
@@ -415,10 +420,11 @@ Table generators must assert all of the following without throws or side effects
 - For every byte-bearing argument and nested byte field, reject Buffer, a Uint8Array
   subclass, an altered-prototype Uint8Array, a transferred/detached Uint8Array, and a
   typed-array Proxy. Add own throwing/counter accessors for `length`, `buffer`,
-  `byteLength`, `byteOffset`, `slice`, `constructor`, and `Symbol.iterator`, plus an
-  extra string or symbol member; reject with every counter zero. The real trusted
-  `isProxy`/`isUint8Array` imports are not mocked. A normal zero-length or populated
-  exact Uint8Array still snapshots successfully through the captured intrinsic.
+  `byteLength`, `byteOffset`, `slice`, `set`, `constructor`, and `Symbol.iterator`,
+  plus an extra string or symbol member; reject with every counter zero. The real
+  trusted `isProxy`/`isUint8Array` imports are not mocked. A normal zero-length or
+  populated exact Uint8Array still snapshots successfully through the captured
+  length-getter/allocation/set sequence.
 - For each record class and each 32-byte hex member, test uppercase, odd, short,
   long, and non-hex text. Test zero, negative, fractional, unsafe, infinite, and NaN
   key versions; empty/lone-surrogate IDs; wrong profile/contract/class; every
