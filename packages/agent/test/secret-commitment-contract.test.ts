@@ -312,7 +312,7 @@ describe("secret commitment public record normalization contract", () => {
     });
 
     test(`${inventory.name}: caller mutation cannot affect normalized output`, () => {
-      const input = Object.assign({}, inventory.fixture());
+      const input = { ...inventory.fixture() };
       const normalized = normalizeSecretCommitmentPublicRecord(input);
       const originalWorkspaceId = input.workspaceId;
       input.workspaceId = "changed-after-normalization";
