@@ -119,9 +119,19 @@ files must import the established Node host primitives from `node:util/types`.
   builder/parser/factory/method input, nested `port`, `nextNonce`, both port methods,
   every byte value, every public record, and every port result.
 - Accept bytes only when `isProxy(value)` is false, `isUint8Array(value)` is true,
-  and `Object.getPrototypeOf(value) === Uint8Array.prototype`. Only after those
-  checks may code read length, create a copy, or iterate. Buffer instances,
-  subclasses, cross-shape objects, and typed-array Proxies fail.
+  and `Object.getPrototypeOf(value) === Uint8Array.prototype`. Buffer instances,
+  subclasses, altered or cross-realm prototypes, and typed-array Proxies fail.
+  Capture `Uint8Array.prototype.slice` once as a trusted intrinsic and call it with
+  `Reflect.apply` to create the snapshot inside a fail-closed `try`; do not read or
+  invoke caller-controlled `length`, numeric values, `buffer`, `byteLength`,
+  `byteOffset`, `slice`, `constructor`, or iterator properties while copying. A
+  detached view or intrinsic-copy exception rejects without escaping.
+- After the intrinsic snapshot succeeds, inspect the original non-Proxy byte value's
+  own descriptors without property reads. Its only allowed own keys are canonical
+  decimal indices corresponding exactly to the copied length, and every such member
+  must be an enumerable data descriptor. Reject symbols, holes, added string fields,
+  and shadowed `length`, `buffer`, `slice`, `constructor`, or iterator members without
+  invoking them. All later length and byte reads use only the fresh snapshot.
 - Accept an ordinary object only when `isProxy(value)` is false, its prototype is
   exactly `Object.prototype`, every own key is a string in the required set, and
   each own descriptor is enumerable data. Inspect descriptors without reading
@@ -256,12 +266,73 @@ exactly six own data methods: `computeSourceObservation`,
 `verifySourceObservation`, `computeManifestAuthority`,
 `verifyManifestAuthority`, `computeEntryAuthority`, and `verifyEntryAuthority`.
 
-The method signatures and profile-specific members are identical to the superseded
-R2a contract: observation callers supply workspace, source, boundary, manifest-entry,
-and observed bytes but no nonce; manifest callers supply policy hash, public manifest
-ID, and protected canonical manifest bytes; entry callers additionally supply public
-entry ID and use protected canonical entry bytes. Verify inputs add the matching exact
-record class.
+The factory and six methods have these complete normative contracts; the superseded
+R2a document is not an implementation input:
+
+```ts
+interface CreateSecretSourceCommitmentServiceInput {
+  readonly port: SecretCommitmentComputePort;
+  readonly nextNonce: () => Promise<Uint8Array>;
+}
+
+function createSecretSourceCommitmentService(
+  input: unknown
+): SecretSourceCommitmentService | undefined;
+
+interface SecretSourceCommitmentService {
+  computeSourceObservation(input: {
+    readonly workspaceId: string;
+    readonly sourceCollectionId: string;
+    readonly sourceBoundaryRevision: string;
+    readonly manifestEntryId: string;
+    readonly observedBytes: Uint8Array;
+  }): Promise<ComputeCommitmentResult>;
+  verifySourceObservation(input: {
+    readonly workspaceId: string;
+    readonly sourceCollectionId: string;
+    readonly sourceBoundaryRevision: string;
+    readonly manifestEntryId: string;
+    readonly observedBytes: Uint8Array;
+    readonly record: SourceObservationCommitmentRecord;
+  }): Promise<VerifyCommitmentResult>;
+  computeManifestAuthority(input: {
+    readonly workspaceId: string;
+    readonly sourceCollectionId: string;
+    readonly sourceBoundaryRevision: string;
+    readonly classificationPolicyHash: Uint8Array;
+    readonly publicManifestId: Uint8Array;
+    readonly protectedCanonicalManifestBytes: Uint8Array;
+  }): Promise<ComputeCommitmentResult>;
+  verifyManifestAuthority(input: {
+    readonly workspaceId: string;
+    readonly sourceCollectionId: string;
+    readonly sourceBoundaryRevision: string;
+    readonly classificationPolicyHash: Uint8Array;
+    readonly publicManifestId: Uint8Array;
+    readonly protectedCanonicalManifestBytes: Uint8Array;
+    readonly record: ManifestAuthorityCommitmentRecord;
+  }): Promise<VerifyCommitmentResult>;
+  computeEntryAuthority(input: {
+    readonly workspaceId: string;
+    readonly sourceCollectionId: string;
+    readonly sourceBoundaryRevision: string;
+    readonly classificationPolicyHash: Uint8Array;
+    readonly publicManifestId: Uint8Array;
+    readonly publicEntryId: Uint8Array;
+    readonly protectedCanonicalEntryBytes: Uint8Array;
+  }): Promise<ComputeCommitmentResult>;
+  verifyEntryAuthority(input: {
+    readonly workspaceId: string;
+    readonly sourceCollectionId: string;
+    readonly sourceBoundaryRevision: string;
+    readonly classificationPolicyHash: Uint8Array;
+    readonly publicManifestId: Uint8Array;
+    readonly publicEntryId: Uint8Array;
+    readonly protectedCanonicalEntryBytes: Uint8Array;
+    readonly record: EntryAuthorityCommitmentRecord;
+  }): Promise<VerifyCommitmentResult>;
+}
+```
 
 Observation compute snapshots its exact input synchronously, obtains exactly one
 nonce, snapshots the returned bytes immediately after the await and before any next
@@ -321,7 +392,10 @@ Table generators must assert all of the following without throws or side effects
   through final-byte-minus-one. Alter every prefix byte. Delete, duplicate, displace,
   and add a NUL. Remove and duplicate each required tag. Move each tag to every
   noncanonical position. Alter each tag value and insert an unknown tag at every
-  field boundary. Append trailing material.
+  field boundary. Append trailing material. Supply each invalid runtime profile and
+  pass every valid frame with the other valid profile to prove profile/frame mismatch
+  rejection. For authority frames, test empty, altered, case-changed, truncated, and
+  extended record-class bytes independently of tag structure.
 - For every field, truncate after its tag and after each of its eight length bytes;
   encode a length greater than `Number.MAX_SAFE_INTEGER`, greater than remaining
   bytes, and the all-`ff` overflow value; insert/delete a length byte to prove no
@@ -331,13 +405,20 @@ Table generators must assert all of the following without throws or side effects
   continuation, truncated multibyte, overlong, UTF-8 surrogate, and above U+10FFFF),
   and valid ASCII, embedded NUL, non-BMP, NFC, and distinct NFD round trips. Builder
   inputs reject lone high/low surrogates and preserve valid scalar sequences.
-- For each builder, factory, service method, public record class, and port-result
-  union member, test null, array, non-plain prototype, inherited field, every missing
-  field, every extra field, enumerable and non-enumerable symbols, every
-  non-enumerable string field, and an accessor in every field position whose counter
-  remains zero. Test transparent and throwing/counter Proxy wrappers for the outer
-  object and every nested object, function, record, result, and byte field; all Proxy
-  trap counters remain zero.
+- For each builder input, parser profile/frame argument, normalizer input, factory,
+  service method, public record class, and port-result union member, test null, array,
+  non-plain prototype, inherited field, every missing field, every extra field,
+  enumerable and non-enumerable symbols, every non-enumerable string field, and an
+  accessor in every field position whose counter remains zero. Test transparent and
+  throwing/counter Proxy wrappers for the outer object and every nested object,
+  function, record, result, and byte field; all Proxy trap counters remain zero.
+- For every byte-bearing argument and nested byte field, reject Buffer, a Uint8Array
+  subclass, an altered-prototype Uint8Array, a transferred/detached Uint8Array, and a
+  typed-array Proxy. Add own throwing/counter accessors for `length`, `buffer`,
+  `byteLength`, `byteOffset`, `slice`, `constructor`, and `Symbol.iterator`, plus an
+  extra string or symbol member; reject with every counter zero. The real trusted
+  `isProxy`/`isUint8Array` imports are not mocked. A normal zero-length or populated
+  exact Uint8Array still snapshots successfully through the captured intrinsic.
 - For each record class and each 32-byte hex member, test uppercase, odd, short,
   long, and non-hex text. Test zero, negative, fractional, unsafe, infinite, and NaN
   key versions; empty/lone-surrogate IDs; wrong profile/contract/class; every
@@ -365,7 +446,10 @@ sleeps. Prove separately that:
    returned value; and
 5. two concurrently pending observation computes with independent nonce resolutions
    cannot observe one another's mutable inputs, and an equal nonce content is
-   accepted at most once by one service instance.
+   reserved by an atomic synchronous check-and-add section before either port call,
+   so exactly one is accepted by one service instance even when both nonce promises
+   resolve in the same turn. Once reserved, that nonce remains consumed even if its
+   later builder or port result rejects or is unavailable.
 
 All six methods round trip through a `SecretCommitmentComputePort` fake implemented
 without `any`, double casts, profile-narrower parameters, or production-code fixture
