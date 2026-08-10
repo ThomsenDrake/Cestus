@@ -1,6 +1,12 @@
 # Specification 16A-R2a-R2.2a — Trap-Safe Canonical Bytes
 
-Status: approved replacement slice 1 of 3 for superseded R2.2. Execute after R2.1.
+Status: superseded by approved Specification 16A-R2a-R2.2a-R1.
+
+This document is not implementation input. R2.2a-R1 preserves both package-internal
+functions, the closed limit type, exact limits, fixed non-shared backing policy,
+scope, dependencies, and safety invariants while strengthening mandatory output
+postcondition and test-oracle coverage. Failed R2.2a commits are history only and
+must not be inspected, reused, copied, cherry-picked, merged, amended, or pushed.
 
 ## Desired Behavior
 

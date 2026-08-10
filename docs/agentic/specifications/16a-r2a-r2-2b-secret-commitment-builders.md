@@ -1,12 +1,12 @@
 # Specification 16A-R2a-R2.2b — Exact Secret Commitment Frame Builders
 
 Status: approved replacement slice 2 of 3 for superseded R2.2. Execute only after
-R2.2a integrates.
+R2.2a-R1 integrates.
 
 ## Desired Behavior
 
 Cestus adds the three exact public frame-input contracts and builders to the integrated
-agent contract. Builders consume but do not modify the R2.2a byte module. This slice
+agent contract. Builders consume but do not modify the R2.2a-R1 byte module. This slice
 contains no parser, public-record change, ingestion, key, HMAC, backend, or runtime.
 
 ```ts
@@ -67,10 +67,10 @@ IDs are non-empty Unicode scalar-value sequences with identical UTF-8 fatal roun
 and no normalization, replacement, trimming, or case change. Compute scalar UTF-8 byte
 lengths with checked arithmetic without allocating encoded ID arrays. Reject lone
 surrogates. Before any byte snapshot, frame allocation, encoding, or copy, call
-R2.2a's trusted no-copy length helper for every fixed and payload field, then combine
+R2.2a-R1's trusted no-copy length helper for every fixed and payload field, then combine
 those trusted lengths with prefix/header/class/ID lengths using checked arithmetic.
 Reject a complete length above `8_454_144` at that point. Only an accepted complete
-length permits R2.2a snapshots of every byte field; payload above `8_388_608` and
+length permits R2.2a-R1 snapshots of every byte field; payload above `8_388_608` and
 fixed fields not exactly 32 have already rejected through the length helper. Equal
 limits are accepted. Write valid scalar strings directly into the allocated frame
 with captured `TextEncoder.prototype.encodeInto`; write headers and copied bytes with
@@ -89,7 +89,7 @@ Independent exact fixtures are literal test values, never production-generated:
 ## Observable Acceptance Examples
 
 - A complete test-first inventory compiles against undefined-return builder stubs;
-  R2.1 and R2.2a stay green while exact literals and valid controls fail meaningfully.
+  R2.1 and R2.2a-R1 stay green while exact literals and valid controls fail meaningfully.
 - All three literal builders produce exactly 122, 169, and 207 bytes matching the
   literal hex above.
 - Every builder outer member is generated as missing, extra, inherited,
@@ -120,7 +120,7 @@ Independent exact fixtures are literal test values, never production-generated:
 
 - `packages/agent/src/secret-commitment-contract.ts`
 - `packages/agent/test/secret-commitment-contract.test.ts`
-- Consume but do not modify integrated R2.1 and R2.2a source/tests.
+- Consume but do not modify integrated R2.1 and R2.2a-R1 source/tests.
 - No parser, ingestion, package/config/barrel, key/HMAC/backend/runtime/provider/store,
   evidence/UI/PRR/legal/export/destructive/external/live behavior.
 - Preserve but do not inspect, reuse, copy, cherry-pick, merge, amend, or push the
@@ -130,7 +130,7 @@ Independent exact fixtures are literal test values, never production-generated:
 ## Relevant Context Entry Points
 
 - factory authority files; this specification; Specification 16 frame contract;
-  integrated R2.1 and R2.2a source/tests.
+  integrated R2.1 and R2.2a-R1 source/tests.
 
 ## Risk Lane
 
@@ -156,6 +156,6 @@ transfer, or live action.
 
 ## Escalation Conditions
 
-Escalate for changed frames/exports/limits/backing policy, changes to R2.2a, scope
+Escalate for changed frames/exports/limits/backing policy, changes to R2.2a-R1, scope
 beyond two files, real secret/external action, `GAPS`, or the same failure after two
 focused repairs.

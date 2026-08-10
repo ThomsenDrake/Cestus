@@ -1,6 +1,6 @@
 # Specification 16A-R2a-R2.1 — Public Records And Exact Normalization
 
-Status: approved replacement record slice. Execute before R2.2a.
+Status: approved replacement record slice. Execute before R2.2a-R1.
 
 ## Desired Behavior
 
