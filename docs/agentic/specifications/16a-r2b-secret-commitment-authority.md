@@ -335,7 +335,9 @@ is never substituted for an old reference.
 - `.agents/skills/cestus-software-factory/SKILL.md`
 - `docs/agentic/specifications/16-secret-commitment-backend.md`
 - `docs/agentic/specifications/16a-r2a-r2-1-secret-commitment-records.md`
-- `docs/agentic/specifications/16a-r2a-r2-2-secret-commitment-codecs.md`
+- `docs/agentic/specifications/16a-r2a-r2-2a-secret-commitment-bytes.md`
+- `docs/agentic/specifications/16a-r2a-r2-2b-secret-commitment-builders.md`
+- `docs/agentic/specifications/16a-r2a-r2-2c-secret-commitment-parser.md`
 - `docs/agentic/specifications/16a-r2a-r2-3-secret-source-commitment-service.md`
 - `packages/agent/src/secret-commitment-contract.ts`
 - `packages/agent/test/secret-commitment-contract.test.ts`

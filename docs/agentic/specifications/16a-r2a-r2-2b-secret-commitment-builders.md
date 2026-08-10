@@ -56,17 +56,26 @@ Each builder first uses one shared Proxy-first exact-object classifier. It accep
 a non-null, non-array, non-Proxy exact `Object.prototype` object with exactly the shown
 own enumerable data members and no symbols. It uses descriptor values, never property
 reads. Missing, extra, inherited, accessor, symbol, or non-enumerable members reject
-without traps/accessors.
+without traps/accessors. At module evaluation it captures the trusted
+`node:util/types.isProxy`, `Array.isArray`, exact `Object.prototype`,
+`Object.getPrototypeOf`, `Reflect.ownKeys`, and
+`Object.getOwnPropertyDescriptor`. Missing/malformed captured intrinsics or any
+classifier/reflection exception returns `undefined`; builders never use a live,
+caller-controlled, or fallback classifier/reflection path.
 
 IDs are non-empty Unicode scalar-value sequences with identical UTF-8 fatal round trip
 and no normalization, replacement, trimming, or case change. Compute scalar UTF-8 byte
 lengths with checked arithmetic without allocating encoded ID arrays. Reject lone
-surrogates. After R2.2a snapshots fixed and payload bytes, compute the complete frame
-length and reject above `8_454_144` before frame allocation. Payload above
-`8_388_608` and fixed fields not exactly 32 reject inside R2.2a before snapshot.
-Equal limits are accepted. Write valid scalar strings directly into the allocated
-frame with captured `TextEncoder.prototype.encodeInto`; write headers and copied bytes
-with captured intrinsics. Catch encoding/allocation/copy failure and return undefined.
+surrogates. Before any byte snapshot, frame allocation, encoding, or copy, call
+R2.2a's trusted no-copy length helper for every fixed and payload field, then combine
+those trusted lengths with prefix/header/class/ID lengths using checked arithmetic.
+Reject a complete length above `8_454_144` at that point. Only an accepted complete
+length permits R2.2a snapshots of every byte field; payload above `8_388_608` and
+fixed fields not exactly 32 have already rejected through the length helper. Equal
+limits are accepted. Write valid scalar strings directly into the allocated frame
+with captured `TextEncoder.prototype.encodeInto`; write headers and copied bytes with
+captured intrinsics. Catch classifier/reflection/encoding/allocation/copy failure and
+return undefined.
 
 Independent exact fixtures are literal test values, never production-generated:
 
@@ -93,10 +102,19 @@ Independent exact fixtures are literal test values, never production-generated:
   zero/populated fixed canonical views and reject payload limit plus one. Each builder
   exercises payload and complete-frame minus one/equal/plus one using independent
   expected length calculations.
+- Across all nine byte-field occurrences (two observation, three manifest, four
+  entry), generate Buffer, Uint8Array subclass, altered/cross-realm prototype,
+  detached backing, transparent/throwing Proxy, SharedArrayBuffer-backed, and
+  resizable/growable-backed cases. Every supported fixed-length and length-tracking
+  backing form rejects. Counts are asserted per builder and per field; feature
+  branches assert their supported-case counts and never silently omit one.
 - Frame allocation, encodeInto, and copied-field write failures return undefined
-  without throw. An over-limit frame proves frame allocation and encoding are not
-  called. Production builders never read caller byte properties or reclassify through
-  a fallback path.
+  without throw. Dynamic module seams make each captured outer classifier/reflection
+  operation throw and prove `undefined` without accessor/Proxy invocation. An
+  over-limit frame proves zero byte-snapshot allocation/copy, frame-allocation,
+  encoding, or copied-field-write calls; an equal-limit frame reaches those seams.
+  Production builders never read caller byte properties or reclassify through a
+  fallback path.
 
 ## Allowed Scope
 
