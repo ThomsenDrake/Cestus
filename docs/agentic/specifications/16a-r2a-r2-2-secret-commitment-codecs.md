@@ -1,7 +1,13 @@
 # Specification 16A-R2a-R2.2 — Trap-Safe Bytes And Exact Frame Codecs
 
-Status: approved decomposition slice 2 of 3; human resource and backing-buffer
-policy selected. Implementation requires fresh Sol approval of this revision.
+Status: superseded by approved replacement Specifications 16A-R2a-R2.2a,
+16A-R2a-R2.2b, and 16A-R2a-R2.2c.
+
+This document is not implementation input. Its approved exports, literal frames,
+selected limits, fixed non-shared backing policy, product requirements, and safety
+invariants are allocated without weakening across the three replacements. The failed
+R2.2 candidate at `db1c3404` and checkpoint `0be31114` are history only and must not
+be inspected, reused, copied, cherry-picked, merged, amended, or pushed.
 
 ## Desired Behavior
 

@@ -1,6 +1,7 @@
 # Specification 16A-R2a-R2.3 — Nonce-Owning Ingestion Service
 
-Status: approved replacement slice 3 of 3. Execute only after R2.1 and R2.2 integrate.
+Status: approved replacement slice 5 of 5. Execute only after R2.1 and R2.2a
+through R2.2c integrate.
 
 ## Desired Behavior
 
@@ -104,7 +105,7 @@ members propagate as new frozen exact objects.
   inspects the inventory and meaningful red failures; missing inventory is a sizing
   exception, not repair work.
 - All six operations succeed through the strict fake. Frames observed by the fake
-  equal independent R2.2 literal fixtures; expected frames never come from production
+  equal independent R2.2b literal fixtures; expected frames never come from production
   builders/parser/normalizer. Manifest and entry cannot substitute one another.
 - Factory and each method generate null/array/prototype/inherited/missing/extra/
   symbol/non-enumerable/accessor/transparent-Proxy/throwing-Proxy cases. Nested port,
@@ -134,7 +135,7 @@ members propagate as new frozen exact objects.
 
 - `packages/ingestion/src/secret-source-commitment.ts`
 - `packages/ingestion/test/secret-source-commitment.test.ts`
-- Consume but do not modify integrated R2.1/R2.2 agent source/tests.
+- Consume but do not modify integrated R2.1/R2.2a-R2.2c agent source/tests.
 - No package/config/barrel, source scanning, evidence, UI, ontology, provider, store,
   runtime, PRR, legal, export, publication, or destructive behavior.
 - Preserve and do not inspect, reuse, copy, cherry-pick, merge, amend, or push failed

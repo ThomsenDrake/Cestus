@@ -1,11 +1,13 @@
 # Specification 16A-R2b — Authority-Owned Secret Commitment Boundary
 
-Status: approved authority slice. Execute only after 16A-R2a-R2.1 through R2.3 are integrated.
+Status: approved authority slice. Execute only after 16A-R2a-R2.1, R2.2a through
+R2.2c, and R2.3 are integrated.
 
 ## Desired Behavior
 
 Cestus implements the closed non-exporting key mutation and commitment boundary
-over the exact protocol contracts and codecs integrated by Specifications 16A-R2a-R2.1 through R2.3.
+over the exact protocol contracts and codecs integrated by Specifications
+16A-R2a-R2.1, R2.2a through R2.2c, and R2.3.
 The product-facing `SecretCommitmentPort` extends
 `SecretCommitmentComputePort` with only `createKey` and `rotateKey`; it therefore
 exports exactly four operations and no generic HMAC, digest, key export,
@@ -259,7 +261,7 @@ never known no-effect. A malformed/wrong lookup result or lookup exception becom
 wrong-length, or throwing HMAC result becomes `unavailable`. No exception or
 diagnostic includes client data or secret material.
 
-Port compute/verify normalization is exact. Compute parses the integrated R2.2 frame first;
+Port compute/verify normalization is exact. Compute parses the integrated R2.2c frame first;
 invalid profile/frame rejects before authority/backend. Authority current-key throw,
 malformed, or unavailable maps to `unavailable/authority-unavailable`; `none` maps
 to `unavailable/key-unavailable`. Backend HMAC missing maps to `key-unavailable`,
@@ -306,7 +308,7 @@ is never substituted for an old reference.
   inherited, accessor, symbol, non-enumerable, extra/missing fields, wrong exact
   reference, wrong HMAC length, and thrown client method without accessor
   invocation, publication, comparison, or leakage.
-- Both exact integrated R2.2 profiles compute and verify. A third profile, malformed frame
+- Both exact integrated R2.2b/R2.2c profiles compute and verify. A third profile, malformed frame
   or record, class swap, binding substitution, lost/unavailable key, and comparator
   throw fail closed with the specified result and call counts.
 - Reconstructing only the port never loses authority state. Static/export tests
@@ -320,7 +322,7 @@ is never substituted for an old reference.
 - `packages/agent/src/os-secret-store.ts` only if an indispensable adjacent closed
   client seam is required without changing existing credential behavior
 - `packages/agent/test/os-secret-store.test.ts` only for that adjacent seam
-- Consume but do not modify the integrated R2.1-R2.3 contract, codec, ingestion
+- Consume but do not modify the integrated R2.1, R2.2a-R2.2c, and R2.3 contract, codec, ingestion
   source, or tests.
 - Do not modify package manifests, local-runtime, source scanning, evidence, UI,
   ontology truth, providers, PRR, legal, export, publication, or destructive code.
@@ -367,7 +369,7 @@ dependencies, open a pull request, force-push, or transfer external bytes.
 ## Escalation Conditions
 
 Escalate for port-owned lifecycle/current state, a creation exception classified
-as known no-effect, a key-exporting/generic crypto API, changed integrated R2.1-R2.3 protocol,
+as known no-effect, a key-exporting/generic crypto API, changed integrated R2.1/R2.2a-R2.2c/R2.3 protocol,
 automatic creation or version selection, real key use, unavailable existing local
 dependencies, scope outside named agent files, or the same concrete failure
 surviving two focused repairs.
