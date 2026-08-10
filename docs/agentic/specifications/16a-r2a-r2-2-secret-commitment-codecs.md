@@ -1,7 +1,7 @@
 # Specification 16A-R2a-R2.2 — Trap-Safe Bytes And Exact Frame Codecs
 
-Status: approved decomposition slice 2 of 3; implementation is blocked until the
-human selects the resource ceiling and shared/resizable-buffer policy below.
+Status: approved decomposition slice 2 of 3; human resource and backing-buffer
+policy selected. Implementation requires fresh Sol approval of this revision.
 
 ## Desired Behavior
 
@@ -95,6 +95,13 @@ preflight, fresh captured `Uint8Array`, and captured `Uint8Array.prototype.set` 
 `Reflect.apply`; never use species `slice`, iteration, spread, `Array.from`,
 `instanceof`, or caller `length`, buffer, constructor, iterator, slice, or set.
 
+Only canonical Uint8Arrays backed by a fixed, non-shared `ArrayBuffer` are accepted.
+Use the captured `%TypedArray%.prototype.buffer` getter and trusted intrinsic backing-
+store classifiers/getters after Proxy rejection; never read caller `buffer` or backing-
+store properties. Reject every `SharedArrayBuffer` backing, including a growable or
+fixed shared backing. Reject every resizable/growable backing, including a fixed-
+length view over a resizable buffer. Backing-store classification failure rejects.
+
 Parser first performs the same Proxy-first canonical-Uint8Array classification and
 obtains only the trusted intrinsic internal byte length. Before allocating or copying
 any frame byte, it rejects a complete frame length over the selected complete-frame
@@ -104,21 +111,27 @@ rejects payload-ceiling, unsafe, overflowing, or remaining-byte lengths before f
 allocation, and catches every allocation/copy failure. It returns only a frozen exact
 discriminated member with fresh arrays.
 
-### Required human choices before implementation
+### Selected resource and backing-buffer policy
 
-The human must select both:
+The maximum accepted tag-6/tag-8 payload is exactly `8_388_608` bytes. The maximum
+accepted complete frame is exactly `8_454_144` bytes. These are internal normative
+limits, not additional exports.
 
-1. One finite maximum accepted complete frame size and maximum tag-6/tag-8 payload
-   size, in bytes. Builders reject inputs exceeding either limit before allocation;
-   parser rejects a frame or declared payload exceeding either limit before field
-   allocation. The implementation may not invent a limit.
-2. Whether SharedArrayBuffer-backed and resizable/growable ArrayBuffer-backed
-   Uint8Arrays are rejected, or accepted with explicitly defined snapshot semantics.
-   The implementation may not infer atomicity. Fail-closed rejection is the default
-   recommendation but is not approved until the human decides.
+Builders obtain trusted intrinsic byte lengths before snapshotting. A payload length
+above `8_388_608` rejects before payload snapshot/allocation. Builders compute the
+complete canonical frame length with checked safe-integer arithmetic and reject a
+length above `8_454_144` before allocating the complete frame. The parser obtains the
+trusted intrinsic frame length and rejects above `8_454_144` before snapshotting or
+allocating any frame byte; after structural length decoding, tag 6 or 8 above
+`8_388_608` rejects before field allocation. Equal-to-limit values remain permitted.
 
-The selected values are written directly into this executable specification and
-receive a new fresh Sol review before any test or product edit.
+Every `SharedArrayBuffer`-backed view and every view over a resizable/growable backing
+buffer is rejected, including fixed-length views. No concurrent, pointwise, or atomic
+snapshot semantics are authorized. Only canonical Uint8Arrays backed by fixed,
+non-shared ArrayBuffers can proceed to descriptor preflight and snapshot.
+
+These selected values and rejection semantics require a fresh Sol review before any
+test or product edit.
 
 ## Observable Acceptance Examples
 
@@ -154,8 +167,10 @@ receive a new fresh Sol review before any test or product edit.
   Buffer, subclass, altered
   prototype, detached view, Proxy, extras, symbols, and shadowed accessors with zero
   trap/accessor calls. Normal zero/populated exact bytes snapshot. Tests exercise the
-  selected shared/resizable policy and both resource ceilings exactly at minus one,
-  equal, and plus one.
+  selected shared/resizable rejection policy and both resource ceilings exactly at
+  minus one, equal, and plus one. Tests include fixed and length-tracking views over a
+  resizable ArrayBuffer when the runtime supports them, fixed and growable
+  SharedArrayBuffer backing when supported, and ordinary fixed ArrayBuffer controls.
 - Builders snapshot caller bytes and parser results contain independent arrays.
   Allocation and intrinsic-copy failure seams return `undefined`, never throw.
 
@@ -186,13 +201,13 @@ Red. This is a hostile byte/cryptographic frame boundary using public synthetic 
 
 ## Integration Verification
 
-After both human choices, fresh-Sol approval, implementation, and focused checks,
+After fresh-Sol approval of the selected policy, implementation, and focused checks,
 update local `neo`, obtain fresh Sol `ship`, run `npm run verify` exactly once, and
 integrate only without candidate-caused regression. No install, push, external
 transfer, or live action.
 
 ## Escalation Conditions
 
-Escalate until both human choices are explicit; for changed frames/records, missing
-trusted classifiers, scope beyond two files, real secret/external action, `GAPS`, or
-the same failure after two focused repairs.
+Escalate for changed frames/records/selected limits/backing policy, missing trusted
+classifiers, scope beyond two files, real secret/external action, `GAPS`, or the same
+failure after two focused repairs.
