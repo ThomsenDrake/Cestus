@@ -1,29 +1,31 @@
 # Secret Commitment Backend And Security Posture
 
 Status: approved umbrella contract; implementation execution is superseded by
-Specifications 16A-R2a-R2.1 through R2.3, 16A-R2b, and 16B through 16D.
+Specifications 16A-R2a-R2.1, R2.2a through R2.2c, R2.3, 16A-R2b, and 16B
+through 16D.
 
 ## Approved Implementation Decomposition
 
 This document remains the complete product and safety contract for secret
-commitments. Direct implementation as one factory slice is superseded by seven
-approved delivery specifications, processed in this exact order. R2.2 document
-approval does not authorize implementation: its two explicit human policy choices
-must be incorporated and receive a new fresh-Sol approval first.
+commitments. Direct implementation as one factory slice is superseded by nine
+approved delivery specifications, processed in this exact order.
 
 1. Specification 16A-R2a-R2.1 — public records and exact normalization;
-2. Specification 16A-R2a-R2.2 — trap-safe bytes and exact frame codecs;
-3. Specification 16A-R2a-R2.3 — nonce-owning ingestion service;
-4. Specification 16A-R2b — authority-owned mutation and Secret Service boundary;
-5. Specification 16B — durable mounted key and posture authority;
-6. Specification 16C — encrypted fallback storage and private session backend;
-7. Specification 16D — runtime composition and protected-operation gates.
+2. Specification 16A-R2a-R2.2a — internal trap-safe canonical-byte snapshots;
+3. Specification 16A-R2a-R2.2b — exact public frame builders;
+4. Specification 16A-R2a-R2.2c — exact frame parser;
+5. Specification 16A-R2a-R2.3 — nonce-owning ingestion service;
+6. Specification 16A-R2b — authority-owned mutation and Secret Service boundary;
+7. Specification 16B — durable mounted key and posture authority;
+8. Specification 16C — encrypted fallback storage and private session backend;
+9. Specification 16D — runtime composition and protected-operation gates.
 
 The decomposition changes only delivery shape. It does not weaken, defer beyond
 16D, or reinterpret any requirement below. Specifications 17 through 28 remain
 blocked until 16D is integrated and its CI comparison is accepted. Preserved
 failed Specification 16 and 16A candidates are history only and are not
-implementation input for 16A-R2a-R2.1 through 16D.
+implementation input for 16A-R2a-R2.1 through 16D. The superseded R2.2 document
+and its preserved candidates are likewise history only, not implementation input.
 
 ## Desired Behavior
 
