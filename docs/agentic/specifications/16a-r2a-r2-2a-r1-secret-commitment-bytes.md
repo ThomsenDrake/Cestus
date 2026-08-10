@@ -73,16 +73,21 @@ occurs only after the unchanged input resource and pre-allocation ordering gates
   undefined-return stubs. Typecheck and factory validation pass. Valid length,
   snapshot, correct-allocation, correct-copy, and postcondition controls fail
   meaningfully while rejection controls pass.
-- A fresh Sol checkpoint review inspects the complete red diff and returns `proceed`
-  before product behavior. Missing inventory or an oracle that cannot observe the
-  production module is a checkpoint sizing exception, not an implementation repair.
+- Primary Sol inspects the complete checkpoint diff and inventory counts, reruns the
+  focused red suite, typecheck, factory validation, and diff check, and records the
+  exact meaningful failures before any checkpoint review. A fresh Sol checkpoint
+  reviewer then inspects that exact red diff/evidence and returns `proceed` before
+  product behavior. Missing inventory or an oracle that cannot observe the production
+  module is a checkpoint sizing exception, not an implementation repair.
 - A dynamic import of the actual byte-module namespace has exactly the two approved
   runtime keys. The actual agent barrel has neither runtime function. No expected
   namespace is synthesized from production imports. A compile-time negative barrel
   assertion also proves the internal limit type is not re-exported.
 - Fixed canonical controls cover lengths 0, 1, 31, and 32 and both inclusive limits
-  at minus one/equal; exact-32 and payload/frame plus-one rejection proves zero
-  output-constructor and copy calls before rejection.
+  at minus one/equal. Under the exact `32` rule, lengths 0, 1, and 31 reject as well
+  as 33. Exact-32 lower/upper rejection and payload/frame plus-one rejection prove
+  zero `Reflect.ownKeys`, output-constructor, and copy calls; equal-limit controls
+  prove each instrumented seam is reached.
 - Existing Buffer, subclass, altered/cross-realm prototype, detached, Proxy,
   accessor, extra-key, shadowed property, noncanonical descriptor, shared backing,
   and resizable/growable backing matrices remain complete and count-asserted.
@@ -90,11 +95,13 @@ occurs only after the unchanged input resource and pre-allocation ordering gates
   wrong length; wrong prototype; input-object alias; input-backing alias;
   fixed SharedArrayBuffer backing; resizable ArrayBuffer backing; growable
   SharedArrayBuffer backing; detached backing; extra own string key; extra symbol
-  key; noncanonical descriptor when constructible; and
+  key; transparent output Proxy; throwing output Proxy; noncanonical descriptor when
+  constructible; and
   a separate exact canonical output control. Every malformed case returns
-  `undefined` without throw. The inventory asserts twelve unconditional constructor
-  cases (eleven malformed plus the control) and one additional supported-runtime
-  noncanonical-descriptor case when it is constructible.
+  `undefined` without throw. Both output-Proxy cases assert zero trap calls. The
+  inventory asserts fourteen unconditional constructor cases (thirteen malformed
+  plus the control) and one additional supported-runtime noncanonical-descriptor case
+  when it is constructible.
 - Under independently reset fresh module loads, captured copy implementations cover:
   throw, no-op, prefix-only partial copy, suffix-only partial copy, one wrong byte,
   all wrong bytes, and an exact-copy control. Inputs contain distinct nonzero bytes
@@ -136,9 +143,10 @@ secret, runtime, external transfer, or live action is authorized.
 - `npm run factory:check`
 - `git diff --check`
 
-The checkpoint must have asserted inventory counts, typecheck and factory success,
-and meaningful red before a fresh Sol checkpoint `proceed`. After implementation,
-all targeted commands exit zero using the existing local dependencies.
+Primary Sol must inspect and rerun the checkpoint, confirm asserted inventory counts,
+typecheck/factory/diff-check success and meaningful red, then obtain a fresh Sol
+checkpoint `proceed`. After implementation, all targeted commands exit zero using
+the existing local dependencies.
 
 ## Integration Verification
 
