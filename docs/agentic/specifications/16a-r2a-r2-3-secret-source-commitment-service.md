@@ -1,7 +1,7 @@
 # Specification 16A-R2a-R2.3 — Nonce-Owning Ingestion Service
 
-Status: approved replacement slice 5 of 5. Execute only after R2.1 and R2.2a
-through R2.2c integrate.
+Status: approved replacement slice 5 of 5. Execute only after R2.1, R2.2a-R1,
+R2.2b, and R2.2c integrate.
 
 ## Desired Behavior
 
@@ -135,7 +135,7 @@ members propagate as new frozen exact objects.
 
 - `packages/ingestion/src/secret-source-commitment.ts`
 - `packages/ingestion/test/secret-source-commitment.test.ts`
-- Consume but do not modify integrated R2.1/R2.2a-R2.2c agent source/tests.
+- Consume but do not modify integrated R2.1/R2.2a-R1/R2.2b/R2.2c agent source/tests.
 - No package/config/barrel, source scanning, evidence, UI, ontology, provider, store,
   runtime, PRR, legal, export, publication, or destructive behavior.
 - Preserve and do not inspect, reuse, copy, cherry-pick, merge, amend, or push failed

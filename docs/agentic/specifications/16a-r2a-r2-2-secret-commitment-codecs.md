@@ -1,12 +1,12 @@
 # Specification 16A-R2a-R2.2 — Trap-Safe Bytes And Exact Frame Codecs
 
-Status: superseded by approved replacement Specifications 16A-R2a-R2.2a,
+Status: superseded by approved replacement Specifications 16A-R2a-R2.2a-R1,
 16A-R2a-R2.2b, and 16A-R2a-R2.2c.
 
 This document is not implementation input. Its approved exports, literal frames,
 selected limits, fixed non-shared backing policy, product requirements, and safety
 invariants are allocated without weakening across the three replacements. The failed
-R2.2 candidate at `db1c3404` and checkpoint `0be31114` are history only and must not
+R2.2/R2.2a candidates and checkpoints are history only and must not
 be inspected, reused, copied, cherry-picked, merged, amended, or pushed.
 
 ## Desired Behavior

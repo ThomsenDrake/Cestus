@@ -1,13 +1,13 @@
 # Specification 16A-R2b — Authority-Owned Secret Commitment Boundary
 
-Status: approved authority slice. Execute only after 16A-R2a-R2.1, R2.2a through
-R2.2c, and R2.3 are integrated.
+Status: approved authority slice. Execute only after 16A-R2a-R2.1, R2.2a-R1,
+R2.2b, R2.2c, and R2.3 are integrated.
 
 ## Desired Behavior
 
 Cestus implements the closed non-exporting key mutation and commitment boundary
 over the exact protocol contracts and codecs integrated by Specifications
-16A-R2a-R2.1, R2.2a through R2.2c, and R2.3.
+16A-R2a-R2.1, R2.2a-R1, R2.2b, R2.2c, and R2.3.
 The product-facing `SecretCommitmentPort` extends
 `SecretCommitmentComputePort` with only `createKey` and `rotateKey`; it therefore
 exports exactly four operations and no generic HMAC, digest, key export,
@@ -322,7 +322,7 @@ is never substituted for an old reference.
 - `packages/agent/src/os-secret-store.ts` only if an indispensable adjacent closed
   client seam is required without changing existing credential behavior
 - `packages/agent/test/os-secret-store.test.ts` only for that adjacent seam
-- Consume but do not modify the integrated R2.1, R2.2a-R2.2c, and R2.3 contract, codec, ingestion
+- Consume but do not modify the integrated R2.1, R2.2a-R1, R2.2b, R2.2c, and R2.3 contract, codec, ingestion
   source, or tests.
 - Do not modify package manifests, local-runtime, source scanning, evidence, UI,
   ontology truth, providers, PRR, legal, export, publication, or destructive code.
@@ -335,7 +335,7 @@ is never substituted for an old reference.
 - `.agents/skills/cestus-software-factory/SKILL.md`
 - `docs/agentic/specifications/16-secret-commitment-backend.md`
 - `docs/agentic/specifications/16a-r2a-r2-1-secret-commitment-records.md`
-- `docs/agentic/specifications/16a-r2a-r2-2a-secret-commitment-bytes.md`
+- `docs/agentic/specifications/16a-r2a-r2-2a-r1-secret-commitment-bytes.md`
 - `docs/agentic/specifications/16a-r2a-r2-2b-secret-commitment-builders.md`
 - `docs/agentic/specifications/16a-r2a-r2-2c-secret-commitment-parser.md`
 - `docs/agentic/specifications/16a-r2a-r2-3-secret-source-commitment-service.md`
@@ -371,7 +371,7 @@ dependencies, open a pull request, force-push, or transfer external bytes.
 ## Escalation Conditions
 
 Escalate for port-owned lifecycle/current state, a creation exception classified
-as known no-effect, a key-exporting/generic crypto API, changed integrated R2.1/R2.2a-R2.2c/R2.3 protocol,
+as known no-effect, a key-exporting/generic crypto API, changed integrated R2.1/R2.2a-R1/R2.2b/R2.2c/R2.3 protocol,
 automatic creation or version selection, real key use, unavailable existing local
 dependencies, scope outside named agent files, or the same concrete failure
 surviving two focused repairs.

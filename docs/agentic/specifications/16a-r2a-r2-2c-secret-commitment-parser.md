@@ -1,12 +1,12 @@
 # Specification 16A-R2a-R2.2c — Exact Secret Commitment Frame Parser
 
 Status: approved replacement slice 3 of 3 for superseded R2.2. Execute only after
-R2.2a and R2.2b integrate.
+R2.2a-R1 and R2.2b integrate.
 
 ## Desired Behavior
 
 Cestus adds the exact parser and parsed-frame union to the integrated public agent
-contract. It consumes but does not modify R2.1 records, R2.2a bytes, or R2.2b builders.
+contract. It consumes but does not modify R2.1 records, R2.2a-R1 bytes, or R2.2b builders.
 
 ```ts
 type ParsedSecretCommitmentFrame =
@@ -28,7 +28,7 @@ function parseSecretCommitmentFrame(
 ```
 
 The accepted frames are exactly the R2.2b observation, manifest, and entry frame
-formats and literal bytes. The parser first calls R2.2a's frame snapshot. Therefore a
+formats and literal bytes. The parser first calls R2.2a-R1's frame snapshot. Therefore a
 Proxy, noncanonical view/backing, detached view, or trusted length over `8_454_144`
 rejects before frame allocation/copy. It recognizes only the two exact ASCII prefixes
 and one NUL; validates complete canonical tag order/count and every eight-byte
@@ -50,7 +50,7 @@ parser test never calls a production builder to create expected input or output.
 ## Observable Acceptance Examples
 
 - Before parser behavior, an asserted requirement-to-generator inventory compiles
-  against an undefined-return parser stub. Integrated R2.1/R2.2a/R2.2b remain green;
+  against an undefined-return parser stub. Integrated R2.1/R2.2a-R1/R2.2b remain green;
   exact literals, valid UTF-8, valid limits, and snapshots fail meaningfully.
 - All three literal frames parse to exact frozen plain objects with exact own keys,
   profile/class/IDs, and fresh byte arrays. Input mutation after synchronous return
@@ -67,7 +67,7 @@ parser test never calls a production builder to create expected input or output.
   altered, truncated, and extended bytes. Each ID occurrence covers ASCII, embedded
   NUL, non-BMP, NFC, distinct NFD, empty, unexpected continuation, truncated
   multibyte, overlong, surrogate encoding, and above U+10FFFF.
-- Parser input repeats R2.2a hostile view/backing controls at the public boundary with
+- Parser input repeats R2.2a-R1 hostile view/backing controls at the public boundary with
   zero trap/accessor calls. Complete-frame and tag-6/tag-8 payload limits are tested at
   minus one/equal/plus one; plus one proves no snapshot/field allocation/copy at the
   prohibited stage.
@@ -79,7 +79,7 @@ parser test never calls a production builder to create expected input or output.
 
 - `packages/agent/src/secret-commitment-contract.ts`
 - `packages/agent/test/secret-commitment-contract.test.ts`
-- Consume but do not modify integrated R2.1, R2.2a, or R2.2b source/tests.
+- Consume but do not modify integrated R2.1, R2.2a-R1, or R2.2b source/tests.
 - No builder/frame change, ingestion, package/config/barrel, key/HMAC/backend/runtime,
   provider/store/network/evidence/UI/PRR/legal/export/destructive/live behavior.
 - Preserve but do not inspect, reuse, copy, cherry-pick, merge, amend, or push the
@@ -89,7 +89,7 @@ parser test never calls a production builder to create expected input or output.
 ## Relevant Context Entry Points
 
 - factory authority files; this specification; Specification 16 frame contract;
-  integrated R2.1/R2.2a/R2.2b source/tests.
+  integrated R2.1/R2.2a-R1/R2.2b source/tests.
 
 ## Risk Lane
 
