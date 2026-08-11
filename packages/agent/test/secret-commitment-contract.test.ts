@@ -794,8 +794,8 @@ describe("secret commitment frame-builder checkpoint inventory", () => {
           throw new Error("outer Proxy trap must not run");
         }
       });
-      const shapes: readonly unknown[] = [null, undefined, 1, "input", true, () => undefined, [], new Date(), new Map(), Object.create(null), transparent, throwing];
-      expect(shapes).toHaveLength(12);
+      const shapes: readonly unknown[] = [null, undefined, 1, "input", true, () => undefined, [], {}, new Date(), new Map(), Object.create(null), transparent, throwing];
+      expect(shapes).toHaveLength(13);
       for (const shape of shapes) {
         expect(inventory.builder(shape)).toBeUndefined();
       }
@@ -910,7 +910,7 @@ interface FreshFrameModule {
 async function withFreshFrameModule<Result>(
   mock: {
     readonly isProxy?: ((value: object) => boolean) | null;
-    readonly byteFailure?: { readonly phase: "length" | "snapshot"; readonly occurrence: number; readonly outcome: "throw" | "undefined" | "malformed" };
+    readonly byteFailure?: { readonly phase: "length" | "snapshot"; readonly occurrence: number; readonly outcome: "throw" | "undefined" };
   },
   run: (module: FreshFrameModule, byteCalls: { length: number; snapshot: number }) => Promise<Result> | Result
 ): Promise<Result> {
@@ -927,7 +927,7 @@ async function withFreshFrameModule<Result>(
         if (mock.byteFailure.outcome === "throw") {
           throw new Error("test-owned trusted-length failure");
         }
-        return mock.byteFailure.outcome === "undefined" ? undefined : 31;
+        return undefined;
       }
       return value instanceof Uint8Array ? value.length : undefined;
     },
@@ -937,7 +937,7 @@ async function withFreshFrameModule<Result>(
         if (mock.byteFailure.outcome === "throw") {
           throw new Error("test-owned snapshot failure");
         }
-        return mock.byteFailure.outcome === "undefined" ? undefined : {};
+        return undefined;
       }
       return value instanceof Uint8Array ? Uint8Array.from(value) : undefined;
     }
@@ -969,7 +969,7 @@ describe("secret commitment frame-builder production-bound failure seams", () =>
   for (const inventory of frameInventories) {
     const byteFields = [...inventory.fixedByteFields, inventory.payloadField];
     for (const [index, field] of byteFields.entries()) {
-      for (const outcome of ["throw", "undefined", "malformed"] as const) {
+      for (const outcome of ["throw", "undefined"] as const) {
         test(`${inventory.name}: trusted length ${outcome} at ${field} stops before snapshots`, async () => {
           await withFreshFrameModule({ byteFailure: { phase: "length", occurrence: index + 1, outcome } }, (module, calls) => {
             expect(module[inventory.builder === buildSourceObservationFrame ? "buildSourceObservationFrame" : inventory.builder === buildManifestAuthorityFrame ? "buildManifestAuthorityFrame" : "buildEntryAuthorityFrame"](inventory.fixture())).toBeUndefined();
@@ -1030,6 +1030,39 @@ async function withThrowingCapturedOuterOperation<Result>(
   }
 }
 
+async function withUnavailableCapturedOuterOperation<Result>(
+  operation: CapturedOuterOperation,
+  availability: "missing" | "malformed",
+  run: (module: FreshFrameModule) => Promise<Result> | Result
+): Promise<Result> {
+  const originals = {
+    isArray: Array.isArray,
+    getPrototypeOf: Object.getPrototypeOf,
+    ownKeys: Reflect.ownKeys,
+    getOwnPropertyDescriptor: Object.getOwnPropertyDescriptor
+  };
+  const replacement = availability === "missing" ? undefined : 0;
+  try {
+    if (operation === "Array.isArray") {
+      Object.defineProperty(Array, "isArray", { configurable: true, value: replacement });
+    } else if (operation === "Object.getPrototypeOf") {
+      Object.defineProperty(Object, "getPrototypeOf", { configurable: true, value: replacement });
+    } else if (operation === "Reflect.ownKeys") {
+      Object.defineProperty(Reflect, "ownKeys", { configurable: true, value: replacement });
+    } else {
+      Object.defineProperty(Object, "getOwnPropertyDescriptor", { configurable: true, value: replacement });
+    }
+    vi.resetModules();
+    return await run(await import("../src/secret-commitment-contract.js"));
+  } finally {
+    Object.defineProperty(Array, "isArray", { configurable: true, value: originals.isArray });
+    Object.defineProperty(Object, "getPrototypeOf", { configurable: true, value: originals.getPrototypeOf });
+    Object.defineProperty(Reflect, "ownKeys", { configurable: true, value: originals.ownKeys });
+    Object.defineProperty(Object, "getOwnPropertyDescriptor", { configurable: true, value: originals.getOwnPropertyDescriptor });
+    vi.resetModules();
+  }
+}
+
 describe("secret commitment frame-builder captured classifier and reflection seams", () => {
   test("missing captured isProxy fails closed without caller Proxy traps", async () => {
     const calls = { traps: 0 };
@@ -1044,6 +1077,45 @@ describe("secret commitment frame-builder captured classifier and reflection sea
       expect(calls.traps).toBe(0);
     });
   });
+
+  test("throwing captured isProxy fails closed without caller Proxy traps or accessors", async () => {
+    const calls = { classifier: 0, traps: 0, accessor: 0 };
+    const target = sourceFrameFixture() as Record<string, unknown>;
+    Object.defineProperty(target, "workspaceId", {
+      configurable: true,
+      enumerable: true,
+      get() {
+        calls.accessor += 1;
+        throw new Error("caller accessor must not run");
+      }
+    });
+    const input = new Proxy(target, {
+      get() {
+        calls.traps += 1;
+        throw new Error("caller Proxy trap must not run");
+      }
+    });
+    await withFreshFrameModule({ isProxy() { calls.classifier += 1; throw new Error("test-owned captured isProxy failure"); } }, (module) => {
+      expect(module.buildSourceObservationFrame(input)).toBeUndefined();
+      expect(calls).toEqual({ classifier: 1, traps: 0, accessor: 0 });
+    });
+  });
+
+  for (const availability of ["missing", "malformed"] as const) {
+    test(`${availability} captured isProxy fails closed without caller Proxy traps`, async () => {
+      const calls = { traps: 0 };
+      const input = new Proxy(sourceFrameFixture(), {
+        get() {
+          calls.traps += 1;
+          throw new Error("caller Proxy trap must not run");
+        }
+      });
+      await withFreshFrameModule({ isProxy: availability === "missing" ? null : 0 as never }, (module) => {
+        expect(module.buildSourceObservationFrame(input)).toBeUndefined();
+        expect(calls.traps).toBe(0);
+      });
+    });
+  }
 
   for (const operation of capturedOuterOperationNames) {
     test(`fresh captured ${operation} exception fails closed without caller accessor invocation`, async () => {
@@ -1063,6 +1135,24 @@ describe("secret commitment frame-builder captured classifier and reflection sea
         expect(calls.accessor).toBe(0);
       });
     });
+  }
+
+  for (const operation of capturedOuterOperationNames) {
+    for (const availability of ["missing", "malformed"] as const) {
+      test(`${availability} captured ${operation} fails closed without caller Proxy traps`, async () => {
+        const calls = { traps: 0 };
+        const input = new Proxy(sourceFrameFixture(), {
+          get() {
+            calls.traps += 1;
+            throw new Error("caller Proxy trap must not run");
+          }
+        });
+        await withUnavailableCapturedOuterOperation(operation, availability, (module) => {
+          expect(module.buildSourceObservationFrame(input)).toBeUndefined();
+          expect(calls.traps).toBe(0);
+        });
+      });
+    }
   }
 });
 
