@@ -1440,16 +1440,185 @@ describe("secret commitment frame-builder captured allocation and write seams", 
       const input = inventory.fixture();
       await withThrowingCapturedWriteOperation(operation, inventory.expectedLength, (module, calls) => {
         expect(invokeFreshBuilder(module, inventory, input)).toBeUndefined();
-        expect(calls.operation).toBeGreaterThan(0);
+        expect(calls.operation).toBe(1);
       });
     });
     }
   }
 });
 
+type SuccessfulWriteTraceEvent =
+  | { readonly operation: "encodeInto"; readonly source: string; readonly destinationOffset: number }
+  | { readonly operation: "header"; readonly byteOffset: number; readonly value: bigint; readonly littleEndian: boolean }
+  | { readonly operation: "copy"; readonly source: unknown; readonly destinationOffset: number };
+
+type ExpectedSuccessfulWriteTraceEvent =
+  | Extract<SuccessfulWriteTraceEvent, { readonly operation: "encodeInto" }>
+  | Extract<SuccessfulWriteTraceEvent, { readonly operation: "header" }>
+  | {
+    readonly operation: "copy";
+    readonly source: { readonly kind: "static"; readonly bytes: Uint8Array } | { readonly kind: "snapshot"; readonly value: Uint8Array };
+    readonly destinationOffset: number;
+  };
+
+function staticFramePrefix(inventory: FrameInventory): Uint8Array {
+  return frameBytes(inventory.name === "source observation"
+    ? "6365737475732e736f757263652d6f62736572766174696f6e2e763100"
+    : "736f757263652d6d616e69666573742d617574686f726974792e763100");
+}
+
+function staticRecordClass(inventory: FrameInventory): Uint8Array | undefined {
+  return inventory.name === "manifest authority"
+    ? frameBytes("6d616e6966657374")
+    : inventory.name === "entry authority"
+      ? frameBytes("656e747279")
+      : undefined;
+}
+
+function expectedSuccessfulWriteTrace(
+  inventory: FrameInventory,
+  input: FrameInput,
+  snapshots: Readonly<Record<string, Uint8Array>>
+): readonly ExpectedSuccessfulWriteTraceEvent[] {
+  const values = input as Record<string, unknown>;
+  const expected: ExpectedSuccessfulWriteTraceEvent[] = [];
+  const prefix = staticFramePrefix(inventory);
+  let offset = 0;
+  expected.push({ operation: "copy", source: { kind: "static", bytes: prefix }, destinationOffset: offset });
+  offset += prefix.length;
+
+  const addHeader = (length: number): void => {
+    expected.push({ operation: "header", byteOffset: offset + 1, value: BigInt(length), littleEndian: false });
+    offset += 9;
+  };
+
+  const recordClass = staticRecordClass(inventory);
+  if (recordClass !== undefined) {
+    addHeader(recordClass.length);
+    expected.push({ operation: "copy", source: { kind: "static", bytes: recordClass }, destinationOffset: offset });
+    offset += recordClass.length;
+  }
+
+  for (const field of inventory.idFields) {
+    const value = values[field] as string;
+    const length = new TextEncoder().encode(value).length;
+    addHeader(length);
+    expected.push({ operation: "encodeInto", source: value, destinationOffset: offset });
+    offset += length;
+  }
+
+  for (const field of [...inventory.fixedByteFields, inventory.payloadField]) {
+    const snapshot = snapshots[field];
+    if (snapshot === undefined) {
+      throw new Error(`missing retained snapshot sentinel for ${field}`);
+    }
+    addHeader(snapshot.length);
+    expected.push({ operation: "copy", source: { kind: "snapshot", value: snapshot }, destinationOffset: offset });
+    offset += snapshot.length;
+  }
+
+  expect(offset).toBe(inventory.expectedLength);
+  return expected;
+}
+
+function expectSuccessfulWriteTrace(
+  trace: readonly SuccessfulWriteTraceEvent[],
+  expected: readonly ExpectedSuccessfulWriteTraceEvent[]
+): void {
+  expect(trace).toHaveLength(expected.length);
+  expect(trace.map((event) => event.operation)).toEqual(expected.map((event) => event.operation));
+  for (const [index, expectedEvent] of expected.entries()) {
+    const actual = trace[index];
+    if (actual === undefined) {
+      throw new Error(`missing production write event at index ${index}`);
+    }
+    if (expectedEvent.operation === "copy") {
+      expect(actual).toMatchObject({ operation: "copy", destinationOffset: expectedEvent.destinationOffset });
+      if (actual.operation !== "copy") {
+        throw new Error(`expected production copy event at index ${index}`);
+      }
+      if (expectedEvent.source.kind === "static") {
+        expect(actual.source).toBeInstanceOf(Uint8Array);
+        expect(Array.from(actual.source as Uint8Array)).toEqual(Array.from(expectedEvent.source.bytes));
+      } else {
+        expect(actual.source).toBe(expectedEvent.source.value);
+      }
+    } else {
+      expect(actual).toEqual(expectedEvent);
+    }
+  }
+}
+
+async function withCapturedSuccessfulWriteTrace<Result>(
+  inventory: FrameInventory,
+  run: (
+    module: FreshFrameModule,
+    input: FrameInput,
+    snapshots: Readonly<Record<string, Uint8Array>>,
+    trace: readonly SuccessfulWriteTraceEvent[]
+  ) => Promise<Result> | Result
+): Promise<Result> {
+  const input = inventory.fixture();
+  const values = input as Record<string, unknown>;
+  const fields = [...inventory.fixedByteFields, inventory.payloadField];
+  const snapshots = Object.fromEntries(fields.map((field) => [field, Uint8Array.from(values[field] as Uint8Array)])) as Record<string, Uint8Array>;
+  const snapshotsByInput = new Map<unknown, Uint8Array>(fields.map((field) => [values[field], snapshots[field] as Uint8Array]));
+  const trace: SuccessfulWriteTraceEvent[] = [];
+  const originalEncodeInto = TextEncoder.prototype.encodeInto;
+  const originalSetBigUint64 = DataView.prototype.setBigUint64;
+  const originalSet = Uint8Array.prototype.set;
+  vi.resetModules();
+  vi.doMock("../src/secret-commitment-bytes.js", () => ({
+    trustedCanonicalSecretCommitmentByteLength(value: unknown) {
+      return value instanceof Uint8Array ? value.length : undefined;
+    },
+    snapshotCanonicalSecretCommitmentBytes(value: unknown) {
+      return snapshotsByInput.get(value);
+    }
+  }));
+  try {
+    TextEncoder.prototype.encodeInto = function capturedEncodeInto(source: string, destination: Uint8Array): TextEncoderEncodeIntoResult {
+      trace.push({ operation: "encodeInto", source, destinationOffset: destination.byteOffset });
+      return originalEncodeInto.call(this, source, destination);
+    };
+    DataView.prototype.setBigUint64 = function capturedHeaderWrite(byteOffset: number, value: bigint, littleEndian?: boolean): void {
+      trace.push({ operation: "header", byteOffset: this.byteOffset + byteOffset, value, littleEndian: littleEndian === true });
+      return originalSetBigUint64.call(this, byteOffset, value, littleEndian);
+    };
+    Uint8Array.prototype.set = function capturedCopy(source: ArrayLike<number>, offset?: number): void {
+      trace.push({ operation: "copy", source, destinationOffset: this.byteOffset + (offset ?? 0) });
+      return originalSet.call(this, source, offset);
+    };
+    const module = await import("../src/secret-commitment-contract.js");
+    TextEncoder.prototype.encodeInto = originalEncodeInto;
+    DataView.prototype.setBigUint64 = originalSetBigUint64;
+    Uint8Array.prototype.set = originalSet;
+    trace.length = 0;
+    return await run(module, input, snapshots, trace);
+  } finally {
+    TextEncoder.prototype.encodeInto = originalEncodeInto;
+    DataView.prototype.setBigUint64 = originalSetBigUint64;
+    Uint8Array.prototype.set = originalSet;
+    vi.doUnmock("../src/secret-commitment-bytes.js");
+    vi.resetModules();
+  }
+}
+
+describe("secret commitment frame-builder successful captured write traces", () => {
+  for (const inventory of frameInventories) {
+    test(`${inventory.name}: retains every snapshot identity and performs the exact successful header and copy trace`, async () => {
+      await withCapturedSuccessfulWriteTrace(inventory, (module, input, snapshots, trace) => {
+        expect(invokeFreshBuilder(module, inventory, input)).toEqual(frameBytes(inventory.expectedHex));
+        expectSuccessfulWriteTrace(trace, expectedSuccessfulWriteTrace(inventory, input, snapshots));
+      });
+    });
+  }
+});
+
 interface ResourceOrderingCalls {
   length: number;
   snapshot: number;
+  phaseOrder: ("length" | "snapshot")[];
   allocation: number;
   encoding: number;
   encodedArrays: number;
@@ -1461,7 +1630,7 @@ async function withFreshResourceOrderingModule<Result>(
   expectedFrameLength: number,
   run: (module: FreshFrameModule, calls: ResourceOrderingCalls) => Promise<Result> | Result
 ): Promise<Result> {
-  const calls: ResourceOrderingCalls = { length: 0, snapshot: 0, allocation: 0, encoding: 0, encodedArrays: 0, header: 0, copy: 0 };
+  const calls: ResourceOrderingCalls = { length: 0, snapshot: 0, phaseOrder: [], allocation: 0, encoding: 0, encodedArrays: 0, header: 0, copy: 0 };
   let measuringBuilderInvocation = false;
   const originalUint8Array = globalThis.Uint8Array;
   const originalEncodeInto = TextEncoder.prototype.encodeInto;
@@ -1473,12 +1642,14 @@ async function withFreshResourceOrderingModule<Result>(
     trustedCanonicalSecretCommitmentByteLength(value: unknown) {
       if (measuringBuilderInvocation) {
         calls.length += 1;
+        calls.phaseOrder.push("length");
       }
       return value instanceof originalUint8Array ? value.length : undefined;
     },
     snapshotCanonicalSecretCommitmentBytes(value: unknown) {
       if (measuringBuilderInvocation) {
         calls.snapshot += 1;
+        calls.phaseOrder.push("snapshot");
       }
       return value instanceof originalUint8Array ? new originalUint8Array(value) : undefined;
     }
@@ -1534,33 +1705,43 @@ async function withFreshResourceOrderingModule<Result>(
 }
 
 describe("secret commitment frame-builder resource ordering seam", () => {
-  test("over-complete input completes all trusted lengths before zero snapshot, allocation, encoding, header, or copy work", async () => {
-    const base = sourceFrameFixture();
-    const input: SourceObservationFrameInput = {
-      ...base,
-      workspaceId: "x".repeat(8_454_145 - independentlyCalculatedLength(frameInventories[0], base as Record<string, unknown>) + 1)
-    };
-    await withFreshResourceOrderingModule(8_454_145, (module, calls) => {
-      expect(module.buildSourceObservationFrame(input)).toBeUndefined();
-      expect(calls).toEqual({ length: 2, snapshot: 0, allocation: 0, encoding: 0, encodedArrays: 0, header: 0, copy: 0 });
-    });
-  });
+  for (const inventory of frameInventories) {
+    const byteFieldCount = inventory.fixedByteFields.length + 1;
 
-  test("equal complete limit reaches snapshots, allocation, encoding, header, and copy seams", async () => {
-    const base = sourceFrameFixture();
-    const input: SourceObservationFrameInput = {
-      ...base,
-      workspaceId: "x".repeat(8_454_144 - independentlyCalculatedLength(frameInventories[0], base as Record<string, unknown>) + 1)
-    };
-    await withFreshResourceOrderingModule(8_454_144, (module, calls) => {
-      expect(module.buildSourceObservationFrame(input)).toBeInstanceOf(Uint8Array);
-      expect(calls.length).toBe(2);
-      expect(calls.snapshot).toBe(2);
-      expect(calls.allocation).toBe(1);
-      expect(calls.encoding).toBeGreaterThan(0);
-      expect(calls.encodedArrays).toBe(0);
-      expect(calls.header).toBeGreaterThan(0);
-      expect(calls.copy).toBeGreaterThan(0);
+    test(`${inventory.name}: over-complete input completes all trusted lengths before zero snapshot, allocation, encoding, header, or copy work`, async () => {
+      const base = inventory.fixture();
+      const input = withFrameField(
+        base,
+        inventory.idFields[0],
+        "x".repeat(8_454_145 - independentlyCalculatedLength(inventory, base as Record<string, unknown>) + 1)
+      );
+      await withFreshResourceOrderingModule(8_454_145, (module, calls) => {
+        expect(invokeFreshBuilder(module, inventory, input)).toBeUndefined();
+        expect(calls).toEqual({ length: byteFieldCount, snapshot: 0, phaseOrder: Array.from({ length: byteFieldCount }, () => "length"), allocation: 0, encoding: 0, encodedArrays: 0, header: 0, copy: 0 });
+      });
     });
-  });
+
+    test(`${inventory.name}: equal complete limit reaches every accepted resource seam only after all trusted lengths`, async () => {
+      const base = inventory.fixture();
+      const input = withFrameField(
+        base,
+        inventory.idFields[0],
+        "x".repeat(8_454_144 - independentlyCalculatedLength(inventory, base as Record<string, unknown>) + 1)
+      );
+      await withFreshResourceOrderingModule(8_454_144, (module, calls) => {
+        expect(invokeFreshBuilder(module, inventory, input)).toBeInstanceOf(Uint8Array);
+        expect(calls.length).toBe(byteFieldCount);
+        expect(calls.snapshot).toBe(byteFieldCount);
+        expect(calls.phaseOrder).toEqual([
+          ...Array.from({ length: byteFieldCount }, () => "length" as const),
+          ...Array.from({ length: byteFieldCount }, () => "snapshot" as const)
+        ]);
+        expect(calls.allocation).toBe(1);
+        expect(calls.encoding).toBeGreaterThan(0);
+        expect(calls.encodedArrays).toBe(0);
+        expect(calls.header).toBeGreaterThan(0);
+        expect(calls.copy).toBeGreaterThan(0);
+      });
+    });
+  }
 });
