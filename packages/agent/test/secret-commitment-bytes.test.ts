@@ -140,28 +140,28 @@ function throwingProxy(value: Uint8Array, calls: { count: number }): Uint8Array 
   });
 }
 
-function detachedView(): Uint8Array {
-  const backing = new ArrayBuffer(4);
+function detachedView(length = 4): Uint8Array {
+  const backing = new ArrayBuffer(length);
   const view = new Uint8Array(backing);
   structuredClone(backing, { transfer: [backing] });
   return view;
 }
 
-function resizableArrayBufferView(lengthTracking: boolean): Uint8Array | undefined {
+function resizableArrayBufferView(lengthTracking: boolean, length = 4): Uint8Array | undefined {
   try {
     const Constructor = ArrayBuffer as unknown as new (length: number, options: { maxByteLength: number }) => ArrayBuffer;
-    const backing = new Constructor(4, { maxByteLength: 8 });
-    return lengthTracking ? new Uint8Array(backing) : new Uint8Array(backing, 0, 4);
+    const backing = new Constructor(length, { maxByteLength: length + 4 });
+    return lengthTracking ? new Uint8Array(backing) : new Uint8Array(backing, 0, length);
   } catch {
     return undefined;
   }
 }
 
-function growableSharedArrayBufferView(lengthTracking: boolean): Uint8Array | undefined {
+function growableSharedArrayBufferView(lengthTracking: boolean, length = 4): Uint8Array | undefined {
   try {
     const Constructor = SharedArrayBuffer as unknown as new (length: number, options: { maxByteLength: number }) => SharedArrayBuffer;
-    const backing = new Constructor(4, { maxByteLength: 8 });
-    return lengthTracking ? new Uint8Array(backing) : new Uint8Array(backing, 0, 4);
+    const backing = new Constructor(length, { maxByteLength: length + 4 });
+    return lengthTracking ? new Uint8Array(backing) : new Uint8Array(backing, 0, length);
   } catch {
     return undefined;
   }
@@ -175,7 +175,7 @@ function noncanonicalDescriptorShape(): Uint8Array {
 
 interface TestSeam {
   readonly ownKeys?: (value: unknown) => readonly PropertyKey[];
-  readonly allocate?: () => unknown;
+  readonly allocate?: (length: number) => unknown;
   readonly copy?: (output: unknown, input: unknown) => void;
 }
 
@@ -185,61 +185,113 @@ function testGlobal(): TestGlobal {
   return globalThis as TestGlobal;
 }
 
-function resourceSeam(calls: { ownKeys: number; allocation: number; copy: number }): TestSeam {
+interface ResourceCalls {
+  ownKeys: number;
+  allocation: number;
+  copy: number;
+  readonly requestedLengths: number[];
+  allocatedOutput: Uint8Array | undefined;
+}
+
+function createResourceCalls(): ResourceCalls {
+  return { ownKeys: 0, allocation: 0, copy: 0, requestedLengths: [], allocatedOutput: undefined };
+}
+
+function resourceSeam(calls: ResourceCalls, unexpectedOwnKey = false): TestSeam {
   return {
     ownKeys(value) {
       calls.ownKeys += 1;
-      return Reflect.ownKeys(value as object);
+      const keys = Reflect.ownKeys(value as object);
+      return unexpectedOwnKey ? [...keys, "unexpected"] : keys;
     },
-    allocate() {
+    allocate(length) {
       calls.allocation += 1;
-      return new Uint8Array(0);
+      calls.requestedLengths.push(length);
+      const output = new Uint8Array(length);
+      calls.allocatedOutput = output;
+      return output;
     },
-    copy() {
+    copy(output, input) {
       calls.copy += 1;
+      if (!(output instanceof Uint8Array) || !(input instanceof Uint8Array)) {
+        throw new Error("resource seam received malformed copy values");
+      }
+      output.set(input);
     }
   };
+}
+
+function expectNoResourceOperations(calls: ResourceCalls): void {
+  expect({ ownKeys: calls.ownKeys, allocation: calls.allocation, copy: calls.copy }).toEqual({
+    ownKeys: 0,
+    allocation: 0,
+    copy: 0
+  });
+  expect(calls.requestedLengths).toEqual([]);
+  expect(calls.allocatedOutput).toBeUndefined();
+}
+
+function expectAcceptedResourceOperations(
+  calls: ResourceCalls,
+  input: Uint8Array,
+  result: Uint8Array | undefined
+): void {
+  expect(calls.ownKeys).toBeGreaterThan(0);
+  expect(calls.allocation).toBe(1);
+  expect(calls.copy).toBe(1);
+  expect(calls.requestedLengths).toEqual([input.length]);
+  expect(calls.allocatedOutput).toBeInstanceOf(Uint8Array);
+  expect(result).toBe(calls.allocatedOutput);
+  expectCanonicalSnapshot(result, input);
 }
 
 function allocationSeam(
   name: (typeof constructorCaseNames)[number],
   input: Uint8Array,
-  calls: { allocation: number; proxyTraps: number }
+  calls: { allocation: number; proxyTraps: number; requestedLengths: number[]; output: unknown }
 ): TestSeam {
   return {
-    allocate() {
+    allocate(length) {
       calls.allocation += 1;
+      calls.requestedLengths.push(length);
+      const record = (output: unknown): unknown => {
+        calls.output = output;
+        return output;
+      };
       switch (name) {
         case "throws":
           throw new Error("test-owned allocation failure");
         case "wrong length":
-          return new Uint8Array(Math.max(0, input.length - 1));
-        case "wrong prototype":
-          return Object.create(Uint8Array.prototype);
+          return record(new Uint8Array(Math.max(0, length - 1)));
+        case "wrong prototype": {
+          const output = new Uint8Array(length);
+          Object.setPrototypeOf(output, {});
+          return record(output);
+        }
         case "input object alias":
-          return input;
+          return record(input);
         case "input backing alias":
-          return new Uint8Array(input.buffer, input.byteOffset, input.byteLength);
+          return record(new Uint8Array(input.buffer, input.byteOffset, input.byteLength));
         case "fixed SharedArrayBuffer":
-          return new Uint8Array(new SharedArrayBuffer(input.length));
+          return record(new Uint8Array(new SharedArrayBuffer(length)));
         case "resizable ArrayBuffer":
-          return resizableArrayBufferView(false) ?? Object.create(Uint8Array.prototype);
+          return record(resizableArrayBufferView(false, length) ?? Object.create(Uint8Array.prototype));
         case "growable SharedArrayBuffer":
-          return growableSharedArrayBufferView(false) ?? Object.create(Uint8Array.prototype);
+          return record(growableSharedArrayBufferView(false, length) ?? Object.create(Uint8Array.prototype));
         case "detached backing":
-          return detachedView();
+          return record(detachedView(length));
         case "extra own string key": {
-          const output = new Uint8Array(input.length) as Uint8Array & { extra?: true };
+          const output = new Uint8Array(length) as Uint8Array & { extra?: true };
           output.extra = true;
-          return output;
+          return record(output);
         }
         case "extra symbol key": {
-          const output = new Uint8Array(input.length);
+          const output = new Uint8Array(length);
           Object.defineProperty(output, Symbol("extra"), { enumerable: true, value: true });
-          return output;
+          return record(output);
         }
         case "transparent output Proxy":
-          return new Proxy(new Uint8Array(input.length), {
+          return record(new Proxy(new Uint8Array(length), {
             get(target, property, receiver) {
               calls.proxyTraps += 1;
               return Reflect.get(target, property, receiver);
@@ -256,9 +308,9 @@ function allocationSeam(
               calls.proxyTraps += 1;
               return Reflect.ownKeys(target);
             }
-          });
+          }));
         case "throwing output Proxy":
-          return new Proxy(new Uint8Array(input.length), {
+          return record(new Proxy(new Uint8Array(length), {
             get() {
               calls.proxyTraps += 1;
               throw new Error("output Proxy trap must not run");
@@ -275,19 +327,25 @@ function allocationSeam(
               calls.proxyTraps += 1;
               throw new Error("output Proxy trap must not run");
             }
-          });
+          }));
         case "exact canonical output control":
-          return new Uint8Array(input.length);
+          return record(new Uint8Array(length));
       }
     }
   };
 }
 
-function copySeam(name: (typeof copyCaseNames)[number], calls: { allocation: number; copy: number }): TestSeam {
+function copySeam(
+  name: (typeof copyCaseNames)[number],
+  calls: { allocation: number; copy: number; requestedLengths: number[]; output: Uint8Array | undefined }
+): TestSeam {
   return {
-    allocate() {
+    allocate(length) {
       calls.allocation += 1;
-      return new Uint8Array(6);
+      calls.requestedLengths.push(length);
+      const output = new Uint8Array(length);
+      calls.output = output;
+      return output;
     },
     copy(output, input) {
       calls.copy += 1;
@@ -300,14 +358,14 @@ function copySeam(name: (typeof copyCaseNames)[number], calls: { allocation: num
         case "no-op":
           return;
         case "prefix-only partial":
-          output.set(input.subarray(0, 3));
+          output.set(input.subarray(0, Math.floor(input.length / 2)));
           return;
         case "suffix-only partial":
-          output.set(input.subarray(3), 3);
+          output.set(input.subarray(Math.floor(input.length / 2)), Math.floor(input.length / 2));
           return;
         case "one wrong byte":
           output.set(input);
-          output[2] = 0;
+          output[Math.floor(input.length / 2)] = 0;
           return;
         case "all wrong bytes":
           output.fill(0);
@@ -319,8 +377,8 @@ function copySeam(name: (typeof copyCaseNames)[number], calls: { allocation: num
   };
 }
 
-function tryNoncanonicalOutput(): Uint8Array | undefined {
-  const output = new Uint8Array([11]);
+function tryNoncanonicalOutput(length: number): Uint8Array | undefined {
+  const output = new Uint8Array(length);
   try {
     Object.defineProperty(output, "0", { configurable: false, enumerable: false, value: 11, writable: false });
     const descriptor = Object.getOwnPropertyDescriptor(output, "0");
@@ -404,26 +462,23 @@ describe("secret commitment canonical bytes red checkpoint", () => {
   });
 
   test.each([0, 1, 31, 33])("rejects length %i under the exact-32 rule before resources", async (length) => {
-    const resourceCalls = { ownKeys: 0, allocation: 0, copy: 0 };
+    const resourceCalls = createResourceCalls();
     await withFreshModule(resourceSeam(resourceCalls), true, (module) => {
       const input = bytes(length);
       expect(module.trustedCanonicalSecretCommitmentByteLength(input, FIXED_LIMIT)).toBeUndefined();
       expect(module.snapshotCanonicalSecretCommitmentBytes(input, FIXED_LIMIT)).toBeUndefined();
-      expect(resourceCalls).toEqual({ ownKeys: 0, allocation: 0, copy: 0 });
+      expectNoResourceOperations(resourceCalls);
     });
   });
 
   test("accepts exact-32 inputs and reaches every accepted-resource seam", async () => {
     const exact = bytes(32);
-    const resourceCalls = { ownKeys: 0, allocation: 0, copy: 0 };
+    const resourceCalls = createResourceCalls();
     await withFreshModule(resourceSeam(resourceCalls), true, (module) => {
       const length = module.trustedCanonicalSecretCommitmentByteLength(exact, FIXED_LIMIT);
       const result = module.snapshotCanonicalSecretCommitmentBytes(exact, FIXED_LIMIT);
-      expect(resourceCalls.ownKeys).toBeGreaterThan(0);
-      expect(resourceCalls.allocation).toBeGreaterThan(0);
-      expect(resourceCalls.copy).toBeGreaterThan(0);
       expect(length).toBe(32);
-      expectCanonicalSnapshot(result, exact);
+      expectAcceptedResourceOperations(resourceCalls, exact, result);
     });
   });
 
@@ -443,11 +498,11 @@ describe("secret commitment canonical bytes red checkpoint", () => {
     ["frame", FRAME_LIMIT]
   ] as const)("rejects %s plus-one before reflection, allocation, and copy", async (_name, limit) => {
     const plusOne = bytes(limit + 1);
-    const resourceCalls = { ownKeys: 0, allocation: 0, copy: 0 };
+    const resourceCalls = createResourceCalls();
     await withFreshModule(resourceSeam(resourceCalls), true, (module) => {
       expect(module.trustedCanonicalSecretCommitmentByteLength(plusOne, limit)).toBeUndefined();
       expect(module.snapshotCanonicalSecretCommitmentBytes(plusOne, limit)).toBeUndefined();
-      expect(resourceCalls).toEqual({ ownKeys: 0, allocation: 0, copy: 0 });
+      expectNoResourceOperations(resourceCalls);
     });
   });
 
@@ -455,24 +510,34 @@ describe("secret commitment canonical bytes red checkpoint", () => {
     ["payload", PAYLOAD_LIMIT],
     ["frame", FRAME_LIMIT]
   ] as const)("reaches reflection, allocation, and copy for accepted %s equal limits", async (_name, limit) => {
-    const resourceCalls = { ownKeys: 0, allocation: 0, copy: 0 };
+    const resourceCalls = createResourceCalls();
     const input = bytes(limit);
     await withFreshModule(resourceSeam(resourceCalls), true, (module) => {
       const result = module.snapshotCanonicalSecretCommitmentBytes(input, limit);
-      expect(resourceCalls.ownKeys).toBeGreaterThan(0);
-      expect(resourceCalls.allocation).toBeGreaterThan(0);
-      expect(resourceCalls.copy).toBeGreaterThan(0);
-      expectCanonicalSnapshot(result, input);
+      expectAcceptedResourceOperations(resourceCalls, input, result);
     });
   });
 
   test("keeps a installed seam inactive when its explicit test gate is disabled", async () => {
-    const resourceCalls = { ownKeys: 0, allocation: 0, copy: 0 };
+    const resourceCalls = createResourceCalls();
     const input = bytes(32);
     await withFreshModule(resourceSeam(resourceCalls), false, (module) => {
       const result = module.snapshotCanonicalSecretCommitmentBytes(input, FIXED_LIMIT);
-      expect(resourceCalls).toEqual({ ownKeys: 0, allocation: 0, copy: 0 });
+      expectNoResourceOperations(resourceCalls);
       expectCanonicalSnapshot(result, input);
+    });
+  });
+
+  test("rejects an otherwise canonical input when the test-owned ownKeys result has an unexpected key", async () => {
+    const input = bytes(32);
+    const calls = createResourceCalls();
+    await withFreshModule(resourceSeam(calls, true), true, (module) => {
+      const result = module.snapshotCanonicalSecretCommitmentBytes(input, FIXED_LIMIT);
+      expect(calls.ownKeys).toBe(1);
+      expect(calls.allocation).toBe(0);
+      expect(calls.copy).toBe(0);
+      expect(calls.requestedLengths).toEqual([]);
+      expect(result).toBeUndefined();
     });
   });
 
@@ -542,11 +607,13 @@ describe("secret commitment canonical bytes red checkpoint", () => {
 
   test.each(constructorCaseNames)("fresh allocation checkpoint case: %s", async (name) => {
     const input = bytes(32);
-    const calls = { allocation: 0, proxyTraps: 0 };
+    const calls = { allocation: 0, proxyTraps: 0, requestedLengths: [] as number[], output: undefined as unknown };
     await withFreshModule(allocationSeam(name, input, calls), true, (module) => {
       const result = module.snapshotCanonicalSecretCommitmentBytes(input, FIXED_LIMIT);
       expect(calls.allocation).toBe(1);
+      expect(calls.requestedLengths).toEqual([input.length]);
       if (name === "exact canonical output control") {
+        expect(result).toBe(calls.output);
         expectCanonicalSnapshot(result, input);
       } else {
         expect(result).toBeUndefined();
@@ -556,31 +623,38 @@ describe("secret commitment canonical bytes red checkpoint", () => {
   });
 
   test("records the supported-runtime noncanonical output descriptor allocation case", async () => {
-    const malformedOutput = tryNoncanonicalOutput();
+    const input = bytes(32);
+    const malformedOutput = tryNoncanonicalOutput(input.length);
     if (malformedOutput === undefined) {
       expect(malformedOutput).toBeUndefined();
       return;
     }
-    const calls = { allocation: 0 };
+    const calls = { allocation: 0, requestedLengths: [] as number[], output: undefined as Uint8Array | undefined };
     await withFreshModule({
-      allocate() {
+      allocate(length) {
         calls.allocation += 1;
+        calls.requestedLengths.push(length);
+        calls.output = malformedOutput;
         return malformedOutput;
       }
     }, true, (module) => {
-      expect(module.snapshotCanonicalSecretCommitmentBytes(bytes(32), FIXED_LIMIT)).toBeUndefined();
+      expect(module.snapshotCanonicalSecretCommitmentBytes(input, FIXED_LIMIT)).toBeUndefined();
       expect(calls.allocation).toBe(1);
+      expect(calls.requestedLengths).toEqual([input.length]);
+      expect(calls.output).toBe(malformedOutput);
     });
   });
 
   test.each(copyCaseNames)("fresh copy checkpoint case: %s", async (name) => {
-    const calls = { allocation: 0, copy: 0 };
+    const calls = { allocation: 0, copy: 0, requestedLengths: [] as number[], output: undefined as Uint8Array | undefined };
     await withFreshModule(copySeam(name, calls), true, (module) => {
       const input = Uint8Array.of(11, 48, 93, 157, 201, 254);
       const result = module.snapshotCanonicalSecretCommitmentBytes(input, PAYLOAD_LIMIT);
       expect(calls.allocation).toBe(1);
       expect(calls.copy).toBe(1);
+      expect(calls.requestedLengths).toEqual([input.length]);
       if (name === "exact copy control") {
+        expect(result).toBe(calls.output);
         expectCanonicalSnapshot(result, input);
       } else {
         expect(result).toBeUndefined();
