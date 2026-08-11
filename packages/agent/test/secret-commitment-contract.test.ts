@@ -836,6 +836,15 @@ describe("secret commitment frame-builder checkpoint inventory", () => {
       expect(inventory.builder(nullPrototype)).toBeUndefined();
     });
 
+    test(`${inventory.name}: outer classifier rejects a complete cross-realm plain Object.prototype input`, () => {
+      const fixture = inventory.fixture() as Record<string, unknown>;
+      const crossRealm = vm.runInNewContext("({})") as Record<string, unknown>;
+      Object.assign(crossRealm, fixture);
+      expect(Reflect.ownKeys(crossRealm)).toHaveLength(fullFrameFields(inventory).length);
+      expect(Object.getPrototypeOf(crossRealm)).not.toBe(Object.prototype);
+      expect(inventory.builder(crossRealm)).toBeUndefined();
+    });
+
     test(`${inventory.name}: every ID occurrence accepts scalar Unicode exactly and rejects malformed IDs`, () => {
       const accepted = ["ascii", "nul\u0000id", "non-bmp-\u{1F680}", "café", "cafe\u0301"];
       const rejected: readonly unknown[] = ["", "high-\uD800", "low-\uDC00", 1];
@@ -1129,7 +1138,8 @@ async function withThrowingCapturedOuterOperation<Result>(
       Object.getOwnPropertyDescriptor = ((value: object, property: PropertyKey) => failForInput(value, () => originals.getOwnPropertyDescriptor(value, property))) as typeof Object.getOwnPropertyDescriptor;
     }
     vi.resetModules();
-    return await run(await import("../src/secret-commitment-contract.js"), calls);
+    const module = await import("../src/secret-commitment-contract.js");
+    return await run(module, calls);
   } finally {
     Array.isArray = originals.isArray;
     Object.getPrototypeOf = originals.getPrototypeOf;
@@ -1214,7 +1224,7 @@ async function withCapturedThenMutatedLiveOuterOperation<Result>(
 }
 
 async function withUnavailableCapturedIsProxy<Result>(
-  unavailable: null | number,
+  unavailable: undefined | null,
   run: (module: FreshFrameModule) => Promise<Result> | Result
 ): Promise<Result> {
   vi.resetModules();
@@ -1233,20 +1243,23 @@ async function withUnavailableCapturedIsProxy<Result>(
 }
 
 describe("secret commitment frame-builder captured classifier and reflection seams", () => {
-  test("isProxy remains captured after the live module mock changes", async () => {
-    const calls = { captured: 0, live: 0 };
+  test("isProxy uses its module-evaluation binding after the exported live binding changes", async () => {
     const input = sourceFrameFixture();
+    const calls = { captured: 0, live: 0 };
+    let currentIsProxy: (value: object) => boolean = (value) => {
+      if (value === input) calls.captured += 1;
+      return false;
+    };
     vi.resetModules();
     vi.doMock("node:util/types", async (importOriginal) => {
       const actual = await importOriginal<typeof import("node:util/types")>();
-      return { ...actual, isProxy(value: object) { if (value === input) calls.captured += 1; return actual.isProxy(value); } };
+      const module = { ...actual } as Record<string, unknown>;
+      Object.defineProperty(module, "isProxy", { enumerable: true, get: () => currentIsProxy });
+      return module;
     });
     try {
       const module = await import("../src/secret-commitment-contract.js");
-      vi.doMock("node:util/types", async (importOriginal) => {
-        const actual = await importOriginal<typeof import("node:util/types")>();
-        return { ...actual, isProxy() { calls.live += 1; throw new Error("live isProxy must not be used"); } };
-      });
+      currentIsProxy = () => { calls.live += 1; throw new Error("live isProxy must not be used"); };
       expect(module.buildSourceObservationFrame(input)).toBeUndefined();
       expect(calls).toEqual({ captured: 1, live: 0 });
     } finally {
@@ -1255,8 +1268,31 @@ describe("secret commitment frame-builder captured classifier and reflection sea
     }
   });
 
-  for (const availability of [null, 0 as never] as const) {
-    test(`${availability === null ? "missing" : "malformed"} captured isProxy remains unavailable after live restoration`, async () => {
+  test("Proxy-first classifier stops before later reflection and caller traps", async () => {
+    const calls = { isProxy: 0, array: 0, prototype: 0, keys: 0, descriptor: 0, traps: 0, accessors: 0 };
+    const target = sourceFrameFixture() as Record<string, unknown>;
+    Object.defineProperty(target, "workspaceId", { enumerable: true, get() { calls.accessors += 1; throw new Error("accessor"); } });
+    const input = new Proxy(target, { get() { calls.traps += 1; throw new Error("trap"); } });
+    const originals = { isArray: Array.isArray, getPrototypeOf: Object.getPrototypeOf, ownKeys: Reflect.ownKeys, getOwnPropertyDescriptor: Object.getOwnPropertyDescriptor };
+    try {
+      Array.isArray = ((value: unknown) => { if (value === input) { calls.array += 1; throw new Error("array"); } return originals.isArray(value); }) as typeof Array.isArray;
+      Object.getPrototypeOf = ((value: object) => { if (value === input) { calls.prototype += 1; throw new Error("prototype"); } return originals.getPrototypeOf(value); }) as typeof Object.getPrototypeOf;
+      Reflect.ownKeys = ((value: object) => { if (value === input) { calls.keys += 1; throw new Error("keys"); } return originals.ownKeys(value); }) as typeof Reflect.ownKeys;
+      Object.getOwnPropertyDescriptor = ((value: object, property: PropertyKey) => { if (value === input) { calls.descriptor += 1; throw new Error("descriptor"); } return originals.getOwnPropertyDescriptor(value, property); }) as typeof Object.getOwnPropertyDescriptor;
+      await withFreshFrameModule({ isProxy(value) { if (value === input) calls.isProxy += 1; return value === input; } }, (module) => {
+        expect(module.buildSourceObservationFrame(input)).toBeUndefined();
+        expect(calls).toEqual({ isProxy: 1, array: 0, prototype: 0, keys: 0, descriptor: 0, traps: 0, accessors: 0 });
+      });
+    } finally {
+      Array.isArray = originals.isArray;
+      Object.getPrototypeOf = originals.getPrototypeOf;
+      Reflect.ownKeys = originals.ownKeys;
+      Object.getOwnPropertyDescriptor = originals.getOwnPropertyDescriptor;
+    }
+  });
+
+  for (const availability of [undefined, null] as const) {
+    test(`${availability === undefined ? "missing" : "malformed"} captured isProxy remains unavailable after live restoration`, async () => {
       const input = sourceFrameFixture();
       await withUnavailableCapturedIsProxy(availability, (module) => {
         expect(module.buildSourceObservationFrame(input)).toBeUndefined();
@@ -1286,22 +1322,6 @@ describe("secret commitment frame-builder captured classifier and reflection sea
       expect(calls).toEqual({ classifier: 1, traps: 0, accessor: 0 });
     });
   });
-
-  for (const availability of ["missing", "malformed"] as const) {
-    test(`${availability} captured isProxy fails closed without caller Proxy traps`, async () => {
-      const calls = { traps: 0 };
-      const input = new Proxy(sourceFrameFixture(), {
-        get() {
-          calls.traps += 1;
-          throw new Error("caller Proxy trap must not run");
-        }
-      });
-      await withFreshFrameModule({ isProxy: availability === "missing" ? null : 0 as never }, (module) => {
-        expect(module.buildSourceObservationFrame(input)).toBeUndefined();
-        expect(calls.traps).toBe(0);
-      });
-    });
-  }
 
   for (const operation of capturedOuterOperationNames) {
     test(`fresh captured ${operation} exception fails closed without caller accessor invocation`, async () => {
@@ -1382,7 +1402,7 @@ async function withThrowingCapturedWriteOperation<Result>(
       };
     } else if (operation === "header write") {
       DataView.prototype.setBigUint64 = function headerWriteFailure(byteOffset: number, value: bigint, littleEndian?: boolean): void {
-        if (this.byteLength === frameLength) {
+        if (this.buffer.byteLength === frameLength) {
           calls.operation += 1;
           throw new Error("test-owned header write failure");
         }
@@ -1390,7 +1410,7 @@ async function withThrowingCapturedWriteOperation<Result>(
       };
     } else {
       Uint8Array.prototype.set = function copiedFieldWriteFailure(source: ArrayLike<number>, offset?: number): void {
-        if (this.length === frameLength) {
+        if (this.buffer.byteLength === frameLength) {
           calls.operation += 1;
           throw new Error("test-owned copied-field write failure");
         }
@@ -1398,7 +1418,12 @@ async function withThrowingCapturedWriteOperation<Result>(
       };
     }
     vi.resetModules();
-    return await run(await import("../src/secret-commitment-contract.js"), calls);
+    const module = await import("../src/secret-commitment-contract.js");
+    Object.defineProperty(globalThis, "Uint8Array", { configurable: true, value: originalUint8Array });
+    TextEncoder.prototype.encodeInto = originalEncodeInto;
+    DataView.prototype.setBigUint64 = originalSetBigUint64;
+    Uint8Array.prototype.set = originalSet;
+    return await run(module, calls);
   } finally {
     Object.defineProperty(globalThis, "Uint8Array", { configurable: true, value: originalUint8Array });
     TextEncoder.prototype.encodeInto = originalEncodeInto;
