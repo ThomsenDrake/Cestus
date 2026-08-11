@@ -39,18 +39,39 @@ allocation, or copy. Every `SharedArrayBuffer` backing rejects. Every resizable 
 growable backing rejects, including fixed-length views. Only exact native
 `Uint8Array` objects with fixed, non-shared `ArrayBuffer` backing are accepted.
 
-At module evaluation, capture the real Node classifiers and the exact intrinsic
-getters, prototypes, reflection operations, constructor, and copy operation needed
-to classify input and validate output without caller property reads. Captured
-`isProxy` runs before each operation that could invoke an input or output Proxy trap.
-Input validation never reads caller `length`, `buffer`, constructor, iterator,
-`slice`, `set`, numeric index, or any other property and never invokes an accessor.
-Missing, throwing, or malformed required intrinsics fail closed without fallback.
+## Finite Runtime Trust Boundary
+
+The TCB is the supported, untampered Node runtime intrinsics captured at module
+evaluation: the classifiers and exact intrinsic getters, prototypes, reflection
+operations, constructor, and copy operation needed to classify input and validate
+output without caller property reads. This is a direct human finite trust model, not
+a recursive proof of every captured intrinsic's semantic honesty.
+
+Every caller-controlled input shape is untrusted, including values, Proxies,
+buffers, views, descriptors, accessors, symbols, and mutations before or during an
+operation. Captured trusted intrinsics classify each shape; a conforming exact
+canonical `Uint8Array` input may be accepted. Only a nonconforming or
+unclassifiable caller-controlled shape fails closed without invoking a caller Proxy
+trap or accessor.
+Captured `isProxy` runs before each operation that could invoke an input or output
+Proxy trap. Input validation never reads caller `length`, `buffer`, constructor,
+iterator, `slice`, `set`, numeric index, or any other property and never invokes an
+accessor. Under the trusted runtime intrinsics, every ordinary `SharedArrayBuffer`
+backing and every ordinary resizable or growable backing remains rejected.
+
+Missing, throwing, malformed, or structurally unavailable required capabilities
+disable the operation and fail closed without fallback. Semantically dishonest
+foundational intrinsics replaced before module evaluation are out of scope,
+including an arbitrarily lying captured `Reflect.apply` that disguises a
+`SharedArrayBuffer`. Compromised-realm survival is a separate red architecture
+decision; this slice neither promises it nor adds a recursive semantic-honesty
+proof.
 
 Input descriptor preflight accepts exactly canonical integer index keys `0` through
 `length - 1`, no extra string or symbol key, and enumerable writable data
-descriptors containing byte values. Detached views and every hostile or malformed
-shape return `undefined` without throwing. The selected-rule length check precedes
+descriptors containing byte values. Detached views and every nonconforming or
+unclassifiable shape return `undefined` without throwing. The selected-rule length
+check precedes
 own-key enumeration and every allocation/copy operation.
 
 Snapshot allocation and copy use only captured intrinsics. After copy, trap-safe
@@ -91,22 +112,25 @@ occurs only after the unchanged input resource and pre-allocation ordering gates
 - Existing Buffer, subclass, altered/cross-realm prototype, detached, Proxy,
   accessor, extra-key, shadowed property, noncanonical descriptor, shared backing,
   and resizable/growable backing matrices remain complete and count-asserted.
-- Under independently reset fresh module loads, captured constructors cover: throw;
-  wrong length; wrong prototype; input-object alias; input-backing alias;
-  fixed SharedArrayBuffer backing; resizable ArrayBuffer backing; growable
-  SharedArrayBuffer backing; detached backing; extra own string key; extra symbol
-  key; transparent output Proxy; throwing output Proxy; noncanonical descriptor when
-  constructible; and
+- Under independently reset fresh module loads, bounded package-internal test seams
+  or supported runtime allocation failures cover: throw; wrong length; wrong
+  prototype; input-object alias; input-backing alias; fixed SharedArrayBuffer
+  backing; resizable ArrayBuffer backing; growable SharedArrayBuffer backing;
+  detached backing; extra own string key; extra symbol key; transparent output Proxy;
+  throwing output Proxy; noncanonical descriptor when constructible; and
   a separate exact canonical output control. Every malformed case returns
   `undefined` without throw. Both output-Proxy cases assert zero trap calls. The
   inventory asserts fourteen unconditional constructor cases (thirteen malformed
   plus the control) and one additional supported-runtime noncanonical-descriptor case
-  when it is constructible.
-- Under independently reset fresh module loads, captured copy implementations cover:
-  throw, no-op, prefix-only partial copy, suffix-only partial copy, one wrong byte,
-  all wrong bytes, and an exact-copy control. Inputs contain distinct nonzero bytes
-  so each corruption is observable. The inventory asserts all seven cases (six
-  malformed plus the control). Every malformed case returns `undefined`.
+  when it is constructible. Such seams are bounded to tests, have no public export,
+  and do not replace or corrupt the captured foundational trust root.
+- Under independently reset fresh module loads, bounded package-internal test seams
+  or supported runtime copy failures cover: throw, no-op, prefix-only partial copy,
+  suffix-only partial copy, one wrong byte, all wrong bytes, and an exact-copy
+  control. Inputs contain distinct nonzero bytes so each corruption is observable.
+  The inventory asserts all seven cases (six malformed plus the control). Every
+  malformed case returns `undefined`. These tests have no public export and do not
+  replace or corrupt the captured foundational trust root.
 - Successful output is fresh and exact. Caller mutation after synchronous return
   cannot change it; output mutation cannot change the caller. Output keys,
   descriptors, backing policy, non-aliasing, and every byte are independently
