@@ -589,6 +589,30 @@ function independentlyCalculatedLength(inventory: FrameInventory, input: Record<
   return inventory.prefixLength + inventory.classLength + ids + fixed + 9 + payload.length;
 }
 
+function independentlyEncodedFrame(inventory: FrameInventory, input: FrameInput): Uint8Array {
+  const values = input as Record<string, unknown>;
+  const prefix = inventory.name === "source observation"
+    ? "cestus.source-observation.v1\0"
+    : "source-manifest-authority.v1\0";
+  const fields: readonly [number, Uint8Array][] = [
+    ...(inventory.name === "source observation" ? [] : [[1, new TextEncoder().encode(inventory.name === "manifest authority" ? "manifest" : "entry")] as const]),
+    ...inventory.idFields.map((field, index) => [index + (inventory.name === "source observation" ? 1 : 2), new TextEncoder().encode(values[field] as string)] as const),
+    ...inventory.fixedByteFields.map((field, index) => [index + 5, values[field] as Uint8Array] as const),
+    [inventory.name === "source observation" ? 6 : 8, values[inventory.payloadField] as Uint8Array]
+  ];
+  const length = new TextEncoder().encode(prefix).length + fields.reduce((total, [, value]) => total + 9 + value.length, 0);
+  const output = new Uint8Array(length);
+  output.set(new TextEncoder().encode(prefix));
+  let offset = new TextEncoder().encode(prefix).length;
+  for (const [tag, value] of fields) {
+    output[offset] = tag;
+    new DataView(output.buffer).setBigUint64(offset + 1, BigInt(value.length));
+    output.set(value, offset + 9);
+    offset += 9 + value.length;
+  }
+  return output;
+}
+
 function withFrameField(input: FrameInput, field: string, value: unknown): FrameInput {
   return { ...(input as Record<string, unknown>), [field]: value } as FrameInput;
 }
@@ -802,14 +826,25 @@ describe("secret commitment frame-builder checkpoint inventory", () => {
       expect(calls).toEqual({ transparent: 0, throwing: 0 });
     });
 
+    test(`${inventory.name}: outer classifier rejects complete custom and null-prototype objects`, () => {
+      const fixture = inventory.fixture() as Record<string, unknown>;
+      const customPrototype = Object.assign(Object.create({}), fixture);
+      const nullPrototype = Object.assign(Object.create(null), fixture);
+      expect(Reflect.ownKeys(customPrototype)).toHaveLength(fullFrameFields(inventory).length);
+      expect(Reflect.ownKeys(nullPrototype)).toHaveLength(fullFrameFields(inventory).length);
+      expect(inventory.builder(customPrototype)).toBeUndefined();
+      expect(inventory.builder(nullPrototype)).toBeUndefined();
+    });
+
     test(`${inventory.name}: every ID occurrence accepts scalar Unicode exactly and rejects malformed IDs`, () => {
       const accepted = ["ascii", "nul\u0000id", "non-bmp-\u{1F680}", "café", "cafe\u0301"];
       const rejected: readonly unknown[] = ["", "high-\uD800", "low-\uDC00", 1];
-      const acceptedResults: unknown[] = [];
+      const acceptedResults: { readonly actual: Uint8Array | undefined; readonly expected: Uint8Array }[] = [];
       const rejectedResults: unknown[] = [];
       for (const field of inventory.idFields) {
         for (const value of accepted) {
-          acceptedResults.push(inventory.builder(withFrameField(inventory.fixture(), field, value)));
+          const candidate = withFrameField(inventory.fixture(), field, value);
+          acceptedResults.push({ actual: inventory.builder(candidate), expected: independentlyEncodedFrame(inventory, candidate) });
         }
         for (const value of rejected) {
           rejectedResults.push(inventory.builder(withFrameField(inventory.fixture(), field, value)));
@@ -817,7 +852,12 @@ describe("secret commitment frame-builder checkpoint inventory", () => {
       }
       expect(acceptedResults).toHaveLength(inventory.idFields.length * acceptedIdCases.length);
       expect(rejectedResults).toHaveLength(inventory.idFields.length * rejectedIdCases.length);
-      expect(acceptedResults, "valid scalar ID inputs must build frames").not.toContain(undefined);
+      for (const result of acceptedResults) {
+        expect(result.actual, "valid scalar ID inputs must preserve exact scalar UTF-8 bytes").toEqual(result.expected);
+      }
+      const nfc = withFrameField(inventory.fixture(), inventory.idFields[0], "café");
+      const nfd = withFrameField(inventory.fixture(), inventory.idFields[0], "cafe\u0301");
+      expect(independentlyEncodedFrame(inventory, nfc)).not.toEqual(independentlyEncodedFrame(inventory, nfd));
       expect(rejectedResults, "empty, surrogate, and non-string IDs must reject").toEqual(rejectedResults.map(() => undefined));
     });
 
@@ -907,6 +947,38 @@ interface FreshFrameModule {
   readonly buildEntryAuthorityFrame: FrameBuilder;
 }
 
+function invokeFreshBuilder(module: FreshFrameModule, inventory: FrameInventory, input: unknown): Uint8Array | undefined {
+  return inventory.name === "source observation"
+    ? module.buildSourceObservationFrame(input)
+    : inventory.name === "manifest authority"
+      ? module.buildManifestAuthorityFrame(input)
+      : module.buildEntryAuthorityFrame(input);
+}
+
+async function withBoundByteHelper<Result>(
+  inventory: FrameInventory,
+  run: (module: FreshFrameModule, calls: { readonly lengths: { readonly value: unknown; readonly limit: unknown }[]; readonly snapshots: { readonly value: unknown; readonly limit: unknown }[] }) => Promise<Result> | Result
+): Promise<Result> {
+  const calls = { lengths: [] as { value: unknown; limit: unknown }[], snapshots: [] as { value: unknown; limit: unknown }[] };
+  vi.resetModules();
+  vi.doMock("../src/secret-commitment-bytes.js", () => ({
+    trustedCanonicalSecretCommitmentByteLength(value: unknown, limit: unknown) {
+      calls.lengths.push({ value, limit });
+      return value instanceof Uint8Array ? value.length : undefined;
+    },
+    snapshotCanonicalSecretCommitmentBytes(value: unknown, limit: unknown) {
+      calls.snapshots.push({ value, limit });
+      return value instanceof Uint8Array ? Uint8Array.from(value) : undefined;
+    }
+  }));
+  try {
+    return await run(await import("../src/secret-commitment-contract.js"), calls);
+  } finally {
+    vi.doUnmock("../src/secret-commitment-bytes.js");
+    vi.resetModules();
+  }
+}
+
 async function withFreshFrameModule<Result>(
   mock: {
     readonly isProxy?: ((value: object) => boolean) | null;
@@ -952,6 +1024,25 @@ async function withFreshFrameModule<Result>(
 }
 
 describe("secret commitment frame-builder production-bound failure seams", () => {
+  for (const inventory of frameInventories) {
+    test(`${inventory.name}: trusted byte helpers receive every exact field identity, limit, and phase order`, async () => {
+      const input = inventory.fixture();
+      const values = input as Record<string, unknown>;
+      const fields = [...inventory.fixedByteFields, inventory.payloadField];
+      await withBoundByteHelper(inventory, (module, calls) => {
+        expect(invokeFreshBuilder(module, inventory, input)).toBeDefined();
+        expect(calls.lengths).toHaveLength(fields.length);
+        expect(calls.snapshots).toHaveLength(fields.length);
+        for (const [index, field] of fields.entries()) {
+          expect(calls.lengths[index]).toEqual({ value: values[field], limit: field === inventory.payloadField ? 8_388_608 : 32 });
+          expect(calls.snapshots[index]).toEqual({ value: values[field], limit: field === inventory.payloadField ? 8_388_608 : 32 });
+          expect(calls.lengths[index]?.value).toBe(values[field]);
+          expect(calls.snapshots[index]?.value).toBe(values[field]);
+        }
+      });
+    });
+  }
+
   test("fresh captured Proxy classifier failure returns undefined before caller Proxy traps", async () => {
     const calls = { traps: 0, classifier: 0 };
     const input = new Proxy(sourceFrameFixture(), {
@@ -1208,13 +1299,15 @@ async function withThrowingCapturedWriteOperation<Result>(
 
 describe("secret commitment frame-builder captured allocation and write seams", () => {
   for (const operation of capturedWriteOperationNames) {
-    test(`fresh captured ${operation} exception returns undefined`, async () => {
-      const input = sourceFrameFixture();
+    for (const inventory of frameInventories) {
+      test(`${inventory.name}: fresh captured ${operation} exception returns undefined`, async () => {
+      const input = inventory.fixture();
       await withThrowingCapturedWriteOperation(operation, (module, calls) => {
-        expect(module.buildSourceObservationFrame(input)).toBeUndefined();
+        expect(invokeFreshBuilder(module, inventory, input)).toBeUndefined();
         expect(calls.operation).toBeGreaterThan(0);
       });
     });
+    }
   }
 });
 
@@ -1223,6 +1316,7 @@ interface ResourceOrderingCalls {
   snapshot: number;
   allocation: number;
   encoding: number;
+  encodedArrays: number;
   header: number;
   copy: number;
 }
@@ -1231,10 +1325,11 @@ async function withFreshResourceOrderingModule<Result>(
   expectedFrameLength: number,
   run: (module: FreshFrameModule, calls: ResourceOrderingCalls) => Promise<Result> | Result
 ): Promise<Result> {
-  const calls: ResourceOrderingCalls = { length: 0, snapshot: 0, allocation: 0, encoding: 0, header: 0, copy: 0 };
+  const calls: ResourceOrderingCalls = { length: 0, snapshot: 0, allocation: 0, encoding: 0, encodedArrays: 0, header: 0, copy: 0 };
   let measuringBuilderInvocation = false;
   const originalUint8Array = globalThis.Uint8Array;
   const originalEncodeInto = TextEncoder.prototype.encodeInto;
+  const originalEncode = TextEncoder.prototype.encode;
   const originalSetBigUint64 = DataView.prototype.setBigUint64;
   const originalSet = Uint8Array.prototype.set;
   vi.resetModules();
@@ -1270,6 +1365,12 @@ async function withFreshResourceOrderingModule<Result>(
       }
       return originalEncodeInto.call(this, source, destination);
     };
+    TextEncoder.prototype.encode = function trackedEncode(source?: string): Uint8Array {
+      if (measuringBuilderInvocation) {
+        calls.encodedArrays += 1;
+      }
+      return originalEncode.call(this, source);
+    };
     DataView.prototype.setBigUint64 = function trackedHeaderWrite(byteOffset: number, value: bigint, littleEndian?: boolean): void {
       if (measuringBuilderInvocation) {
         calls.header += 1;
@@ -1288,6 +1389,7 @@ async function withFreshResourceOrderingModule<Result>(
   } finally {
     Object.defineProperty(globalThis, "Uint8Array", { configurable: true, value: originalUint8Array });
     TextEncoder.prototype.encodeInto = originalEncodeInto;
+    TextEncoder.prototype.encode = originalEncode;
     DataView.prototype.setBigUint64 = originalSetBigUint64;
     Uint8Array.prototype.set = originalSet;
     vi.doUnmock("../src/secret-commitment-bytes.js");
@@ -1304,7 +1406,7 @@ describe("secret commitment frame-builder resource ordering seam", () => {
     };
     await withFreshResourceOrderingModule(8_454_145, (module, calls) => {
       expect(module.buildSourceObservationFrame(input)).toBeUndefined();
-      expect(calls).toEqual({ length: 2, snapshot: 0, allocation: 0, encoding: 0, header: 0, copy: 0 });
+      expect(calls).toEqual({ length: 2, snapshot: 0, allocation: 0, encoding: 0, encodedArrays: 0, header: 0, copy: 0 });
     });
   });
 
@@ -1320,6 +1422,7 @@ describe("secret commitment frame-builder resource ordering seam", () => {
       expect(calls.snapshot).toBe(2);
       expect(calls.allocation).toBe(1);
       expect(calls.encoding).toBeGreaterThan(0);
+      expect(calls.encodedArrays).toBe(0);
       expect(calls.header).toBeGreaterThan(0);
       expect(calls.copy).toBeGreaterThan(0);
     });
