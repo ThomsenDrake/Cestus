@@ -1232,6 +1232,7 @@ async function withFreshResourceOrderingModule<Result>(
   run: (module: FreshFrameModule, calls: ResourceOrderingCalls) => Promise<Result> | Result
 ): Promise<Result> {
   const calls: ResourceOrderingCalls = { length: 0, snapshot: 0, allocation: 0, encoding: 0, header: 0, copy: 0 };
+  let measuringBuilderInvocation = false;
   const originalUint8Array = globalThis.Uint8Array;
   const originalEncodeInto = TextEncoder.prototype.encodeInto;
   const originalSetBigUint64 = DataView.prototype.setBigUint64;
@@ -1239,11 +1240,15 @@ async function withFreshResourceOrderingModule<Result>(
   vi.resetModules();
   vi.doMock("../src/secret-commitment-bytes.js", () => ({
     trustedCanonicalSecretCommitmentByteLength(value: unknown) {
-      calls.length += 1;
+      if (measuringBuilderInvocation) {
+        calls.length += 1;
+      }
       return value instanceof originalUint8Array ? value.length : undefined;
     },
     snapshotCanonicalSecretCommitmentBytes(value: unknown) {
-      calls.snapshot += 1;
+      if (measuringBuilderInvocation) {
+        calls.snapshot += 1;
+      }
       return value instanceof originalUint8Array ? new originalUint8Array(value) : undefined;
     }
   }));
@@ -1252,7 +1257,7 @@ async function withFreshResourceOrderingModule<Result>(
       configurable: true,
       value: new Proxy(originalUint8Array, {
         construct(target, argumentsList) {
-          if (argumentsList[0] === expectedFrameLength) {
+          if (measuringBuilderInvocation && argumentsList[0] === expectedFrameLength) {
             calls.allocation += 1;
           }
           return Reflect.construct(target, argumentsList, target);
@@ -1260,18 +1265,26 @@ async function withFreshResourceOrderingModule<Result>(
       })
     });
     TextEncoder.prototype.encodeInto = function trackedEncodeInto(source: string, destination: Uint8Array): TextEncoderEncodeIntoResult {
-      calls.encoding += 1;
+      if (measuringBuilderInvocation) {
+        calls.encoding += 1;
+      }
       return originalEncodeInto.call(this, source, destination);
     };
     DataView.prototype.setBigUint64 = function trackedHeaderWrite(byteOffset: number, value: bigint, littleEndian?: boolean): void {
-      calls.header += 1;
+      if (measuringBuilderInvocation) {
+        calls.header += 1;
+      }
       return originalSetBigUint64.call(this, byteOffset, value, littleEndian);
     };
     Uint8Array.prototype.set = function trackedCopy(source: ArrayLike<number>, offset?: number): void {
-      calls.copy += 1;
+      if (measuringBuilderInvocation) {
+        calls.copy += 1;
+      }
       return originalSet.call(this, source, offset);
     };
-    return await run(await import("../src/secret-commitment-contract.js"), calls);
+    const module = await import("../src/secret-commitment-contract.js");
+    measuringBuilderInvocation = true;
+    return await run(module, calls);
   } finally {
     Object.defineProperty(globalThis, "Uint8Array", { configurable: true, value: originalUint8Array });
     TextEncoder.prototype.encodeInto = originalEncodeInto;
