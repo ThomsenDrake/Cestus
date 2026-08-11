@@ -1,5 +1,10 @@
-import { describe, expect, test } from "vitest";
+import { Buffer } from "node:buffer";
+import vm from "node:vm";
+import { describe, expect, test, vi } from "vitest";
 import {
+  buildEntryAuthorityFrame,
+  buildManifestAuthorityFrame,
+  buildSourceObservationFrame,
   normalizeSecretCommitmentPublicRecord,
   type ComputeCommitmentResult,
   type EntryAuthorityCommitmentRecord,
@@ -8,7 +13,10 @@ import {
   type SecretCommitmentProfile,
   type SecretCommitmentPublicRecord,
   type SourceObservationCommitmentRecord,
-  type VerifyCommitmentResult
+  type VerifyCommitmentResult,
+  type EntryAuthorityFrameInput,
+  type ManifestAuthorityFrameInput,
+  type SourceObservationFrameInput
 } from "../src/secret-commitment-contract.js";
 
 const hex = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
@@ -457,6 +465,451 @@ describe("secret commitment public record normalization contract", () => {
       for (const testCase of cases) {
         expect(normalizeSecretCommitmentPublicRecord(testCase.value), testCase.label).toBeUndefined();
       }
+    });
+  }
+});
+
+type FrameBuilder = (input: unknown) => Uint8Array | undefined;
+type FrameInput = SourceObservationFrameInput | ManifestAuthorityFrameInput | EntryAuthorityFrameInput;
+
+const observationFrameHex = "6365737475732e736f757263652d6f62736572766174696f6e2e76310001000000000000000157020000000000000001530300000000000000015204000000000000000145050000000000000020000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f060000000000000003610062";
+const manifestFrameHex = "736f757263652d6d616e69666573742d617574686f726974792e7631000100000000000000086d616e6966657374020000000000000001570300000000000000015304000000000000000152050000000000000020202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f060000000000000020404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f0800000000000000024d00";
+const entryFrameHex = "736f757263652d6d616e69666573742d617574686f726974792e763100010000000000000005656e747279020000000000000001570300000000000000015304000000000000000152050000000000000020202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f060000000000000020404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f070000000000000020606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f0800000000000000024500";
+
+function frameBytes(hexValue: string): Uint8Array {
+  return Uint8Array.from(Buffer.from(hexValue, "hex"));
+}
+
+function sequence(start: number, length = 32): Uint8Array {
+  return Uint8Array.from({ length }, (_, index) => (start + index) & 0xff);
+}
+
+function sourceFrameFixture(): SourceObservationFrameInput {
+  return {
+    workspaceId: "W",
+    sourceCollectionId: "S",
+    sourceBoundaryRevision: "R",
+    manifestEntryId: "E",
+    nonce: sequence(0),
+    observedBytes: Uint8Array.of(0x61, 0, 0x62)
+  };
+}
+
+function manifestFrameFixture(): ManifestAuthorityFrameInput {
+  return {
+    workspaceId: "W",
+    sourceCollectionId: "S",
+    sourceBoundaryRevision: "R",
+    classificationPolicyHash: sequence(0x20),
+    publicManifestId: sequence(0x40),
+    protectedCanonicalManifestBytes: Uint8Array.of(0x4d, 0)
+  };
+}
+
+function entryFrameFixture(): EntryAuthorityFrameInput {
+  return {
+    workspaceId: "W",
+    sourceCollectionId: "S",
+    sourceBoundaryRevision: "R",
+    classificationPolicyHash: sequence(0x20),
+    publicManifestId: sequence(0x40),
+    publicEntryId: sequence(0x60),
+    protectedCanonicalEntryBytes: Uint8Array.of(0x45, 0)
+  };
+}
+
+interface FrameInventory {
+  readonly name: string;
+  readonly builder: FrameBuilder;
+  readonly fixture: () => FrameInput;
+  readonly expectedHex: string;
+  readonly expectedLength: number;
+  readonly prefixLength: number;
+  readonly classLength: number;
+  readonly idFields: readonly string[];
+  readonly fixedByteFields: readonly string[];
+  readonly payloadField: string;
+}
+
+const frameInventories: readonly FrameInventory[] = [
+  {
+    name: "source observation",
+    builder: buildSourceObservationFrame,
+    fixture: sourceFrameFixture,
+    expectedHex: observationFrameHex,
+    expectedLength: 122,
+    prefixLength: 29,
+    classLength: 0,
+    idFields: ["workspaceId", "sourceCollectionId", "sourceBoundaryRevision", "manifestEntryId"],
+    fixedByteFields: ["nonce"],
+    payloadField: "observedBytes"
+  },
+  {
+    name: "manifest authority",
+    builder: buildManifestAuthorityFrame,
+    fixture: manifestFrameFixture,
+    expectedHex: manifestFrameHex,
+    expectedLength: 169,
+    prefixLength: 29,
+    classLength: 17,
+    idFields: ["workspaceId", "sourceCollectionId", "sourceBoundaryRevision"],
+    fixedByteFields: ["classificationPolicyHash", "publicManifestId"],
+    payloadField: "protectedCanonicalManifestBytes"
+  },
+  {
+    name: "entry authority",
+    builder: buildEntryAuthorityFrame,
+    fixture: entryFrameFixture,
+    expectedHex: entryFrameHex,
+    expectedLength: 207,
+    prefixLength: 29,
+    classLength: 14,
+    idFields: ["workspaceId", "sourceCollectionId", "sourceBoundaryRevision"],
+    fixedByteFields: ["classificationPolicyHash", "publicManifestId", "publicEntryId"],
+    payloadField: "protectedCanonicalEntryBytes"
+  }
+];
+
+const exactOuterCaseNames = ["missing", "extra", "inherited", "non-enumerable", "accessor", "symbol", "wrong type", "Proxy"] as const;
+const acceptedIdCases = ["ASCII", "embedded NUL", "non-BMP", "NFC", "distinct NFD"] as const;
+const rejectedIdCases = ["empty", "lone high surrogate", "lone low surrogate", "non-string"] as const;
+const byteShapeCaseNames = [
+  "Buffer", "Uint8Array subclass", "altered prototype", "cross-realm prototype", "detached backing",
+  "transparent Proxy", "throwing Proxy", "fixed SharedArrayBuffer", "resizable fixed-length view",
+  "resizable length-tracking view", "growable fixed-length view", "growable length-tracking view"
+] as const;
+
+function independentlyCalculatedLength(inventory: FrameInventory, input: Record<string, unknown>): number {
+  const ids = inventory.idFields.reduce((total, field) => total + 9 + new TextEncoder().encode(input[field] as string).length, 0);
+  const fixed = inventory.fixedByteFields.length * (9 + 32);
+  const payload = input[inventory.payloadField] as Uint8Array;
+  return inventory.prefixLength + inventory.classLength + ids + fixed + 9 + payload.length;
+}
+
+function withFrameField(input: FrameInput, field: string, value: unknown): FrameInput {
+  return { ...(input as Record<string, unknown>), [field]: value } as FrameInput;
+}
+
+function fullFrameFields(inventory: FrameInventory): readonly string[] {
+  return [...inventory.idFields, ...inventory.fixedByteFields, inventory.payloadField];
+}
+
+function exactOuterCase(input: FrameInput, field: string, name: (typeof exactOuterCaseNames)[number], calls: { accessor: number; proxy: number }): unknown {
+  const base = input as Record<string, unknown>;
+  switch (name) {
+    case "missing": {
+      const { [field]: _omitted, ...rest } = base;
+      return rest;
+    }
+    case "extra":
+      return { ...base, unexpected: true };
+    case "inherited": {
+      const { [field]: value, ...rest } = base;
+      return Object.assign(Object.create({ [field]: value }), rest);
+    }
+    case "non-enumerable": {
+      const output = { ...base };
+      Object.defineProperty(output, field, { configurable: true, enumerable: false, value: base[field] });
+      return output;
+    }
+    case "accessor": {
+      const output = { ...base };
+      Object.defineProperty(output, field, {
+        configurable: true,
+        enumerable: true,
+        get() {
+          calls.accessor += 1;
+          throw new Error("frame classifier must use descriptors");
+        }
+      });
+      return output;
+    }
+    case "symbol":
+      return { ...base, [Symbol("unexpected")]: true };
+    case "wrong type":
+      return { ...base, [field]: { wrong: true } };
+    case "Proxy":
+      return new Proxy({ ...base }, {
+        get() {
+          calls.proxy += 1;
+          throw new Error("frame classifier must reject Proxy before traps");
+        },
+        getPrototypeOf() {
+          calls.proxy += 1;
+          throw new Error("frame classifier must reject Proxy before traps");
+        },
+        ownKeys() {
+          calls.proxy += 1;
+          throw new Error("frame classifier must reject Proxy before traps");
+        },
+        getOwnPropertyDescriptor() {
+          calls.proxy += 1;
+          throw new Error("frame classifier must reject Proxy before traps");
+        }
+      });
+  }
+}
+
+function detachedView(length: number): Uint8Array {
+  const backing = new ArrayBuffer(length);
+  const value = new Uint8Array(backing);
+  structuredClone(backing, { transfer: [backing] });
+  return value;
+}
+
+function resizableView(lengthTracking: boolean): Uint8Array | undefined {
+  try {
+    const Constructor = ArrayBuffer as unknown as new (length: number, options: { maxByteLength: number }) => ArrayBuffer;
+    const backing = new Constructor(32, { maxByteLength: 64 });
+    return lengthTracking ? new Uint8Array(backing) : new Uint8Array(backing, 0, 32);
+  } catch {
+    return undefined;
+  }
+}
+
+function growableView(lengthTracking: boolean): Uint8Array | undefined {
+  try {
+    const Constructor = SharedArrayBuffer as unknown as new (length: number, options: { maxByteLength: number }) => SharedArrayBuffer;
+    const backing = new Constructor(32, { maxByteLength: 64 });
+    return lengthTracking ? new Uint8Array(backing) : new Uint8Array(backing, 0, 32);
+  } catch {
+    return undefined;
+  }
+}
+
+function hostileByteShapes(): readonly { readonly name: (typeof byteShapeCaseNames)[number]; readonly value: Uint8Array; readonly supported: boolean }[] {
+  class Subclass extends Uint8Array {}
+  const transparentProxy = new Proxy(sequence(0), {});
+  const throwingProxy = new Proxy(sequence(0), { get() { throw new Error("byte Proxy must not trap"); } });
+  const altered = sequence(0);
+  Object.setPrototypeOf(altered, {});
+  const resizableFixed = resizableView(false);
+  const resizableTracking = resizableView(true);
+  const growableFixed = growableView(false);
+  const growableTracking = growableView(true);
+  return [
+    { name: "Buffer", value: Buffer.from(sequence(0)), supported: true },
+    { name: "Uint8Array subclass", value: new Subclass(sequence(0)), supported: true },
+    { name: "altered prototype", value: altered, supported: true },
+    { name: "cross-realm prototype", value: vm.runInNewContext("new Uint8Array(32)") as Uint8Array, supported: true },
+    { name: "detached backing", value: detachedView(32), supported: true },
+    { name: "transparent Proxy", value: transparentProxy, supported: true },
+    { name: "throwing Proxy", value: throwingProxy, supported: true },
+    { name: "fixed SharedArrayBuffer", value: new Uint8Array(new SharedArrayBuffer(32)), supported: true },
+    ...(resizableFixed === undefined ? [] : [{ name: "resizable fixed-length view" as const, value: resizableFixed, supported: true }]),
+    ...(resizableTracking === undefined ? [] : [{ name: "resizable length-tracking view" as const, value: resizableTracking, supported: true }]),
+    ...(growableFixed === undefined ? [] : [{ name: "growable fixed-length view" as const, value: growableFixed, supported: true }]),
+    ...(growableTracking === undefined ? [] : [{ name: "growable length-tracking view" as const, value: growableTracking, supported: true }])
+  ];
+}
+
+describe("secret commitment frame-builder checkpoint inventory", () => {
+  test("keeps the exact public input contracts and undefined-return builder signatures assignable", () => {
+    const source: SourceObservationFrameInput = sourceFrameFixture();
+    const manifest: ManifestAuthorityFrameInput = manifestFrameFixture();
+    const entry: EntryAuthorityFrameInput = entryFrameFixture();
+    const sourceResult: Uint8Array | undefined = buildSourceObservationFrame(source);
+    const manifestResult: Uint8Array | undefined = buildManifestAuthorityFrame(manifest);
+    const entryResult: Uint8Array | undefined = buildEntryAuthorityFrame(entry);
+    void [sourceResult, manifestResult, entryResult];
+  });
+
+  test("asserts the complete count-asserted frame requirement inventory", () => {
+    const outerMembers = frameInventories.reduce((total, inventory) => total + fullFrameFields(inventory).length, 0);
+    const idOccurrences = frameInventories.reduce((total, inventory) => total + inventory.idFields.length, 0);
+    const byteOccurrences = frameInventories.reduce((total, inventory) => total + inventory.fixedByteFields.length + 1, 0);
+    const validIdCases = idOccurrences * acceptedIdCases.length;
+    const rejectedIdCaseCount = idOccurrences * rejectedIdCases.length;
+    const outerCases = outerMembers * exactOuterCaseNames.length;
+    const byteShapeCases = byteOccurrences * byteShapeCaseNames.length;
+    expect(frameInventories).toHaveLength(3);
+    expect(frameInventories.map((inventory) => fullFrameFields(inventory).length)).toEqual([6, 6, 7]);
+    expect(outerMembers).toBe(19);
+    expect(idOccurrences).toBe(10);
+    expect(byteOccurrences).toBe(9);
+    expect(validIdCases).toBe(50);
+    expect(rejectedIdCaseCount).toBe(40);
+    expect(outerCases).toBe(152);
+    expect(byteShapeCases).toBe(108);
+    expect(frameInventories.map((inventory) => inventory.expectedLength)).toEqual([122, 169, 207]);
+    expect(frameInventories.map((inventory) => frameBytes(inventory.expectedHex).length)).toEqual([122, 169, 207]);
+  });
+
+  for (const inventory of frameInventories) {
+    test(`${inventory.name}: exact independent literal frame and size control`, () => {
+      const input = inventory.fixture();
+      const expected = frameBytes(inventory.expectedHex);
+      expect(independentlyCalculatedLength(inventory, input as Record<string, unknown>)).toBe(inventory.expectedLength);
+      expect(expected).toHaveLength(inventory.expectedLength);
+      expect(inventory.builder(input)).toEqual(expected);
+    });
+
+    test(`${inventory.name}: outer classifier rejects every exact-object violation without traps or accessor calls`, () => {
+      const cases: unknown[] = [];
+      for (const field of fullFrameFields(inventory)) {
+        for (const name of exactOuterCaseNames) {
+          const calls = { accessor: 0, proxy: 0 };
+          const value = exactOuterCase(inventory.fixture(), field, name, calls);
+          expect(inventory.builder(value), `${field} ${name}`).toBeUndefined();
+          expect(calls, `${field} ${name}`).toEqual({ accessor: 0, proxy: 0 });
+          cases.push(value);
+        }
+      }
+      expect(cases).toHaveLength(fullFrameFields(inventory).length * exactOuterCaseNames.length);
+    });
+
+    test(`${inventory.name}: every ID occurrence accepts scalar Unicode exactly and rejects malformed IDs`, () => {
+      const accepted = ["ascii", "nul\u0000id", "non-bmp-\u{1F680}", "café", "cafe\u0301"];
+      const rejected: readonly unknown[] = ["", "high-\uD800", "low-\uDC00", 1];
+      const acceptedResults: unknown[] = [];
+      const rejectedResults: unknown[] = [];
+      for (const field of inventory.idFields) {
+        for (const value of accepted) {
+          acceptedResults.push(inventory.builder(withFrameField(inventory.fixture(), field, value)));
+        }
+        for (const value of rejected) {
+          rejectedResults.push(inventory.builder(withFrameField(inventory.fixture(), field, value)));
+        }
+      }
+      expect(acceptedResults).toHaveLength(inventory.idFields.length * acceptedIdCases.length);
+      expect(rejectedResults).toHaveLength(inventory.idFields.length * rejectedIdCases.length);
+      expect(acceptedResults, "valid scalar ID inputs must build frames").not.toContain(undefined);
+      expect(rejectedResults, "empty, surrogate, and non-string IDs must reject").toEqual(rejectedResults.map(() => undefined));
+    });
+
+    test(`${inventory.name}: rejects every hostile byte shape for every byte-field occurrence`, () => {
+      const shapes = hostileByteShapes();
+      const supportedCount = shapes.filter((shape) => shape.supported).length;
+      expect(supportedCount).toBe(shapes.length);
+      expect(shapes.map((shape) => shape.name)).toEqual(byteShapeCaseNames.filter((name) => shapes.some((shape) => shape.name === name)));
+      const results: unknown[] = [];
+      for (const field of [...inventory.fixedByteFields, inventory.payloadField]) {
+        for (const shape of shapes) {
+          results.push(inventory.builder(withFrameField(inventory.fixture(), field, shape.value)));
+        }
+      }
+      expect(results).toHaveLength((inventory.fixedByteFields.length + 1) * supportedCount);
+      expect(results).toEqual(results.map(() => undefined));
+    });
+
+    test(`${inventory.name}: fixed, payload, and complete-frame size-boundary inventory`, () => {
+      const fixedLengths = [0, 31, 32, 33];
+      const payloadLengths = [0, 2, 8_388_608, 8_388_609];
+      const completeLengths = [8_454_143, 8_454_144, 8_454_145];
+      const fixedResults: unknown[] = [];
+      const payloadResults: unknown[] = [];
+      const completeResults: unknown[] = [];
+      for (const field of inventory.fixedByteFields) {
+        for (const length of fixedLengths) {
+          fixedResults.push(inventory.builder(withFrameField(inventory.fixture(), field, sequence(0, length))));
+        }
+      }
+      for (const length of payloadLengths) {
+        payloadResults.push(inventory.builder(withFrameField(inventory.fixture(), inventory.payloadField, sequence(0, length))));
+      }
+      for (const length of completeLengths) {
+        const input = inventory.fixture();
+        const currentLength = independentlyCalculatedLength(inventory, input as Record<string, unknown>);
+        const idLength = length - currentLength + 1;
+        completeResults.push(inventory.builder(withFrameField(input, inventory.idFields[0], "x".repeat(idLength))));
+      }
+      expect(fixedResults).toHaveLength(inventory.fixedByteFields.length * fixedLengths.length);
+      expect(payloadResults).toHaveLength(payloadLengths.length);
+      expect(completeResults).toHaveLength(completeLengths.length);
+      expect(fixedResults.filter((_, index) => fixedLengths[index % fixedLengths.length] !== 32)).toEqual(
+        fixedResults.filter((_, index) => fixedLengths[index % fixedLengths.length] !== 32).map(() => undefined)
+      );
+      expect(payloadResults.at(-1)).toBeUndefined();
+      expect(completeResults.at(-1)).toBeUndefined();
+      expect(fixedResults.filter((_, index) => fixedLengths[index % fixedLengths.length] === 32), "exact 32-byte fixed fields must build").not.toContain(undefined);
+      expect(payloadResults.slice(0, 3), "payload zero and equal limit must build").not.toContain(undefined);
+      expect(completeResults.slice(0, 2), "complete-frame lower and equal limits must build").not.toContain(undefined);
+    });
+
+    test(`${inventory.name}: synchronous byte snapshot isolates caller mutation`, () => {
+      const input = inventory.fixture() as Record<string, unknown>;
+      const payload = input[inventory.payloadField] as Uint8Array;
+      const before = inventory.builder(input);
+      payload.fill(0xff);
+      input[inventory.idFields[0]] = "later-mutation";
+      expect(before, "valid input must create a synchronous frame snapshot").toBeInstanceOf(Uint8Array);
+      expect(before).toEqual(frameBytes(inventory.expectedHex));
+    });
+  }
+});
+
+interface FreshFrameModule {
+  readonly buildSourceObservationFrame: FrameBuilder;
+  readonly buildManifestAuthorityFrame: FrameBuilder;
+  readonly buildEntryAuthorityFrame: FrameBuilder;
+}
+
+async function withFreshFrameModule<Result>(
+  mock: { readonly isProxy?: (value: object) => boolean; readonly byteFailure?: "length" | "snapshot" },
+  run: (module: FreshFrameModule, byteCalls: { length: number; snapshot: number }) => Promise<Result> | Result
+): Promise<Result> {
+  const byteCalls = { length: 0, snapshot: 0 };
+  vi.resetModules();
+  vi.doMock("node:util/types", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("node:util/types")>();
+    return { ...actual, ...(mock.isProxy === undefined ? {} : { isProxy: mock.isProxy }) };
+  });
+  vi.doMock("../src/secret-commitment-bytes.js", () => ({
+    trustedCanonicalSecretCommitmentByteLength() {
+      byteCalls.length += 1;
+      if (mock.byteFailure === "length") {
+        throw new Error("test-owned trusted-length failure");
+      }
+      return 32;
+    },
+    snapshotCanonicalSecretCommitmentBytes() {
+      byteCalls.snapshot += 1;
+      if (mock.byteFailure === "snapshot") {
+        throw new Error("test-owned snapshot failure");
+      }
+      return sequence(0);
+    }
+  }));
+  try {
+    return await run(await import("../src/secret-commitment-contract.js"), byteCalls);
+  } finally {
+    vi.doUnmock("node:util/types");
+    vi.doUnmock("../src/secret-commitment-bytes.js");
+    vi.resetModules();
+  }
+}
+
+describe("secret commitment frame-builder production-bound failure seams", () => {
+  test("fresh captured Proxy classifier failure returns undefined before caller Proxy traps", async () => {
+    const calls = { traps: 0, classifier: 0 };
+    const input = new Proxy(sourceFrameFixture(), {
+      get() {
+        calls.traps += 1;
+        throw new Error("caller Proxy trap must not run");
+      }
+    });
+    await withFreshFrameModule({ isProxy(value) { calls.classifier += 1; return value === input; } }, (module) => {
+      expect(module.buildSourceObservationFrame(input)).toBeUndefined();
+      expect(calls).toEqual({ traps: 0, classifier: 1 });
+    });
+  });
+
+  for (const byteFailure of ["length", "snapshot"] as const) {
+    test(`fresh captured trusted byte ${byteFailure} failure returns undefined at each production builder`, async () => {
+      await withFreshFrameModule({ byteFailure }, (module, calls) => {
+        const results = [
+          module.buildSourceObservationFrame(sourceFrameFixture()),
+          module.buildManifestAuthorityFrame(manifestFrameFixture()),
+          module.buildEntryAuthorityFrame(entryFrameFixture())
+        ];
+        expect(results).toEqual([undefined, undefined, undefined]);
+        if (byteFailure === "length") {
+          expect(calls).toEqual({ length: 9, snapshot: 0 });
+        } else {
+          expect(calls.length).toBe(9);
+          expect(calls.snapshot).toBe(9);
+        }
+      });
     });
   }
 });
