@@ -957,17 +957,27 @@ function invokeFreshBuilder(module: FreshFrameModule, inventory: FrameInventory,
 
 async function withBoundByteHelper<Result>(
   inventory: FrameInventory,
-  run: (module: FreshFrameModule, calls: { readonly lengths: { readonly value: unknown; readonly limit: unknown }[]; readonly snapshots: { readonly value: unknown; readonly limit: unknown }[] }) => Promise<Result> | Result
+  run: (module: FreshFrameModule, calls: {
+    readonly lengths: { readonly value: unknown; readonly limit: unknown }[];
+    readonly snapshots: { readonly value: unknown; readonly limit: unknown }[];
+    readonly events: { readonly phase: "length" | "snapshot"; readonly value: unknown; readonly limit: unknown }[];
+  }) => Promise<Result> | Result
 ): Promise<Result> {
-  const calls = { lengths: [] as { value: unknown; limit: unknown }[], snapshots: [] as { value: unknown; limit: unknown }[] };
+  const calls = {
+    lengths: [] as { value: unknown; limit: unknown }[],
+    snapshots: [] as { value: unknown; limit: unknown }[],
+    events: [] as { phase: "length" | "snapshot"; value: unknown; limit: unknown }[]
+  };
   vi.resetModules();
   vi.doMock("../src/secret-commitment-bytes.js", () => ({
     trustedCanonicalSecretCommitmentByteLength(value: unknown, limit: unknown) {
       calls.lengths.push({ value, limit });
+      calls.events.push({ phase: "length", value, limit });
       return value instanceof Uint8Array ? value.length : undefined;
     },
     snapshotCanonicalSecretCommitmentBytes(value: unknown, limit: unknown) {
       calls.snapshots.push({ value, limit });
+      calls.events.push({ phase: "snapshot", value, limit });
       return value instanceof Uint8Array ? Uint8Array.from(value) : undefined;
     }
   }));
@@ -1038,6 +1048,14 @@ describe("secret commitment frame-builder production-bound failure seams", () =>
           expect(calls.snapshots[index]).toEqual({ value: values[field], limit: field === inventory.payloadField ? 8_388_608 : 32 });
           expect(calls.lengths[index]?.value).toBe(values[field]);
           expect(calls.snapshots[index]?.value).toBe(values[field]);
+        }
+        const expectedEvents = [
+          ...fields.map((field) => ({ phase: "length" as const, value: values[field], limit: field === inventory.payloadField ? 8_388_608 : 32 })),
+          ...fields.map((field) => ({ phase: "snapshot" as const, value: values[field], limit: field === inventory.payloadField ? 8_388_608 : 32 }))
+        ];
+        expect(calls.events).toEqual(expectedEvents);
+        for (const [index, event] of calls.events.entries()) {
+          expect(event.value).toBe(expectedEvents[index]?.value);
         }
       });
     });
@@ -1154,7 +1172,65 @@ async function withUnavailableCapturedOuterOperation<Result>(
   }
 }
 
+async function withCapturedThenMutatedLiveOuterOperation<Result>(
+  operation: CapturedOuterOperation,
+  input: object,
+  run: (module: FreshFrameModule, calls: { captured: number; live: number }) => Promise<Result> | Result
+): Promise<Result> {
+  const calls = { captured: 0, live: 0 };
+  const originals = { isArray: Array.isArray, getPrototypeOf: Object.getPrototypeOf, ownKeys: Reflect.ownKeys, getOwnPropertyDescriptor: Object.getOwnPropertyDescriptor };
+  const captured = <Value>(value: object, original: () => Value): Value => value === input ? (calls.captured += 1, original()) : original();
+  const live = <Value>(value: object, original: () => Value): Value => {
+    if (value === input) {
+      calls.live += 1;
+      throw new Error(`live ${operation} must not be used after capture`);
+    }
+    return original();
+  };
+  try {
+    if (operation === "Array.isArray") Array.isArray = ((value: unknown) => captured(value as object, () => originals.isArray(value))) as typeof Array.isArray;
+    else if (operation === "Object.getPrototypeOf") Object.getPrototypeOf = ((value: object) => captured(value, () => originals.getPrototypeOf(value))) as typeof Object.getPrototypeOf;
+    else if (operation === "Reflect.ownKeys") Reflect.ownKeys = ((value: object) => captured(value, () => originals.ownKeys(value))) as typeof Reflect.ownKeys;
+    else Object.getOwnPropertyDescriptor = ((value: object, property: PropertyKey) => captured(value, () => originals.getOwnPropertyDescriptor(value, property))) as typeof Object.getOwnPropertyDescriptor;
+    vi.resetModules();
+    const module = await import("../src/secret-commitment-contract.js");
+    Array.isArray = ((value: unknown) => live(value as object, () => originals.isArray(value))) as typeof Array.isArray;
+    Object.getPrototypeOf = ((value: object) => live(value, () => originals.getPrototypeOf(value))) as typeof Object.getPrototypeOf;
+    Reflect.ownKeys = ((value: object) => live(value, () => originals.ownKeys(value))) as typeof Reflect.ownKeys;
+    Object.getOwnPropertyDescriptor = ((value: object, property: PropertyKey) => live(value, () => originals.getOwnPropertyDescriptor(value, property))) as typeof Object.getOwnPropertyDescriptor;
+    return await run(module, calls);
+  } finally {
+    Array.isArray = originals.isArray;
+    Object.getPrototypeOf = originals.getPrototypeOf;
+    Reflect.ownKeys = originals.ownKeys;
+    Object.getOwnPropertyDescriptor = originals.getOwnPropertyDescriptor;
+    vi.resetModules();
+  }
+}
+
 describe("secret commitment frame-builder captured classifier and reflection seams", () => {
+  test("isProxy remains captured after the live module mock changes", async () => {
+    const calls = { captured: 0, live: 0 };
+    const input = sourceFrameFixture();
+    vi.resetModules();
+    vi.doMock("node:util/types", async (importOriginal) => {
+      const actual = await importOriginal<typeof import("node:util/types")>();
+      return { ...actual, isProxy(value: object) { calls.captured += 1; return actual.isProxy(value); } };
+    });
+    try {
+      const module = await import("../src/secret-commitment-contract.js");
+      vi.doMock("node:util/types", async (importOriginal) => {
+        const actual = await importOriginal<typeof import("node:util/types")>();
+        return { ...actual, isProxy() { calls.live += 1; throw new Error("live isProxy must not be used"); } };
+      });
+      expect(module.buildSourceObservationFrame(input)).toBeUndefined();
+      expect(calls).toEqual({ captured: 1, live: 0 });
+    } finally {
+      vi.doUnmock("node:util/types");
+      vi.resetModules();
+    }
+  });
+
   test("missing captured isProxy fails closed without caller Proxy traps", async () => {
     const calls = { traps: 0 };
     const input = new Proxy(sourceFrameFixture(), {
@@ -1229,6 +1305,16 @@ describe("secret commitment frame-builder captured classifier and reflection sea
   }
 
   for (const operation of capturedOuterOperationNames) {
+    test(`${operation} remains captured after its live runtime operation changes`, async () => {
+      const input = sourceFrameFixture();
+      await withCapturedThenMutatedLiveOuterOperation(operation, input, (module, calls) => {
+        expect(module.buildSourceObservationFrame(input)).toBeUndefined();
+        expect(calls).toEqual({ captured: 1, live: 0 });
+      });
+    });
+  }
+
+  for (const operation of capturedOuterOperationNames) {
     for (const availability of ["missing", "malformed"] as const) {
       test(`${availability} captured ${operation} fails closed without caller Proxy traps`, async () => {
         const calls = { traps: 0 };
@@ -1252,6 +1338,7 @@ type CapturedWriteOperation = (typeof capturedWriteOperationNames)[number];
 
 async function withThrowingCapturedWriteOperation<Result>(
   operation: CapturedWriteOperation,
+  frameLength: number,
   run: (module: FreshFrameModule, calls: { operation: number }) => Promise<Result> | Result
 ): Promise<Result> {
   const calls = { operation: 0 };
@@ -1264,26 +1351,38 @@ async function withThrowingCapturedWriteOperation<Result>(
       Object.defineProperty(globalThis, "Uint8Array", {
         configurable: true,
         value: new Proxy(originalUint8Array, {
-          construct() {
-            calls.operation += 1;
-            throw new Error("test-owned frame allocation failure");
+          construct(_target, argumentsList) {
+            if (argumentsList[0] === frameLength) {
+              calls.operation += 1;
+              throw new Error("test-owned frame allocation failure");
+            }
+            return Reflect.construct(originalUint8Array, argumentsList, originalUint8Array);
           }
         })
       });
     } else if (operation === "TextEncoder.encodeInto") {
-      TextEncoder.prototype.encodeInto = function encodeIntoFailure(): TextEncoderEncodeIntoResult {
-        calls.operation += 1;
-        throw new Error("test-owned encodeInto failure");
+      TextEncoder.prototype.encodeInto = function encodeIntoFailure(source: string, destination: Uint8Array): TextEncoderEncodeIntoResult {
+        if (destination.length === frameLength) {
+          calls.operation += 1;
+          throw new Error("test-owned encodeInto failure");
+        }
+        return originalEncodeInto.call(this, source, destination);
       };
     } else if (operation === "header write") {
-      DataView.prototype.setBigUint64 = function headerWriteFailure(): void {
-        calls.operation += 1;
-        throw new Error("test-owned header write failure");
+      DataView.prototype.setBigUint64 = function headerWriteFailure(byteOffset: number, value: bigint, littleEndian?: boolean): void {
+        if (this.byteLength === frameLength) {
+          calls.operation += 1;
+          throw new Error("test-owned header write failure");
+        }
+        return originalSetBigUint64.call(this, byteOffset, value, littleEndian);
       };
     } else {
-      Uint8Array.prototype.set = function copiedFieldWriteFailure(): void {
-        calls.operation += 1;
-        throw new Error("test-owned copied-field write failure");
+      Uint8Array.prototype.set = function copiedFieldWriteFailure(source: ArrayLike<number>, offset?: number): void {
+        if (this.length === frameLength) {
+          calls.operation += 1;
+          throw new Error("test-owned copied-field write failure");
+        }
+        return originalSet.call(this, source, offset);
       };
     }
     vi.resetModules();
@@ -1302,7 +1401,7 @@ describe("secret commitment frame-builder captured allocation and write seams", 
     for (const inventory of frameInventories) {
       test(`${inventory.name}: fresh captured ${operation} exception returns undefined`, async () => {
       const input = inventory.fixture();
-      await withThrowingCapturedWriteOperation(operation, (module, calls) => {
+      await withThrowingCapturedWriteOperation(operation, inventory.expectedLength, (module, calls) => {
         expect(invokeFreshBuilder(module, inventory, input)).toBeUndefined();
         expect(calls.operation).toBeGreaterThan(0);
       });
