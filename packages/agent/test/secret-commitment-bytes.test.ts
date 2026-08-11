@@ -174,7 +174,6 @@ function noncanonicalDescriptorShape(): Uint8Array {
 }
 
 interface TestSeam {
-  readonly exercise: boolean;
   readonly ownKeys?: (value: unknown) => readonly PropertyKey[];
   readonly allocate?: () => unknown;
   readonly copy?: (output: unknown, input: unknown) => void;
@@ -186,9 +185,8 @@ function testGlobal(): TestGlobal {
   return globalThis as TestGlobal;
 }
 
-function resourceSeam(calls: { ownKeys: number; allocation: number; copy: number }, exercise: boolean): TestSeam {
+function resourceSeam(calls: { ownKeys: number; allocation: number; copy: number }): TestSeam {
   return {
-    exercise,
     ownKeys(value) {
       calls.ownKeys += 1;
       return Reflect.ownKeys(value as object);
@@ -209,7 +207,6 @@ function allocationSeam(
   calls: { allocation: number; proxyTraps: number }
 ): TestSeam {
   return {
-    exercise: true,
     allocate() {
       calls.allocation += 1;
       switch (name) {
@@ -288,7 +285,6 @@ function allocationSeam(
 
 function copySeam(name: (typeof copyCaseNames)[number], calls: { allocation: number; copy: number }): TestSeam {
   return {
-    exercise: true,
     allocate() {
       calls.allocation += 1;
       return new Uint8Array(6);
@@ -409,7 +405,7 @@ describe("secret commitment canonical bytes red checkpoint", () => {
 
   test.each([0, 1, 31, 33])("rejects length %i under the exact-32 rule before resources", async (length) => {
     const resourceCalls = { ownKeys: 0, allocation: 0, copy: 0 };
-    await withFreshModule(resourceSeam(resourceCalls, false), true, (module) => {
+    await withFreshModule(resourceSeam(resourceCalls), true, (module) => {
       const input = bytes(length);
       expect(module.trustedCanonicalSecretCommitmentByteLength(input, FIXED_LIMIT)).toBeUndefined();
       expect(module.snapshotCanonicalSecretCommitmentBytes(input, FIXED_LIMIT)).toBeUndefined();
@@ -420,7 +416,7 @@ describe("secret commitment canonical bytes red checkpoint", () => {
   test("accepts exact-32 inputs and reaches every accepted-resource seam", async () => {
     const exact = bytes(32);
     const resourceCalls = { ownKeys: 0, allocation: 0, copy: 0 };
-    await withFreshModule(resourceSeam(resourceCalls, true), true, (module) => {
+    await withFreshModule(resourceSeam(resourceCalls), true, (module) => {
       const length = module.trustedCanonicalSecretCommitmentByteLength(exact, FIXED_LIMIT);
       const result = module.snapshotCanonicalSecretCommitmentBytes(exact, FIXED_LIMIT);
       expect(resourceCalls.ownKeys).toBeGreaterThan(0);
@@ -448,7 +444,7 @@ describe("secret commitment canonical bytes red checkpoint", () => {
   ] as const)("rejects %s plus-one before reflection, allocation, and copy", async (_name, limit) => {
     const plusOne = bytes(limit + 1);
     const resourceCalls = { ownKeys: 0, allocation: 0, copy: 0 };
-    await withFreshModule(resourceSeam(resourceCalls, false), true, (module) => {
+    await withFreshModule(resourceSeam(resourceCalls), true, (module) => {
       expect(module.trustedCanonicalSecretCommitmentByteLength(plusOne, limit)).toBeUndefined();
       expect(module.snapshotCanonicalSecretCommitmentBytes(plusOne, limit)).toBeUndefined();
       expect(resourceCalls).toEqual({ ownKeys: 0, allocation: 0, copy: 0 });
@@ -461,7 +457,7 @@ describe("secret commitment canonical bytes red checkpoint", () => {
   ] as const)("reaches reflection, allocation, and copy for accepted %s equal limits", async (_name, limit) => {
     const resourceCalls = { ownKeys: 0, allocation: 0, copy: 0 };
     const input = bytes(limit);
-    await withFreshModule(resourceSeam(resourceCalls, true), true, (module) => {
+    await withFreshModule(resourceSeam(resourceCalls), true, (module) => {
       const result = module.snapshotCanonicalSecretCommitmentBytes(input, limit);
       expect(resourceCalls.ownKeys).toBeGreaterThan(0);
       expect(resourceCalls.allocation).toBeGreaterThan(0);
@@ -473,7 +469,7 @@ describe("secret commitment canonical bytes red checkpoint", () => {
   test("keeps a installed seam inactive when its explicit test gate is disabled", async () => {
     const resourceCalls = { ownKeys: 0, allocation: 0, copy: 0 };
     const input = bytes(32);
-    await withFreshModule(resourceSeam(resourceCalls, true), false, (module) => {
+    await withFreshModule(resourceSeam(resourceCalls), false, (module) => {
       const result = module.snapshotCanonicalSecretCommitmentBytes(input, FIXED_LIMIT);
       expect(resourceCalls).toEqual({ ownKeys: 0, allocation: 0, copy: 0 });
       expectCanonicalSnapshot(result, input);
@@ -567,7 +563,6 @@ describe("secret commitment canonical bytes red checkpoint", () => {
     }
     const calls = { allocation: 0 };
     await withFreshModule({
-      exercise: true,
       allocate() {
         calls.allocation += 1;
         return malformedOutput;
