@@ -92,6 +92,49 @@ export interface SecretCommitmentComputePort {
   ): Promise<VerifyCommitmentResult>;
 }
 
+export interface SourceObservationFrameInput {
+  readonly workspaceId: string;
+  readonly sourceCollectionId: string;
+  readonly sourceBoundaryRevision: string;
+  readonly manifestEntryId: string;
+  readonly nonce: Uint8Array;
+  readonly observedBytes: Uint8Array;
+}
+
+export interface ManifestAuthorityFrameInput {
+  readonly workspaceId: string;
+  readonly sourceCollectionId: string;
+  readonly sourceBoundaryRevision: string;
+  readonly classificationPolicyHash: Uint8Array;
+  readonly publicManifestId: Uint8Array;
+  readonly protectedCanonicalManifestBytes: Uint8Array;
+}
+
+export interface EntryAuthorityFrameInput {
+  readonly workspaceId: string;
+  readonly sourceCollectionId: string;
+  readonly sourceBoundaryRevision: string;
+  readonly classificationPolicyHash: Uint8Array;
+  readonly publicManifestId: Uint8Array;
+  readonly publicEntryId: Uint8Array;
+  readonly protectedCanonicalEntryBytes: Uint8Array;
+}
+
+export function buildSourceObservationFrame(input: unknown): Uint8Array | undefined {
+  void input;
+  return undefined;
+}
+
+export function buildManifestAuthorityFrame(input: unknown): Uint8Array | undefined {
+  void input;
+  return undefined;
+}
+
+export function buildEntryAuthorityFrame(input: unknown): Uint8Array | undefined {
+  void input;
+  return undefined;
+}
+
 export function normalizeSecretCommitmentPublicRecord(
   value: unknown
 ): SecretCommitmentPublicRecord | undefined {
