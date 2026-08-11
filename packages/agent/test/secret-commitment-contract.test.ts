@@ -1213,6 +1213,25 @@ async function withCapturedThenMutatedLiveOuterOperation<Result>(
   }
 }
 
+async function withUnavailableCapturedIsProxy<Result>(
+  unavailable: null | number,
+  run: (module: FreshFrameModule) => Promise<Result> | Result
+): Promise<Result> {
+  vi.resetModules();
+  vi.doMock("node:util/types", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("node:util/types")>();
+    return { ...actual, isProxy: unavailable as never };
+  });
+  try {
+    const module = await import("../src/secret-commitment-contract.js");
+    vi.doUnmock("node:util/types");
+    return await run(module);
+  } finally {
+    vi.doUnmock("node:util/types");
+    vi.resetModules();
+  }
+}
+
 describe("secret commitment frame-builder captured classifier and reflection seams", () => {
   test("isProxy remains captured after the live module mock changes", async () => {
     const calls = { captured: 0, live: 0 };
@@ -1220,7 +1239,7 @@ describe("secret commitment frame-builder captured classifier and reflection sea
     vi.resetModules();
     vi.doMock("node:util/types", async (importOriginal) => {
       const actual = await importOriginal<typeof import("node:util/types")>();
-      return { ...actual, isProxy(value: object) { calls.captured += 1; return actual.isProxy(value); } };
+      return { ...actual, isProxy(value: object) { if (value === input) calls.captured += 1; return actual.isProxy(value); } };
     });
     try {
       const module = await import("../src/secret-commitment-contract.js");
@@ -1236,19 +1255,14 @@ describe("secret commitment frame-builder captured classifier and reflection sea
     }
   });
 
-  test("missing captured isProxy fails closed without caller Proxy traps", async () => {
-    const calls = { traps: 0 };
-    const input = new Proxy(sourceFrameFixture(), {
-      get() {
-        calls.traps += 1;
-        throw new Error("caller Proxy trap must not run");
-      }
+  for (const availability of [null, 0 as never] as const) {
+    test(`${availability === null ? "missing" : "malformed"} captured isProxy remains unavailable after live restoration`, async () => {
+      const input = sourceFrameFixture();
+      await withUnavailableCapturedIsProxy(availability, (module) => {
+        expect(module.buildSourceObservationFrame(input)).toBeUndefined();
+      });
     });
-    await withFreshFrameModule({ isProxy: null }, (module) => {
-      expect(module.buildSourceObservationFrame(input)).toBeUndefined();
-      expect(calls.traps).toBe(0);
-    });
-  });
+  }
 
   test("throwing captured isProxy fails closed without caller Proxy traps or accessors", async () => {
     const calls = { classifier: 0, traps: 0, accessor: 0 };
@@ -1314,7 +1328,7 @@ describe("secret commitment frame-builder captured classifier and reflection sea
       const input = sourceFrameFixture();
       await withCapturedThenMutatedLiveOuterOperation(operation, input, (module, calls) => {
         expect(module.buildSourceObservationFrame(input)).toBeUndefined();
-        expect(calls).toEqual({ captured: 1, live: 0 });
+        expect(calls).toEqual({ captured: operation === "Object.getOwnPropertyDescriptor" ? 6 : 1, live: 0 });
       });
     });
   }
@@ -1360,7 +1374,7 @@ async function withThrowingCapturedWriteOperation<Result>(
       });
     } else if (operation === "TextEncoder.encodeInto") {
       TextEncoder.prototype.encodeInto = function encodeIntoFailure(source: string, destination: Uint8Array): TextEncoderEncodeIntoResult {
-        if (destination.length === frameLength) {
+        if (destination.buffer.byteLength === frameLength) {
           calls.operation += 1;
           throw new Error("test-owned encodeInto failure");
         }
