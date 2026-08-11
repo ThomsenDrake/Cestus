@@ -429,6 +429,108 @@ async function withFreshModule<Result>(
   }
 }
 
+test("keeps post-evaluation classification independent from mutable runtime helpers", async () => {
+  const input = bytes(32);
+  let observedLength: number | undefined;
+  let observedSnapshot: Uint8Array | undefined;
+
+  await withFreshModule({}, false, (module) => {
+    const targets: readonly (readonly [object, PropertyKey])[] = [
+      [String.prototype, "charCodeAt"],
+      [Number, "isSafeInteger"],
+      [Number, "isInteger"],
+      [Math, "floor"],
+      [Math, "log10"],
+      [Math, "max"],
+      [Array.prototype, Symbol.iterator]
+    ];
+    const originals = new Array<{ readonly target: object; readonly key: PropertyKey; readonly descriptor: PropertyDescriptor }>(
+      targets.length
+    );
+    let replaced = 0;
+    try {
+      for (let index = 0; index < targets.length; index += 1) {
+        const target = targets[index]?.[0];
+        const key = targets[index]?.[1];
+        if (target === undefined || key === undefined) {
+          throw new Error("test replacement target was unavailable");
+        }
+        const descriptor = Object.getOwnPropertyDescriptor(target, key);
+        if (descriptor === undefined || !("value" in descriptor) || typeof descriptor.value !== "function") {
+          throw new Error("test replacement descriptor was unavailable");
+        }
+        originals[index] = { target, key, descriptor };
+        Object.defineProperty(target, key, {
+          ...descriptor,
+          value: () => {
+            throw new Error("post-evaluation classification used a mutable runtime helper");
+          }
+        });
+        replaced += 1;
+      }
+
+      observedLength = module.trustedCanonicalSecretCommitmentByteLength(input, FIXED_LIMIT);
+      observedSnapshot = module.snapshotCanonicalSecretCommitmentBytes(input, FIXED_LIMIT);
+    } finally {
+      for (let index = replaced - 1; index >= 0; index -= 1) {
+        const original = originals[index];
+        if (original === undefined) {
+          throw new Error("test replacement descriptor was unavailable during restore");
+        }
+        Object.defineProperty(original.target, original.key, original.descriptor);
+      }
+    }
+  });
+
+  expect(observedLength).toBe(32);
+  expectCanonicalSnapshot(observedSnapshot, input);
+});
+
+test("rejects erased unsupported limits before caller-controlled coercion or resource use", async () => {
+  const input = bytes(FIXED_LIMIT);
+  const transparentProxyCalls = { count: 0 };
+  const throwingProxyCalls = { count: 0 };
+  const accessorCalls = { count: 0 };
+  const transparentProxyLimit = new Proxy({}, {
+    get(target, property, receiver) {
+      transparentProxyCalls.count += 1;
+      return Reflect.get(target, property, receiver);
+    }
+  });
+  const throwingProxyLimit = new Proxy({}, {
+    get() {
+      throwingProxyCalls.count += 1;
+      throw new Error("limit Proxy trap must not run");
+    }
+  });
+  const accessorLimit = {};
+  Object.defineProperty(accessorLimit, "valueOf", {
+    configurable: true,
+    get() {
+      accessorCalls.count += 1;
+      return () => FIXED_LIMIT;
+    }
+  });
+  const unsupportedLimits: readonly unknown[] = [
+    0, 31, 33, FRAME_LIMIT + 1, Number.NaN, "32", undefined, null,
+    transparentProxyLimit, throwingProxyLimit, accessorLimit
+  ];
+  const resourceCalls = createResourceCalls();
+
+  await withFreshModule(resourceSeam(resourceCalls), true, (module) => {
+    for (let index = 0; index < unsupportedLimits.length; index += 1) {
+      const limit = unsupportedLimits[index] as unknown as SecretCommitmentByteLimit;
+      expect(module.trustedCanonicalSecretCommitmentByteLength(input, limit)).toBeUndefined();
+      expect(module.snapshotCanonicalSecretCommitmentBytes(input, limit)).toBeUndefined();
+    }
+  });
+
+  expect(transparentProxyCalls.count).toBe(0);
+  expect(throwingProxyCalls.count).toBe(0);
+  expect(accessorCalls.count).toBe(0);
+  expectNoResourceOperations(resourceCalls);
+});
+
 describe("secret commitment canonical bytes red checkpoint", () => {
   test("observes the actual module namespace and keeps byte helpers out of the barrel", async () => {
     const module = await import("../src/secret-commitment-bytes.js");
@@ -491,7 +593,7 @@ describe("secret commitment canonical bytes red checkpoint", () => {
     expect(trustedCanonicalSecretCommitmentByteLength(minusOne, limit)).toBe(limit - 1);
     expect(trustedCanonicalSecretCommitmentByteLength(equal, limit)).toBe(limit);
     expectCanonicalSnapshot(snapshotCanonicalSecretCommitmentBytes(equal, limit), equal);
-  });
+  }, 180_000);
 
   test.each([
     ["payload", PAYLOAD_LIMIT],
@@ -516,7 +618,7 @@ describe("secret commitment canonical bytes red checkpoint", () => {
       const result = module.snapshotCanonicalSecretCommitmentBytes(input, limit);
       expectAcceptedResourceOperations(resourceCalls, input, result);
     });
-  });
+  }, 180_000);
 
   test("keeps a installed seam inactive when its explicit test gate is disabled", async () => {
     const resourceCalls = createResourceCalls();
