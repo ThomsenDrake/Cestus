@@ -570,7 +570,10 @@ const frameInventories: readonly FrameInventory[] = [
   }
 ];
 
-const exactOuterCaseNames = ["missing", "extra", "inherited", "non-enumerable", "accessor", "symbol", "wrong type", "Proxy"] as const;
+const exactOuterCaseNames = [
+  "missing", "extra", "inherited", "non-enumerable", "accessor", "enumerable symbol",
+  "non-enumerable symbol", "wrong type", "Proxy"
+] as const;
 const acceptedIdCases = ["ASCII", "embedded NUL", "non-BMP", "NFC", "distinct NFD"] as const;
 const rejectedIdCases = ["empty", "lone high surrogate", "lone low surrogate", "non-string"] as const;
 const byteShapeCaseNames = [
@@ -624,8 +627,13 @@ function exactOuterCase(input: FrameInput, field: string, name: (typeof exactOut
       });
       return output;
     }
-    case "symbol":
+    case "enumerable symbol":
       return { ...base, [Symbol("unexpected")]: true };
+    case "non-enumerable symbol": {
+      const output = { ...base };
+      Object.defineProperty(output, Symbol("unexpected"), { enumerable: false, value: true });
+      return output;
+    }
     case "wrong type":
       return { ...base, [field]: { wrong: true } };
     case "Proxy":
@@ -677,7 +685,13 @@ function growableView(lengthTracking: boolean): Uint8Array | undefined {
   }
 }
 
-function hostileByteShapes(): readonly { readonly name: (typeof byteShapeCaseNames)[number]; readonly value: Uint8Array; readonly supported: boolean }[] {
+interface HostileByteShape {
+  readonly name: (typeof byteShapeCaseNames)[number];
+  readonly value: Uint8Array | undefined;
+  readonly supported: boolean;
+}
+
+function hostileByteShapes(): readonly HostileByteShape[] {
   class Subclass extends Uint8Array {}
   const transparentProxy = new Proxy(sequence(0), {});
   const throwingProxy = new Proxy(sequence(0), { get() { throw new Error("byte Proxy must not trap"); } });
@@ -696,10 +710,10 @@ function hostileByteShapes(): readonly { readonly name: (typeof byteShapeCaseNam
     { name: "transparent Proxy", value: transparentProxy, supported: true },
     { name: "throwing Proxy", value: throwingProxy, supported: true },
     { name: "fixed SharedArrayBuffer", value: new Uint8Array(new SharedArrayBuffer(32)), supported: true },
-    ...(resizableFixed === undefined ? [] : [{ name: "resizable fixed-length view" as const, value: resizableFixed, supported: true }]),
-    ...(resizableTracking === undefined ? [] : [{ name: "resizable length-tracking view" as const, value: resizableTracking, supported: true }]),
-    ...(growableFixed === undefined ? [] : [{ name: "growable fixed-length view" as const, value: growableFixed, supported: true }]),
-    ...(growableTracking === undefined ? [] : [{ name: "growable length-tracking view" as const, value: growableTracking, supported: true }])
+    { name: "resizable fixed-length view", value: resizableFixed, supported: resizableFixed !== undefined },
+    { name: "resizable length-tracking view", value: resizableTracking, supported: resizableTracking !== undefined },
+    { name: "growable fixed-length view", value: growableFixed, supported: growableFixed !== undefined },
+    { name: "growable length-tracking view", value: growableTracking, supported: growableTracking !== undefined }
   ];
 }
 
@@ -729,7 +743,7 @@ describe("secret commitment frame-builder checkpoint inventory", () => {
     expect(byteOccurrences).toBe(9);
     expect(validIdCases).toBe(50);
     expect(rejectedIdCaseCount).toBe(40);
-    expect(outerCases).toBe(152);
+    expect(outerCases).toBe(171);
     expect(byteShapeCases).toBe(108);
     expect(frameInventories.map((inventory) => inventory.expectedLength)).toEqual([122, 169, 207]);
     expect(frameInventories.map((inventory) => frameBytes(inventory.expectedHex).length)).toEqual([122, 169, 207]);
@@ -758,6 +772,36 @@ describe("secret commitment frame-builder checkpoint inventory", () => {
       expect(cases).toHaveLength(fullFrameFields(inventory).length * exactOuterCaseNames.length);
     });
 
+    test(`${inventory.name}: outer classifier rejects non-object and wrong-prototype shapes without Proxy traps`, () => {
+      const calls = { transparent: 0, throwing: 0 };
+      const transparent = new Proxy(inventory.fixture(), {
+        get(target, property, receiver) {
+          calls.transparent += 1;
+          return Reflect.get(target, property, receiver);
+        },
+        ownKeys(target) {
+          calls.transparent += 1;
+          return Reflect.ownKeys(target);
+        }
+      });
+      const throwing = new Proxy(inventory.fixture(), {
+        get() {
+          calls.throwing += 1;
+          throw new Error("outer Proxy trap must not run");
+        },
+        ownKeys() {
+          calls.throwing += 1;
+          throw new Error("outer Proxy trap must not run");
+        }
+      });
+      const shapes: readonly unknown[] = [null, undefined, 1, "input", true, () => undefined, [], new Date(), new Map(), Object.create(null), transparent, throwing];
+      expect(shapes).toHaveLength(12);
+      for (const shape of shapes) {
+        expect(inventory.builder(shape)).toBeUndefined();
+      }
+      expect(calls).toEqual({ transparent: 0, throwing: 0 });
+    });
+
     test(`${inventory.name}: every ID occurrence accepts scalar Unicode exactly and rejects malformed IDs`, () => {
       const accepted = ["ascii", "nul\u0000id", "non-bmp-\u{1F680}", "café", "cafe\u0301"];
       const rejected: readonly unknown[] = ["", "high-\uD800", "low-\uDC00", 1];
@@ -779,16 +823,23 @@ describe("secret commitment frame-builder checkpoint inventory", () => {
 
     test(`${inventory.name}: rejects every hostile byte shape for every byte-field occurrence`, () => {
       const shapes = hostileByteShapes();
-      const supportedCount = shapes.filter((shape) => shape.supported).length;
-      expect(supportedCount).toBe(shapes.length);
-      expect(shapes.map((shape) => shape.name)).toEqual(byteShapeCaseNames.filter((name) => shapes.some((shape) => shape.name === name)));
+      const supported = shapes.filter((shape): shape is HostileByteShape & { readonly value: Uint8Array; readonly supported: true } => shape.supported);
+      const resizable = supported.filter((shape) => shape.name.startsWith("resizable"));
+      const growable = supported.filter((shape) => shape.name.startsWith("growable"));
+      expect(byteShapeCaseNames).toHaveLength(12);
+      expect(shapes).toHaveLength(12);
+      expect(shapes.map((shape) => shape.name)).toEqual(byteShapeCaseNames);
+      expect([0, 2]).toContain(resizable.length);
+      expect([0, 2]).toContain(growable.length);
+      expect(supported.map((shape) => shape.name)).toEqual(byteShapeCaseNames.filter((name) => shapes.find((shape) => shape.name === name)?.supported));
+      expect(supported).toHaveLength(8 + resizable.length + growable.length);
       const results: unknown[] = [];
       for (const field of [...inventory.fixedByteFields, inventory.payloadField]) {
-        for (const shape of shapes) {
+        for (const shape of supported) {
           results.push(inventory.builder(withFrameField(inventory.fixture(), field, shape.value)));
         }
       }
-      expect(results).toHaveLength((inventory.fixedByteFields.length + 1) * supportedCount);
+      expect(results).toHaveLength((inventory.fixedByteFields.length + 1) * supported.length);
       expect(results).toEqual(results.map(() => undefined));
     });
 
@@ -816,24 +867,36 @@ describe("secret commitment frame-builder checkpoint inventory", () => {
       expect(fixedResults).toHaveLength(inventory.fixedByteFields.length * fixedLengths.length);
       expect(payloadResults).toHaveLength(payloadLengths.length);
       expect(completeResults).toHaveLength(completeLengths.length);
-      expect(fixedResults.filter((_, index) => fixedLengths[index % fixedLengths.length] !== 32)).toEqual(
-        fixedResults.filter((_, index) => fixedLengths[index % fixedLengths.length] !== 32).map(() => undefined)
-      );
+      const rejectedFixed = fixedResults.filter((_, index) => fixedLengths[index % fixedLengths.length] !== 32);
+      const acceptedFixed = fixedResults.filter((_, index) => fixedLengths[index % fixedLengths.length] === 32);
+      expect(fixedLengths).toEqual([0, 31, 32, 33]);
+      expect(payloadLengths).toEqual([0, 2, 8_388_608, 8_388_609]);
+      expect(completeLengths).toEqual([8_454_143, 8_454_144, 8_454_145]);
+      expect(rejectedFixed).toHaveLength(inventory.fixedByteFields.length * 3);
+      expect(acceptedFixed).toHaveLength(inventory.fixedByteFields.length);
+      expect(rejectedFixed).toEqual(rejectedFixed.map(() => undefined));
       expect(payloadResults.at(-1)).toBeUndefined();
       expect(completeResults.at(-1)).toBeUndefined();
-      expect(fixedResults.filter((_, index) => fixedLengths[index % fixedLengths.length] === 32), "exact 32-byte fixed fields must build").not.toContain(undefined);
+      expect(acceptedFixed, "exact 32-byte fixed fields must build").not.toContain(undefined);
       expect(payloadResults.slice(0, 3), "payload zero and equal limit must build").not.toContain(undefined);
       expect(completeResults.slice(0, 2), "complete-frame lower and equal limits must build").not.toContain(undefined);
     });
 
-    test(`${inventory.name}: synchronous byte snapshot isolates caller mutation`, () => {
-      const input = inventory.fixture() as Record<string, unknown>;
-      const payload = input[inventory.payloadField] as Uint8Array;
-      const before = inventory.builder(input);
-      payload.fill(0xff);
-      input[inventory.idFields[0]] = "later-mutation";
-      expect(before, "valid input must create a synchronous frame snapshot").toBeInstanceOf(Uint8Array);
-      expect(before).toEqual(frameBytes(inventory.expectedHex));
+    test(`${inventory.name}: synchronous post-return snapshot isolates every caller byte, string, and object mutation`, () => {
+      const frames: (Uint8Array | undefined)[] = [];
+      for (const field of [...inventory.fixedByteFields, inventory.payloadField]) {
+        const input = inventory.fixture() as Record<string, unknown>;
+        const before = inventory.builder(input);
+        (input[field] as Uint8Array).fill(0xff);
+        input[inventory.idFields[0]] = "later-string-mutation";
+        Object.setPrototypeOf(input, { replacement: true });
+        frames.push(before);
+      }
+      expect(frames).toHaveLength(inventory.fixedByteFields.length + 1);
+      expect(frames, "valid input must create synchronous frame snapshots before every caller mutation").not.toContain(undefined);
+      for (const frame of frames) {
+        expect(frame).toEqual(frameBytes(inventory.expectedHex));
+      }
     });
   }
 });
@@ -845,7 +908,10 @@ interface FreshFrameModule {
 }
 
 async function withFreshFrameModule<Result>(
-  mock: { readonly isProxy?: (value: object) => boolean; readonly byteFailure?: "length" | "snapshot" },
+  mock: {
+    readonly isProxy?: ((value: object) => boolean) | null;
+    readonly byteFailure?: { readonly phase: "length" | "snapshot"; readonly occurrence: number; readonly outcome: "throw" | "undefined" | "malformed" };
+  },
   run: (module: FreshFrameModule, byteCalls: { length: number; snapshot: number }) => Promise<Result> | Result
 ): Promise<Result> {
   const byteCalls = { length: 0, snapshot: 0 };
@@ -855,19 +921,25 @@ async function withFreshFrameModule<Result>(
     return { ...actual, ...(mock.isProxy === undefined ? {} : { isProxy: mock.isProxy }) };
   });
   vi.doMock("../src/secret-commitment-bytes.js", () => ({
-    trustedCanonicalSecretCommitmentByteLength() {
+    trustedCanonicalSecretCommitmentByteLength(value: unknown) {
       byteCalls.length += 1;
-      if (mock.byteFailure === "length") {
-        throw new Error("test-owned trusted-length failure");
+      if (mock.byteFailure?.phase === "length" && byteCalls.length === mock.byteFailure.occurrence) {
+        if (mock.byteFailure.outcome === "throw") {
+          throw new Error("test-owned trusted-length failure");
+        }
+        return mock.byteFailure.outcome === "undefined" ? undefined : 31;
       }
-      return 32;
+      return value instanceof Uint8Array ? value.length : undefined;
     },
-    snapshotCanonicalSecretCommitmentBytes() {
+    snapshotCanonicalSecretCommitmentBytes(value: unknown) {
       byteCalls.snapshot += 1;
-      if (mock.byteFailure === "snapshot") {
-        throw new Error("test-owned snapshot failure");
+      if (mock.byteFailure?.phase === "snapshot" && byteCalls.snapshot === mock.byteFailure.occurrence) {
+        if (mock.byteFailure.outcome === "throw") {
+          throw new Error("test-owned snapshot failure");
+        }
+        return mock.byteFailure.outcome === "undefined" ? undefined : {};
       }
-      return sequence(0);
+      return value instanceof Uint8Array ? Uint8Array.from(value) : undefined;
     }
   }));
   try {
@@ -894,22 +966,259 @@ describe("secret commitment frame-builder production-bound failure seams", () =>
     });
   });
 
-  for (const byteFailure of ["length", "snapshot"] as const) {
-    test(`fresh captured trusted byte ${byteFailure} failure returns undefined at each production builder`, async () => {
-      await withFreshFrameModule({ byteFailure }, (module, calls) => {
-        const results = [
-          module.buildSourceObservationFrame(sourceFrameFixture()),
-          module.buildManifestAuthorityFrame(manifestFrameFixture()),
-          module.buildEntryAuthorityFrame(entryFrameFixture())
-        ];
-        expect(results).toEqual([undefined, undefined, undefined]);
-        if (byteFailure === "length") {
-          expect(calls).toEqual({ length: 9, snapshot: 0 });
-        } else {
-          expect(calls.length).toBe(9);
-          expect(calls.snapshot).toBe(9);
+  for (const inventory of frameInventories) {
+    const byteFields = [...inventory.fixedByteFields, inventory.payloadField];
+    for (const [index, field] of byteFields.entries()) {
+      for (const outcome of ["throw", "undefined", "malformed"] as const) {
+        test(`${inventory.name}: trusted length ${outcome} at ${field} stops before snapshots`, async () => {
+          await withFreshFrameModule({ byteFailure: { phase: "length", occurrence: index + 1, outcome } }, (module, calls) => {
+            expect(module[inventory.builder === buildSourceObservationFrame ? "buildSourceObservationFrame" : inventory.builder === buildManifestAuthorityFrame ? "buildManifestAuthorityFrame" : "buildEntryAuthorityFrame"](inventory.fixture())).toBeUndefined();
+            expect(calls).toEqual({ length: index + 1, snapshot: 0 });
+          });
+        });
+        test(`${inventory.name}: snapshot ${outcome} at ${field} follows all trusted lengths`, async () => {
+          await withFreshFrameModule({ byteFailure: { phase: "snapshot", occurrence: index + 1, outcome } }, (module, calls) => {
+            expect(module[inventory.builder === buildSourceObservationFrame ? "buildSourceObservationFrame" : inventory.builder === buildManifestAuthorityFrame ? "buildManifestAuthorityFrame" : "buildEntryAuthorityFrame"](inventory.fixture())).toBeUndefined();
+            expect(calls).toEqual({ length: byteFields.length, snapshot: index + 1 });
+          });
+        });
+      }
+    }
+  }
+});
+
+const capturedOuterOperationNames = ["Array.isArray", "Object.getPrototypeOf", "Reflect.ownKeys", "Object.getOwnPropertyDescriptor"] as const;
+type CapturedOuterOperation = (typeof capturedOuterOperationNames)[number];
+
+async function withThrowingCapturedOuterOperation<Result>(
+  operation: CapturedOuterOperation,
+  input: object,
+  run: (module: FreshFrameModule, calls: { operation: number }) => Promise<Result> | Result
+): Promise<Result> {
+  const calls = { operation: 0 };
+  const originals = {
+    isArray: Array.isArray,
+    getPrototypeOf: Object.getPrototypeOf,
+    ownKeys: Reflect.ownKeys,
+    getOwnPropertyDescriptor: Object.getOwnPropertyDescriptor
+  };
+  const failForInput = <Value>(value: object, original: () => Value): Value => {
+    if (value === input) {
+      calls.operation += 1;
+      throw new Error(`test-owned captured ${operation} failure`);
+    }
+    return original();
+  };
+  try {
+    if (operation === "Array.isArray") {
+      Array.isArray = ((value: unknown) => failForInput(value as object, () => originals.isArray(value))) as typeof Array.isArray;
+    } else if (operation === "Object.getPrototypeOf") {
+      Object.getPrototypeOf = ((value: object) => failForInput(value, () => originals.getPrototypeOf(value))) as typeof Object.getPrototypeOf;
+    } else if (operation === "Reflect.ownKeys") {
+      Reflect.ownKeys = ((value: object) => failForInput(value, () => originals.ownKeys(value))) as typeof Reflect.ownKeys;
+    } else {
+      Object.getOwnPropertyDescriptor = ((value: object, property: PropertyKey) => failForInput(value, () => originals.getOwnPropertyDescriptor(value, property))) as typeof Object.getOwnPropertyDescriptor;
+    }
+    vi.resetModules();
+    return await run(await import("../src/secret-commitment-contract.js"), calls);
+  } finally {
+    Array.isArray = originals.isArray;
+    Object.getPrototypeOf = originals.getPrototypeOf;
+    Reflect.ownKeys = originals.ownKeys;
+    Object.getOwnPropertyDescriptor = originals.getOwnPropertyDescriptor;
+    vi.resetModules();
+  }
+}
+
+describe("secret commitment frame-builder captured classifier and reflection seams", () => {
+  test("missing captured isProxy fails closed without caller Proxy traps", async () => {
+    const calls = { traps: 0 };
+    const input = new Proxy(sourceFrameFixture(), {
+      get() {
+        calls.traps += 1;
+        throw new Error("caller Proxy trap must not run");
+      }
+    });
+    await withFreshFrameModule({ isProxy: null }, (module) => {
+      expect(module.buildSourceObservationFrame(input)).toBeUndefined();
+      expect(calls.traps).toBe(0);
+    });
+  });
+
+  for (const operation of capturedOuterOperationNames) {
+    test(`fresh captured ${operation} exception fails closed without caller accessor invocation`, async () => {
+      const calls = { accessor: 0 };
+      const input = sourceFrameFixture() as Record<string, unknown>;
+      Object.defineProperty(input, "workspaceId", {
+        configurable: true,
+        enumerable: true,
+        get() {
+          calls.accessor += 1;
+          throw new Error("caller accessor must not run");
         }
+      });
+      await withThrowingCapturedOuterOperation(operation, input, (module, seam) => {
+        expect(module.buildSourceObservationFrame(input)).toBeUndefined();
+        expect(seam.operation).toBe(1);
+        expect(calls.accessor).toBe(0);
       });
     });
   }
+});
+
+const capturedWriteOperationNames = ["frame allocation", "TextEncoder.encodeInto", "header write", "copied-field write"] as const;
+type CapturedWriteOperation = (typeof capturedWriteOperationNames)[number];
+
+async function withThrowingCapturedWriteOperation<Result>(
+  operation: CapturedWriteOperation,
+  run: (module: FreshFrameModule, calls: { operation: number }) => Promise<Result> | Result
+): Promise<Result> {
+  const calls = { operation: 0 };
+  const originalUint8Array = globalThis.Uint8Array;
+  const originalEncodeInto = TextEncoder.prototype.encodeInto;
+  const originalSetBigUint64 = DataView.prototype.setBigUint64;
+  const originalSet = Uint8Array.prototype.set;
+  try {
+    if (operation === "frame allocation") {
+      Object.defineProperty(globalThis, "Uint8Array", {
+        configurable: true,
+        value: new Proxy(originalUint8Array, {
+          construct() {
+            calls.operation += 1;
+            throw new Error("test-owned frame allocation failure");
+          }
+        })
+      });
+    } else if (operation === "TextEncoder.encodeInto") {
+      TextEncoder.prototype.encodeInto = function encodeIntoFailure(): TextEncoderEncodeIntoResult {
+        calls.operation += 1;
+        throw new Error("test-owned encodeInto failure");
+      };
+    } else if (operation === "header write") {
+      DataView.prototype.setBigUint64 = function headerWriteFailure(): void {
+        calls.operation += 1;
+        throw new Error("test-owned header write failure");
+      };
+    } else {
+      Uint8Array.prototype.set = function copiedFieldWriteFailure(): void {
+        calls.operation += 1;
+        throw new Error("test-owned copied-field write failure");
+      };
+    }
+    vi.resetModules();
+    return await run(await import("../src/secret-commitment-contract.js"), calls);
+  } finally {
+    Object.defineProperty(globalThis, "Uint8Array", { configurable: true, value: originalUint8Array });
+    TextEncoder.prototype.encodeInto = originalEncodeInto;
+    DataView.prototype.setBigUint64 = originalSetBigUint64;
+    Uint8Array.prototype.set = originalSet;
+    vi.resetModules();
+  }
+}
+
+describe("secret commitment frame-builder captured allocation and write seams", () => {
+  for (const operation of capturedWriteOperationNames) {
+    test(`fresh captured ${operation} exception returns undefined`, async () => {
+      const input = sourceFrameFixture();
+      await withThrowingCapturedWriteOperation(operation, (module, calls) => {
+        expect(module.buildSourceObservationFrame(input)).toBeUndefined();
+        expect(calls.operation).toBeGreaterThan(0);
+      });
+    });
+  }
+});
+
+interface ResourceOrderingCalls {
+  length: number;
+  snapshot: number;
+  allocation: number;
+  encoding: number;
+  header: number;
+  copy: number;
+}
+
+async function withFreshResourceOrderingModule<Result>(
+  expectedFrameLength: number,
+  run: (module: FreshFrameModule, calls: ResourceOrderingCalls) => Promise<Result> | Result
+): Promise<Result> {
+  const calls: ResourceOrderingCalls = { length: 0, snapshot: 0, allocation: 0, encoding: 0, header: 0, copy: 0 };
+  const originalUint8Array = globalThis.Uint8Array;
+  const originalEncodeInto = TextEncoder.prototype.encodeInto;
+  const originalSetBigUint64 = DataView.prototype.setBigUint64;
+  const originalSet = Uint8Array.prototype.set;
+  vi.resetModules();
+  vi.doMock("../src/secret-commitment-bytes.js", () => ({
+    trustedCanonicalSecretCommitmentByteLength(value: unknown) {
+      calls.length += 1;
+      return value instanceof originalUint8Array ? value.length : undefined;
+    },
+    snapshotCanonicalSecretCommitmentBytes(value: unknown) {
+      calls.snapshot += 1;
+      return value instanceof originalUint8Array ? new originalUint8Array(value) : undefined;
+    }
+  }));
+  try {
+    Object.defineProperty(globalThis, "Uint8Array", {
+      configurable: true,
+      value: new Proxy(originalUint8Array, {
+        construct(target, argumentsList) {
+          if (argumentsList[0] === expectedFrameLength) {
+            calls.allocation += 1;
+          }
+          return Reflect.construct(target, argumentsList, target);
+        }
+      })
+    });
+    TextEncoder.prototype.encodeInto = function trackedEncodeInto(source: string, destination: Uint8Array): TextEncoderEncodeIntoResult {
+      calls.encoding += 1;
+      return originalEncodeInto.call(this, source, destination);
+    };
+    DataView.prototype.setBigUint64 = function trackedHeaderWrite(byteOffset: number, value: bigint, littleEndian?: boolean): void {
+      calls.header += 1;
+      return originalSetBigUint64.call(this, byteOffset, value, littleEndian);
+    };
+    Uint8Array.prototype.set = function trackedCopy(source: ArrayLike<number>, offset?: number): void {
+      calls.copy += 1;
+      return originalSet.call(this, source, offset);
+    };
+    return await run(await import("../src/secret-commitment-contract.js"), calls);
+  } finally {
+    Object.defineProperty(globalThis, "Uint8Array", { configurable: true, value: originalUint8Array });
+    TextEncoder.prototype.encodeInto = originalEncodeInto;
+    DataView.prototype.setBigUint64 = originalSetBigUint64;
+    Uint8Array.prototype.set = originalSet;
+    vi.doUnmock("../src/secret-commitment-bytes.js");
+    vi.resetModules();
+  }
+}
+
+describe("secret commitment frame-builder resource ordering seam", () => {
+  test("over-complete input completes all trusted lengths before zero snapshot, allocation, encoding, header, or copy work", async () => {
+    const base = sourceFrameFixture();
+    const input: SourceObservationFrameInput = {
+      ...base,
+      workspaceId: "x".repeat(8_454_145 - independentlyCalculatedLength(frameInventories[0], base as Record<string, unknown>) + 1)
+    };
+    await withFreshResourceOrderingModule(8_454_145, (module, calls) => {
+      expect(module.buildSourceObservationFrame(input)).toBeUndefined();
+      expect(calls).toEqual({ length: 2, snapshot: 0, allocation: 0, encoding: 0, header: 0, copy: 0 });
+    });
+  });
+
+  test("equal complete limit reaches snapshots, allocation, encoding, header, and copy seams", async () => {
+    const base = sourceFrameFixture();
+    const input: SourceObservationFrameInput = {
+      ...base,
+      workspaceId: "x".repeat(8_454_144 - independentlyCalculatedLength(frameInventories[0], base as Record<string, unknown>) + 1)
+    };
+    await withFreshResourceOrderingModule(8_454_144, (module, calls) => {
+      expect(module.buildSourceObservationFrame(input)).toBeInstanceOf(Uint8Array);
+      expect(calls.length).toBe(2);
+      expect(calls.snapshot).toBe(2);
+      expect(calls.allocation).toBe(1);
+      expect(calls.encoding).toBeGreaterThan(0);
+      expect(calls.header).toBeGreaterThan(0);
+      expect(calls.copy).toBeGreaterThan(0);
+    });
+  });
 });
