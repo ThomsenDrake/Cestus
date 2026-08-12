@@ -531,6 +531,20 @@ interface FrameInventory {
   readonly payloadField: string;
 }
 
+type FrameValues = Record<string, unknown>;
+
+function frameValues(input: FrameInput): FrameValues {
+  return input as unknown as FrameValues;
+}
+
+function requiredFrameIdField(inventory: FrameInventory): string {
+  const field = inventory.idFields[0];
+  if (field === undefined) {
+    throw new Error(`${inventory.name} requires an ID field`);
+  }
+  return field;
+}
+
 const frameInventories: readonly FrameInventory[] = [
   {
     name: "source observation",
@@ -590,11 +604,11 @@ function independentlyCalculatedLength(inventory: FrameInventory, input: Record<
 }
 
 function independentlyEncodedFrame(inventory: FrameInventory, input: FrameInput): Uint8Array {
-  const values = input as Record<string, unknown>;
+  const values = frameValues(input);
   const prefix = inventory.name === "source observation"
     ? "cestus.source-observation.v1\0"
     : "source-manifest-authority.v1\0";
-  const fields: readonly [number, Uint8Array][] = [
+  const fields: readonly (readonly [number, Uint8Array])[] = [
     ...(inventory.name === "source observation" ? [] : [[1, new TextEncoder().encode(inventory.name === "manifest authority" ? "manifest" : "entry")] as const]),
     ...inventory.idFields.map((field, index) => [index + (inventory.name === "source observation" ? 1 : 2), new TextEncoder().encode(values[field] as string)] as const),
     ...inventory.fixedByteFields.map((field, index) => [index + 5, values[field] as Uint8Array] as const),
@@ -614,7 +628,7 @@ function independentlyEncodedFrame(inventory: FrameInventory, input: FrameInput)
 }
 
 function withFrameField(input: FrameInput, field: string, value: unknown): FrameInput {
-  return { ...(input as Record<string, unknown>), [field]: value } as FrameInput;
+  return { ...frameValues(input), [field]: value } as unknown as FrameInput;
 }
 
 function fullFrameFields(inventory: FrameInventory): readonly string[] {
@@ -622,7 +636,7 @@ function fullFrameFields(inventory: FrameInventory): readonly string[] {
 }
 
 function exactOuterCase(input: FrameInput, field: string, name: (typeof exactOuterCaseNames)[number], calls: { accessor: number; proxy: number }): unknown {
-  const base = input as Record<string, unknown>;
+  const base = frameValues(input);
   switch (name) {
     case "missing": {
       const { [field]: _omitted, ...rest } = base;
@@ -777,7 +791,7 @@ describe("secret commitment frame-builder checkpoint inventory", () => {
     test(`${inventory.name}: exact independent literal frame and size control`, () => {
       const input = inventory.fixture();
       const expected = frameBytes(inventory.expectedHex);
-      expect(independentlyCalculatedLength(inventory, input as Record<string, unknown>)).toBe(inventory.expectedLength);
+      expect(independentlyCalculatedLength(inventory, frameValues(input))).toBe(inventory.expectedLength);
       expect(expected).toHaveLength(inventory.expectedLength);
       expect(inventory.builder(input)).toEqual(expected);
     });
@@ -827,7 +841,7 @@ describe("secret commitment frame-builder checkpoint inventory", () => {
     });
 
     test(`${inventory.name}: outer classifier rejects complete custom and null-prototype objects`, () => {
-      const fixture = inventory.fixture() as Record<string, unknown>;
+      const fixture = frameValues(inventory.fixture());
       const customPrototype = Object.assign(Object.create({}), fixture);
       const nullPrototype = Object.assign(Object.create(null), fixture);
       expect(Reflect.ownKeys(customPrototype)).toHaveLength(fullFrameFields(inventory).length);
@@ -837,7 +851,7 @@ describe("secret commitment frame-builder checkpoint inventory", () => {
     });
 
     test(`${inventory.name}: outer classifier rejects a complete cross-realm plain Object.prototype input`, () => {
-      const fixture = inventory.fixture() as Record<string, unknown>;
+      const fixture = frameValues(inventory.fixture());
       const crossRealm = vm.runInNewContext("({})") as Record<string, unknown>;
       Object.assign(crossRealm, fixture);
       expect(Reflect.ownKeys(crossRealm)).toHaveLength(fullFrameFields(inventory).length);
@@ -864,8 +878,9 @@ describe("secret commitment frame-builder checkpoint inventory", () => {
       for (const result of acceptedResults) {
         expect(result.actual, "valid scalar ID inputs must preserve exact scalar UTF-8 bytes").toEqual(result.expected);
       }
-      const nfc = withFrameField(inventory.fixture(), inventory.idFields[0], "café");
-      const nfd = withFrameField(inventory.fixture(), inventory.idFields[0], "cafe\u0301");
+      const primaryIdField = requiredFrameIdField(inventory);
+      const nfc = withFrameField(inventory.fixture(), primaryIdField, "café");
+      const nfd = withFrameField(inventory.fixture(), primaryIdField, "cafe\u0301");
       expect(independentlyEncodedFrame(inventory, nfc)).not.toEqual(independentlyEncodedFrame(inventory, nfd));
       expect(rejectedResults, "empty, surrogate, and non-string IDs must reject").toEqual(rejectedResults.map(() => undefined));
     });
@@ -909,9 +924,9 @@ describe("secret commitment frame-builder checkpoint inventory", () => {
       }
       for (const length of completeLengths) {
         const input = inventory.fixture();
-        const currentLength = independentlyCalculatedLength(inventory, input as Record<string, unknown>);
+        const currentLength = independentlyCalculatedLength(inventory, frameValues(input));
         const idLength = length - currentLength + 1;
-        completeResults.push(inventory.builder(withFrameField(input, inventory.idFields[0], "x".repeat(idLength))));
+        completeResults.push(inventory.builder(withFrameField(input, requiredFrameIdField(inventory), "x".repeat(idLength))));
       }
       expect(fixedResults).toHaveLength(inventory.fixedByteFields.length * fixedLengths.length);
       expect(payloadResults).toHaveLength(payloadLengths.length);
@@ -934,10 +949,10 @@ describe("secret commitment frame-builder checkpoint inventory", () => {
     test(`${inventory.name}: synchronous post-return snapshot isolates every caller byte, string, and object mutation`, () => {
       const frames: (Uint8Array | undefined)[] = [];
       for (const field of [...inventory.fixedByteFields, inventory.payloadField]) {
-        const input = inventory.fixture() as Record<string, unknown>;
+        const input = frameValues(inventory.fixture());
         const before = inventory.builder(input);
         (input[field] as Uint8Array).fill(0xff);
-        input[inventory.idFields[0]] = "later-string-mutation";
+        input[requiredFrameIdField(inventory)] = "later-string-mutation";
         Object.setPrototypeOf(input, { replacement: true });
         frames.push(before);
       }
@@ -1046,7 +1061,7 @@ describe("secret commitment frame-builder production-bound failure seams", () =>
   for (const inventory of frameInventories) {
     test(`${inventory.name}: trusted byte helpers receive every exact field identity, limit, and phase order`, async () => {
       const input = inventory.fixture();
-      const values = input as Record<string, unknown>;
+      const values = frameValues(input);
       const fields = [...inventory.fixedByteFields, inventory.payloadField];
       await withBoundByteHelper(inventory, (module, calls) => {
         expect(invokeFreshBuilder(module, inventory, input)).toBeDefined();
@@ -1293,7 +1308,7 @@ describe("secret commitment frame-builder captured classifier and reflection sea
 
   test("Proxy-first classifier stops before later reflection and caller traps", async () => {
     const calls = { isProxy: 0, array: 0, prototype: 0, keys: 0, descriptor: 0, traps: 0, accessors: 0 };
-    const target = sourceFrameFixture() as Record<string, unknown>;
+    const target = frameValues(sourceFrameFixture());
     Object.defineProperty(target, "workspaceId", { enumerable: true, get() { calls.accessors += 1; throw new Error("accessor"); } });
     const input = new Proxy(target, { get() { calls.traps += 1; throw new Error("trap"); } });
     const originals = { isArray: Array.isArray, getPrototypeOf: Object.getPrototypeOf, ownKeys: Reflect.ownKeys, getOwnPropertyDescriptor: Object.getOwnPropertyDescriptor };
@@ -1325,7 +1340,7 @@ describe("secret commitment frame-builder captured classifier and reflection sea
 
   test("throwing captured isProxy fails closed without caller Proxy traps or accessors", async () => {
     const calls = { classifier: 0, traps: 0, accessor: 0 };
-    const target = sourceFrameFixture() as Record<string, unknown>;
+    const target = frameValues(sourceFrameFixture());
     Object.defineProperty(target, "workspaceId", {
       configurable: true,
       enumerable: true,
@@ -1349,7 +1364,7 @@ describe("secret commitment frame-builder captured classifier and reflection sea
   for (const operation of capturedOuterOperationNames) {
     test(`fresh captured ${operation} exception fails closed without caller accessor invocation`, async () => {
       const calls = { accessor: 0 };
-      const input = sourceFrameFixture() as Record<string, unknown>;
+      const input = frameValues(sourceFrameFixture());
       Object.defineProperty(input, "workspaceId", {
         configurable: true,
         enumerable: true,
@@ -1503,7 +1518,7 @@ function expectedSuccessfulWriteTrace(
   input: FrameInput,
   snapshots: Readonly<Record<string, Uint8Array>>
 ): readonly ExpectedSuccessfulWriteTraceEvent[] {
-  const values = input as Record<string, unknown>;
+  const values = frameValues(input);
   const expected: ExpectedSuccessfulWriteTraceEvent[] = [];
   const prefix = staticFramePrefix(inventory);
   let offset = 0;
@@ -1582,7 +1597,7 @@ async function withCapturedSuccessfulWriteTrace<Result>(
   ) => Promise<Result> | Result
 ): Promise<Result> {
   const input = inventory.fixture();
-  const values = input as Record<string, unknown>;
+  const values = frameValues(input);
   const fields = [...inventory.fixedByteFields, inventory.payloadField];
   const snapshots = Object.fromEntries(fields.map((field) => [field, Uint8Array.from(values[field] as Uint8Array)])) as Record<string, Uint8Array>;
   const snapshotsByInput = new Map<unknown, Uint8Array>(fields.map((field) => [values[field], snapshots[field] as Uint8Array]));
@@ -1699,7 +1714,7 @@ async function withFreshResourceOrderingModule<Result>(
       if (measuringBuilderInvocation) {
         calls.encodedArrays += 1;
       }
-      return originalEncode.call(this, source);
+      return new Uint8Array<ArrayBuffer>(originalEncode.call(this, source));
     };
     DataView.prototype.setBigUint64 = function trackedHeaderWrite(byteOffset: number, value: bigint, littleEndian?: boolean): void {
       if (measuringBuilderInvocation) {
@@ -1735,8 +1750,8 @@ describe("secret commitment frame-builder resource ordering seam", () => {
       const base = inventory.fixture();
       const input = withFrameField(
         base,
-        inventory.idFields[0],
-        "x".repeat(8_454_145 - independentlyCalculatedLength(inventory, base as Record<string, unknown>) + 1)
+        requiredFrameIdField(inventory),
+        "x".repeat(8_454_145 - independentlyCalculatedLength(inventory, frameValues(base)) + 1)
       );
       await withFreshResourceOrderingModule(8_454_145, (module, calls) => {
         expect(invokeFreshBuilder(module, inventory, input)).toBeUndefined();
@@ -1748,8 +1763,8 @@ describe("secret commitment frame-builder resource ordering seam", () => {
       const base = inventory.fixture();
       const input = withFrameField(
         base,
-        inventory.idFields[0],
-        "x".repeat(8_454_144 - independentlyCalculatedLength(inventory, base as Record<string, unknown>) + 1)
+        requiredFrameIdField(inventory),
+        "x".repeat(8_454_144 - independentlyCalculatedLength(inventory, frameValues(base)) + 1)
       );
       await withFreshResourceOrderingModule(8_454_144, (module, calls) => {
         expect(invokeFreshBuilder(module, inventory, input)).toBeInstanceOf(Uint8Array);
