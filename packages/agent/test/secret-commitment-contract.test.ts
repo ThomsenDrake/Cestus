@@ -894,7 +894,7 @@ describe("secret commitment frame-builder checkpoint inventory", () => {
 
     test(`${inventory.name}: fixed, payload, and complete-frame size-boundary inventory`, () => {
       const fixedLengths = [0, 31, 32, 33];
-      const payloadLengths = [0, 2, 8_388_608, 8_388_609];
+      const payloadLengths = [0, 2, 8_388_607, 8_388_608, 8_388_609];
       const completeLengths = [8_454_143, 8_454_144, 8_454_145];
       const fixedResults: unknown[] = [];
       const payloadResults: unknown[] = [];
@@ -919,7 +919,7 @@ describe("secret commitment frame-builder checkpoint inventory", () => {
       const rejectedFixed = fixedResults.filter((_, index) => fixedLengths[index % fixedLengths.length] !== 32);
       const acceptedFixed = fixedResults.filter((_, index) => fixedLengths[index % fixedLengths.length] === 32);
       expect(fixedLengths).toEqual([0, 31, 32, 33]);
-      expect(payloadLengths).toEqual([0, 2, 8_388_608, 8_388_609]);
+      expect(payloadLengths).toEqual([0, 2, 8_388_607, 8_388_608, 8_388_609]);
       expect(completeLengths).toEqual([8_454_143, 8_454_144, 8_454_145]);
       expect(rejectedFixed).toHaveLength(inventory.fixedByteFields.length * 3);
       expect(acceptedFixed).toHaveLength(inventory.fixedByteFields.length);
@@ -927,7 +927,7 @@ describe("secret commitment frame-builder checkpoint inventory", () => {
       expect(payloadResults.at(-1)).toBeUndefined();
       expect(completeResults.at(-1)).toBeUndefined();
       expect(acceptedFixed, "exact 32-byte fixed fields must build").not.toContain(undefined);
-      expect(payloadResults.slice(0, 3), "payload zero and equal limit must build").not.toContain(undefined);
+      expect(payloadResults.slice(0, 4), "payload zero, limit-minus-one, and equal limit must build").not.toContain(undefined);
       expect(completeResults.slice(0, 2), "complete-frame lower and equal limits must build").not.toContain(undefined);
     }, 60_000);
 
