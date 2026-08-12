@@ -1710,11 +1710,11 @@ async function withFreshResourceOrderingModule<Result>(
       }
       return originalEncodeInto.call(this, source, destination);
     };
-    TextEncoder.prototype.encode = function trackedEncode(source?: string): Uint8Array {
+    TextEncoder.prototype.encode = function trackedEncode(source?: string): Uint8Array<ArrayBuffer> {
       if (measuringBuilderInvocation) {
         calls.encodedArrays += 1;
       }
-      return new Uint8Array<ArrayBuffer>(originalEncode.call(this, source));
+      return originalEncode.call(this, source) as Uint8Array<ArrayBuffer>;
     };
     DataView.prototype.setBigUint64 = function trackedHeaderWrite(byteOffset: number, value: bigint, littleEndian?: boolean): void {
       if (measuringBuilderInvocation) {
