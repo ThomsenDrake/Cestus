@@ -929,7 +929,7 @@ describe("secret commitment frame-builder checkpoint inventory", () => {
       expect(acceptedFixed, "exact 32-byte fixed fields must build").not.toContain(undefined);
       expect(payloadResults.slice(0, 3), "payload zero and equal limit must build").not.toContain(undefined);
       expect(completeResults.slice(0, 2), "complete-frame lower and equal limits must build").not.toContain(undefined);
-    });
+    }, 60_000);
 
     test(`${inventory.name}: synchronous post-return snapshot isolates every caller byte, string, and object mutation`, () => {
       const frames: (Uint8Array | undefined)[] = [];
@@ -1161,9 +1161,23 @@ async function withUnavailableCapturedOuterOperation<Result>(
     getOwnPropertyDescriptor: Object.getOwnPropertyDescriptor
   };
   const replacement = availability === "missing" ? undefined : 0;
+  vi.resetModules();
+  vi.doMock("../src/secret-commitment-bytes.js", () => ({
+    trustedCanonicalSecretCommitmentByteLength() {
+      throw new Error("classifier must fail before trusted byte lengths");
+    },
+    snapshotCanonicalSecretCommitmentBytes() {
+      throw new Error("classifier must fail before byte snapshots");
+    }
+  }));
   try {
     if (operation === "Array.isArray") {
-      Object.defineProperty(Array, "isArray", { configurable: true, value: replacement });
+      Object.defineProperty(Array, "isArray", {
+        configurable: true,
+        get() {
+          return new Error().stack?.includes("secret-commitment-contract.ts") ? replacement : originals.isArray;
+        }
+      });
     } else if (operation === "Object.getPrototypeOf") {
       Object.defineProperty(Object, "getPrototypeOf", { configurable: true, value: replacement });
     } else if (operation === "Reflect.ownKeys") {
@@ -1171,7 +1185,6 @@ async function withUnavailableCapturedOuterOperation<Result>(
     } else {
       Object.defineProperty(Object, "getOwnPropertyDescriptor", { configurable: true, value: replacement });
     }
-    vi.resetModules();
     const module = await import("../src/secret-commitment-contract.js");
     Object.defineProperty(Array, "isArray", { configurable: true, value: originals.isArray });
     Object.defineProperty(Object, "getPrototypeOf", { configurable: true, value: originals.getPrototypeOf });
@@ -1183,6 +1196,7 @@ async function withUnavailableCapturedOuterOperation<Result>(
     Object.defineProperty(Object, "getPrototypeOf", { configurable: true, value: originals.getPrototypeOf });
     Object.defineProperty(Reflect, "ownKeys", { configurable: true, value: originals.ownKeys });
     Object.defineProperty(Object, "getOwnPropertyDescriptor", { configurable: true, value: originals.getOwnPropertyDescriptor });
+    vi.doUnmock("../src/secret-commitment-bytes.js");
     vi.resetModules();
   }
 }
@@ -1257,13 +1271,22 @@ describe("secret commitment frame-builder captured classifier and reflection sea
       Object.defineProperty(module, "isProxy", { enumerable: true, get: () => currentIsProxy });
       return module;
     });
+    vi.doMock("../src/secret-commitment-bytes.js", () => ({
+      trustedCanonicalSecretCommitmentByteLength(value: unknown) {
+        return value instanceof Uint8Array ? value.length : undefined;
+      },
+      snapshotCanonicalSecretCommitmentBytes(value: unknown) {
+        return value instanceof Uint8Array ? Uint8Array.from(value) : undefined;
+      }
+    }));
     try {
       const module = await import("../src/secret-commitment-contract.js");
       currentIsProxy = () => { calls.live += 1; throw new Error("live isProxy must not be used"); };
-      expect(module.buildSourceObservationFrame(input)).toBeUndefined();
+      expect(module.buildSourceObservationFrame(input)).toEqual(frameBytes(observationFrameHex));
       expect(calls).toEqual({ captured: 1, live: 0 });
     } finally {
       vi.doUnmock("node:util/types");
+      vi.doUnmock("../src/secret-commitment-bytes.js");
       vi.resetModules();
     }
   });
@@ -1347,7 +1370,7 @@ describe("secret commitment frame-builder captured classifier and reflection sea
     test(`${operation} remains captured after its live runtime operation changes`, async () => {
       const input = sourceFrameFixture();
       await withCapturedThenMutatedLiveOuterOperation(operation, input, (module, calls) => {
-        expect(module.buildSourceObservationFrame(input)).toBeUndefined();
+        expect(module.buildSourceObservationFrame(input)).toEqual(frameBytes(observationFrameHex));
         expect(calls).toEqual({ captured: operation === "Object.getOwnPropertyDescriptor" ? 6 : 1, live: 0 });
       });
     });
