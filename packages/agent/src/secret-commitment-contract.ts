@@ -457,7 +457,11 @@ function scalarUtf8Length(value: unknown): number | undefined {
 }
 
 function checkedScalarLengthAdd(total: number, increment: number): number | undefined {
-  return total <= maximumSafeInteger - increment ? total + increment : undefined;
+  if (total > maximumSafeInteger - increment) {
+    return undefined;
+  }
+  const next = total + increment;
+  return next <= maximumFrameLength ? next : undefined;
 }
 
 function checkedFrameLengthAdd(total: number, increment: number): number | undefined {
