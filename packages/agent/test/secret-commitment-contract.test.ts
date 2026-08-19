@@ -1758,6 +1758,21 @@ describe("secret commitment frame-builder resource ordering seam", () => {
       });
     });
 
+    test(`${inventory.name}: an identifier ending in a high surrogate rejects before any trusted byte length, snapshot, allocation, encoding, header, or copy work`, async () => {
+      const input = withFrameField(
+        inventory.fixture(),
+        requiredFrameIdField(inventory),
+        "terminal-high-\uD800"
+      );
+      await withFreshResourceOrderingModule(
+        independentlyCalculatedLength(inventory, frameValues(input)) + 1,
+        (module, calls) => {
+          expect(invokeFreshBuilder(module, inventory, input)).toBeUndefined();
+          expect(calls).toEqual({ length: 0, snapshot: 0, phaseOrder: [], allocation: 0, encoding: 0, encodedArrays: 0, header: 0, copy: 0 });
+        }
+      );
+    });
+
     test(`${inventory.name}: over-complete input completes all trusted lengths before zero snapshot, allocation, encoding, header, or copy work`, async () => {
       const base = inventory.fixture();
       const input = withFrameField(
