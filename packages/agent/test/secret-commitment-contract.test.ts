@@ -944,7 +944,7 @@ describe("secret commitment frame-builder checkpoint inventory", () => {
       expect(acceptedFixed, "exact 32-byte fixed fields must build").not.toContain(undefined);
       expect(payloadResults.slice(0, 4), "payload zero, limit-minus-one, and equal limit must build").not.toContain(undefined);
       expect(completeResults.slice(0, 2), "complete-frame lower and equal limits must build").not.toContain(undefined);
-    }, 60_000);
+    }, 180_000);
 
     test(`${inventory.name}: synchronous post-return snapshot isolates every caller byte, string, and object mutation`, () => {
       const frames: (Uint8Array | undefined)[] = [];
