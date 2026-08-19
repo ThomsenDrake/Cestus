@@ -434,6 +434,9 @@ function scalarUtf8Length(value: unknown): number | undefined {
   for (let index = 0; index < value.length; index += 1) {
     const first = value.charCodeAt(index);
     if (first >= 0xd800 && first <= 0xdbff) {
+      if (index + 1 >= value.length) {
+        return undefined;
+      }
       const second = value.charCodeAt(index + 1);
       if (second < 0xdc00 || second > 0xdfff) {
         return undefined;
