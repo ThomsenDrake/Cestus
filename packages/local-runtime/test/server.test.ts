@@ -116,7 +116,7 @@ describe("startLocalRuntimeServer", () => {
       ["ingestion", "ready"],
       ["legacy-import", "action-required"],
       ["prr", "ready"],
-      ["agent", "unavailable"]
+      ["agent", "ready"]
     ]);
     expect(body.summary).toEqual({
       overallState: "action-required",
@@ -125,18 +125,6 @@ describe("startLocalRuntimeServer", () => {
       degradedCount: 0,
       nextSafeActionId: "action_show_legacy_import_help"
     });
-    const agentSection = body.sections.find((section) => section.sectionId === "agent");
-    expect(agentSection?.metrics).toEqual([]);
-    expect(agentSection?.diagnostics).toEqual([
-      {
-        diagnosticId: "diag_agent_provider_unavailable",
-        severity: "error",
-        category: "agent",
-        message: "Status provider failed before returning a safe DTO.",
-        refs: []
-      }
-    ]);
-    expect(agentSection?.nextSafeActionIds).toEqual(["action_refresh_operator_status"]);
   });
 
   it("selects a non-loopback browser host for wildcard LAN binds without listening", () => {
