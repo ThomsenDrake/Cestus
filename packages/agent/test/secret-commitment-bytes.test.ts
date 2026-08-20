@@ -67,33 +67,49 @@ function bytes(length: number): Uint8Array {
 function expectCanonicalSnapshot(actual: Uint8Array | undefined, input: Uint8Array): readonly string[] {
   const asserted = new Set<string>();
   expect(actual).toBeInstanceOf(Uint8Array);
+  if (!(actual instanceof Uint8Array)) {
+    throw new Error("canonical snapshot is not a Uint8Array");
+  }
   asserted.add("exact snapshot");
   expect(actual).not.toBe(input);
   asserted.add("fresh output");
-  expect(actual?.buffer).not.toBe(input.buffer);
+  expect(actual.buffer).not.toBe(input.buffer);
   asserted.add("non-aliasing");
-  expect(actual?.length).toBe(input.length);
+  expect(actual.length).toBe(input.length);
   asserted.add("exact length");
-  expect(Array.from(actual ?? [])).toEqual(Array.from(input));
-  asserted.add("every byte equality");
-  expect(Reflect.ownKeys(actual ?? new Uint8Array())).toEqual(
-    Array.from({ length: input.length }, (_, index) => String(index))
-  );
-  asserted.add("canonical output keys");
 
-  expect(actual?.buffer).toBeInstanceOf(ArrayBuffer);
-  expect(actual?.buffer).not.toBeInstanceOf(SharedArrayBuffer);
-  expect((actual?.buffer as ArrayBuffer & { readonly resizable?: boolean } | undefined)?.resizable).toBe(false);
+  expect(actual.buffer).toBeInstanceOf(ArrayBuffer);
+  expect(actual.buffer).not.toBeInstanceOf(SharedArrayBuffer);
+  expect((actual.buffer as ArrayBuffer & { readonly resizable?: boolean }).resizable).toBe(false);
   asserted.add("fixed non-shared output backing");
 
-  for (let index = 0; index < input.length; index += 1) {
-    expect(Object.getOwnPropertyDescriptor(actual as Uint8Array, String(index))).toEqual({
-      configurable: true,
-      enumerable: true,
-      value: input[index],
-      writable: true
-    });
+  const actualKeys = Reflect.ownKeys(actual);
+  if (actualKeys.length !== input.length) {
+    throw new Error(`canonical snapshot own-key count mismatch: expected ${input.length}, received ${actualKeys.length}`);
   }
+  for (let index = 0; index < input.length; index += 1) {
+    const expectedKey = String(index);
+    if (actual[index] !== input[index]) {
+      throw new Error(`canonical snapshot byte mismatch at index ${index}: expected ${input[index]}, received ${actual[index]}`);
+    }
+    if (actualKeys[index] !== expectedKey) {
+      throw new Error(`canonical snapshot own-key mismatch at index ${index}: expected ${expectedKey}, received ${String(actualKeys[index])}`);
+    }
+    const descriptor = Object.getOwnPropertyDescriptor(actual, expectedKey);
+    if (
+      descriptor === undefined
+      || descriptor.configurable !== true
+      || descriptor.enumerable !== true
+      || descriptor.value !== input[index]
+      || descriptor.writable !== true
+      || "get" in descriptor
+      || "set" in descriptor
+    ) {
+      throw new Error(`canonical snapshot property descriptor mismatch at index ${index}`);
+    }
+  }
+  asserted.add("every byte equality");
+  asserted.add("canonical output keys");
   asserted.add("canonical output descriptors");
   return [...asserted];
 }
