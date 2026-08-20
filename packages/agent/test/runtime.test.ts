@@ -10,6 +10,7 @@ import {
   hashAgentContextPack,
   hashAgentToolPreview,
   specialistWorkflowDescriptorFor,
+  type AgentApprovedToolExecutionInput,
   type AgentApprovedToolExecutorDescriptor,
   type AgentTaskOrchestratorRuntimeCapabilities,
   type AgentToolPreview,
@@ -22,6 +23,7 @@ import {
 
 const humanActor = { id: "actor_case_owner", kind: "human" as const, label: "Case Owner" };
 const agentRuntimeActor = { id: "actor_runtime_agent", kind: "agent" as const, label: "Runtime Agent" };
+const runtimeSchedulerActor = { id: "actor_runtime_scheduler", kind: "system" as const, label: "Runtime Scheduler" };
 const fixedNow = () => "2026-07-07T19:00:00.000Z";
 const inputArtifactHash = "sha256:4444444444444444444444444444444444444444444444444444444444444444";
 const providerOutputArtifactHash = "sha256:7777777777777777777777777777777777777777777777777777777777777777";
@@ -128,7 +130,7 @@ describe("agent runtime core", () => {
       ledger,
       actor: agentRuntimeActor,
       now: fixedNow,
-      approvedToolExecutors: [schedulerDescriptor(preview, () => { executions += 1; })],
+      approvedToolExecutors: [schedulerDescriptor(ledger, preview, () => { executions += 1; })],
       taskOrchestratorCapabilities: taskOrchestratorCapabilitiesForTest()
     });
     await runtime.initializeDefaultIdentity({ workspaceId: "ws_case_001" });
@@ -170,7 +172,7 @@ describe("agent runtime core", () => {
       ledger,
       actor: agentRuntimeActor,
       now: fixedNow,
-      approvedToolExecutors: [schedulerDescriptor(preview, () => { executions += 1; })],
+      approvedToolExecutors: [schedulerDescriptor(ledger, preview, () => { executions += 1; })],
       taskOrchestratorCapabilities: taskOrchestratorCapabilitiesForTest()
     });
     await runtime.initializeDefaultIdentity({ workspaceId: "ws_case_001" });
@@ -844,7 +846,11 @@ function schedulerPreview(toolRequestId: string): AgentToolPreview {
   };
 }
 
-function schedulerDescriptor(preview: AgentToolPreview, onExecute: () => void): AgentApprovedToolExecutorDescriptor {
+function schedulerDescriptor(
+  ledger: InMemoryEventLedger,
+  preview: AgentToolPreview,
+  onExecute: () => void
+): AgentApprovedToolExecutorDescriptor {
   return {
     toolId: "agent.test.runtime-scheduler",
     toolVersion: "1.0.0",
@@ -865,10 +871,11 @@ function schedulerDescriptor(preview: AgentToolPreview, onExecute: () => void): 
         }]
       };
     },
-    async executeApproved() {
+    async executeApproved(input) {
       onExecute();
+      const evidence = await recordSchedulerDomainResult(ledger, input);
       return {
-        eventIds: ["evt_runtime_scheduler_domain_completed"],
+        eventIds: [evidence.id],
         artifactHashes: ["sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"],
         readModelChanges: [{
           projectionName: "agent-runtime-test",
@@ -878,6 +885,39 @@ function schedulerDescriptor(preview: AgentToolPreview, onExecute: () => void): 
       };
     }
   };
+}
+
+async function recordSchedulerDomainResult(
+  ledger: InMemoryEventLedger,
+  input: AgentApprovedToolExecutionInput
+) {
+  const claim = (await ledger.readStream(`agent_tool_request_${input.toolRequestId}`)).find(
+    (event) => event.type === "agent.tool.execution.claimed"
+  );
+  if (claim === undefined || claim.type !== "agent.tool.execution.claimed") {
+    throw new Error("test descriptor requires a durable execution claim");
+  }
+
+  return await ledger.append({
+    type: "evidence.ingested",
+    version: 1,
+    streamId: `evidence_result_${input.toolRequestId}`,
+    context: {
+      actor: runtimeSchedulerActor,
+      occurredAt: fixedNow(),
+      causationId: claim.id,
+      correlationId: `corr_${input.toolRequestId}_result`,
+      coreVersion: "0.1.0",
+      packVersions: { core: "0.1.0", agent: "0.1.0" }
+    },
+    payload: {
+      evidenceId: `ev_${input.toolRequestId}_result`,
+      source: { kind: "manual", label: "Runtime scheduler domain result" },
+      contentHash: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      mediaType: "application/json",
+      sizeBytes: 1
+    }
+  });
 }
 
 function taskOrchestratorCapabilitiesForTest(): AgentTaskOrchestratorRuntimeCapabilities {
