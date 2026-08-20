@@ -5823,18 +5823,18 @@ describe("wake supervisor runtime import boundary", () => {
 
     it("accepts the resident factory baseline and topology", () => {
       expect(analyzeTopologyControl(exactComposition)).toEqual({
-      registrarDeclarationCount: 0,
-      registrarImporters: [],
-      registrarCallers: [],
-      privateFactoryIssuanceDeclarationCount: 1,
-      privateRegistrarClosureEscapes: 0,
-      safeBuilderImporters: [residentFactoryCompositionPath],
-      safeBuilderCallers: [residentFactoryCompositionPath],
-      facadeImportDeclarationCount: 6,
-      facadeValueImplementationCount: 1,
-      facadeValueExports: [residentFactorySafeFacadeExport],
-      facadeTypeDeclarations: [...residentFactorySafeFacadeTypes],
-      violations: []
+        registrarDeclarationCount: 0,
+        registrarImporters: [],
+        registrarCallers: [],
+        privateFactoryIssuanceDeclarationCount: 1,
+        privateRegistrarClosureEscapes: 0,
+        safeBuilderImporters: [residentFactoryCompositionPath],
+        safeBuilderCallers: [residentFactoryCompositionPath],
+        facadeImportDeclarationCount: 6,
+        facadeValueImplementationCount: 1,
+        facadeValueExports: [residentFactorySafeFacadeExport],
+        facadeTypeDeclarations: [...residentFactorySafeFacadeTypes],
+        violations: []
       });
     });
 
@@ -11066,77 +11066,77 @@ describe("wake supervisor runtime import boundary", () => {
         skipLibCheck: true,
         target: ts.ScriptTarget.ES2022
       });
-    const binderOwnership = mountedBinderOwnershipAnalysis(
-      productionProgram,
-      productionFiles.flatMap((file) => {
-        const sourceFile = productionProgram.getSourceFile(file);
-        return sourceFile === undefined
-          ? []
-          : [{
-              sourceFile,
-              label: sourceLabel(packagesRoot, file)
-            }];
-      })
-    );
+      const binderOwnership = mountedBinderOwnershipAnalysis(
+        productionProgram,
+        productionFiles.flatMap((file) => {
+          const sourceFile = productionProgram.getSourceFile(file);
+          return sourceFile === undefined
+            ? []
+            : [{
+                sourceFile,
+                label: sourceLabel(packagesRoot, file)
+              }];
+        })
+      );
 
-    const productAnalysis = {
-      declarationCount: declarations.length,
-      binderParameterNames: declarations.flatMap((declaration) =>
-        declaration.parameters.map((parameter) => parameter.name.getText(mountedStoreFile))
-      ),
-      binderParameterCount: declarations[0]?.parameters.length ?? 0,
-      callbackOrWrapperParameterIndexes: constructorParameterIndexes,
-      binderImporters: binderOwnership.binderImporters,
-      binderCalls: binderOwnership.binderCalls,
-      binderOwnershipViolations: binderOwnership.violations,
-      wakeFixedConstructorImports: wakeFile.statements.flatMap((statement) =>
-        ts.isImportDeclaration(statement) &&
-        ts.isStringLiteral(statement.moduleSpecifier) &&
-        ([
-          permittedResidentImports.mountedStore.dispatcherDefault,
-          permittedResidentImports.mountedStore.gatewayNamedConstructor
-        ] as readonly string[]).includes(statement.moduleSpecifier.text)
-          ? [statement.moduleSpecifier.text]
-          : []
-      ),
-      dispatcherImports,
-      gatewayImports,
-      fixedConstructorUse
-    };
-    for (const productSource of [source, mountedStoreSource]) {
-      for (const pattern of forbiddenLoaderForms) {
-        expect(productSource).not.toMatch(pattern);
+      const productAnalysis = {
+        declarationCount: declarations.length,
+        binderParameterNames: declarations.flatMap((declaration) =>
+          declaration.parameters.map((parameter) => parameter.name.getText(mountedStoreFile))
+        ),
+        binderParameterCount: declarations[0]?.parameters.length ?? 0,
+        callbackOrWrapperParameterIndexes: constructorParameterIndexes,
+        binderImporters: binderOwnership.binderImporters,
+        binderCalls: binderOwnership.binderCalls,
+        binderOwnershipViolations: binderOwnership.violations,
+        wakeFixedConstructorImports: wakeFile.statements.flatMap((statement) =>
+          ts.isImportDeclaration(statement) &&
+          ts.isStringLiteral(statement.moduleSpecifier) &&
+          ([
+            permittedResidentImports.mountedStore.dispatcherDefault,
+            permittedResidentImports.mountedStore.gatewayNamedConstructor
+          ] as readonly string[]).includes(statement.moduleSpecifier.text)
+            ? [statement.moduleSpecifier.text]
+            : []
+        ),
+        dispatcherImports,
+        gatewayImports,
+        fixedConstructorUse
+      };
+      for (const productSource of [source, mountedStoreSource]) {
+        for (const pattern of forbiddenLoaderForms) {
+          expect(productSource).not.toMatch(pattern);
+        }
+        for (const transfer of forbiddenTransfers) {
+          expect(productSource).not.toContain(transfer);
+        }
       }
-      for (const transfer of forbiddenTransfers) {
-        expect(productSource).not.toContain(transfer);
-      }
-    }
-    expect(agentBarrel).not.toMatch(/ResidentDomainExecution|ResidentLoopToolGateway|PackageOwnedResident|BoundedAgentLoop/);
+      expect(agentBarrel).not.toMatch(/ResidentDomainExecution|ResidentLoopToolGateway|PackageOwnedResident|BoundedAgentLoop/);
       expect(productAnalysis).toEqual({
-      declarationCount: 1,
-      binderParameterNames: ["store", "rawBinding", "domainExecution"],
-      binderParameterCount: 3,
-      callbackOrWrapperParameterIndexes: [],
-      binderImporters: ["packages/local-runtime/src/wake-supervisor-runtime.ts"],
-      binderCalls: [{
-        file: "packages/local-runtime/src/wake-supervisor-runtime.ts",
-        argumentCount: 3
-      }],
-      binderOwnershipViolations: [],
-      wakeFixedConstructorImports: [],
-      dispatcherImports: [{
-        defaultName: "dispatcherDefault",
-        hasNamedBindings: false
-      }],
-      gatewayImports: [{
-        defaultName: null,
-        named: [{
-          imported: "createResidentLoopToolGateway",
-          local: "createResidentLoopToolGateway"
+        declarationCount: 1,
+        binderParameterNames: ["store", "rawBinding", "domainExecution"],
+        binderParameterCount: 3,
+        callbackOrWrapperParameterIndexes: [],
+        binderImporters: ["packages/local-runtime/src/wake-supervisor-runtime.ts"],
+        binderCalls: [{
+          file: "packages/local-runtime/src/wake-supervisor-runtime.ts",
+          argumentCount: 3
         }],
-        hasNamespaceBinding: false
-      }],
-      fixedConstructorUse: exactFixedConstruction
+        binderOwnershipViolations: [],
+        wakeFixedConstructorImports: [],
+        dispatcherImports: [{
+          defaultName: "dispatcherDefault",
+          hasNamedBindings: false
+        }],
+        gatewayImports: [{
+          defaultName: null,
+          named: [{
+            imported: "createResidentLoopToolGateway",
+            local: "createResidentLoopToolGateway"
+          }],
+          hasNamespaceBinding: false
+        }],
+        fixedConstructorUse: exactFixedConstruction
       });
     });
   });
