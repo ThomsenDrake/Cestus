@@ -24,6 +24,7 @@ import {
 const humanActor = { id: "actor_case_owner", kind: "human" as const, label: "Case Owner" };
 const agentRuntimeActor = { id: "actor_runtime_agent", kind: "agent" as const, label: "Runtime Agent" };
 const runtimeSchedulerActor = { id: "actor_runtime_scheduler", kind: "system" as const, label: "Runtime Scheduler" };
+const runtimeSchedulerArtifactHash = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 const fixedNow = () => "2026-07-07T19:00:00.000Z";
 const inputArtifactHash = "sha256:4444444444444444444444444444444444444444444444444444444444444444";
 const providerOutputArtifactHash = "sha256:7777777777777777777777777777777777777777777777777777777777777777";
@@ -842,7 +843,7 @@ function schedulerPreview(toolRequestId: string): AgentToolPreview {
   return {
     summary: `Runtime scheduler preview ${toolRequestId}.`,
     relatedEventIds: ["evt_runtime_scheduler_source"],
-    artifactHashes: ["sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"]
+    artifactHashes: [runtimeSchedulerArtifactHash]
   };
 }
 
@@ -860,8 +861,8 @@ function schedulerDescriptor(
       return {
         preview,
         sourceEventIds: ["evt_runtime_scheduler_source"],
-        inputArtifactHashes: ["sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"],
-        provenanceRefs: ["evt_runtime_scheduler_source", "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"],
+        inputArtifactHashes: [runtimeSchedulerArtifactHash],
+        provenanceRefs: ["evt_runtime_scheduler_source", runtimeSchedulerArtifactHash],
         activeLocks: [],
         freshnessChecks: [{
           name: "agent-projection",
@@ -876,7 +877,7 @@ function schedulerDescriptor(
       const evidence = await recordSchedulerDomainResult(ledger, input);
       return {
         eventIds: [evidence.id],
-        artifactHashes: ["sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"],
+        artifactHashes: [runtimeSchedulerArtifactHash],
         readModelChanges: [{
           projectionName: "agent-runtime-test",
           change: "approved scheduler work completed"
@@ -913,7 +914,7 @@ async function recordSchedulerDomainResult(
     payload: {
       evidenceId: `ev_${input.toolRequestId}_result`,
       source: { kind: "manual", label: "Runtime scheduler domain result" },
-      contentHash: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      contentHash: runtimeSchedulerArtifactHash,
       mediaType: "application/json",
       sizeBytes: 1
     }
