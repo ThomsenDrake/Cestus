@@ -79,7 +79,6 @@ describe("agent task orchestrator runtime routes", () => {
         priority: "urgent"
       })
     });
-
     const response = await handler({ method: "POST", url: "/api/agent/task-orchestrator/tick" });
     const ledger = new SQLiteEventLedger(config.storage.sqlitePath);
     try {
@@ -90,10 +89,10 @@ describe("agent task orchestrator runtime routes", () => {
     }
   });
 
-  it("default local runtime factory injects task orchestrator capabilities before task claim", async () => {
+  it("default production handler stays context-free and fails closed before task claim", async () => {
     const config = portableConfig("ws_task_orchestrator_default_caps");
     const handler = testHandler(config);
-    await handler({
+    const createResponse = await handler({
       method: "POST",
       url: "/api/agent/tasks",
       body: JSON.stringify({
@@ -102,14 +101,26 @@ describe("agent task orchestrator runtime routes", () => {
         priority: "urgent"
       })
     });
+    expect(createResponse.status).toBe(200);
 
     const response = await handler({ method: "POST", url: "/api/agent/task-orchestrator/tick" });
     const ledger = new SQLiteEventLedger(config.storage.sqlitePath);
     try {
-      expect(response.status).toBe(200);
-      expect(response.body).not.toContain("capabilities are not registered");
+      expect(response.status).toBe(500);
+      expect(JSON.parse(response.body)).toEqual({
+        ok: false,
+        diagnostic: {
+          message: "Agent runtime route failed.",
+          allowedRepairActions: [
+            "retry the local agent request",
+            "inspect agent diagnostics"
+          ]
+        }
+      });
       const eventTypes = (await ledger.readAll()).map((event) => event.type);
-      expect(eventTypes).toContain("agent.task.orchestration.claimed");
+      expect(eventTypes).toContain("agent.task.created");
+      expect(eventTypes).toContain("agent.task.status.changed");
+      expect(eventTypes).not.toContain("agent.task.orchestration.claimed");
     } finally {
       ledger.close();
     }
