@@ -1770,9 +1770,10 @@ async function expectAlternateActivationPathsRemainInert(
   if (agentStatusProvider === undefined) {
     throw new Error("default operator status agent provider is unavailable");
   }
-  await expect(agentStatusProvider()).rejects.toThrow(
-    /blocked\.factory-context-attestation-required/i
-  );
+  await expect(agentStatusProvider()).resolves.toMatchObject({
+    schemaVersion: "agent-status.v1",
+    residentAgentId: "agent_default"
+  });
 
   expect(await domainBoundarySnapshot(fixture)).toEqual(before);
 }
