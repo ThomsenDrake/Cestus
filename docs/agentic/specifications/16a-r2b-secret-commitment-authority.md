@@ -1,5 +1,10 @@
 # Specification 16A-R2b — Authority-Owned Secret Commitment Boundary
 
+> **Development authority:** This is a non-authoritative product-requirement
+> source. Historical status, execution, role, risk, repair, review, integration,
+> and verification text below does not govern current work. Follow \`AGENTS.md\`,
+> Compound Engineering, and \`SECURITY.md\`.
+
 Status: approved authority slice. Execute only after 16A-R2a-R2.1, R2.2a-R1,
 R2.2b, R2.2c, and R2.3 are integrated.
 

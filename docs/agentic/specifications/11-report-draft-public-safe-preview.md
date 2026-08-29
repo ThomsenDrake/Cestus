@@ -1,5 +1,10 @@
 # Evidence-Backed Report Draft And Public-Safe Preview
 
+> **Development authority:** This is a non-authoritative product-requirement
+> source. Historical status, execution, role, risk, repair, review, integration,
+> and verification text below does not govern current work. Follow \`AGENTS.md\`,
+> Compound Engineering, and \`SECURITY.md\`.
+
 Status: implemented product-behavior reference.
 
 ## Desired Behavior

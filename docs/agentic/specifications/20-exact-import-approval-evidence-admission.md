@@ -1,5 +1,10 @@
 # Exact Import Approval And Evidence Admission
 
+> **Development authority:** This is a non-authoritative product-requirement
+> source. Historical status, execution, role, risk, repair, review, integration,
+> and verification text below does not govern current work. Follow \`AGENTS.md\`,
+> Compound Engineering, and \`SECURITY.md\`.
+
 Status: approved.
 
 ## Desired Behavior
