@@ -1,11 +1,12 @@
-# Cestus Implemented Product Specifications
+# Cestus Product-Requirement Sources
 
 Status: completed; not a pending delivery queue.
 
-Specifications 01–11 are implemented product-behavior references. They retain
-their observable behavior contracts for maintenance and regression analysis;
-they do not authorize new work by themselves. A new slice requires its own
-approved executable specification.
+Specifications in this directory preserve product behavior, safety requirements,
+and historical decisions for maintenance and regression analysis. They do not
+authorize work, select a development workflow, or impose their historical role,
+risk-lane, repair, review, integration, or verification instructions. New work
+follows `AGENTS.md` and the applicable Compound Engineering workflow.
 
 1. `01-ontology-provenance-workspace.md`
 2. `02-portable-ingestion-evidence-corpus.md`
@@ -20,4 +21,4 @@ approved executable specification.
 11. `11-report-draft-public-safe-preview.md`
 
 Source design material in `docs/superpowers/specs/` is optional historical
-context, not ordinary worker input or factory authority.
+context, not ordinary implementation input or workflow authority.

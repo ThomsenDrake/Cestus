@@ -15,9 +15,8 @@ const expectedGateMarkers = [
   "TASK137_GATE_STAGE_OK typecheck",
   "TASK137_GATE_STAGE_OK source-policy",
   "TASK137_GATE_STAGE_OK package-boundary",
-  "TASK137_GATE_STAGE_OK factory-readiness",
   "TASK137_GATE_STAGE_OK checkout",
-  "TASK137_GATE_COMPLETE stages=6"
+  "TASK137_GATE_COMPLETE stages=5"
 ];
 
 function writeExecutable(path, body) {
@@ -39,7 +38,7 @@ if test "$1" = "test"; then
   cat >/dev/null
   exit 0
 fi
-if test "$1" = "run" && { test "$2" = "typecheck" || test "$2" = "factory:check"; }; then
+if test "$1" = "run" && test "$2" = "typecheck"; then
   exit 0
 fi
 printf 'unexpected npm invocation: %s\\n' "$*" >&2
