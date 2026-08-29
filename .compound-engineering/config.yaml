@@ -1,0 +1,18 @@
+# Tracked Compound Engineering defaults for Cestus.
+
+# Keep CE plans, solutions, and other methodology artifacts together and out of
+# the product-requirement archive under docs/agentic/specifications.
+docs_root: .compound-engineering/artifacts
+
+# Durable engineering artifacts stay reviewable as Markdown.
+plan_output: md
+brainstorm_output: md
+ideate_output: md
+
+# Cestus defaults to native execution. A current user request can still choose a
+# different supported implementation engine.
+work_engine_mode: off
+
+# Repository content stays local unless a user explicitly opts into a
+# cross-model review for the current run.
+cross_model_review_mode: off

@@ -1,10 +1,10 @@
 # Software Factory Principles
 
-Status: non-authoritative reference material.
+Status: retired historical reference material.
 
-This is optional context for factory maintainers and architects. The current
-workflow authority is `docs/agentic/software-factory.md`; ordinary product
-workers do not need this synthesis or the preserved articles.
+This document preserves the design thinking behind Cestus's retired Software
+Factory. It has no operating authority and must not be used as development
+instructions. Current development follows `AGENTS.md` and Compound Engineering.
 
 ## Durable Principles
 

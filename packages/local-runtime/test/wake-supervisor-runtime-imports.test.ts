@@ -2199,6 +2199,7 @@ function mountedBinderControlAnalysis(
   const fileName = `/${mountedBinderWakePath}`;
   const options: ts.CompilerOptions = {
     module: ts.ModuleKind.ESNext,
+    noLib: true,
     noResolve: true,
     skipLibCheck: true,
     target: ts.ScriptTarget.ES2022
@@ -5664,7 +5665,7 @@ describe("wake supervisor runtime import boundary", () => {
     expect(source).toMatch(/import\(/);
   });
 
-  it("seals factory issuance to one nonescaping lexical registrar and one safe facade wrapper", () => {
+  describe("resident factory issuance governance", () => {
     const exactWake = `
       function issueResidentLoopFactoryWakeRuntime(input: object) {
         const wakeRuntime = createWakeSupervisorRuntime(input);
@@ -5820,21 +5821,25 @@ describe("wake supervisor runtime import boundary", () => {
       ], { mode: "private-escape-corpus" });
     };
 
-    expect(analyzeTopologyControl(exactComposition)).toEqual({
-      registrarDeclarationCount: 0,
-      registrarImporters: [],
-      registrarCallers: [],
-      privateFactoryIssuanceDeclarationCount: 1,
-      privateRegistrarClosureEscapes: 0,
-      safeBuilderImporters: [residentFactoryCompositionPath],
-      safeBuilderCallers: [residentFactoryCompositionPath],
-      facadeImportDeclarationCount: 6,
-      facadeValueImplementationCount: 1,
-      facadeValueExports: [residentFactorySafeFacadeExport],
-      facadeTypeDeclarations: [...residentFactorySafeFacadeTypes],
-      violations: []
+    it("accepts the resident factory baseline and topology", () => {
+      expect(analyzeTopologyControl(exactComposition)).toEqual({
+        registrarDeclarationCount: 0,
+        registrarImporters: [],
+        registrarCallers: [],
+        privateFactoryIssuanceDeclarationCount: 1,
+        privateRegistrarClosureEscapes: 0,
+        safeBuilderImporters: [residentFactoryCompositionPath],
+        safeBuilderCallers: [residentFactoryCompositionPath],
+        facadeImportDeclarationCount: 6,
+        facadeValueImplementationCount: 1,
+        facadeValueExports: [residentFactorySafeFacadeExport],
+        facadeTypeDeclarations: [...residentFactorySafeFacadeTypes],
+        violations: []
+      });
     });
-    for (const [name, source] of [
+
+    it("rejects private resident factory registrar escapes", () => {
+      for (const [name, source] of [
       [
         "local named re-export",
         `${exactComposition}
@@ -7059,13 +7064,16 @@ describe("wake supervisor runtime import boundary", () => {
            registerResidentLoopFactoryAuthorityReadback
          );`
       ]
-    ] as const) {
-      expect.soft(
-        analyzePrivateEscapeControl(source).violations,
-        name
-      ).toContain(`${residentFactoryWakePath}:private-registrar-escape`);
-    }
-    for (const [name, source] of [
+      ] as const) {
+        expect.soft(
+          analyzePrivateEscapeControl(source).violations,
+          name
+        ).toContain(`${residentFactoryWakePath}:private-registrar-escape`);
+      }
+    });
+
+    it("accepts nonescaping resident factory controls", () => {
+      for (const [name, source] of [
       [
         "missing direct outer object does not evaluate nested default",
         `${exactComposition}
@@ -8118,13 +8126,13 @@ describe("wake supervisor runtime import boundary", () => {
            ] = {}
          } = {};`
       ]
-    ] as const) {
-      expect.soft(
-        analyzePrivateEscapeControl(source).violations,
-        name
-      ).toEqual([]);
-    }
-    expect(analyzePrivateEscapeControl(`${exactComposition}
+      ] as const) {
+        expect.soft(
+          analyzePrivateEscapeControl(source).violations,
+          name
+        ).toEqual([]);
+      }
+      expect(analyzePrivateEscapeControl(`${exactComposition}
       const unrelatedLocalExport = Object.freeze({});
       export {
         unrelatedLocalExport as registerResidentLoopFactoryAuthorityReadback
@@ -8192,9 +8200,11 @@ describe("wake supervisor runtime import boundary", () => {
         registerResidentLoopFactoryAuthorityReadback,
         unrelatedLocalExport
       );
-    `).violations).toEqual([]);
+      `).violations).toEqual([]);
+    });
 
-    for (const [name, source, extras, wakeSource] of [
+    it("rejects resident factory topology violations", () => {
+      for (const [name, source, extras, wakeSource] of [
       [
         "barrel import",
         exactComposition.replace(
@@ -8340,58 +8350,61 @@ describe("wake supervisor runtime import boundary", () => {
           "createWakeSupervisorRuntime({ ...input })"
         )
       ]
-    ] as const) {
-      const analysis = analyzeTopologyControl(
-        source,
-        extras ?? [],
-        wakeSource ?? exactWake
-      );
-      expect.soft(
-        analysis.violations,
-        name
-      ).not.toEqual([]);
-      if (name === "alternate exported private issuance caller") {
+      ] as const) {
+        const analysis = analyzeTopologyControl(
+          source,
+          extras ?? [],
+          wakeSource ?? exactWake
+        );
         expect.soft(
           analysis.violations,
-          `${name} private capability`
-        ).toContain(`${residentFactoryWakePath}:private-registrar-escape`);
+          name
+        ).not.toEqual([]);
+        if (name === "alternate exported private issuance caller") {
+          expect.soft(
+            analysis.violations,
+            `${name} private capability`
+          ).toContain(`${residentFactoryWakePath}:private-registrar-escape`);
+        }
       }
-    }
+    });
 
-    const packagesRoot = fileURLToPath(new URL("../../", import.meta.url));
-    const productionFiles = productionTypeScriptFiles(packagesRoot);
-    const productionAnalysis = residentFactoryIssuerAnalysis(
-      productionFiles.map((file) => {
-        const label = sourceLabel(packagesRoot, file);
-        return {
-          label,
-          sourceFile: ts.createSourceFile(
+    it("enforces resident factory governance across production", () => {
+      const packagesRoot = fileURLToPath(new URL("../../", import.meta.url));
+      const productionFiles = productionTypeScriptFiles(packagesRoot);
+      const productionAnalysis = residentFactoryIssuerAnalysis(
+        productionFiles.map((file) => {
+          const label = sourceLabel(packagesRoot, file);
+          return {
             label,
-            readFileSync(file, "utf8"),
-            ts.ScriptTarget.Latest,
-            true,
-            ts.ScriptKind.TS
-          )
-        };
-      })
-    );
-    expect(productionAnalysis).toEqual({
-      registrarDeclarationCount: 0,
-      registrarImporters: [],
-      registrarCallers: [],
-      privateFactoryIssuanceDeclarationCount: 1,
-      privateRegistrarClosureEscapes: 0,
-      safeBuilderImporters: [residentFactoryCompositionPath],
-      safeBuilderCallers: [residentFactoryCompositionPath],
-      facadeImportDeclarationCount: 6,
-      facadeValueImplementationCount: 1,
-      facadeValueExports: [residentFactorySafeFacadeExport],
-      facadeTypeDeclarations: [...residentFactorySafeFacadeTypes],
-      violations: []
+            sourceFile: ts.createSourceFile(
+              label,
+              readFileSync(file, "utf8"),
+              ts.ScriptTarget.Latest,
+              true,
+              ts.ScriptKind.TS
+            )
+          };
+        })
+      );
+      expect(productionAnalysis).toEqual({
+        registrarDeclarationCount: 0,
+        registrarImporters: [],
+        registrarCallers: [],
+        privateFactoryIssuanceDeclarationCount: 1,
+        privateRegistrarClosureEscapes: 0,
+        safeBuilderImporters: [residentFactoryCompositionPath],
+        safeBuilderCallers: [residentFactoryCompositionPath],
+        facadeImportDeclarationCount: 6,
+        facadeValueImplementationCount: 1,
+        facadeValueExports: [residentFactorySafeFacadeExport],
+        facadeTypeDeclarations: [...residentFactorySafeFacadeTypes],
+        violations: []
+      });
     });
   });
 
-  it("allows only the dispatcher default and named gateway constructor import chain", () => {
+  describe("mounted resident authority import governance", () => {
     const source = readFileSync(new URL("../src/wake-supervisor-runtime.ts", import.meta.url), "utf8");
     const mountedStoreSource = readFileSync(
       new URL("../src/mounted-wake-lifecycle-store.ts", import.meta.url),
@@ -8416,24 +8429,6 @@ describe("wake supervisor runtime import boundary", () => {
       "residentExecutionPort"
     ] as const;
 
-    expect.soft(source).not.toContain(
-      `from "${permittedResidentImports.mountedStore.dispatcherDefault}"`
-    );
-    expect.soft(source).not.toContain(
-      `from "${permittedResidentImports.mountedStore.gatewayNamedConstructor}"`
-    );
-    expect.soft(mountedStoreSource).toContain(
-      `from "${permittedResidentImports.mountedStore.dispatcherDefault}"`
-    );
-    expect.soft(mountedStoreSource).toContain(
-      `from "${permittedResidentImports.mountedStore.gatewayNamedConstructor}"`
-    );
-    expect.soft(mountedStoreSource).toMatch(
-      /import\s+\w+\s+from\s+"..\/..\/agent\/src\/domain-execution-dispatcher\.js"/
-    );
-    expect.soft(mountedStoreSource).toMatch(
-      /import\s*\{[^}]*createResidentLoopToolGateway[^}]*\}\s*from\s+"..\/..\/agent\/src\/resident-loop-tool-gateway\.js"/s
-    );
     const wakeFile = ts.createSourceFile(
       "wake-supervisor-runtime.ts",
       source,
@@ -8482,37 +8477,6 @@ describe("wake supervisor runtime import boundary", () => {
       ts.ScriptKind.TS
     );
     const probeDeclarations = localTypeDeclarations(analyzerProbe);
-    expect([
-      "Direct",
-      "UnionWrapped",
-      "IntersectionWrapped",
-      "TupleWrapped",
-      "ArrayWrapped",
-      "ObjectWrapped",
-      "CallWrapped",
-      "MethodWrapped",
-      "GenericWrapped",
-      "Safe"
-    ].map((name) => {
-      const declaration = probeDeclarations.get(name);
-      if (declaration === undefined) return false;
-      if (ts.isTypeAliasDeclaration(declaration)) {
-        return typeContainsCallable(declaration.type, probeDeclarations);
-      }
-      return declaration.members.some((member) =>
-        (
-          ts.isCallSignatureDeclaration(member) ||
-          ts.isConstructSignatureDeclaration(member) ||
-          ts.isMethodSignature(member)
-        ) ||
-        (
-          (ts.isPropertySignature(member) || ts.isIndexSignatureDeclaration(member)) &&
-          member.type !== undefined &&
-          typeContainsCallable(member.type, probeDeclarations)
-        )
-      );
-    })).toEqual([true, true, true, true, true, true, true, true, true, false]);
-
     const dispatcherImports = mountedStoreFile.statements.flatMap((statement) => {
       if (
         !ts.isImportDeclaration(statement) ||
@@ -8573,7 +8537,57 @@ describe("wake supervisor runtime import boundary", () => {
         "createResidentLoopToolGateway"
       );
     };
-    expect(fixedConstructionControl(`
+
+    it("enforces fixed constructor use and the four-parameter baseline", () => {
+      expect.soft(source).not.toContain(
+        `from "${permittedResidentImports.mountedStore.dispatcherDefault}"`
+      );
+      expect.soft(source).not.toContain(
+        `from "${permittedResidentImports.mountedStore.gatewayNamedConstructor}"`
+      );
+      expect.soft(mountedStoreSource).toContain(
+        `from "${permittedResidentImports.mountedStore.dispatcherDefault}"`
+      );
+      expect.soft(mountedStoreSource).toContain(
+        `from "${permittedResidentImports.mountedStore.gatewayNamedConstructor}"`
+      );
+      expect.soft(mountedStoreSource).toMatch(
+        /import\s+\w+\s+from\s+"..\/..\/agent\/src\/domain-execution-dispatcher\.js"/
+      );
+      expect.soft(mountedStoreSource).toMatch(
+        /import\s*\{[^}]*createResidentLoopToolGateway[^}]*\}\s*from\s+"..\/..\/agent\/src\/resident-loop-tool-gateway\.js"/s
+      );
+      expect([
+        "Direct",
+        "UnionWrapped",
+        "IntersectionWrapped",
+        "TupleWrapped",
+        "ArrayWrapped",
+        "ObjectWrapped",
+        "CallWrapped",
+        "MethodWrapped",
+        "GenericWrapped",
+        "Safe"
+      ].map((name) => {
+        const declaration = probeDeclarations.get(name);
+        if (declaration === undefined) return false;
+        if (ts.isTypeAliasDeclaration(declaration)) {
+          return typeContainsCallable(declaration.type, probeDeclarations);
+        }
+        return declaration.members.some((member) =>
+          (
+            ts.isCallSignatureDeclaration(member) ||
+            ts.isConstructSignatureDeclaration(member) ||
+            ts.isMethodSignature(member)
+          ) ||
+          (
+            (ts.isPropertySignature(member) || ts.isIndexSignatureDeclaration(member)) &&
+            member.type !== undefined &&
+            typeContainsCallable(member.type, probeDeclarations)
+          )
+        );
+      })).toEqual([true, true, true, true, true, true, true, true, true, false]);
+      expect(fixedConstructionControl(`
       import dispatcherDefault from "../../agent/src/domain-execution-dispatcher.js";
       import { createResidentLoopToolGateway } from "../../agent/src/resident-loop-tool-gateway.js";
       function bindMountedResidentLoopAuthorityForFactory() {
@@ -8672,12 +8686,16 @@ describe("wake supervisor runtime import boundary", () => {
           createResidentLoopToolGateway(input);
         }
       `]
-    ] as const) {
-      expect.soft(
-        fixedConstructionControl(text),
-        name
-      ).not.toEqual(exactFixedConstruction);
-    }
+      ] as const) {
+        expect.soft(
+          fixedConstructionControl(text),
+          name
+        ).not.toEqual(exactFixedConstruction);
+      }
+      expect(
+        mountedBinderControlAnalysis(fourParameterRegistrarWith())
+      ).toEqual(exactBinderOwnership);
+    });
 
     const exactBinderOwnership = {
       binderImporters: [mountedBinderWakePath],
@@ -8753,10 +8771,8 @@ describe("wake supervisor runtime import boundary", () => {
           )`};
       }
     `;
-    expect(
-      mountedBinderControlAnalysis(fourParameterRegistrarWith())
-    ).toEqual(exactBinderOwnership);
-    for (const [name, text] of [
+    it("rejects alternate four-parameter binder controls", () => {
+      for (const [name, text] of [
       ["aliased runtime-handle type import", fourParameterRegistrarWith({
         runtimeHandleImport:
           'import type { LocalRuntimeHandle as RuntimeHandle } from "./runtime-factory.js";',
@@ -8862,12 +8878,13 @@ describe("wake supervisor runtime import boundary", () => {
           )
         `
       })]
-    ] as const) {
-      expect.soft(
-        mountedBinderControlAnalysis(text),
-        name
-      ).not.toEqual(exactBinderOwnership);
-    }
+      ] as const) {
+        expect.soft(
+          mountedBinderControlAnalysis(text),
+          name
+        ).not.toEqual(exactBinderOwnership);
+      }
+    });
     const e1087CausalRedControls = [
       {
         id: "FA1",
@@ -9108,8 +9125,9 @@ describe("wake supervisor runtime import boundary", () => {
         expectedOwnership: "rejected"
       }
     ] as const;
-    for (const control of e1087CausalRedControls) {
-      const runtimeResult = ts.transpileModule(`
+    it("enforces the E1087 causal-red controls", () => {
+      for (const control of e1087CausalRedControls) {
+        const runtimeResult = ts.transpileModule(`
         let stateReadCount = 0;
         let observedStore: unknown;
         const wakeRuntime = {};
@@ -9145,46 +9163,49 @@ describe("wake supervisor runtime import boundary", () => {
         },
         reportDiagnostics: true
       });
-      const runtimeContext: {
-        observedStore?: unknown;
-        stateReadCount?: number;
-      } = {};
-      runInNewContext(runtimeResult.outputText, runtimeContext);
-      expect.soft(
-        {
-          diagnosticCodes: (runtimeResult.diagnostics ?? []).map(
-            (diagnostic) => diagnostic.code
-          ),
-          stateReadCount: runtimeContext.stateReadCount
-        },
-        `${control.id} ${control.name} runtime`
-      ).toEqual({
-        diagnosticCodes: [],
-        stateReadCount: control.expectedStateReadCount
-      });
-      if (control.id === "P1") {
+        const runtimeContext: {
+          observedStore?: unknown;
+          stateReadCount?: number;
+        } = {};
+        runInNewContext(runtimeResult.outputText, runtimeContext);
         expect.soft(
-          runtimeContext.observedStore,
-          "P1 canonical read observes the foreign replacement"
-        ).toBe("foreign");
-      }
+          {
+            diagnosticCodes: (runtimeResult.diagnostics ?? []).map(
+              (diagnostic) => diagnostic.code
+            ),
+            stateReadCount: runtimeContext.stateReadCount
+          },
+          `${control.id} ${control.name} runtime`
+        ).toEqual({
+          diagnosticCodes: [],
+          stateReadCount: control.expectedStateReadCount
+        });
+        if (control.id === "P1") {
+          expect.soft(
+            runtimeContext.observedStore,
+            "P1 canonical read observes the foreign replacement"
+          ).toBe("foreign");
+        }
 
-      const analysis = mountedBinderControlAnalysis(
-        exactRegistrarWith(control.outerSyntax)
-      );
-      if (control.expectedOwnership === "rejected") {
-        expect.soft(
-          analysis,
-          `${control.id} ${control.name} must reject alternate ownership`
-        ).not.toEqual(exactBinderOwnership);
-      } else {
-        expect.soft(
-          analysis,
-          `${control.id} ${control.name} must preserve exact ownership`
-        ).toEqual(exactBinderOwnership);
+        const analysis = mountedBinderControlAnalysis(
+          exactRegistrarWith(control.outerSyntax)
+        );
+        if (control.expectedOwnership === "rejected") {
+          expect.soft(
+            analysis,
+            `${control.id} ${control.name} must reject alternate ownership`
+          ).not.toEqual(exactBinderOwnership);
+        } else {
+          expect.soft(
+            analysis,
+            `${control.id} ${control.name} must preserve exact ownership`
+          ).toEqual(exactBinderOwnership);
+        }
       }
-    }
-    {
+    });
+
+    it("matches mounted-binder runtime probes", () => {
+      {
       const outerSyntax = `
         (({ value }) => void value)({
           ...{ value: 1 },
@@ -9329,7 +9350,7 @@ describe("wake supervisor runtime import boundary", () => {
       diagnosticCodes: [],
       stateReadCounts: [1, 1, 1, 1, 1]
     });
-    expect(nineGapLiteralEvaluatorRuntimeProbe()).toEqual([
+      expect(nineGapLiteralEvaluatorRuntimeProbe()).toEqual([
       {
         diagnosticCodes: [],
         name: "constructor-returned literal reused as constructor",
@@ -9375,8 +9396,11 @@ describe("wake supervisor runtime import boundary", () => {
         name: "returned literal bind result invoked through apply",
         stateReadCount: 1
       }
-    ]);
-    for (const [name, outerSyntax] of [
+      ]);
+    });
+
+    it("rejects outer-evaluated private-state reads", () => {
+      for (const [name, outerSyntax] of [
       ["nested array-rest binding default state read", `
         (([
           ...[value = residentWakeRuntimeStates.get(wakeRuntime)]
@@ -9484,15 +9508,18 @@ describe("wake supervisor runtime import boundary", () => {
           )]: value
         }) => void value)({ value: 1 });
       `]
-    ] as const) {
-      expect.soft(
-        mountedBinderControlAnalysis(
-          exactRegistrarWith(outerSyntax)
-        ),
-        name
-      ).not.toEqual(exactBinderOwnership);
-    }
-    for (const [name, outerSyntax] of [
+      ] as const) {
+        expect.soft(
+          mountedBinderControlAnalysis(
+            exactRegistrarWith(outerSyntax)
+          ),
+          name
+        ).not.toEqual(exactBinderOwnership);
+      }
+    });
+
+    it("accepts deferred and nonescaping outer forms", () => {
+      for (const [name, outerSyntax] of [
       ["supplied nested array-rest value keeps default deferred", `
         (([
           ...[value = residentWakeRuntimeStates.get(wakeRuntime)]
@@ -9718,15 +9745,18 @@ describe("wake supervisor runtime import boundary", () => {
         };
         void shadowedUndefined;
       `]
-    ] as const) {
-      expect.soft(
-        mountedBinderControlAnalysis(
-          exactRegistrarWith(outerSyntax)
-        ),
-        name
-      ).toEqual(exactBinderOwnership);
-    }
-    for (const [name, text] of [
+      ] as const) {
+        expect.soft(
+          mountedBinderControlAnalysis(
+            exactRegistrarWith(outerSyntax)
+          ),
+          name
+        ).toEqual(exactBinderOwnership);
+      }
+    });
+
+    it("enforces the mounted-binder ownership corpus", () => {
+      for (const [name, text] of [
       ["object-literal computed method state read", exactRegistrarWith(`
         const objectValue = {
           [(residentWakeRuntimeStates.get(wakeRuntime), "method")]() {}
@@ -11018,92 +11048,96 @@ describe("wake supervisor runtime import boundary", () => {
           bindMountedResidentLoopAuthorityForFactory(store, binding, execution);
         }
       `]
-    ] as const) {
-      expect.soft(
-        mountedBinderControlAnalysis(text).violations,
-        name
-      ).not.toEqual([]);
-    }
-
-    const packagesRoot = fileURLToPath(new URL("../../", import.meta.url));
-    const productionFiles = productionTypeScriptFiles(packagesRoot);
-    const productionProgram = ts.createProgram(productionFiles, {
-      module: ts.ModuleKind.ESNext,
-      noResolve: true,
-      skipLibCheck: true,
-      target: ts.ScriptTarget.ES2022
+      ] as const) {
+        expect.soft(
+          mountedBinderControlAnalysis(text).violations,
+          name
+        ).not.toEqual([]);
+      }
     });
-    const binderOwnership = mountedBinderOwnershipAnalysis(
-      productionProgram,
-      productionFiles.flatMap((file) => {
-        const sourceFile = productionProgram.getSourceFile(file);
-        return sourceFile === undefined
-          ? []
-          : [{
-              sourceFile,
-              label: sourceLabel(packagesRoot, file)
-            }];
-      })
-    );
 
-    const productAnalysis = {
-      declarationCount: declarations.length,
-      binderParameterNames: declarations.flatMap((declaration) =>
-        declaration.parameters.map((parameter) => parameter.name.getText(mountedStoreFile))
-      ),
-      binderParameterCount: declarations[0]?.parameters.length ?? 0,
-      callbackOrWrapperParameterIndexes: constructorParameterIndexes,
-      binderImporters: binderOwnership.binderImporters,
-      binderCalls: binderOwnership.binderCalls,
-      binderOwnershipViolations: binderOwnership.violations,
-      wakeFixedConstructorImports: wakeFile.statements.flatMap((statement) =>
-        ts.isImportDeclaration(statement) &&
-        ts.isStringLiteral(statement.moduleSpecifier) &&
-        ([
-          permittedResidentImports.mountedStore.dispatcherDefault,
-          permittedResidentImports.mountedStore.gatewayNamedConstructor
-        ] as readonly string[]).includes(statement.moduleSpecifier.text)
-          ? [statement.moduleSpecifier.text]
-          : []
-      ),
-      dispatcherImports,
-      gatewayImports,
-      fixedConstructorUse
-    };
-    for (const productSource of [source, mountedStoreSource]) {
-      for (const pattern of forbiddenLoaderForms) {
-        expect(productSource).not.toMatch(pattern);
+    it("enforces mounted-binder ownership across production", () => {
+      const packagesRoot = fileURLToPath(new URL("../../", import.meta.url));
+      const productionFiles = productionTypeScriptFiles(packagesRoot);
+      const productionProgram = ts.createProgram(productionFiles, {
+        module: ts.ModuleKind.ESNext,
+        noLib: true,
+        noResolve: true,
+        skipLibCheck: true,
+        target: ts.ScriptTarget.ES2022
+      });
+      const binderOwnership = mountedBinderOwnershipAnalysis(
+        productionProgram,
+        productionFiles.flatMap((file) => {
+          const sourceFile = productionProgram.getSourceFile(file);
+          return sourceFile === undefined
+            ? []
+            : [{
+                sourceFile,
+                label: sourceLabel(packagesRoot, file)
+              }];
+        })
+      );
+
+      const productAnalysis = {
+        declarationCount: declarations.length,
+        binderParameterNames: declarations.flatMap((declaration) =>
+          declaration.parameters.map((parameter) => parameter.name.getText(mountedStoreFile))
+        ),
+        binderParameterCount: declarations[0]?.parameters.length ?? 0,
+        callbackOrWrapperParameterIndexes: constructorParameterIndexes,
+        binderImporters: binderOwnership.binderImporters,
+        binderCalls: binderOwnership.binderCalls,
+        binderOwnershipViolations: binderOwnership.violations,
+        wakeFixedConstructorImports: wakeFile.statements.flatMap((statement) =>
+          ts.isImportDeclaration(statement) &&
+          ts.isStringLiteral(statement.moduleSpecifier) &&
+          ([
+            permittedResidentImports.mountedStore.dispatcherDefault,
+            permittedResidentImports.mountedStore.gatewayNamedConstructor
+          ] as readonly string[]).includes(statement.moduleSpecifier.text)
+            ? [statement.moduleSpecifier.text]
+            : []
+        ),
+        dispatcherImports,
+        gatewayImports,
+        fixedConstructorUse
+      };
+      for (const productSource of [source, mountedStoreSource]) {
+        for (const pattern of forbiddenLoaderForms) {
+          expect(productSource).not.toMatch(pattern);
+        }
+        for (const transfer of forbiddenTransfers) {
+          expect(productSource).not.toContain(transfer);
+        }
       }
-      for (const transfer of forbiddenTransfers) {
-        expect(productSource).not.toContain(transfer);
-      }
-    }
-    expect(agentBarrel).not.toMatch(/ResidentDomainExecution|ResidentLoopToolGateway|PackageOwnedResident|BoundedAgentLoop/);
-    expect(productAnalysis).toEqual({
-      declarationCount: 1,
-      binderParameterNames: ["store", "rawBinding", "domainExecution"],
-      binderParameterCount: 3,
-      callbackOrWrapperParameterIndexes: [],
-      binderImporters: ["packages/local-runtime/src/wake-supervisor-runtime.ts"],
-      binderCalls: [{
-        file: "packages/local-runtime/src/wake-supervisor-runtime.ts",
-        argumentCount: 3
-      }],
-      binderOwnershipViolations: [],
-      wakeFixedConstructorImports: [],
-      dispatcherImports: [{
-        defaultName: "dispatcherDefault",
-        hasNamedBindings: false
-      }],
-      gatewayImports: [{
-        defaultName: null,
-        named: [{
-          imported: "createResidentLoopToolGateway",
-          local: "createResidentLoopToolGateway"
+      expect(agentBarrel).not.toMatch(/ResidentDomainExecution|ResidentLoopToolGateway|PackageOwnedResident|BoundedAgentLoop/);
+      expect(productAnalysis).toEqual({
+        declarationCount: 1,
+        binderParameterNames: ["store", "rawBinding", "domainExecution"],
+        binderParameterCount: 3,
+        callbackOrWrapperParameterIndexes: [],
+        binderImporters: ["packages/local-runtime/src/wake-supervisor-runtime.ts"],
+        binderCalls: [{
+          file: "packages/local-runtime/src/wake-supervisor-runtime.ts",
+          argumentCount: 3
         }],
-        hasNamespaceBinding: false
-      }],
-      fixedConstructorUse: exactFixedConstruction
+        binderOwnershipViolations: [],
+        wakeFixedConstructorImports: [],
+        dispatcherImports: [{
+          defaultName: "dispatcherDefault",
+          hasNamedBindings: false
+        }],
+        gatewayImports: [{
+          defaultName: null,
+          named: [{
+            imported: "createResidentLoopToolGateway",
+            local: "createResidentLoopToolGateway"
+          }],
+          hasNamespaceBinding: false
+        }],
+        fixedConstructorUse: exactFixedConstruction
+      });
     });
   });
 });
