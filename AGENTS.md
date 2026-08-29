@@ -1,60 +1,44 @@
-# Cestus Agent Contract
+# Cestus Compound Engineering Contract
 
-Treat the approved product specification, current Git branch, and verification
-output as durable task state.
+Compound Engineering is the sole development methodology for this repository.
+Repository instructions and product-safety requirements override plugin defaults.
 
-## Current Factory Authority
+## Authority
 
-Read, in order:
+Read only the context needed for the current task, in this order:
 
-1. the approved executable specification;
-2. `docs/agentic/software-factory.md`;
-3. `.agents/skills/cestus-software-factory/SKILL.md`;
-4. only instructions and source relevant to the allowed scope.
+1. this contract and any narrower `AGENTS.md`;
+2. `SECURITY.md` for product-safety invariants;
+3. the accepted Compound Engineering plan or concrete user request;
+4. relevant product-requirement sources and implementation code.
 
-The approved Cestus specification is product and design authority.
-`$sol-advisor:orchestration` is the preferred coordinator and role router; it
-does not create extra Cestus plans, missions, claims, registries, amendments,
-or lifecycle records. Factory V1/V2 material is history only, not task input,
-approval, ownership authority, or a default verification requirement.
+Documents under `docs/agentic/specifications/` preserve product requirements and
+historical decisions. They are not workflow authority and do not authorize work
+by themselves.
 
-## Role Routing
+## Development Workflow
 
-- Primary Sol / High owns architecture interpretation, primary verification,
-  acceptance, and integration decisions.
-- Terra / High is the sole native implementation lane.
-- A fresh Sol verdict replaces generic independent-review flow at a
-  commitment boundary: red work, consequential architecture, migration,
-  public API, or genuinely wide change.
-- Luna task lane is never used unless explicitly requested.
+- Use `ce-strategy` or `ce-ideate` when direction is unsettled.
+- Use `ce-brainstorm` to define requirements and `ce-plan` for implementation
+  design when the work needs them.
+- Execute accepted work with `ce-work`, then use `ce-simplify-code`,
+  `ce-code-review`, and `ce-compound` when their gates apply.
+- Route defects through `ce-debug`. Use specialized CE test and review skills
+  for browser, Xcode, security, performance, or other domain-specific work.
+- Finish with the appropriate CE commit or PR workflow. Never push, publish,
+  merge, or perform another external action unless the user authorized it.
 
-## Work Rules
+Do not introduce a repository-specific scheduler, registry, lifecycle, role
+router, or parallel development methodology around Compound Engineering.
 
-- Start from one approved executable specification; use
-  `docs/agentic/executable-spec-template.md` for a new slice.
-- Use one task-scoped branch or worktree. The diff is the candidate and Git
-  history is the archive.
-- Reproduce or write a failing test before product behavior changes;
-  documentation and behavior-neutral maintenance use focused validation.
-- Preserve green, yellow, and red risk lanes. Run targeted checks during work
-  and integration verification once at the integration boundary.
-- At most two focused repair attempts address failed checks or findings. A
-  correction receives any fresh Sol verdict required by its boundary without
-  expanding that implementation-repair maximum.
-- Green and yellow work bounded by the specification needs no further human
-  approval. Escalate only a red action or a genuine new product, scope,
-  safety, credential, irreversible, data-loss, or external-behavior decision.
-- Report only commits, changed files, check results, review findings,
-  integration status, or genuine exceptions; do not report polling, waiting,
-  unchanged state, heartbeats, or command-by-command activity.
+## Repository Conventions
 
-## Product Safety Invariants
-
-Never weaken Cestus's append-only product ledger, evidence provenance,
-projection rebuildability, consume-time approval validation, secret safety,
-human PRR-send gates, legal escalation locks, destructive-operation
-safeguards, fail-closed boundaries, or no-fallback-write behavior.
-
-Development coordination is not part of the product ledger. Ordinary product
-work creates no factory claims, amendments, registry entries, or lifecycle
-events.
+- Preserve user-owned work and use task-scoped branches or isolated worktrees.
+- For behavior changes, establish failing or characterization evidence before
+  changing implementation when practical. Documentation and configuration work
+  uses focused validation.
+- Run targeted checks while working and `npm run verify` before delivery.
+- Keep Git history as execution state; keep CE plans and solutions under the
+  configured CE artifact root.
+- Preserve all invariants in `SECURITY.md`; development coordination never
+  becomes product-ledger data.
