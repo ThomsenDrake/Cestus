@@ -1,5 +1,10 @@
 # Tailnet-Only Engineering Preview Readiness
 
+> **Development authority:** This is a non-authoritative product-requirement
+> source. Historical status, execution, role, risk, repair, review, integration,
+> and verification text below does not govern current work. Follow \`AGENTS.md\`,
+> Compound Engineering, and \`SECURITY.md\`.
+
 Status: approved by the initiating 2026-08-04 request.
 
 ## Desired Behavior

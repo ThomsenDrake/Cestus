@@ -1,7 +1,5 @@
-import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 describe("Requests data boundary", () => {
@@ -146,82 +144,6 @@ describe("Requests data boundary", () => {
     }
   });
 
-  it("accepts thin factory readiness without historical plans", () => {
-    const fixtureRoot = mkdtempSync(join(tmpdir(), "cestus-factory-readiness-"));
-    const readinessScript = join(process.cwd(), "scripts/check-agent-readiness.mjs");
-    const files = new Map([
-      [
-        "AGENTS.md",
-        [
-          "docs/agentic/software-factory.md",
-          "docs/agentic/executable-spec-template.md",
-          "$sol-advisor:orchestration",
-          "Terra / High",
-          "Luna task lane",
-          "Development coordination is not part of the product ledger"
-        ].join("\n")
-      ],
-      ["CLAUDE.md", "Cestus agent instructions"],
-      [".opencode/AGENTS.md", "Cestus agent instructions"],
-      [
-        ".agents/skills/cestus-software-factory/SKILL.md",
-        [
-          "## Assemble Bounded Context",
-          "## Execute The Line",
-          "at most two focused repair attempts",
-          "$sol-advisor:orchestration",
-          "Terra / High"
-        ].join("\n")
-      ],
-      [
-        "docs/agentic/software-factory.md",
-        [
-          "Status: authoritative.",
-          "## Delivery Line",
-          "## Risk Lanes",
-          "## Mandatory Overhead Limits",
-          "Factory V1 and Factory V2 are preserved as history",
-          "$sol-advisor:orchestration",
-          "Primary Sol / High",
-          "Terra / High",
-          "fresh Sol verdict"
-        ].join("\n")
-      ],
-      [
-        "docs/agentic/executable-spec-template.md",
-        [
-          "## Desired Behavior",
-          "## Observable Acceptance Examples",
-          "## Allowed Scope",
-          "## Relevant Context Entry Points",
-          "## Risk Lane",
-          "## Targeted Verification",
-          "## Integration Verification",
-          "## Escalation Conditions"
-        ].join("\n")
-      ],
-      [".github/workflows/verify.yml", "on:\n  push:\n    branches:\n      - neo\n"]
-    ]);
-
-    try {
-      for (const [path, contents] of files) {
-        const target = join(fixtureRoot, path);
-        mkdirSync(dirname(target), { recursive: true });
-        writeFileSync(target, contents);
-      }
-
-      const result = spawnSync(process.execPath, [readinessScript], {
-        cwd: fixtureRoot,
-        encoding: "utf8"
-      });
-
-      expect(result.status, result.stderr).toBe(0);
-      expect(result.stdout).toBe("factory-readiness passed\n");
-      expect(result.stderr).toBe("");
-    } finally {
-      rmSync(fixtureRoot, { recursive: true, force: true });
-    }
-  });
 });
 
 const nodeRuntimeModulePattern = /^(?:assert|async_hooks|buffer|child_process|cluster|console|constants|crypto|dgram|diagnostics_channel|dns|domain|events|fs|http|http2|https|inspector|module|net|os|path|perf_hooks|process|punycode|querystring|readline|repl|sqlite|stream|string_decoder|test|timers|tls|trace_events|tty|url|util|v8|vm|wasi|worker_threads|zlib)(?:\/.*)?$/;

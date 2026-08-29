@@ -1,5 +1,10 @@
 # Specification 16A-R2a-R2.2b — Exact Secret Commitment Frame Builders
 
+> **Development authority:** This is a non-authoritative product-requirement
+> source. Historical status, execution, role, risk, repair, review, integration,
+> and verification text below does not govern current work. Follow \`AGENTS.md\`,
+> Compound Engineering, and \`SECURITY.md\`.
+
 Status: approved replacement slice 2 of 3 for superseded R2.2. Execute only after
 R2.2a-R1 integrates.
 

@@ -7,3 +7,5 @@ coverage/
 .env
 .env.*
 !.env.example
+.compound-engineering/*.local.yaml
+.context/compound-engineering/
