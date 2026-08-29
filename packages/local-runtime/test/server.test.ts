@@ -118,6 +118,13 @@ describe("startLocalRuntimeServer", () => {
       ["prr", "ready"],
       ["agent", "ready"]
     ]);
+    expect(body.summary).toEqual({
+      overallState: "action-required",
+      blockedCount: 0,
+      actionRequiredCount: 1,
+      degradedCount: 0,
+      nextSafeActionId: "action_show_legacy_import_help"
+    });
   });
 
   it("selects a non-loopback browser host for wildcard LAN binds without listening", () => {

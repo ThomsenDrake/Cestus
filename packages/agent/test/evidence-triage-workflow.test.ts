@@ -1,12 +1,16 @@
 import { createHash } from "node:crypto";
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { ProviderParseApprovalService } from "../../ingestion/src/provider-adapter.js";
 import { FileBlobStore } from "../../ontology/src/blob-store.js";
 import { InMemoryEventLedger } from "../../ontology/src/event-ledger.js";
 import type { AppendableKnowledgeEvent, KnowledgeEventOf } from "../../ontology/src/contracts.js";
+import { createPortableWorkspace } from "../../workspace/src/index.js";
+import { resolveLocalRuntimeConfig } from "../../local-runtime/src/config.js";
+import { createMountedPromptArtifactStore } from "../../local-runtime/src/mounted-prompt-artifact-store.js";
+import { createSqlitePrrRuntime, type LocalRuntimeHandle } from "../../local-runtime/src/runtime-factory.js";
 import {
   buildAgentProjection,
   buildProviderByteTransferApprovalPreview,
@@ -16,10 +20,11 @@ import {
   createProviderCapabilityDescriptor,
   FakeModelProvider,
   promptArtifactAuditMetadata,
+  productionSpecialistPromptRegistrationFor,
   providerParseExecuteDescriptor,
   rebuildProviderByteTransferCurrentPreview,
   renderProductionSpecialistPrompt,
-  runEvidenceTriageWorkflow,
+  runEvidenceTriageWorkflow as runEvidenceTriageWorkflowKernel,
   type ModelInvocationRequest,
   type ModelInvocationResult,
   type ModelProviderAdapter,
@@ -29,12 +34,20 @@ import {
 } from "../src/index.js";
 import { registerContextPackPayloadParserAuthority } from "../src/context-packs.js";
 import type { AgentContextPackJsonValue } from "../src/index.js";
+import type { RunEvidenceTriageWorkflowInput } from "../src/evidence-triage-workflow.js";
 
 const now = () => "2026-07-10T02:30:00.000Z";
 const actor = { id: "actor_agent", kind: "agent" as const, label: "Cestus Agent" };
 const evidenceHash = hashText("evidence triage source bytes");
 const promptArtifactHash = hashText("triage prompt artifact");
 const providerParseHuman = { id: "actor_provider_reviewer", kind: "human" as const, label: "Provider Reviewer" };
+const mountedTriageDirs: string[] = [];
+const mountedTriageHandles: LocalRuntimeHandle[] = [];
+
+afterEach(() => {
+  for (const handle of mountedTriageHandles.splice(0)) handle.close();
+  for (const dir of mountedTriageDirs.splice(0)) rmSync(dir, { recursive: true, force: true });
+});
 
 describe("evidence triage workflow", () => {
   it("legacy deterministic caller remains explicit v1", async () => {
@@ -472,6 +485,65 @@ describe("evidence triage workflow", () => {
     expect(await ledger.readAll()).toHaveLength(afterFirstRun.length);
   });
 });
+
+async function runEvidenceTriageWorkflow(input: RunEvidenceTriageWorkflowInput) {
+  return await runEvidenceTriageWorkflowKernel({
+    ...input,
+    mountedPromptReadbackWitness: await mountedTriagePromptReadbackWitness(input)
+  });
+}
+
+async function mountedTriagePromptReadbackWitness(input: RunEvidenceTriageWorkflowInput) {
+  const scope = input.scope ?? { kind: "task" as const, refs: [input.taskId] };
+  const registration = productionSpecialistPromptRegistrationFor("evidence-triage");
+  const resolvedContextPacks = await Promise.all(registration.contextRequirements
+    .filter((requirement) => requirement.requirementMode === "always" || scope.associatedPrrRequestId !== undefined)
+    .map(async (requirement) => await input.contextPacks.buildResolved(requirement.contextPackId)));
+  const rendered = renderProductionSpecialistPrompt({
+    taskId: input.taskId,
+    runId: input.runId,
+    runType: "evidence-triage",
+    generatedAt: input.now(),
+    scope,
+    resolvedContextPacks
+  });
+  const store = await createMountedPromptArtifactStore({ handle: mountedTriageHandle("ws_triage") });
+  await store.put(rendered);
+  const readback = await store.read({
+    inputArtifactHash: rendered.manifest.inputArtifactHash as `sha256:${string}`,
+    authoritativeResolvedContextPacks: rendered.resolvedContextPacks
+  });
+  if (readback.witness === undefined) throw new Error("Expected mounted evidence triage prompt witness.");
+  return readback.witness;
+}
+
+function mountedTriageHandle(workspaceId: string): LocalRuntimeHandle {
+  const root = mkdtempSync(join(tmpdir(), "cestus-evidence-triage-mounted-"));
+  const cwd = mkdtempSync(join(tmpdir(), "cestus-evidence-triage-mounted-cwd-"));
+  mountedTriageDirs.push(root, cwd);
+  createPortableWorkspace({
+    rootDir: root,
+    workspaceId,
+    label: "Evidence triage mounted prompt fixture",
+    createdAt: now(),
+    createdBy: "actor_evidence_triage_test"
+  });
+  const handle = createSqlitePrrRuntime({
+    config: {
+      ...resolveLocalRuntimeConfig({ cwd, env: {} }),
+      storage: {
+        strategy: "portable-workspace",
+        workspaceRoot: root,
+        expectedWorkspaceId: workspaceId,
+        sqlitePath: join(root, "ledger", "ontology.sqlite")
+      }
+    },
+    actor: { id: "actor_evidence_triage_test", kind: "system", label: "Evidence Triage Test" },
+    now
+  });
+  mountedTriageHandles.push(handle);
+  return handle;
+}
 
 async function preparedRuntime(responseText: string) {
   const ledger = new InMemoryEventLedger();

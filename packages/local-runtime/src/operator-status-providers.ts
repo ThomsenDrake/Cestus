@@ -27,7 +27,7 @@ import {
   type LocalIngestionRuntimeFactory
 } from "./ingestion-runtime-factory.js";
 import {
-  defaultLocalAgentRuntimeFactory,
+  contextFreeLocalAgentRuntimeFactory,
   type LocalAgentRuntimeFactory
 } from "./agent-runtime-factory.js";
 import type {
@@ -140,7 +140,7 @@ async function agentStatus(input: {
   readonly now?: () => string;
   readonly agentRuntimeFactory?: LocalAgentRuntimeFactory;
 }) {
-  const runtimeFactory = input.agentRuntimeFactory ?? defaultLocalAgentRuntimeFactory;
+  const runtimeFactory = input.agentRuntimeFactory ?? contextFreeLocalAgentRuntimeFactory;
   const runtime = runtimeFactory({
     handle: input.handle,
     actor: input.actor,

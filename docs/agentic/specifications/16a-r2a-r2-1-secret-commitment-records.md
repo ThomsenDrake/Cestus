@@ -1,5 +1,10 @@
 # Specification 16A-R2a-R2.1 — Public Records And Exact Normalization
 
+> **Development authority:** This is a non-authoritative product-requirement
+> source. Historical status, execution, role, risk, repair, review, integration,
+> and verification text below does not govern current work. Follow \`AGENTS.md\`,
+> Compound Engineering, and \`SECURITY.md\`.
+
 Status: approved replacement record slice. Execute before R2.2a-R1.
 
 ## Desired Behavior

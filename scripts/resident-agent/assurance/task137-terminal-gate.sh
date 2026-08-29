@@ -60,12 +60,9 @@ done < <(find packages -maxdepth 2 -name package.json -print0)
 assert_no_rg_match "$protected_pattern" "${manifest_files[@]}"
 printf '%s\n' "TASK137_GATE_STAGE_OK package-boundary"
 
-npm run factory:check </dev/null
-printf '%s\n' "TASK137_GATE_STAGE_OK factory-readiness"
-
 git diff --check </dev/null
 test -z "$(git status --porcelain </dev/null)"
 test ! -L node_modules </dev/null
 printf '%s\n' "TASK137_GATE_STAGE_OK checkout"
 
-printf '%s\n' "TASK137_GATE_COMPLETE stages=6"
+printf '%s\n' "TASK137_GATE_COMPLETE stages=5"

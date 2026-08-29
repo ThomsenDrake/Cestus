@@ -1,5 +1,10 @@
 # Secret Commitment Backend And Security Posture
 
+> **Development authority:** This is a non-authoritative product-requirement
+> source. Historical status, execution, role, risk, repair, review, integration,
+> and verification text below does not govern current work. Follow \`AGENTS.md\`,
+> Compound Engineering, and \`SECURITY.md\`.
+
 Status: approved umbrella contract; implementation execution is superseded by
 Specifications 16A-R2a-R2.1, R2.2a-R1, R2.2b, R2.2c, R2.3, 16A-R2b, and 16B
 through 16D.

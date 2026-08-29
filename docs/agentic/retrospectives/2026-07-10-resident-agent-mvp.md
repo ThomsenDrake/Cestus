@@ -2,6 +2,10 @@
 
 Date: 2026-07-10
 
+Status: historical product and methodology retrospective. Its product-safety
+lessons remain useful; its Factory workflow, roles, records, and coordination
+guidance were retired by the Compound Engineering cutover.
+
 ## Purpose
 
 This retrospective records durable lessons from the first integrated resident-agent MVP. It is evidence for future Cestus design, planning, implementation, and review work. It is not a readiness claim and does not make currently blocked specialist execution available.
@@ -70,7 +74,7 @@ Deterministic credential-free tests remain the standard suite, but provider beha
 
 Live smoke output may include only safe provider/model IDs, hashes, event IDs, counts, categories, and fixed markers. It must not print prompt text, provider response text, credentials, or raw errors.
 
-## Factory Lessons
+## Historical Factory Lessons (Retired Methodology)
 
 ### Dependency Order
 
@@ -87,7 +91,9 @@ Design and planning can proceed in parallel against stable DTOs. Dependent imple
 
 Fresh reviewers repeatedly found issues the implementing context missed: self-approval, forged provenance, duplicate request streams, nonterminal successful runs, getter-based hash changes, fabricated readiness, and browser/runtime DTO drift.
 
-Reviewer loops should remain bounded and task-scoped. Test totals are historical snapshots, not durable contracts; do not churn central readiness documents after every added regression test. Record exact commands and commit IDs in per-slice claims, and keep `docs/agentic/software-factory.md` primarily as an index.
+At the time, reviewer loops were bounded and task-scoped. Test totals in this
+document are historical snapshots, not durable contracts. Current review and
+artifact handling follows `AGENTS.md` and Compound Engineering.
 
 ### Worktrees And Deployment Are Separate Verification Boundaries
 

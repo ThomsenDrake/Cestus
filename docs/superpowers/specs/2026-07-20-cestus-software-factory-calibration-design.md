@@ -1,7 +1,8 @@
 # Cestus Software Factory Calibration Design
 
-Status: historical Factory V1 design. It is preserved as evidence and has no
-operating authority. Use `docs/agentic/software-factory.md`.
+Status: retired historical Factory V1 design. It is preserved as evidence and
+has no operating authority. Current development follows `AGENTS.md` and
+Compound Engineering.
 
 Date: 2026-07-20
 
