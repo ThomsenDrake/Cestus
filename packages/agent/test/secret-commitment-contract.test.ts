@@ -2826,6 +2826,80 @@ describe("secret commitment exact parser behavior inventory", () => {
     });
   });
 
+  test("captured decoders cannot mutate the private complete-frame snapshot", async () => {
+    await withFreshParserAmbientSeam(() => {
+      const original = TextDecoder.prototype.decode;
+      let active = false;
+      TextDecoder.prototype.decode = function mutatingDecode(
+        input?: AllowSharedBufferSource,
+        options?: TextDecodeOptions
+      ): string {
+        if (active && input instanceof Uint8Array) {
+          const backing = new Uint8Array(input.buffer);
+          backing[backing.length - 1] = (backing[backing.length - 1] ?? 0) ^ 0xff;
+        }
+        return original.call(this, input, options);
+      };
+      return { activate() { active = true; }, restore() { TextDecoder.prototype.decode = original; } };
+    }, (fresh, activate) => {
+      activate();
+      expect(fresh.parseSecretCommitmentFrame(frameBytes(parserManifestLiteralHex))).toBeUndefined();
+    });
+  });
+
+  test("numeric Array prototype accessors cannot observe parser scratch inventories", async () => {
+    vi.resetModules();
+    const fresh = await import("../src/secret-commitment-contract.js");
+    const originalZero = Object.getOwnPropertyDescriptor(Array.prototype, "0");
+    const originalFour = Object.getOwnPropertyDescriptor(Array.prototype, "4");
+    let getterCalls = 0;
+    let setterCalls = 0;
+    let getterResult: ParsedSecretCommitmentFrame | undefined;
+    let setterResult: ParsedSecretCommitmentFrame | undefined;
+    try {
+      Object.defineProperty(Array.prototype, "0", {
+        configurable: true,
+        get() { getterCalls += 1; return undefined; }
+      });
+      getterResult = fresh.parseSecretCommitmentFrame(frameBytes(parserObservationLiteralHex));
+      if (originalZero === undefined) {
+        delete (Array.prototype as unknown as Record<string, unknown>)["0"];
+      } else {
+        Object.defineProperty(Array.prototype, "0", originalZero);
+      }
+
+      Object.defineProperty(Array.prototype, "4", {
+        configurable: true,
+        set(value: unknown) {
+          setterCalls += 1;
+          Object.defineProperty(this, "4", {
+            configurable: true,
+            enumerable: true,
+            value,
+            writable: true
+          });
+        }
+      });
+      setterResult = fresh.parseSecretCommitmentFrame(frameBytes(parserObservationLiteralHex));
+    } finally {
+      if (originalZero === undefined) {
+        delete (Array.prototype as unknown as Record<string, unknown>)["0"];
+      } else {
+        Object.defineProperty(Array.prototype, "0", originalZero);
+      }
+      if (originalFour === undefined) {
+        delete (Array.prototype as unknown as Record<string, unknown>)["4"];
+      } else {
+        Object.defineProperty(Array.prototype, "4", originalFour);
+      }
+      vi.resetModules();
+    }
+    expect(getterResult).toBeDefined();
+    expect(setterResult).toBeDefined();
+    expect(getterCalls).toBe(0);
+    expect(setterCalls).toBe(0);
+  });
+
   test("captured freeze, reflection, and WeakSet operation tampering cannot publish a result", async () => {
     await withFreshParserAmbientSeam(() => {
       const original = Object.freeze;

@@ -171,7 +171,7 @@ export function parseSecretCommitmentFrame(frame: unknown): ParsedSecretCommitme
       return undefined;
     }
 
-    const identifiers = decodeExactFrameIdentifiers(snapshot, scan, intrinsics);
+    const identifiers = decodeExactFrameIdentifiers(snapshot, scan, intrinsics, registries);
     if (identifiers === undefined) {
       return undefined;
     }
@@ -584,7 +584,12 @@ function scanFrameDefinition(
       return undefined;
     }
     let offset = prefixShape.length;
-    const spans: FrameSpan[] = [];
+    const spans = createDenseParserInventory<FrameSpan>(
+      definition.fields.length + (definition.recordClass === undefined ? 0 : 1)
+    );
+    if (spans === undefined) {
+      return undefined;
+    }
     let spanIndex = 0;
     if (definition.recordClass !== undefined) {
       const recordClassShape = exactParserUint8ArrayShape(definition.recordClass, intrinsics);
@@ -621,7 +626,9 @@ function scanFrameDefinition(
       spanIndex += 1;
       offset = parsed.next;
     }
-    return offset === frameShape.length && spans.length === spanIndex ? { definition, spans } : undefined;
+    return offset === frameShape.length && spans.length === spanIndex
+      ? { definition, spans: spans as readonly FrameSpan[] }
+      : undefined;
   } catch {
     return undefined;
   }
@@ -703,10 +710,14 @@ function hasExactRecordClass(
 function decodeExactFrameIdentifiers(
   frame: Uint8Array,
   scan: ParsedFrameScan,
-  intrinsics: CapturedParserIntrinsics
+  intrinsics: CapturedParserIntrinsics,
+  registries: ParsedFrameRegistries
 ): DecodedFrameIdentifiers | undefined {
   try {
-    const values: (string | undefined)[] = [];
+    const values = createDenseParserInventory<string>(scan.definition.fields.length);
+    if (values === undefined) {
+      return undefined;
+    }
     for (let fieldIndex = 0; fieldIndex < scan.definition.fields.length; fieldIndex += 1) {
       const field = scan.definition.fields[fieldIndex];
       if (field === undefined) {
@@ -719,8 +730,8 @@ function decodeExactFrameIdentifiers(
       if (span === undefined || span.end <= span.start) {
         return undefined;
       }
-      const view = parserApply<unknown>(intrinsics, intrinsics.uint8ArraySubarray, frame, [span.start, span.end]);
-      if (exactParserUint8ArrayShape(view, intrinsics) === undefined) {
+      const view = copyExactParserSpan(frame, span, intrinsics, registries);
+      if (view === undefined) {
         return undefined;
       }
       const decoded = parserApply<unknown>(intrinsics, intrinsics.textDecoderDecode, intrinsics.textDecoder, [view]);
@@ -756,7 +767,10 @@ function copyExactFrameBytes(
     if (frameShape === undefined) {
       return undefined;
     }
-    const fields: (CopiedFrameField | undefined)[] = [];
+    const fields = createDenseParserInventory<CopiedFrameField>(scan.definition.fields.length);
+    if (fields === undefined) {
+      return undefined;
+    }
     for (let fieldIndex = 0; fieldIndex < scan.definition.fields.length; fieldIndex += 1) {
       const field = scan.definition.fields[fieldIndex];
       if (field === undefined) {
@@ -799,6 +813,58 @@ function copyExactFrameBytes(
   } catch {
     return undefined;
   }
+}
+
+function createDenseParserInventory<Value>(length: number): (Value | undefined)[] | undefined {
+  switch (length) {
+    case 6:
+      return [undefined, undefined, undefined, undefined, undefined, undefined];
+    case 7:
+      return [undefined, undefined, undefined, undefined, undefined, undefined, undefined];
+    case 8:
+      return [undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined];
+    default:
+      return undefined;
+  }
+}
+
+function copyExactParserSpan(
+  frame: Uint8Array,
+  span: FrameSpan,
+  intrinsics: CapturedParserIntrinsics,
+  registries: ParsedFrameRegistries
+): Uint8Array | undefined {
+  const frameShape = exactParserUint8ArrayShape(frame, intrinsics);
+  const length = span.end - span.start;
+  if (frameShape === undefined || length <= 0) {
+    return undefined;
+  }
+  const copy = new intrinsics.uint8ArrayConstructor(length);
+  const copyShape = exactParserUint8ArrayShape(copy, intrinsics);
+  if (
+    copyShape === undefined ||
+    copyShape.length !== length ||
+    copyShape.backing === frameShape.backing ||
+    parserApply(intrinsics, intrinsics.weakSetHas, registries.outputs, [copy]) !== false ||
+    parserApply(intrinsics, intrinsics.weakSetHas, registries.buffers, [copyShape.backing]) !== false
+  ) {
+    return undefined;
+  }
+  for (let index = 0; index < length; index += 1) {
+    copy[index] = frame[span.start + index] as number;
+  }
+  if (!copiedBytesMatchFrame(copy, frame, span, intrinsics)) {
+    return undefined;
+  }
+  if (
+    parserApply(intrinsics, intrinsics.weakSetAdd, registries.outputs, [copy]) !== registries.outputs ||
+    parserApply(intrinsics, intrinsics.weakSetAdd, registries.buffers, [copyShape.backing]) !== registries.buffers ||
+    parserApply(intrinsics, intrinsics.weakSetHas, registries.outputs, [copy]) !== true ||
+    parserApply(intrinsics, intrinsics.weakSetHas, registries.buffers, [copyShape.backing]) !== true
+  ) {
+    return undefined;
+  }
+  return copy;
 }
 
 function constructParsedSecretCommitmentFrame(
