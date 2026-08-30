@@ -2847,6 +2847,31 @@ describe("secret commitment exact parser behavior inventory", () => {
     });
   });
 
+  test("captured subarray hooks cannot rewrite parsed binary fields", async () => {
+    let activeCalls = 0;
+    await withFreshParserAmbientSeam(() => {
+      const original = Uint8Array.prototype.subarray;
+      let active = false;
+      Uint8Array.prototype.subarray = function mutatingSubarray(begin?: number, end?: number): Uint8Array {
+        if (active && activeCalls === 0 && begin !== undefined && begin < this.length) {
+          activeCalls += 1;
+          this[begin] = (this[begin] ?? 0) ^ 0xff;
+        }
+        return original.call(this, begin, end);
+      };
+      return {
+        activate() { active = true; },
+        restore() { Uint8Array.prototype.subarray = original; }
+      };
+    }, (fresh, activate) => {
+      const expected = parserExpectedResult(parserLiteralInventories[1] as ParserLiteralInventory);
+      activate();
+      const parsed = fresh.parseSecretCommitmentFrame(frameBytes(parserManifestLiteralHex));
+      expect(parsed).toEqual(expected);
+      expect(activeCalls).toBe(0);
+    });
+  });
+
   test("numeric Array prototype accessors cannot observe parser scratch inventories", async () => {
     vi.resetModules();
     const fresh = await import("../src/secret-commitment-contract.js");
