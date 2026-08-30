@@ -783,20 +783,20 @@ function copyExactFrameBytes(
       if (span === undefined) {
         return undefined;
       }
-      const view = parserApply<unknown>(intrinsics, intrinsics.uint8ArraySubarray, frame, [span.start, span.end]);
-      const viewShape = exactParserUint8ArrayShape(view, intrinsics);
-      if (viewShape === undefined || viewShape.backing !== frameShape.backing) {
+      const isolated = copyUnregisteredExactParserSpan(frame, span, intrinsics, registries);
+      if (isolated === undefined) {
         return undefined;
       }
-      const copy = snapshotCanonicalSecretCommitmentBytes(view, field.limit);
+      const copy = snapshotCanonicalSecretCommitmentBytes(isolated.bytes, field.limit);
       const copyShape = copy === undefined ? undefined : exactParserUint8ArrayShape(copy, intrinsics);
       if (
         copy === undefined || copyShape === undefined ||
         copyShape.length !== span.end - span.start ||
-        copy === frame ||
-        copyShape.backing === frameShape.backing ||
+        copy === frame || copy === isolated.bytes ||
+        copyShape.backing === frameShape.backing || copyShape.backing === isolated.backing ||
         parserApply(intrinsics, intrinsics.weakSetHas, registries.outputs, [copy]) !== false ||
         parserApply(intrinsics, intrinsics.weakSetHas, registries.buffers, [copyShape.backing]) !== false ||
+        !copiedBytesMatchFrame(isolated.bytes, frame, span, intrinsics) ||
         !copiedBytesMatchFrame(copy, frame, span, intrinsics)
       ) {
         return undefined;
@@ -834,6 +834,28 @@ function copyExactParserSpan(
   intrinsics: CapturedParserIntrinsics,
   registries: ParsedFrameRegistries
 ): Uint8Array | undefined {
+  const isolated = copyUnregisteredExactParserSpan(frame, span, intrinsics, registries);
+  if (isolated === undefined) {
+    return undefined;
+  }
+  const { bytes: copy, backing } = isolated;
+  if (
+    parserApply(intrinsics, intrinsics.weakSetAdd, registries.outputs, [copy]) !== registries.outputs ||
+    parserApply(intrinsics, intrinsics.weakSetAdd, registries.buffers, [backing]) !== registries.buffers ||
+    parserApply(intrinsics, intrinsics.weakSetHas, registries.outputs, [copy]) !== true ||
+    parserApply(intrinsics, intrinsics.weakSetHas, registries.buffers, [backing]) !== true
+  ) {
+    return undefined;
+  }
+  return copy;
+}
+
+function copyUnregisteredExactParserSpan(
+  frame: Uint8Array,
+  span: FrameSpan,
+  intrinsics: CapturedParserIntrinsics,
+  registries: ParsedFrameRegistries
+): { readonly bytes: Uint8Array; readonly backing: ArrayBuffer } | undefined {
   const frameShape = exactParserUint8ArrayShape(frame, intrinsics);
   const length = span.end - span.start;
   if (frameShape === undefined || length <= 0) {
@@ -856,15 +878,7 @@ function copyExactParserSpan(
   if (!copiedBytesMatchFrame(copy, frame, span, intrinsics)) {
     return undefined;
   }
-  if (
-    parserApply(intrinsics, intrinsics.weakSetAdd, registries.outputs, [copy]) !== registries.outputs ||
-    parserApply(intrinsics, intrinsics.weakSetAdd, registries.buffers, [copyShape.backing]) !== registries.buffers ||
-    parserApply(intrinsics, intrinsics.weakSetHas, registries.outputs, [copy]) !== true ||
-    parserApply(intrinsics, intrinsics.weakSetHas, registries.buffers, [copyShape.backing]) !== true
-  ) {
-    return undefined;
-  }
-  return copy;
+  return { bytes: copy, backing: copyShape.backing };
 }
 
 function constructParsedSecretCommitmentFrame(
