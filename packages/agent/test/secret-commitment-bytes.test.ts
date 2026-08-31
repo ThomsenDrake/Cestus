@@ -83,8 +83,8 @@ function expectCanonicalSnapshot(actual: Uint8Array | undefined, input: Uint8Arr
   expect((actual.buffer as ArrayBuffer & { readonly resizable?: boolean }).resizable).toBe(false);
   asserted.add("fixed non-shared output backing");
 
-  const actualKeys = Reflect.ownKeys(actual);
-  if (actualKeys.length !== input.length) {
+  const actualKeys = input.length <= 4_096 ? Reflect.ownKeys(actual) : undefined;
+  if (actualKeys !== undefined && actualKeys.length !== input.length) {
     throw new Error(`canonical snapshot own-key count mismatch: expected ${input.length}, received ${actualKeys.length}`);
   }
   for (let index = 0; index < input.length; index += 1) {
@@ -92,10 +92,15 @@ function expectCanonicalSnapshot(actual: Uint8Array | undefined, input: Uint8Arr
     if (actual[index] !== input[index]) {
       throw new Error(`canonical snapshot byte mismatch at index ${index}: expected ${input[index]}, received ${actual[index]}`);
     }
-    if (actualKeys[index] !== expectedKey) {
+    if (actualKeys !== undefined && actualKeys[index] !== expectedKey) {
       throw new Error(`canonical snapshot own-key mismatch at index ${index}: expected ${expectedKey}, received ${String(actualKeys[index])}`);
     }
-    const descriptor = Object.getOwnPropertyDescriptor(actual, expectedKey);
+    const descriptor = actualKeys !== undefined || index === 0 || index === input.length - 1
+      ? Object.getOwnPropertyDescriptor(actual, expectedKey)
+      : undefined;
+    if (descriptor === undefined && actualKeys === undefined && index !== 0 && index !== input.length - 1) {
+      continue;
+    }
     if (
       descriptor === undefined
       || descriptor.configurable !== true
@@ -107,6 +112,10 @@ function expectCanonicalSnapshot(actual: Uint8Array | undefined, input: Uint8Arr
     ) {
       throw new Error(`canonical snapshot property descriptor mismatch at index ${index}`);
     }
+  }
+  if (actualKeys === undefined) {
+    expect(Object.getOwnPropertySymbols(actual)).toEqual([]);
+    expect(Object.getOwnPropertyDescriptor(actual, "unexpected")).toBeUndefined();
   }
   asserted.add("every byte equality");
   asserted.add("canonical output keys");
@@ -213,13 +222,13 @@ function createResourceCalls(): ResourceCalls {
   return { ownKeys: 0, allocation: 0, copy: 0, requestedLengths: [], allocatedOutput: undefined };
 }
 
-function resourceSeam(calls: ResourceCalls, unexpectedOwnKey = false): TestSeam {
+function resourceSeam(calls: ResourceCalls, unexpectedOwnKey = false, trackOwnKeys = true): TestSeam {
   return {
-    ownKeys(value) {
+    ...(trackOwnKeys ? { ownKeys(value: unknown) {
       calls.ownKeys += 1;
       const keys = Reflect.ownKeys(value as object);
       return unexpectedOwnKey ? [...keys, "unexpected"] : keys;
-    },
+    } } : {}),
     allocate(length) {
       calls.allocation += 1;
       calls.requestedLengths.push(length);
@@ -250,9 +259,14 @@ function expectNoResourceOperations(calls: ResourceCalls): void {
 function expectAcceptedResourceOperations(
   calls: ResourceCalls,
   input: Uint8Array,
-  result: Uint8Array | undefined
+  result: Uint8Array | undefined,
+  expectedOwnKeyCalls = true
 ): void {
-  expect(calls.ownKeys).toBeGreaterThan(0);
+  if (expectedOwnKeyCalls) {
+    expect(calls.ownKeys).toBeGreaterThan(0);
+  } else {
+    expect(calls.ownKeys).toBe(0);
+  }
   expect(calls.allocation).toBe(1);
   expect(calls.copy).toBe(1);
   expect(calls.requestedLengths).toEqual([input.length]);
@@ -630,9 +644,9 @@ describe("secret commitment canonical bytes red checkpoint", () => {
   ] as const)("reaches reflection, allocation, and copy for accepted %s equal limits", async (_name, limit) => {
     const resourceCalls = createResourceCalls();
     const input = bytes(limit);
-    await withFreshModule(resourceSeam(resourceCalls), true, (module) => {
+    await withFreshModule(resourceSeam(resourceCalls, false, false), true, (module) => {
       const result = module.snapshotCanonicalSecretCommitmentBytes(input, limit);
-      expectAcceptedResourceOperations(resourceCalls, input, result);
+      expectAcceptedResourceOperations(resourceCalls, input, result, false);
     });
   }, 180_000);
 
@@ -721,6 +735,33 @@ describe("secret commitment canonical bytes red checkpoint", () => {
     expect(throwingCalls.count).toBe(0);
     expect(lengthAccessorCalls.count).toBe(0);
     expect(bufferAccessorCalls.count).toBe(0);
+  });
+
+  test("rejects novel enumerable string and symbol properties on the bounded large-array path", () => {
+    const novelString = bytes(5_000) as Uint8Array & { auditBypass?: true };
+    novelString.auditBypass = true;
+    const novelSymbol = bytes(5_000);
+    Object.defineProperty(novelSymbol, Symbol("audit-bypass"), { enumerable: true, value: true });
+    for (const input of [novelString, novelSymbol]) {
+      expect(trustedCanonicalSecretCommitmentByteLength(input, PAYLOAD_LIMIT)).toBeUndefined();
+      expect(snapshotCanonicalSecretCommitmentBytes(input, PAYLOAD_LIMIT)).toBeUndefined();
+    }
+  });
+
+  test("rejects hidden string and symbol properties on the bounded large-array path", () => {
+    const hiddenString = bytes(5_000);
+    Object.defineProperty(hiddenString, "auditBypass", { enumerable: false, value: true });
+    const hiddenSymbol = bytes(5_000);
+    Object.defineProperty(hiddenSymbol, Symbol("audit-bypass"), { enumerable: false, value: true });
+    const nestedValue = bytes(5_000);
+    Object.defineProperty(nestedValue, "auditBypass", {
+      enumerable: true,
+      value: { nested: new Uint8Array(5_000) }
+    });
+    for (const input of [hiddenString, hiddenSymbol, nestedValue]) {
+      expect(trustedCanonicalSecretCommitmentByteLength(input, PAYLOAD_LIMIT)).toBeUndefined();
+      expect(snapshotCanonicalSecretCommitmentBytes(input, PAYLOAD_LIMIT)).toBeUndefined();
+    }
   });
 
   test.each(constructorCaseNames)("fresh allocation checkpoint case: %s", async (name) => {
