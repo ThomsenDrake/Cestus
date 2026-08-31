@@ -1,3 +1,4 @@
+import { inspect } from "node:util";
 import { isProxy as nodeIsProxy } from "node:util/types";
 
 export type SecretCommitmentByteLimit = 32 | 8_388_608 | 8_454_144;
@@ -20,6 +21,7 @@ const stringConstructor = String;
 const stringPrototype = stringConstructor.prototype;
 const typedArrayLengthGetter = objectGetOwnPropertyDescriptor(typedArrayPrototype, "length")?.get;
 const typedArrayBufferGetter = objectGetOwnPropertyDescriptor(typedArrayPrototype, "buffer")?.get;
+const typedArrayByteOffsetGetter = objectGetOwnPropertyDescriptor(typedArrayPrototype, "byteOffset")?.get;
 const arrayBufferByteLengthGetter = objectGetOwnPropertyDescriptor(arrayBufferPrototype, "byteLength")?.get;
 const arrayBufferResizableGetter = objectGetOwnPropertyDescriptor(arrayBufferPrototype, "resizable")?.get;
 const arrayBufferDetachedGetter = objectGetOwnPropertyDescriptor(arrayBufferPrototype, "detached")?.get;
@@ -30,6 +32,18 @@ const stringCharCodeAt = objectGetOwnPropertyDescriptor(stringPrototype, "charCo
 const numberIsSafeInteger = objectGetOwnPropertyDescriptor(Number, "isSafeInteger")?.value;
 const numberIsInteger = objectGetOwnPropertyDescriptor(Number, "isInteger")?.value;
 const mathFloor = objectGetOwnPropertyDescriptor(Math, "floor")?.value;
+const typedArrayShadowKeys = [
+  "length", "byteLength", "byteOffset", "buffer", "constructor", "BYTES_PER_ELEMENT", "set", "subarray"
+] as const;
+const boundedInspectOptions = {
+  breakLength: Infinity,
+  compact: true,
+  customInspect: false,
+  depth: 0,
+  getters: false,
+  maxArrayLength: 0,
+  showHidden: true
+} as const;
 
 const intrinsicsAvailable = typeof nodeIsProxy === "function"
   && typeof reflectApply === "function"
@@ -38,6 +52,7 @@ const intrinsicsAvailable = typeof nodeIsProxy === "function"
   && typeof reflectOwnKeys === "function"
   && typeof typedArrayLengthGetter === "function"
   && typeof typedArrayBufferGetter === "function"
+  && typeof typedArrayByteOffsetGetter === "function"
   && typeof arrayBufferByteLengthGetter === "function"
   && typeof arrayBufferResizableGetter === "function"
   && typeof arrayBufferDetachedGetter === "function"
@@ -142,13 +157,18 @@ function readExactUint8Array(value: unknown): { readonly length: number; readonl
   }
   const length = apply<number>(typedArrayLengthGetter as Function, value);
   const backing = apply<unknown>(typedArrayBufferGetter as Function, value);
+  const byteOffset = apply<number>(typedArrayByteOffsetGetter as Function, value);
   if (!apply<boolean>(numberIsSafeInteger as Function, undefined, [length]) || length < 0 || isCallerProxy(backing)) {
     return undefined;
   }
   if (apply<object>(objectGetPrototypeOf, null, [backing]) !== arrayBufferPrototype) {
     return undefined;
   }
-  if (apply<number>(arrayBufferByteLengthGetter as Function, backing) < 0
+  const backingLength = apply<number>(arrayBufferByteLengthGetter as Function, backing);
+  if (!apply<boolean>(numberIsSafeInteger as Function, undefined, [byteOffset])
+    || byteOffset < 0
+    || byteOffset > backingLength - length
+    || backingLength < 0
     || apply<boolean>(arrayBufferResizableGetter as Function, backing) !== false
     || apply<boolean>(arrayBufferDetachedGetter as Function, backing) !== false) {
     return undefined;
@@ -160,14 +180,28 @@ function hasCanonicalDescriptors(value: unknown, length: number, seam: TestSeam 
   if (isCallerProxy(value)) {
     return false;
   }
-  const keys = seam?.ownKeys === undefined
-    ? apply<PropertyKey[]>(reflectOwnKeys, null, [value])
-    : seam.ownKeys(value);
-  if (keys.length !== length) {
-    return false;
-  }
-  for (let index = 0; index < length; index += 1) {
-    if (!isCanonicalIntegerKey(keys[index], index)) {
+  if (seam?.ownKeys !== undefined) {
+    const keys = seam.ownKeys(value);
+    if (keys.length !== length) {
+      return false;
+    }
+    for (let index = 0; index < length; index += 1) {
+      if (!isCanonicalIntegerKey(keys[index], index)) {
+        return false;
+      }
+    }
+  } else {
+    if (length <= 4_096) {
+      const keys = apply<PropertyKey[]>(reflectOwnKeys, null, [value]);
+      if (keys.length !== length) {
+        return false;
+      }
+      for (let index = 0; index < length; index += 1) {
+        if (!isCanonicalIntegerKey(keys[index], index)) {
+          return false;
+        }
+      }
+    } else if (!hasExactBoundedUint8ArrayShape(value, length)) {
       return false;
     }
   }
@@ -178,6 +212,24 @@ function hasCanonicalDescriptors(value: unknown, length: number, seam: TestSeam 
     return false;
   }
   return length === 1 || hasCanonicalIndexDescriptor(value, length - 1);
+}
+
+function hasExactBoundedUint8ArrayShape(value: unknown, length: number): boolean {
+  for (let index = 0; index < typedArrayShadowKeys.length; index += 1) {
+    const key = typedArrayShadowKeys[index];
+    if (key === undefined) {
+      return false;
+    }
+    if (apply<PropertyDescriptor | undefined>(objectGetOwnPropertyDescriptor, null, [value, key]) !== undefined) {
+      return false;
+    }
+  }
+  const backing = apply<ArrayBuffer>(typedArrayBufferGetter as Function, value);
+  const byteOffset = apply<number>(typedArrayByteOffsetGetter as Function, value);
+  const cleanView = new uint8ArrayConstructor(backing, byteOffset, length);
+  return inspect(value, boundedInspectOptions) === inspect(cleanView, boundedInspectOptions)
+    && (length === 0 || (hasCanonicalIndexDescriptor(value, 0)
+      && (length === 1 || hasCanonicalIndexDescriptor(value, length - 1))));
 }
 
 function hasCanonicalIndexDescriptor(value: unknown, index: number): boolean {
