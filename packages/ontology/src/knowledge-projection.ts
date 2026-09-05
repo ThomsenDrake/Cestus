@@ -46,6 +46,7 @@ export interface KnowledgeWorkspaceDto {
   revision: number;
   selectedCaseId: string | null;
   schema: Payload<"knowledge.schema.recorded"> | null;
+  schemaHistory?: (Payload<"knowledge.schema.extended"> & { actorId: string; occurredAt: string })[];
   cases: Payload<"investigation.created">[];
   memberships: Payload<"investigation.membership.changed">[];
   hypotheses: (Payload<"investigation.hypothesis.recorded"> & {
@@ -87,10 +88,14 @@ export function applyKnowledgeEvents(
     Payload<"investigation.hypothesis.recorded">
   >();
   const bindingHistory: KnowledgeWorkspaceDto["bindingHistory"] = [];
+  const schemaHistory: NonNullable<KnowledgeWorkspaceDto["schemaHistory"]> = [];
   let schema: KnowledgeWorkspaceDto["schema"] = null;
   let selectedCaseId: string | null = null;
   for (const event of events) {
     switch (event.type) {
+      case "knowledge.schema.extended":
+        schemaHistory.push({ ...event.payload, actorId: event.context.actor.id, occurredAt: event.context.occurredAt });
+        break;
       case "knowledge.schema.recorded":
         schema = event.payload;
         if (!schemas.has(schema.schemaId)) schemas.set(schema.schemaId, schema);
@@ -332,6 +337,7 @@ export function applyKnowledgeEvents(
     revision: events.length,
     selectedCaseId,
     schema,
+    schemaHistory,
     cases: [...cases.values()],
     memberships: memberList,
     hypotheses: [...hypotheses.values()].map((hypothesis) => ({

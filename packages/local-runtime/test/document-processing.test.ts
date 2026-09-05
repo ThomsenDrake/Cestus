@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { FileBlobStore } from "../../ontology/src/blob-store.js";
 import { SQLiteEventLedger } from "../../ontology/src/sqlite-event-ledger.js";
 import { createDocumentProcessingService } from "../src/document-processing.js";
+import { investigationVocabulary } from "../../ontology/src/knowledge-contracts.js";
 import type { ResolvedDocumentSelection } from "../../ontology/src/document-processing-contracts.js";
 
 const actor = { id: "actor_document_reviewer", kind: "human", label: "Document reviewer" } as const;
@@ -255,7 +256,7 @@ describe("schema-aware knowledge extraction through synthetic loopback transport
   it("snapshots schema and resolves trusted grounded proposals without accepting them", async () => {
     const f = await fixture({ passage: "Violet Agency paid 250 in 2024.", content: JSON.stringify({ proposals: [entity, { kind: "fact", predicate: "amount", subjectMentionId: "actor", value: { type: "number", value: 250 }, citations: [{ passageIndex: 0, quote: "paid 250" }] }] }) });
     const preview = await f.service.preview({ operation: "knowledge-extraction.v1", selection, budgetUsd: 0.05 }, actor);
-    expect(preview.manifest).toMatchObject({ operation: "knowledge-extraction.v1", promptVersion: "knowledge-extraction-prompt.v1", schemaSnapshot: { schemaId: "investigation.v1" } });
+    expect(preview.manifest).toMatchObject({ operation: "knowledge-extraction.v1", promptVersion: "knowledge-extraction-prompt.v2", schemaSnapshot: { schemaId: "investigation.v1" } });
     await f.service.approve({ manifestHash: preview.manifestHash }, actor);
     expect(await f.service.run(preview.invocationId, actor)).toMatchObject({ state: "completed" });
     expect(await f.service.output(preview.invocationId, actor)).toMatchObject({ schemaVersion: "knowledge-extraction.v1", output: { proposals: [
@@ -337,4 +338,119 @@ it("passes changed source names, amounts and dates through to distinct provider 
     outputs.push(result);
   }
   expect(outputs[0]).not.toEqual(outputs[1]);
+});
+
+async function recordExtendedVocabulary(f: Awaited<ReturnType<typeof fixture>>, extraPredicates: typeof investigationVocabulary.predicates = []) {
+  const schema = { ...structuredClone(investigationVocabulary), schemaId: "investigation.test-extension", entityTypes: [...investigationVocabulary.entityTypes, "vessel"], predicates: [...investigationVocabulary.predicates, { name: "registered_on", kind: "fact" as const, valueType: "date" as const, fromTypes: ["vessel"], toTypes: [] }, ...extraPredicates] };
+  await f.ledger.append({ streamId: "knowledge_workspace", type: "knowledge.schema.recorded", version: 2, payload: schema, context: { actor, occurredAt: "2026-09-05T00:00:00Z", correlationId: "reviewed_extension", coreVersion: "0.1.0", packVersions: {} } });
+  return schema;
+}
+
+it("snapshots the reviewed active vocabulary for extraction and keeps schema meaning across restart", async () => {
+  const citations = [{ passageIndex: 0, quote: "Violet vessel registered 2026-09-05." }];
+  const f = await fixture({ passage: citations[0]!.quote, content: JSON.stringify({ proposals: [
+    { kind: "entity", predicate: "name", mentionId: "ship", entityType: "vessel", value: { type: "string", value: "Violet vessel" }, citations },
+    { kind: "fact", predicate: "registered_on", subjectMentionId: "ship", value: { type: "date", value: "2026-09-05" }, citations }
+  ] }) });
+  const schema = await recordExtendedVocabulary(f);
+  const preview = await f.service.preview({ operation: "knowledge-extraction.v1", selection, budgetUsd: 0.05 }, actor);
+  expect(preview.manifest.schemaSnapshot).toEqual(schema);
+  expect(preview.manifest.systemPrompt).toContain('"vessel"');
+  await f.service.approve({ manifestHash: preview.manifestHash }, actor);
+  expect(await f.service.run(preview.invocationId, actor)).toMatchObject({ state: "completed" });
+  const output = await f.service.output(preview.invocationId, actor);
+  expect(output).toMatchObject({ schemaSnapshot: schema, output: { proposals: [{ schemaId: schema.schemaId }, { schemaId: schema.schemaId }] } });
+  f.reopenLedger();
+  expect(await createDocumentProcessingService(f.dependencies).output(preview.invocationId, actor)).toEqual(output);
+});
+
+it.each(["approval", "transfer"])("rejects a stale vocabulary at %s without transferring evidence", async (gate) => {
+  const f = await fixture();
+  const preview = await f.service.preview({ operation: "knowledge-extraction.v1", selection, budgetUsd: 0.05 }, actor);
+  if (gate === "transfer") await f.service.approve({ manifestHash: preview.manifestHash }, actor);
+  await recordExtendedVocabulary(f);
+  await expect(gate === "approval" ? f.service.approve({ manifestHash: preview.manifestHash }, actor) : f.service.run(preview.invocationId, actor)).rejects.toThrow(/schema|vocabulary/i);
+  expect(f.requestCount()).toBe(0);
+});
+
+it("rejects a schema revision that changes at the final transport gate", async () => {
+  const f = await fixture();
+  const preview = await f.service.preview({ operation: "knowledge-extraction.v1", selection, budgetUsd: 0.05 }, actor);
+  await f.service.approve({ manifestHash: preview.manifestHash }, actor);
+  const resolve = f.dependencies.resolveSelection;
+  let resolutions = 0;
+  f.dependencies.resolveSelection = async () => {
+    if (++resolutions === 3) await recordExtendedVocabulary(f);
+    return resolve();
+  };
+  expect(await f.service.run(preview.invocationId, actor)).toMatchObject({ state: "failed", reason: "selection-or-authority-changed" });
+  expect(f.requestCount()).toBe(0);
+});
+
+it("preserves explicit written-date normalization in facts, occurrence/publication qualifiers and replay", async () => {
+  const passage = "Violet Agency payment on September 5, 2026. Published September 2026.";
+  const citations = [{ passageIndex: 0, quote: passage }];
+  const day = { method: "written-date.v1", sourceExpression: "September 5, 2026", citationIndex: 0 };
+  const month = { method: "written-date.v1", sourceExpression: "September 2026", citationIndex: 0 };
+  const f = await fixture({ passage, coverage: { status: "unknown" }, content: JSON.stringify({ proposals: [
+    { kind: "entity", predicate: "name", mentionId: "agency", entityType: "agency", value: { type: "string", value: "Violet Agency" }, citations },
+    { kind: "fact", predicate: "date", subjectMentionId: "agency", value: { type: "date", value: "2026-09-05", normalization: day }, citations },
+    { kind: "occurrence", predicate: "payment", occurrenceId: "payment", value: { type: "string", value: "payment" }, participants: [{ role: "payer", mentionId: "agency" }], occurredTime: { start: "2026-09-05", startNormalization: day, uncertain: false }, publicationTime: { start: "2026-09", startNormalization: month, uncertain: false }, citations }
+  ] }) });
+  const preview = await f.service.preview({ operation: "knowledge-extraction.v1", selection, budgetUsd: 0.05 }, actor);
+  await f.service.approve({ manifestHash: preview.manifestHash }, actor);
+  expect(await f.service.run(preview.invocationId, actor)).toMatchObject({ state: "completed" });
+  const output = await f.service.output(preview.invocationId, actor);
+  expect(output).toMatchObject({ output: { proposals: [{}, { value: { type: "date", value: "2026-09-05", normalization: day }, evidence: [{ quote: passage, pdfCoverage: { status: "unknown" } }] }, { occurredTime: { start: "2026-09-05", startNormalization: day }, publicationTime: { start: "2026-09", startNormalization: month } }] } });
+  f.reopenLedger();
+  expect(await createDocumentProcessingService(f.dependencies).output(preview.invocationId, actor)).toEqual(output);
+});
+
+it.each([
+  { expression: "September 5, 2026", date: "2026-09-06", index: 0 },
+  { expression: "September 5, 2026", date: "2026-09-05", index: 1 },
+  { expression: "09/05/2026", date: "2026-09-05", index: 0 },
+  { expression: "next Friday", date: "2026-09-05", index: 0 },
+  { expression: "February 30, 2026", date: "2026-02-30", index: 0 },
+  { expression: "September 5", date: "2026-09-05", index: 0 }
+])("rejects unsupported or falsely cited provider normalization $expression -> $date index $index", async ({ expression, date, index }) => {
+  const passage = `Violet Agency payment ${expression}. Unrelated year 2026.`;
+  const citations = [{ passageIndex: 0, quote: passage }];
+  const f = await fixture({ passage, content: JSON.stringify({ proposals: [
+    { kind: "entity", predicate: "name", mentionId: "agency", entityType: "agency", value: { type: "string", value: "Violet Agency" }, citations },
+    { kind: "fact", predicate: "date", subjectMentionId: "agency", value: { type: "date", value: date, normalization: { method: "written-date.v1", sourceExpression: expression, citationIndex: index } }, citations }
+  ] }) });
+  const preview = await f.service.preview({ operation: "knowledge-extraction.v1", selection, budgetUsd: 0.05 }, actor);
+  await f.service.approve({ manifestHash: preview.manifestHash }, actor);
+  expect(await f.service.run(preview.invocationId, actor)).toMatchObject({ state: "failed", reason: "invalid-output" });
+});
+
+it.each(["value kind", "endpoint type"])("validates an additive predicate's %s using its manifest schema", async (invalid) => {
+  const passage = "Violet vessel registered 2026-09-05.";
+  const citations = [{ passageIndex: 0, quote: passage }];
+  const f = await fixture({ passage, content: JSON.stringify({ proposals: [
+    { kind: "entity", predicate: "name", mentionId: "ship", entityType: invalid === "endpoint type" ? "agency" : "vessel", value: { type: "string", value: "Violet vessel" }, citations },
+    { kind: "fact", predicate: "registered_on", subjectMentionId: "ship", value: { type: invalid === "value kind" ? "string" : "date", value: "2026-09-05" }, citations }
+  ] }) });
+  await recordExtendedVocabulary(f);
+  const preview = await f.service.preview({ operation: "knowledge-extraction.v1", selection, budgetUsd: 0.05 }, actor);
+  await f.service.approve({ manifestHash: preview.manifestHash }, actor);
+  expect(await f.service.run(preview.invocationId, actor)).toMatchObject({ state: "failed", reason: "invalid-output" });
+});
+
+it.each(["entity type", "participant type", "subject-scoped attribute", "non-fact attribute", "valid"])("validates entity, participant and attribute vocabulary constraints: %s", async (invalid) => {
+  const passage = "Violet vessel voyage 2026-09-05.";
+  const citations = [{ passageIndex: 0, quote: passage }];
+  const entity = { kind: "entity", predicate: invalid === "entity type" || invalid === "valid" ? "vessel_name" : "name", mentionId: "ship", entityType: invalid === "entity type" || invalid === "participant type" ? "agency" : "vessel", value: { type: "string", value: "Violet vessel" }, citations };
+  const occurrence = { kind: "occurrence", predicate: "voyage", occurrenceId: "trip", value: { type: "string", value: "voyage" }, participants: [{ role: "vessel", mentionId: "ship" }], citations,
+    ...(invalid === "subject-scoped attribute" ? { attributes: [{ predicate: "registered_on", value: { type: "date", value: "2026-09-05" } }] } : {}),
+    ...(invalid === "non-fact attribute" ? { attributes: [{ predicate: "name", value: { type: "string", value: "Violet vessel" } }] } : {}) };
+  const f = await fixture({ passage, content: JSON.stringify({ proposals: [entity, occurrence] }) });
+  await recordExtendedVocabulary(f, [
+    { name: "vessel_name", kind: "entity", valueType: "string", fromTypes: ["vessel"], toTypes: [] },
+    { name: "voyage", kind: "occurrence", valueType: "string", fromTypes: ["vessel"], toTypes: [] }
+  ]);
+  const preview = await f.service.preview({ operation: "knowledge-extraction.v1", selection, budgetUsd: 0.05 }, actor);
+  await f.service.approve({ manifestHash: preview.manifestHash }, actor);
+  expect(await f.service.run(preview.invocationId, actor)).toMatchObject(invalid === "valid" ? { state: "completed" } : { state: "failed", reason: "invalid-output" });
 });
