@@ -73,6 +73,16 @@ export interface ModelInvocationResult {
   readonly usage: { readonly inputUnits: number; readonly outputUnits: number };
 }
 
+/** Safe transport outcome; neither rejection nor invalid output is a billing guarantee. */
+export class ProviderInvocationError extends Error {
+  constructor(readonly outcome: "rejected" | "invalid-response" | "completion-unknown") {
+    super(outcome === "rejected" ? "Provider request failed."
+      : outcome === "invalid-response" ? "Provider returned invalid output."
+      : "Provider completion is unknown.");
+    this.name = "ProviderInvocationError";
+  }
+}
+
 export interface ModelProviderAdapter {
   describe(): ProviderDescriptor;
   invoke(request: ModelInvocationRequest): Promise<ModelInvocationResult>;
