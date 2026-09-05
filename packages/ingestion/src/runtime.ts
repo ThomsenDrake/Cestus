@@ -1,3 +1,7 @@
+import { createHash } from "node:crypto";
+import { buildGovernanceProjection } from "../../ontology/src/governance-projection.js";
+import { extractDocument, ExtractionFailure, extractionFailureMessages } from "./extraction.js";
+import { localExtractorIdentity } from "../../ontology/src/extraction-contracts.js";
 import { fileURLToPath } from "node:url";
 import type { z } from "zod";
 import {
@@ -5,7 +9,6 @@ import {
   type AppendableKnowledgeEvent,
   type KnowledgeEventOf
 } from "../../ontology/src/contracts.js";
-import type { FileBlobStore } from "../../ontology/src/blob-store.js";
 import { IngestionImportService } from "./import-service.js";
 import { LocalFilesystemScanner } from "./local-filesystem.js";
 import type { MountedWorkspace } from "./mount-contract.js";
@@ -80,6 +83,17 @@ export type ApproveProviderParsingInput = ApproveProviderBatchInput;
 
 export interface IngestionDiagnosticsInput {
   readonly sourceCollectionId?: string;
+}
+
+// Serialize local extraction across HTTP runtime instances for the same mounted workspace.
+// Ledger optimistic sequence checks remain the cross-process completion guard.
+const extractionLocks = new Map<string, Promise<unknown>>();
+async function withExtractionLock<T>(workspace: MountedWorkspace, action: () => Promise<T>): Promise<T> {
+  const key = workspace.jobStateRoot;
+  const previous = extractionLocks.get(key) ?? Promise.resolve();
+  const pending = previous.catch(() => undefined).then(action);
+  extractionLocks.set(key, pending);
+  try { return await pending; } finally { if (extractionLocks.get(key) === pending) extractionLocks.delete(key); }
 }
 
 export function createIngestionRuntime(input: CreateIngestionRuntimeInput) {
@@ -234,11 +248,12 @@ export function createIngestionRuntime(input: CreateIngestionRuntimeInput) {
       }
       const completion = completionFor(projection, command);
       if (completion !== undefined) {
+        await createLocalParseJobsForImport(workspace.workspace, command, await workspace.workspace.ledger.readAll());
         return {
           ok: true,
           importBatchId: command.importBatchId,
           totals: { ...completion.totals },
-          review: buildIngestionReviewDto(projection, command.sourceCollectionId),
+          review: await reviewFor(workspace.workspace, command.sourceCollectionId),
           eventIds: []
         };
       }
@@ -339,6 +354,38 @@ export function createIngestionRuntime(input: CreateIngestionRuntimeInput) {
       }
     },
 
+    async readReview(command: { sourceCollectionId: string }): Promise<IngestionRuntimeResult<{ review: IngestionReview }>> {
+      const workspace = requireMountedWorkspace(input.mountedWorkspace, "read");
+      if (!workspace.ok) return workspace;
+      try {
+        const projection = await projectionFor(workspace.workspace);
+        if (!projection.sources.has(command.sourceCollectionId)) return sourceNotRegisteredError(command.sourceCollectionId);
+        return { ok: true, review: buildIngestionReviewDto(projection, command.sourceCollectionId) };
+      } catch { return runtimeInternalError("sources"); }
+    },
+
+    async runParseJobs(command: ListIngestionJobsInput = {}): Promise<IngestionRuntimeResult<IngestionJobListDto & { eventIds: string[] }>> {
+      const mounted = requireMountedWorkspace(input.mountedWorkspace, "write");
+      if (!mounted.ok) return mounted;
+      const workspace = mounted.workspace;
+      if (!workspace.capabilities.canWriteDerivatives) return workspaceNotWritableError();
+      return withExtractionLock(workspace, async () => {
+        try {
+          const before = await workspace.ledger.readAll();
+          const projection = buildIngestionProjection(before);
+          if (command.sourceCollectionId !== undefined && !projection.sources.has(command.sourceCollectionId)) return sourceNotRegisteredError(command.sourceCollectionId);
+          const jobs = [...projection.parseJobs.values()].filter((job) => job.lane === "local" && (command.sourceCollectionId === undefined || job.sourceCollectionId === command.sourceCollectionId));
+          for (const job of jobs) {
+            if (job.state === "running") {
+              await localParser(workspace).failParseJob({ ...parseInputFor(job), message: extractionFailureMessages.interrupted, retryable: true });
+            } else if (job.state === "queued") await executeLocalParse(workspace, job);
+          }
+          const after = await workspace.ledger.readAll();
+          return { ok: true as const, jobs: jobsForProjection(buildIngestionProjection(after), command.sourceCollectionId), eventIds: eventIdsAddedAfter(before, after) };
+        } catch { return runtimeInternalError("jobs"); }
+      });
+    },
+
     async listJobs(command: ListIngestionJobsInput): Promise<IngestionRuntimeResult<IngestionJobListDto>> {
       const workspace = requireMountedWorkspace(input.mountedWorkspace, "read");
       if (!workspace.ok) {
@@ -361,18 +408,18 @@ export function createIngestionRuntime(input: CreateIngestionRuntimeInput) {
         return workspace;
       }
 
-      try {
-        const [job] = jobsForProjection(await projectionFor(workspace.workspace))
-          .filter((candidate) => candidate.jobId === command.jobId);
-
-        if (job === undefined || !job.retryable) {
-          return jobNotRetryableError();
-        }
-
-        return jobNotRetryableError();
-      } catch {
-        return runtimeInternalError("retry");
-      }
+      if (!workspace.workspace.capabilities.canWriteDerivatives) return workspaceNotWritableError();
+      return withExtractionLock(workspace.workspace, async () => {
+        try {
+          const before = await workspace.workspace.ledger.readAll();
+          const projection = buildIngestionProjection(before);
+          const job = projection.parseJobs.get(command.jobId);
+          if (job === undefined || job.lane !== "local" || job.state !== "failed" || !job.retryable || !job.createdEventId || !projection.evidenceById.has(job.evidenceId)) return jobNotRetryableError();
+          await executeLocalParse(workspace.workspace, job);
+          const after = await workspace.workspace.ledger.readAll();
+          return { ok: true as const, job: jobsForProjection(buildIngestionProjection(after)).find((candidate) => candidate.jobId === command.jobId)!, review: await reviewFor(workspace.workspace, job.sourceCollectionId), eventIds: eventIdsAddedAfter(before, after) };
+        } catch { return runtimeInternalError("retry"); }
+      });
     },
 
     async approveProviderParsing(command: ApproveProviderParsingInput): Promise<IngestionRuntimeResult<{
@@ -436,6 +483,42 @@ export function createIngestionRuntime(input: CreateIngestionRuntimeInput) {
   };
 }
 
+function localParser(workspace: MountedWorkspace): LocalParseService {
+  return new LocalParseService({ ledger: workspace.ledger, derivativeStore: workspace.derivativeStore, actor: { id: "actor_local_parser", kind: "system", label: "Local Parser" } });
+}
+function parseInputFor(job: IngestionParseJobSummary) {
+  return { parseJobId: job.parseJobId, sourceCollectionId: job.sourceCollectionId, importBatchId: job.importBatchId, evidenceId: job.evidenceId, parser: job.parser };
+}
+async function executeLocalParse(workspace: MountedWorkspace, job: IngestionParseJobSummary): Promise<void> {
+  const parser = localParser(workspace);
+  const input = parseInputFor(job);
+  const projection = await projectionFor(workspace);
+  const current = projection.parseJobs.get(job.parseJobId);
+  if (current?.state === "succeeded") return;
+  await parser.startParseJob(input);
+  try {
+    if (job.parser.name !== localExtractorIdentity.name || job.parser.version !== localExtractorIdentity.version) throw new ExtractionFailure("version");
+    const evidence = projection.evidenceById.get(job.evidenceId);
+    if (evidence === undefined) throw new ExtractionFailure("storage", true);
+    await assertLocalProcessingAllowed(workspace, job.evidenceId);
+    let content: Buffer;
+    try { content = await workspace.blobStore.get(evidence.contentHash as `sha256:${string}`); } catch { throw new ExtractionFailure("storage", true); }
+    if (`sha256:${createHash("sha256").update(content).digest("hex")}` !== evidence.contentHash) throw new ExtractionFailure("storage", true);
+    const artifact = await extractDocument({ evidenceId: job.evidenceId, extractionId: job.parseJobId, sourceContentHash: evidence.contentHash, mediaType: evidence.mediaType, content });
+    await assertLocalProcessingAllowed(workspace, job.evidenceId);
+    await parser.completeExtraction(input, artifact);
+  } catch (error) {
+    // A persisted completion wins if the caller was interrupted after ledger append.
+    if ((await projectionFor(workspace)).parseJobs.get(job.parseJobId)?.state === "succeeded") return;
+    await parser.failParseJob({ ...input, message: error instanceof ExtractionFailure ? error.message : extractionFailureMessages.interrupted, retryable: error instanceof ExtractionFailure ? error.retryable : true });
+  }
+}
+
+async function assertLocalProcessingAllowed(workspace: MountedWorkspace, evidenceId: string): Promise<void> {
+  const governance = buildGovernanceProjection(await workspace.ledger.readAll()).evidenceGovernance.get(evidenceId);
+  if (governance?.tombstoned || governance?.quarantined) throw new ExtractionFailure("policy", true);
+}
+
 async function createLocalParseJobsForImport(
   workspace: MountedWorkspace,
   command: ImportApprovedInput,
@@ -443,7 +526,7 @@ async function createLocalParseJobsForImport(
 ): Promise<void> {
   const parser = new LocalParseService({
     ledger: workspace.ledger,
-    derivativeStore: workspace.derivativeStore as FileBlobStore,
+    derivativeStore: workspace.derivativeStore,
     actor: { id: "actor_local_parser", kind: "system", label: "Local Parser" }
   });
   const seenEvidenceIds = new Set<string>();
@@ -466,13 +549,13 @@ async function createLocalParseJobsForImport(
       sourceCollectionId: command.sourceCollectionId,
       importBatchId: command.importBatchId,
       evidenceId: event.payload.evidenceId,
-      parser: { name: "local-text", version: "0.1.0" }
+      parser: localExtractorIdentity
     });
   }
 }
 
 function localParseJobId(importBatchId: string, contentHash: string): string {
-  return `parse_${importBatchId}_${contentHash.replace("sha256:", "").slice(0, 16)}`;
+  return `parse_${importBatchId}_extraction_v2_${contentHash.replace("sha256:", "")}`;
 }
 
 async function projectionFor(workspace: MountedWorkspace): Promise<IngestionProjection> {
@@ -822,7 +905,9 @@ function parseJobsForProjection(
       jobId: job.parseJobId,
       kind: job.lane === "provider" ? "provider-parse" as const : "local-parse" as const,
       state: parseJobState(job),
-      retryable: false,
+      ...(job.coverageStatus === undefined ? {} : { coverageStatus: job.coverageStatus }),
+      retryable: job.lane === "local" && job.state === "failed" && job.retryable === true && job.createdEventId !== undefined && projection.evidenceById.has(job.evidenceId),
+      ...(job.message === undefined ? {} : { message: job.message }),
       sourceCollectionId: job.sourceCollectionId,
       importBatchId: job.importBatchId,
       evidenceId: job.evidenceId,

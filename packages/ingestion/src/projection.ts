@@ -71,6 +71,7 @@ export interface IngestionParseJobSummary {
   failedEventId?: string;
   outputHash?: string;
   outputMediaType?: string;
+  coverageStatus?: "complete" | "partial";
   completedAt?: string;
   failedAt?: string;
   message?: string;
@@ -200,6 +201,12 @@ export function buildIngestionProjection(events: readonly unknown[]): IngestionP
         sourceCollectionIdByStreamId.set(event.streamId, event.payload.sourceCollectionId);
         projectParseJobCreated(projection, event);
         break;
+      case "ingestion.parse.started": {
+        sourceCollectionIdByStreamId.set(event.streamId, event.payload.sourceCollectionId);
+        const job = projection.parseJobs.get(event.payload.parseJobId);
+        if (job !== undefined && job.state !== "succeeded") { job.state = "running"; delete job.message; delete job.retryable; }
+        break;
+      }
       case "ingestion.parse.completed":
         sourceCollectionIdByStreamId.set(event.streamId, event.payload.sourceCollectionId);
         projectParseCompleted(projection, event);
@@ -357,6 +364,8 @@ function projectParseCompleted(projection: IngestionProjection, event: Knowledge
   job.completedEventId = event.id;
   job.outputHash = event.payload.outputHash;
   job.outputMediaType = event.payload.outputMediaType;
+  if (event.payload.coverageStatus === undefined) delete job.coverageStatus;
+  else job.coverageStatus = event.payload.coverageStatus;
   job.completedAt = event.payload.completedAt;
   delete job.failedEventId;
   delete job.failedAt;
@@ -376,6 +385,7 @@ function projectParseFailed(projection: IngestionProjection, event: KnowledgeEve
   delete job.completedAt;
   delete job.outputHash;
   delete job.outputMediaType;
+  delete job.coverageStatus;
 }
 
 function projectProviderApproved(

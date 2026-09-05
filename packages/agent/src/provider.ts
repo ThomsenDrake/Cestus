@@ -62,12 +62,25 @@ export interface ModelInvocationRequest {
   readonly inputArtifactHash: string;
   readonly inputText?: string;
   readonly credentialRef: CredentialReference;
+  /** Revalidate the approved disclosure after credentials resolve, immediately before transfer. */
+  readonly beforeTransfer?: () => Promise<void>;
+  readonly signal?: AbortSignal;
 }
 
 export interface ModelInvocationResult {
   readonly outputText: string;
   readonly outputArtifactHash: string;
   readonly usage: { readonly inputUnits: number; readonly outputUnits: number };
+}
+
+/** Safe transport outcome; neither rejection nor invalid output is a billing guarantee. */
+export class ProviderInvocationError extends Error {
+  constructor(readonly outcome: "rejected" | "invalid-response" | "completion-unknown") {
+    super(outcome === "rejected" ? "Provider request failed."
+      : outcome === "invalid-response" ? "Provider returned invalid output."
+      : "Provider completion is unknown.");
+    this.name = "ProviderInvocationError";
+  }
 }
 
 export interface ModelProviderAdapter {

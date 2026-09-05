@@ -16,6 +16,17 @@ import type {
 import { workspaceDto } from "./fixtures/evidence.js";
 
 describe("EvidenceWorkspace", () => {
+  it("preserves partial coverage through the adapter and distinguishes it in job labels and filters", () => {
+    const fixture = workspaceDto();
+    const workspace = evidenceWorkspaceDtoFromJson({ ...fixture, items: fixture.items.map((item, index) => index === 0 ? { ...item, parseJobs: item.parseJobs.map(job => ({ ...job, coverageStatus: "partial" })) } : item) });
+    render(<EvidenceWorkspace workspace={workspace} loadState="loaded" loadError={undefined} onRetry={vi.fn()} onPrepareAssertionCandidate={vi.fn()} onAppendGovernanceReview={vi.fn()} />);
+    expect(screen.getByRole("region", { name: "Evidence detail" })).toHaveTextContent("partial text extraction");
+    fireEvent.change(screen.getByLabelText("Parse state"), { target: { value: "partial" } });
+    expect(screen.getByRole("button", { name: "Inspect evidence ev_ing_001" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Inspect evidence ev_ing_blocked" })).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Parse state"), { target: { value: "succeeded" } });
+    expect(screen.queryByRole("button", { name: "Inspect evidence ev_ing_001" })).not.toBeInTheDocument();
+  });
   it("renders one canonical item with every duplicate occurrence and full review provenance", () => {
     renderWorkspace();
 

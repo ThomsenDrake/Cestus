@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { buildCommandBoardViewModel, getSelectedCommandItem } from "./workspace/command-model.js";
 import {
   buildCommandBoardInputFromRuntime,
@@ -28,8 +28,12 @@ import {
   type IngestionWorkspaceAdapter
 } from "./ingestion/ingestion-adapter.js";
 import type {
-  ApproveProviderParsingInput,
   ApproveRawImportInput,
+  DryRunScanInput,
+  RegisterSourceInput,
+  LoadIngestionReviewInput,
+  ListIngestionJobsInput,
+  IngestionSourceDto,
   ImportApprovedInput,
   IngestionActionResult,
   IngestionJobActionResult,
@@ -97,6 +101,11 @@ interface AppProps {
 
 const systemNow = () => new Date().toISOString();
 
+function evidenceIdFromHash(): string | undefined {
+  if (typeof window === "undefined") return undefined;
+  return /^#evidence\/(ev_[a-zA-Z0-9_-]+)(?:\/[^/]+(?:\/\d+)?)?$/.exec(window.location.hash)?.[1];
+}
+
 export function App({
   requestsAdapter = httpRequestsAdapter,
   ingestionAdapter = httpIngestionWorkspaceAdapter,
@@ -107,7 +116,7 @@ export function App({
   now = systemNow
 }: AppProps = {}) {
   const [commandOpenedAt] = useState(() => now());
-  const [activeModuleId, setActiveModuleId] = useState("command");
+  const [activeModuleId, setActiveModuleId] = useState(() => evidenceIdFromHash() === undefined ? "command" : "evidence");
   const [activeFilter, setActiveFilter] = useState<QueueFilter>("all");
   const [selectedItemId, setSelectedItemId] = useState<string | undefined>();
   const [reviewedItemIds, setReviewedItemIds] = useState<readonly string[]>([]);
@@ -131,6 +140,20 @@ export function App({
   const [ingestionLoadState, setIngestionLoadState] = useState<"idle" | "loading" | "loaded" | "error">("idle");
   const [ingestionLoadError, setIngestionLoadError] = useState<string | undefined>();
   const [ingestionReloadKey, setIngestionReloadKey] = useState(0);
+  const [ingestionSources, setIngestionSources] = useState<readonly IngestionSourceDto[]>([]);
+  const [ingestionBusy, setIngestionBusy] = useState(false);
+  const ingestionActionPending = useRef(false);
+  const [initialEvidenceId, setInitialEvidenceId] = useState(evidenceIdFromHash);
+  useEffect(() => {
+    function followEvidenceCitation() {
+      const evidenceId = evidenceIdFromHash();
+      if (evidenceId === undefined) return;
+      setInitialEvidenceId(evidenceId);
+      setActiveModuleId("evidence");
+    }
+    window.addEventListener("hashchange", followEvidenceCitation);
+    return () => window.removeEventListener("hashchange", followEvidenceCitation);
+  }, []);
   const [ingestionJobs, setIngestionJobs] = useState<readonly IngestionJobDto[]>([]);
   const [ingestionDiagnostics, setIngestionDiagnostics] = useState<readonly IngestionRuntimeDiagnosticDto[]>([]);
   const [evidenceWorkspace, setEvidenceWorkspace] = useState<EvidenceWorkspaceDto | undefined>();
@@ -361,7 +384,16 @@ export function App({
     ingestionAdapter
       .loadWorkspace()
       .then(async (workspace) => {
-        const sourceCollectionId = workspace.review?.sourceCollectionId;
+        const sourceResult = workspace.mounted ? await ingestionAdapter.listSources() : { sources: [] };
+        let restoredWorkspace = workspace;
+        const savedSourceId = readSavedIngestionSource(workspace.workspaceId);
+        const sourceCollectionId = sourceResult.sources.find((source) => source.sourceCollectionId === savedSourceId)?.sourceCollectionId
+          ?? workspace.review?.sourceCollectionId ?? sourceResult.sources[0]?.sourceCollectionId;
+        if (workspace.mounted && sourceCollectionId !== undefined && workspace.review?.sourceCollectionId !== sourceCollectionId) {
+          const restored = await ingestionAdapter.loadReview({ sourceCollectionId });
+          if (!restored.ok) throw new Error("Saved ingestion review could not be loaded.");
+          restoredWorkspace = { ...workspace, review: restored.review };
+        }
         const [jobs, diagnosticResult] = workspace.mounted
           ? await Promise.all([
               ingestionAdapter.listJobs(sourceCollectionId === undefined ? {} : { sourceCollectionId }),
@@ -373,7 +405,8 @@ export function App({
           return;
         }
 
-        setIngestionWorkspace(workspace);
+        setIngestionWorkspace(restoredWorkspace);
+        setIngestionSources(sourceResult.sources);
         setLoadedIngestionAdapter(ingestionAdapter);
         setIngestionJobs(jobs.jobs);
         setIngestionDiagnostics([
@@ -660,15 +693,26 @@ export function App({
       loadError={ingestionLoadError}
       jobs={ingestionJobs}
       diagnostics={ingestionDiagnostics}
+      sources={ingestionSources}
+      busy={ingestionBusy}
+      onRegisterSource={handleRegisterSource}
+      onSelectSource={handleSelectIngestionSource}
+      onDryRunScan={handleDryRunScan}
+      onRunLocalParsing={handleRunLocalParsing}
+      onOpenEvidence={(evidenceId) => {
+        window.location.hash = `evidence/${evidenceId}`;
+        setInitialEvidenceId(evidenceId);
+        setActiveModuleId("evidence");
+      }}
       onApproveRawImport={handleApproveRawImport}
       onImportApproved={handleImportApproved}
-      onApproveProviderParsing={handleApproveProviderParsing}
       onRetryJob={handleRetryIngestionJob}
       onLoadDiagnostics={handleLoadIngestionDiagnostics}
     />
   );
   const evidenceMain = (
     <EvidenceWorkspace
+      initialEvidenceId={initialEvidenceId}
       workspace={evidenceWorkspace}
       loadState={evidenceLoadState}
       loadError={evidenceLoadError}
@@ -896,8 +940,45 @@ export function App({
     void runIngestionAction(() => ingestionAdapter.importApproved(input));
   }
 
-  function handleApproveProviderParsing(input: ApproveProviderParsingInput) {
-    void runIngestionAction(() => ingestionAdapter.approveProviderParsing(input));
+  function handleRegisterSource(input: RegisterSourceInput) {
+    void runIngestionAction(() => ingestionAdapter.registerSource(input));
+  }
+
+  function handleSelectIngestionSource(input: LoadIngestionReviewInput) {
+    void runIngestionAction(() => ingestionAdapter.loadReview(input));
+  }
+
+  function handleDryRunScan(input: DryRunScanInput) {
+    void runIngestionAction(() => ingestionAdapter.dryRunScan(input));
+  }
+
+  async function handleRunLocalParsing(input: ListIngestionJobsInput) {
+    if (ingestionActionPending.current) return;
+    ingestionActionPending.current = true;
+    setIngestionBusy(true);
+    try {
+      const result = await ingestionAdapter.runLocalParsing(input);
+      setIngestionJobs(result.jobs);
+      invalidateEvidenceWorkspace();
+      if (input.sourceCollectionId !== undefined) {
+        const restored = await ingestionAdapter.loadReview({ sourceCollectionId: input.sourceCollectionId });
+        if (restored.ok) setIngestionWorkspace((current) => current === undefined ? current : { ...current, review: restored.review });
+      }
+      await refreshIngestionSupportStateAfterMutation(input.sourceCollectionId);
+      if (result.diagnostics?.length) setIngestionDiagnostics((current) => [...current, ...result.diagnostics!]);
+    } catch {
+      setIngestionDiagnostics([{ severity: "error", category: "ingestion",
+        message: "Extraction response was interrupted. Reopen the saved review to inspect persisted jobs before retrying." }]);
+    } finally {
+      ingestionActionPending.current = false;
+      setIngestionBusy(false);
+    }
+  }
+
+  function invalidateEvidenceWorkspace() {
+    setEvidenceWorkspace(undefined);
+    setLoadedEvidenceAdapter(undefined);
+    setEvidenceReloadKey((current) => current + 1);
   }
 
   function handleRetryIngestionJob(input: RetryIngestionJobInput) {
@@ -969,6 +1050,9 @@ export function App({
   }
 
   async function runIngestionAction(action: () => Promise<IngestionActionResult>) {
+    if (ingestionActionPending.current) return;
+    ingestionActionPending.current = true;
+    setIngestionBusy(true);
     try {
       const result = await action();
       if (!result.ok) {
@@ -996,19 +1080,27 @@ export function App({
               review: result.review
             }
       );
+      saveIngestionSource(ingestionWorkspace?.workspaceId, result.review.sourceCollectionId);
+      invalidateEvidenceWorkspace();
       await refreshIngestionSupportStateAfterMutation(result.review.sourceCollectionId);
     } catch {
       setIngestionDiagnostics([
         {
           severity: "error",
           category: "ingestion",
-          message: "Ingestion action failed. Reload the workspace and try again."
+          message: "Ingestion action response was interrupted. Reopen the saved review to inspect persisted state before retrying."
         }
       ]);
+    } finally {
+      ingestionActionPending.current = false;
+      setIngestionBusy(false);
     }
   }
 
   async function runIngestionJobAction(action: () => Promise<IngestionJobActionResult>) {
+    if (ingestionActionPending.current) return;
+    ingestionActionPending.current = true;
+    setIngestionBusy(true);
     try {
       const result = await action();
       if (!result.ok) {
@@ -1040,6 +1132,7 @@ export function App({
         );
       }
 
+      invalidateEvidenceWorkspace();
       await refreshIngestionSupportStateAfterMutation(result.review?.sourceCollectionId ?? result.job.sourceCollectionId);
     } catch {
       setIngestionDiagnostics([
@@ -1049,15 +1142,20 @@ export function App({
           message: "Ingestion job action failed. Reload the workspace and try again."
         }
       ]);
+    } finally {
+      ingestionActionPending.current = false;
+      setIngestionBusy(false);
     }
   }
 
   async function refreshIngestionSupportState(sourceCollectionId: string | undefined) {
     const input = sourceCollectionId === undefined ? {} : { sourceCollectionId };
-    const [jobs, diagnosticResult] = await Promise.all([
+    const [jobs, diagnosticResult, sourceResult] = await Promise.all([
       ingestionAdapter.listJobs(input),
-      ingestionAdapter.loadDiagnostics(input)
+      ingestionAdapter.loadDiagnostics(input),
+      ingestionAdapter.listSources()
     ]);
+    setIngestionSources(sourceResult.sources);
     setIngestionJobs(jobs.jobs);
     setIngestionDiagnostics([
       ...(jobs.diagnostics ?? []),
@@ -1349,4 +1447,16 @@ function renderRequestsMain({
       </p>
     </section>
   );
+}
+
+function readSavedIngestionSource(workspaceId: string | undefined): string | undefined {
+  if (workspaceId === undefined) return undefined;
+  try { return window.localStorage.getItem(`cestus.ingestion.source.${workspaceId}`) ?? undefined; }
+  catch { return undefined; }
+}
+
+function saveIngestionSource(workspaceId: string | undefined, sourceCollectionId: string) {
+  if (workspaceId === undefined) return;
+  try { window.localStorage.setItem(`cestus.ingestion.source.${workspaceId}`, sourceCollectionId); }
+  catch { /* Saved ledger sources remain available when browser storage is disabled. */ }
 }
