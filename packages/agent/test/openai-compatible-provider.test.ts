@@ -369,7 +369,7 @@ describe("bounded document provider transport", () => {
       maxResponseBytes: 8,
       fetch: async (_url, options) => { init = options; return new Response("a".repeat(100)); }
     });
-    await expect(provider.invoke({ ...request, signal: controller.signal })).rejects.toThrow("Provider returned invalid output.");
+    await expect(provider.invoke({ ...request, signal: controller.signal })).rejects.toMatchObject({ outcome: "completion-unknown" });
     expect(init?.redirect).toBe("error");
     expect(init?.signal).toBe(controller.signal);
   });

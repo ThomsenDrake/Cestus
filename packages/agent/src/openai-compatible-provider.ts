@@ -8,6 +8,7 @@ import type {
   ProviderDescriptor
 } from "./provider.js";
 import {
+  ProviderInvocationError,
   assertCredentialReferenceIsSafe,
   providerDescriptorSchema
 } from "./provider.js";
@@ -58,6 +59,10 @@ const defaultNousPortalRequestTags = Object.freeze([
   "product=cestus",
   "client=cestus-agent-v0.1.0"
 ]);
+
+// Explicit request rejection semantics only. In particular 408, 409 and 5xx
+// cannot prove that upstream generation did not occur. Do not infer billing.
+const rejectedRequestStatuses = new Set([400, 401, 403, 404, 405, 406, 410, 413, 415, 422, 429]);
 
 const contentHashPattern = /^sha256:[a-f0-9]{64}$/;
 const endpointSchema = z.string().url();
@@ -182,8 +187,12 @@ export class OpenAICompatibleChatProvider implements ModelProviderAdapter {
       })
     });
 
-    if (!response.ok) {
-      throw new Error("Provider request failed.");
+    // This synchronous chat contract requires a completed 200 response. Other
+    // statuses can describe deferred work, partial content or a gateway failure
+    // after upstream submission; receiving headers alone does not settle that.
+    if (response.status !== 200) {
+      await response.body?.cancel().catch(() => undefined);
+      throw new ProviderInvocationError(rejectedRequestStatuses.has(response.status) ? "rejected" : "completion-unknown");
     }
 
     let responseJson: unknown;
@@ -191,23 +200,26 @@ export class OpenAICompatibleChatProvider implements ModelProviderAdapter {
       responseJson = this.maxResponseBytes === undefined
         ? await response.json()
         : await readBoundedResponse(response, this.maxResponseBytes);
-    } catch {
-      throw new Error("Provider returned invalid output.");
+    } catch (error) {
+      if (error instanceof ProviderInvocationError) throw error;
+      // Response.json() reports SyntaxError only after a complete body was read;
+      // network/abort/decompression errors do not establish remote completion.
+      throw new ProviderInvocationError(error instanceof SyntaxError ? "invalid-response" : "completion-unknown");
     }
 
     const parsedResponse = chatCompletionResponseSchema.safeParse(responseJson);
     if (!parsedResponse.success) {
-      throw new Error("Provider returned invalid output.");
+      throw new ProviderInvocationError("invalid-response");
     }
 
     const outputText = parsedResponse.data.choices[0]?.message.content;
     if (outputText === undefined) {
-      throw new Error("Provider returned invalid output.");
+      throw new ProviderInvocationError("invalid-response");
     }
     const usage = parsedResponse.data.usage;
     if (this.requireUsage && (!Number.isSafeInteger(usage?.prompt_tokens) || !Number.isSafeInteger(usage?.completion_tokens) ||
       usage!.prompt_tokens! < 0 || usage!.completion_tokens! < 0)) {
-      throw new Error("Provider returned invalid output.");
+      throw new ProviderInvocationError("invalid-response");
     }
 
     return Object.freeze({
@@ -322,7 +334,7 @@ async function readBoundedResponse(
   maximumBytes: number
 ): Promise<unknown> {
   if (response.body === undefined || response.body === null) {
-    throw new Error("Provider returned invalid output.");
+    throw new ProviderInvocationError("completion-unknown");
   }
   const reader = response.body.getReader();
   const chunks: Uint8Array[] = [];
@@ -332,7 +344,7 @@ async function readBoundedResponse(
       const next = await reader.read();
       if (next.done) break;
       size += next.value.byteLength;
-      if (size > maximumBytes) throw new Error("Provider returned invalid output.");
+      if (size > maximumBytes) throw new ProviderInvocationError("completion-unknown");
       chunks.push(next.value);
     }
     return JSON.parse(Buffer.concat(chunks).toString("utf8")) as unknown;
