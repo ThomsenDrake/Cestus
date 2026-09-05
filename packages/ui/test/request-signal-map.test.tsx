@@ -21,7 +21,6 @@ describe("RequestSignalMap", () => {
         onOpenRequestDetail={() => undefined}
         selectedRequestId="prr_req_001"
         onSelectRequest={() => undefined}
-        onSelectedRequestChange={() => undefined}
       />
     );
 
@@ -40,7 +39,6 @@ describe("RequestSignalMap", () => {
         onOpenRequestDetail={() => undefined}
         selectedRequestId="prr_req_001"
         onSelectRequest={() => undefined}
-        onSelectedRequestChange={() => undefined}
       />
     );
 
@@ -60,7 +58,6 @@ describe("RequestSignalMap", () => {
         onOpenRequestDetail={() => undefined}
         selectedRequestId="prr_req_001"
         onSelectRequest={() => undefined}
-        onSelectedRequestChange={() => undefined}
       />
     );
 
@@ -78,7 +75,6 @@ describe("RequestSignalMap", () => {
         onOpenRequestDetail={() => undefined}
         selectedRequestId="prr_req_001"
         onSelectRequest={() => undefined}
-        onSelectedRequestChange={() => undefined}
       />
     );
 

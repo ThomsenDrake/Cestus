@@ -16,7 +16,6 @@ const sourceFiles = [
   "packages/ui/src/requests/RequestBoard.tsx",
   "packages/ui/src/requests/RequestDetailSections.tsx",
   "packages/ui/src/requests/RequestDetailModal.tsx",
-  "packages/ui/src/requests/RequestDetailRail.tsx",
   "packages/ui/src/requests/RequestWorkspaceIntelligenceRail.tsx",
   "packages/ui/src/requests/RequestSignalMap.tsx",
   "packages/ui/src/requests/RequestBuilder.tsx",

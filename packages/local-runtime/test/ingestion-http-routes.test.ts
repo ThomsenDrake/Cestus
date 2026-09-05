@@ -1,3 +1,4 @@
+import { createAuthenticatedTestHandler as createLocalRuntimeHttpHandler } from "./support/authenticated-handler.js";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -9,7 +10,6 @@ import { createFakeMountedWorkspace } from "../../ingestion/test/runtime-test-he
 import { createHttpIngestionWorkspaceAdapter } from "../../ui/src/ingestion/ingestion-adapter.js";
 import { resolveLocalRuntimeConfig } from "../src/config.js";
 import {
-  createLocalRuntimeHttpHandler,
   type CreateLocalRuntimeHttpHandlerInput,
   type LocalRuntimeHttpHandler
 } from "../src/http-handler.js";

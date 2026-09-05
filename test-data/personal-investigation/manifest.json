@@ -1,0 +1,143 @@
+{
+  "schemaVersion": 1,
+  "synthetic": true,
+  "provisional": true,
+  "sensitivity": "Synthetic; contains no real investigation records or credentials.",
+  "caseCount": 3,
+  "fileCount": 11,
+  "totalBytes": 2911,
+  "pageCount": null,
+  "pageCountReason": "No valid paginated documents or scans; real format requirements are pending.",
+  "records": [
+    {
+      "path": "case-library/award.csv",
+      "bytes": 130,
+      "sha256": "bffed4d375c778beaf04fd72043158a930baa4a92aead8f73084024246ec319c",
+      "format": "csv",
+      "withheld": false,
+      "expectedExtraction": "not implemented in Phase 1"
+    },
+    {
+      "path": "case-library/notice.txt",
+      "bytes": 550,
+      "sha256": "434d7542b279c6779794c3483be0b1c01859b0f42b97be80cb301bb9edc590e9",
+      "format": "txt",
+      "withheld": false,
+      "expectedExtraction": "not implemented in Phase 1"
+    },
+    {
+      "path": "case-library/quay-notice-duplicate.txt",
+      "bytes": 502,
+      "sha256": "8603935988f98f9add20d5d57adb7c783e18f016a42f2b5ddb6dcaa9095677e7",
+      "format": "txt",
+      "withheld": false,
+      "expectedExtraction": "not implemented in Phase 1"
+    },
+    {
+      "path": "case-parks/attendance.csv",
+      "bytes": 89,
+      "sha256": "d54169bb29899014ee5206c9f2c127aba18f9b56814332453c604d1176bd8651",
+      "format": "csv",
+      "withheld": false,
+      "expectedExtraction": "not implemented in Phase 1"
+    },
+    {
+      "path": "case-parks/notes.txt",
+      "bytes": 331,
+      "sha256": "62d47d7418e4e05e03c9a0d76b8ebe830195984435379a41f5bf4255f4f237bc",
+      "format": "txt",
+      "withheld": false,
+      "expectedExtraction": "not implemented in Phase 1"
+    },
+    {
+      "path": "case-quay/award-v1.csv",
+      "bytes": 127,
+      "sha256": "2a78f9ca4de9dcbed27075cd52bef70ab06c42af0985ad995de13183a985f1c5",
+      "format": "csv",
+      "withheld": false,
+      "expectedExtraction": "not implemented in Phase 1"
+    },
+    {
+      "path": "case-quay/award-v2.csv",
+      "bytes": 127,
+      "sha256": "8817b0ce841ae53522eaed645da54fdaee5d8552660ee50232c9f6c76b908d65",
+      "format": "csv",
+      "withheld": false,
+      "expectedExtraction": "not implemented in Phase 1"
+    },
+    {
+      "path": "case-quay/notice.txt",
+      "bytes": 502,
+      "sha256": "8603935988f98f9add20d5d57adb7c783e18f016a42f2b5ddb6dcaa9095677e7",
+      "format": "txt",
+      "withheld": false,
+      "expectedExtraction": "not implemented in Phase 1"
+    },
+    {
+      "path": "unsupported/corrupt.pdf",
+      "bytes": 72,
+      "sha256": "22156d5ee16e147d5cd18c9076a2a115df6b9665d1b001ec0349a98ed126603f",
+      "format": "pdf",
+      "withheld": false,
+      "expectedExtraction": "must fail or report unsupported"
+    },
+    {
+      "path": "unsupported/notes.provisional",
+      "bytes": 81,
+      "sha256": "85a419fa0ef8f9624b6565d5a09ba208d144d1c294b5991414685308ed4584d2",
+      "format": "provisional",
+      "withheld": false,
+      "expectedExtraction": "must fail or report unsupported"
+    },
+    {
+      "path": "withheld/quay-invoice-disposition.txt",
+      "bytes": 400,
+      "sha256": "8811376d6918a98c6a4066901aeab382358ee32661cf123e0cf4ed49215d3ca0",
+      "format": "txt",
+      "withheld": true,
+      "expectedExtraction": "not implemented in Phase 1"
+    }
+  ],
+  "knownAnswers": {
+    "sharedActor": {
+      "id": "MV001",
+      "name": "Mara Vale",
+      "cases": [
+        "case-quay",
+        "case-library"
+      ]
+    },
+    "similarPattern": "scope amendment followed by award to different vendors",
+    "negativeControl": "case-parks",
+    "distinctIdentities": [
+      [
+        "MV001",
+        "VV009"
+      ],
+      [
+        "NW101",
+        "NL202"
+      ]
+    ],
+    "conflict": "Q17 award January 12 in notice/v1 versus January 13 in v2; preserve both sources",
+    "changedSource": [
+      "case-quay/award-v1.csv",
+      "case-quay/award-v2.csv"
+    ],
+    "duplicate": [
+      "case-quay/notice.txt",
+      "case-library/quay-notice-duplicate.txt"
+    ],
+    "initialGap": "Disposition of Q17-I1 is unknown until withheld evidence is revealed",
+    "competingExplanations": [
+      "payment delayed (initially favored test hypothesis)",
+      "invoice voided and replaced"
+    ],
+    "disconfirmation": "withheld/quay-invoice-disposition.txt defeats payment-delay explanation"
+  },
+  "provisionalGrowthTarget": {
+    "files": 100,
+    "bytes": 10000000,
+    "status": "proposed only; not measured or a supported capacity guarantee"
+  }
+}

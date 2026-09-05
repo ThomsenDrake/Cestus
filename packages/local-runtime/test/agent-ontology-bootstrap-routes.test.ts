@@ -1,3 +1,4 @@
+import { createAuthenticatedTestHandler as createLocalRuntimeHttpHandler } from "./support/authenticated-handler.js";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -16,7 +17,7 @@ import { writeLegacyCestusFixture } from "../../ingestion/test/fixtures/legacy-c
 import { resolveLocalRuntimeConfig, type ResolvedLocalRuntimeConfig } from "../src/config.js";
 import { isExactOntologyBootstrapRunProvenance } from "../src/agent-ontology-bootstrap-routes.js";
 import type { LocalAgentRuntimeFactory } from "../src/agent-runtime-factory.js";
-import { createLocalRuntimeHttpHandler, type LocalRuntimeHttpHandler } from "../src/http-handler.js";
+import { type LocalRuntimeHttpHandler } from "../src/http-handler.js";
 import { createSqlitePrrRuntime } from "../src/runtime-factory.js";
 import { handleAgentOntologyBootstrapRoute } from "../src/agent-ontology-bootstrap-routes.js";
 

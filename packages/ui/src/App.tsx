@@ -71,7 +71,8 @@ import { RequestDetailModal } from "./requests/RequestDetailModal.js";
 import { buildPrrBuilderModel, getSelectedPrrRequest } from "./requests/request-model.js";
 import { RequestWorkspace } from "./requests/RequestWorkspace.js";
 import { RequestWorkspaceIntelligenceRail } from "./requests/RequestWorkspaceIntelligenceRail.js";
-import type { PrrDetailModel, PrrWorkspaceData, PrrWorkspaceViewContext } from "./requests/request-types.js";
+import type { PrrWorkspaceData, PrrWorkspaceViewContext } from "./requests/request-types.js";
+import { LocalWorkspaceStatus } from "./workspace/LocalWorkspaceStatus.js";
 import { CommandDashboard } from "./workspace/CommandDashboard.js";
 import { DecisionRail } from "./workspace/DecisionRail.js";
 import { OpsShell } from "./workspace/OpsShell.js";
@@ -110,8 +111,7 @@ export function App({
   const [activeFilter, setActiveFilter] = useState<QueueFilter>("all");
   const [selectedItemId, setSelectedItemId] = useState<string | undefined>();
   const [reviewedItemIds, setReviewedItemIds] = useState<readonly string[]>([]);
-  const [selectedPrrRequestId, setSelectedPrrRequestId] = useState<string | undefined>("prr_req_001");
-  const [, setSelectedPrrRequest] = useState<PrrDetailModel | undefined>();
+  const [selectedPrrRequestId, setSelectedPrrRequestId] = useState<string | undefined>();
   const [requestBuilderOpen, setRequestBuilderOpen] = useState(false);
   const [requestDetailModalOpen, setRequestDetailModalOpen] = useState(false);
   const [requestsViewContext, setRequestsViewContext] = useState<PrrWorkspaceViewContext>({
@@ -159,7 +159,6 @@ export function App({
   const [agentApprovalDecisionState, setAgentApprovalDecisionState] = useState<"idle" | "submitting" | "error">("idle");
   const [agentApprovalDiagnostic, setAgentApprovalDiagnostic] = useState<string | undefined>();
   const [agentOntologyBootstrapRoutes, setAgentOntologyBootstrapRoutes] = useState<readonly OntologyBootstrapRouteDto[]>([]);
-  const [, setLoadedAgentAdapter] = useState<AgentAdapter | undefined>();
   const [agentMemoryDiagnostic, setAgentMemoryDiagnostic] = useState<string | undefined>();
   const [agentLoadState, setAgentLoadState] = useState<"idle" | "loading" | "loaded" | "error">("idle");
   const [agentLoadError, setAgentLoadError] = useState<string | undefined>();
@@ -302,7 +301,6 @@ export function App({
 
     let canceled = false;
     setRequestDetailModalOpen(false);
-    setSelectedPrrRequest(undefined);
     setRequestsLoadState("loading");
     setRequestsLoadError(undefined);
 
@@ -324,7 +322,6 @@ export function App({
 
         setRequestsWorkspace(undefined);
         setLoadedRequestsAdapter(undefined);
-        setSelectedPrrRequest(undefined);
         setSelectedPrrRequestId(undefined);
         setRequestDetailModalOpen(false);
         setRequestsLoadState("error");
@@ -544,7 +541,6 @@ export function App({
         setAgentApprovalCockpit(approvalCockpit);
         setAgentMemoryList(memory);
         setSelectedAgentMemoryId((current) => selectVisibleMemoryId(memory, current));
-        setLoadedAgentAdapter(agentAdapter);
         setAgentLoadState("loaded");
 
         void loadOntologyBootstrapRoutes(agentAdapter, status).then((routes) => {
@@ -562,7 +558,6 @@ export function App({
         setAgentCockpit(undefined);
         setAgentApprovalCockpit(undefined);
         setAgentOntologyBootstrapRoutes([]);
-        setLoadedAgentAdapter(undefined);
         setAgentMemoryList(undefined);
         setAgentMemoryDetail(undefined);
         setSelectedAgentMemoryId(undefined);
@@ -646,12 +641,10 @@ export function App({
     onOpenBuilder: () => setRequestBuilderOpen(true),
     onOpenRequestDetail: () => setRequestDetailModalOpen(true),
     onSelectRequest: setSelectedPrrRequestId,
-    onSelectedRequestChange: setSelectedPrrRequest,
     onActiveViewChange: setRequestsViewContext,
     onRetry: () => {
       setRequestsWorkspace(undefined);
       setLoadedRequestsAdapter(undefined);
-      setSelectedPrrRequest(undefined);
       setSelectedPrrRequestId(undefined);
       setRequestDetailModalOpen(false);
       setRequestBuilderOpen(false);
@@ -860,7 +853,7 @@ export function App({
       return;
     }
 
-    if (ingestionActive) {
+    if (!requestsActive) {
       setRequestBuilderDiagnostic(undefined);
       setRequestBuilderOpen(false);
       setRequestDetailModalOpen(false);
@@ -959,7 +952,6 @@ export function App({
       setAgentMemoryDetail(undefined);
     }
     setAgentOntologyBootstrapRoutes(await loadOntologyBootstrapRoutes(agentAdapter, status));
-    setLoadedAgentAdapter(agentAdapter);
     setAgentLoadState("loaded");
     setAgentLoadError(undefined);
   }
@@ -1131,28 +1123,6 @@ export function App({
       : ingestionActive
         ? "Ingestion"
         : commandOrRequestsModeLabel;
-  const searchLabel = requestsActive
-    ? "Requests search"
-    : evidenceActive
-      ? "Evidence search"
-    : ingestionActive
-      ? "Ingestion search"
-      : ontologyActive
-        ? "Ontology search"
-      : agentActive
-        ? "Agent search"
-        : "Command search";
-  const searchPlaceholder = requestsActive
-    ? "Search requests, agencies, evidence, and correspondence"
-    : evidenceActive
-      ? "Search evidence, occurrences, hashes, governance, and linkage"
-    : ingestionActive
-      ? "Search source collections, scans, duplicates, and diagnostics"
-      : ontologyActive
-        ? "Search entities, relationships, assertions, and provenance"
-      : agentActive
-        ? "Search resident tasks, providers, locks, and tool requests"
-        : "Search requests, evidence, agencies, and assertions";
   const mainId = requestsActive
     ? "requests"
     : evidenceActive
@@ -1175,34 +1145,6 @@ export function App({
         : agentActive
           ? agentMain
           : commandMain;
-  const ontologyLedgerLabel = ontologyLoadState === "error"
-    ? "Ledger unavailable"
-    : ontologyWorkspace?.status === "degraded"
-      ? "Projection degraded"
-      : ontologyLoadState === "loaded" && ontologyWorkspace !== undefined
-        ? `High-water ${ontologyWorkspace.sourceHighWaterMark}`
-        : "Replay pending";
-  const ontologySyncLabel = ontologyLoadState === "error"
-    ? "Retry required"
-    : ontologyWorkspace?.status === "degraded"
-      ? "Repair required"
-      : ontologyLoadState === "loaded" && ontologyWorkspace !== undefined
-        ? "Replay current"
-        : "Replay loading";
-  const evidenceLedgerLabel = evidenceLoadState === "error"
-    ? "Ledger unavailable"
-    : evidenceWorkspace?.status === "degraded"
-      ? "Evidence degraded"
-      : evidenceLoadState === "loaded" && evidenceWorkspace !== undefined
-        ? `High-water ${evidenceWorkspace.sourceHighWaterMark}`
-        : "Replay pending";
-  const evidenceSyncLabel = evidenceLoadState === "error"
-    ? "Retry required"
-    : evidenceWorkspace?.status === "degraded"
-      ? "Review required"
-      : evidenceLoadState === "loaded" && evidenceWorkspace !== undefined
-        ? "Corpus current"
-        : "Replay loading";
   const decisionRail = requestsActive ? (
     <RequestWorkspaceIntelligenceRail
       workspace={requestsWorkspace}
@@ -1216,16 +1158,12 @@ export function App({
   return (
     <>
       <div aria-hidden={requestBuilderVisible || requestDetailModalVisible ? "true" : undefined}>
+        <LocalWorkspaceStatus />
         <OpsShell
           modules={workspaceModules}
           activeModuleId={activeModuleId}
           workspaceName="Cestus Local"
           modeLabel={modeLabel}
-          ledgerLabel={ontologyActive ? ontologyLedgerLabel : evidenceActive ? evidenceLedgerLabel : "Ledger synced"}
-          syncLabel={ontologyActive ? ontologySyncLabel : evidenceActive ? evidenceSyncLabel : requestsActive ? "PRR sync local" : "Local sync live"}
-          deploymentLabel="Solo laptop"
-          searchLabel={searchLabel}
-          searchPlaceholder={searchPlaceholder}
           mainId={mainId}
           mainLabel={ontologyActive ? "Ontology workspace" : evidenceActive ? "Evidence workspace" : agentActive ? "Agent workspace" : ingestionActive ? "Ingestion workspace" : requestsActive ? "Requests workspace" : "Command workspace"}
           onNewRequest={agentActive || ontologyActive || evidenceActive ? undefined : handleNewRequest}
@@ -1355,7 +1293,6 @@ function renderRequestsMain({
   onOpenBuilder,
   onOpenRequestDetail,
   onSelectRequest,
-  onSelectedRequestChange,
   onActiveViewChange,
   onRetry
 }: {
@@ -1366,7 +1303,6 @@ function renderRequestsMain({
   readonly onOpenBuilder: () => void;
   readonly onOpenRequestDetail: () => void;
   readonly onSelectRequest: (prrRequestId: string) => void;
-  readonly onSelectedRequestChange: (selectedRequest: PrrDetailModel | undefined) => void;
   readonly onActiveViewChange: (context: PrrWorkspaceViewContext) => void;
   readonly onRetry: () => void;
 }) {
@@ -1378,7 +1314,6 @@ function renderRequestsMain({
         onOpenBuilder={onOpenBuilder}
         onOpenRequestDetail={onOpenRequestDetail}
         onSelectRequest={onSelectRequest}
-        onSelectedRequestChange={onSelectedRequestChange}
         onActiveViewChange={onActiveViewChange}
       />
     );

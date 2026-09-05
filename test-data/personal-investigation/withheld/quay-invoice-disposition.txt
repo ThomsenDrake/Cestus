@@ -1,0 +1,5 @@
+SYNTHETIC WITHHELD RECORD — reveal only in later inquiry acceptance
+Q17-I1 was voided January 20 after a duplicate invoice-number error.
+Replacement Q17-I2 was paid January 28, reference PAY709.
+This disproves the initially favored explanation that Q17-I1 remained unpaid because payment was delayed.
+The missing link was absent from the initial uploads, not proof of a missing real-world payment.
