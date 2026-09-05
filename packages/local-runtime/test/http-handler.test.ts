@@ -262,7 +262,7 @@ describe("createLocalRuntimeHttpHandler", () => {
       diagnostic: {
         message: "Draft request body is invalid.",
         allowedRepairActions: [
-          "send agency, requester, jurisdiction, request text, and received timestamp"
+          "send agency, requester, jurisdiction, and request text; any supplied received timestamp must be a valid UTC datetime"
         ]
       }
     });
@@ -421,7 +421,7 @@ function invalidDraftRequestBodyDiagnostic() {
     ok: false,
     diagnostic: {
       message: "Draft request body is invalid.",
-      allowedRepairActions: ["send agency, requester, jurisdiction, request text, and received timestamp"]
+      allowedRepairActions: ["send agency, requester, jurisdiction, and request text; any supplied received timestamp must be a valid UTC datetime"]
     }
   };
 }

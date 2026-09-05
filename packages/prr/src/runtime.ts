@@ -125,6 +125,16 @@ export function createPrrRuntime(dependencies: PrrRuntimeDependencies): PrrRunti
       return failure("append-request", [], safeDiagnostic(error, ["choose a new request ID", "reload workspace"]));
     }
 
+    // An unfiled draft has no agency receipt and therefore no response deadline.
+    if (input.receivedAt === undefined) {
+      return {
+        ok: true,
+        prrRequestId,
+        committedEventIds: Object.freeze([committedCreated.id]),
+        workspace: await loadWorkspace()
+      };
+    }
+
     let estimate: EstimatedDeadline;
     try {
       estimate = deadlineCalculator(jurisdictionPack, {
