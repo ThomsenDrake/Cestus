@@ -1,0 +1,30 @@
+
+ RUN  v4.1.9 /home/drake/Projects/Cestus
+
+ ❯ packages/local-runtime/test/document-processing.test.ts (46 tests | 1 failed) 602ms
+   × preserves explicit written-date normalization in facts, occurrence/publication qualifiers and replay 11ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  packages/local-runtime/test/document-processing.test.ts > preserves explicit written-date normalization in facts, occurrence/publication qualifiers and replay
+AssertionError: expected { …(6) } to match object { state: 'completed' }
+(8 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+-   "state": "completed",
++   "state": "failed",
+  }
+
+ ❯ packages/local-runtime/test/document-processing.test.ts:402:60
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 45 passed (46)
+   Start at  17:52:58
+   Duration  1.21s (transform 236ms, setup 98ms, import 394ms, tests 602ms, environment 0ms)

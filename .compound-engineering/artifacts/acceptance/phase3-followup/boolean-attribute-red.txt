@@ -1,0 +1,41 @@
+
+ RUN  v4.1.9 /home/drake/Projects/Cestus
+
+ ❯ packages/ui/test/shared-ontology-workspace.test.tsx (11 tests | 1 failed) 1020ms
+   × keeps reviewed boolean occurrence attributes typed and omits entity-scoped facts 140ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  packages/ui/test/shared-ontology-workspace.test.tsx > keeps reviewed boolean occurrence attributes typed and omits entity-scoped facts
+AssertionError: expected [ { predicate: 'verified', …(1) } ] to deeply equal [ { predicate: 'verified', …(1) } ]
+
+- Expected
++ Received
+
+  [
+    {
+      "predicate": "verified",
+      "value": {
+-       "type": "boolean",
+-       "value": true,
++       "type": "string",
++       "value": "true",
+      },
+    },
+  ]
+
+ ❯ packages/ui/test/shared-ontology-workspace.test.tsx:194:43
+    192|   await waitFor(() => expect(fetcher.mock.calls.some(([, init]) => ini…
+    193|   const command = JSON.parse(fetcher.mock.calls.find(([, init]) => ini…
+    194|   expect(command.proposals[0].attributes).toEqual([{ predicate: "verif…
+       |                                           ^
+    195|   expect(within(screen.getByLabelText("Occurrence attribute 1")).query…
+    196| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 10 passed (11)
+   Start at  18:20:50
+   Duration  1.92s (transform 140ms, setup 104ms, import 183ms, tests 1.02s, environment 491ms)

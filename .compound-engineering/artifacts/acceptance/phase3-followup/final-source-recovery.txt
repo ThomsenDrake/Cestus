@@ -1,0 +1,267 @@
+- generic [ref=e1] clickable [onclick]
+  - region "Local workspace status" [ref=e2]
+    - status
+      - StaticText "Backend running · Workspace ready"
+    - button "Refresh workspace status" [ref=e3]
+    - paragraph
+      - StaticText "Synthetic Phase 3 follow-up · Synthetic investigator"
+    - paragraph
+      - StaticText "Storage: /tmp/cestus-phase3-followup.jwx3nlh1/workspace"
+  - generic
+    - banner "Cestus command band"
+      - button "Open module menu" [ref=e5]
+      - link "Cestus home" [ref=e6]
+        - StaticText "CESTUS"
+      - paragraph
+        - StaticText "EVIDENCE"
+      - paragraph
+        - StaticText "Cestus Local"
+    - main "Evidence workspace" [ref=e4]
+      - region "Evidence review workspace" [ref=e7]
+        - sectionheader
+          - paragraph
+            - StaticText "CANONICAL CORPUS · HIGH-WATER 47"
+          - heading "Evidence" [level=1, ref=e14]
+          - paragraph
+            - StaticText "Inspect source lineage, derivatives, and governance. Prepared assertions remain review-required proposals."
+        - region "Document reader and search" [ref=e8]
+          - heading "Read and search records" [level=2, ref=e15]
+          - form
+            - LabelText
+              - StaticText "Phrase in document contents"
+              - textbox "Phrase in document contents" [required, ref=e45]
+            - LabelText
+              - StaticText "Source"
+              - combobox "Source" [expanded=false, ref=e46]: All sources
+                - MenuListPopup
+                  - option "All sources" [selected, ref=e71]
+                  - option "Synthetic written-date register" [ref=e72]
+            - LabelText
+              - StaticText "Format"
+              - combobox "Format" [expanded=false, ref=e47]: All formats
+                - MenuListPopup
+                  - option "All formats" [selected, ref=e73]
+                  - option "Text" [ref=e74]
+                  - option "CSV" [ref=e75]
+                  - option "PDF" [ref=e76]
+            - button "Search contents" [disabled, ref=e25]
+          - paragraph
+            - StaticText "Search covers extracted text only. A search with no matches does not establish that evidence is absent; unreadable pages and visual content are not searched."
+          - region "Selected document contents" [ref=e16]
+            - heading "register.txt" [level=3, ref=e26]
+            - paragraph
+              - StaticText "Evidence ev_ing_29b4e5647919f05a2bbc6730ba3d039bd4450c6f17958f4bc83e9f8ab082c2ae · Original sha256:f379cc944394382ed39e9c688f4ccd4eade14af84068cce7666467b08092741c"
+            - button "Open immutable original" [ref=e27]
+            - paragraph
+              - StaticText "cestus-local-extraction 1.1.0 · · Extraction parse_imp_ba4c5e43-6f0d-4235-b72e-8b4d4d5b16bf_extraction_v2_f379cc944394382ed39e9c688f4ccd4eade14af84068cce7666467b08092741c · sha256:b7cab1e0ca475f186d6c37ef7c27da7cc5cdfb6419b6e909ab646a3a1f43ebae"
+            - article
+              - link "block 1, characters 0–191" [ref=e59]
+              - paragraph
+                - StaticText "Synthetic cooperative register. Harbor Circle is a cooperative. Harbor Circle was registered on September 5, 2026. Harbor Circle held a meeting on September 5, 2026. Published September 2026."
+            - region "External document processing" [ref=e28]
+              - heading "External document processing" [level=3, ref=e48]
+              - paragraph
+                - StaticText "Extract proposed entities, facts, relationships and occurrences for the shared ontology. A completed run remains unreviewed until you import and review its proposals in Ontology."
+              - status
+                - StaticText "Configure CESTUS_DOCUMENT_PROVIDER_ENDPOINT, CESTUS_DOCUMENT_PROVIDER_MODEL, CESTUS_DOCUMENT_PROVIDER_API_KEY, CESTUS_DOCUMENT_PROVIDER_INPUT_USD_PER_MILLION and CESTUS_DOCUMENT_PROVIDER_OUTPUT_USD_PER_MILLION. No fallback provider is selected."
+              - paragraph
+                - StaticText "Only evidence reviewed as public_safe can leave this machine. Use the Governance review below. Restricted, unclassified, or redacted records are blocked; importing and reviewing a separately redacted copy is required when safe redaction is needed."
+              - paragraph
+                - StaticText "Selection identity: ev_ing_29b4e5647919f05a2bbc6730ba3d039bd4450c6f17958f4bc83e9f8ab082c2ae · parse_imp_ba4c5e43-6f0d-4235-b72e-8b4d4d5b16bf_extraction_v2_f379cc944394382ed39e9c688f4ccd4eade14af84068cce7666467b08092741c · sha256:b7cab1e0ca475f186d6c37ef7c27da7cc5cdfb6419b6e909ab646a3a1f43ebae"
+              - group "Select up to 24 passages to send (0 selected)"
+                - Legend
+                  - StaticText "Select up to 24 passages to send (0 selected)"
+                - LabelText
+                  - checkbox "Send passage 1: block 1, characters 0–191" [checked=false, disabled, ref=e77]
+                  - strong
+                    - StaticText "block 1, characters 0–191"
+                  - StaticText "Synthetic cooperative register. Harbor Circle is a cooperative. Harbor Circle was registered on September 5, 2026. Harbor Circle held a meeting on September 5, 2026. Published September 2026."
+                - LabelText
+                  - StaticText "Maximum budget (USD)"
+                  - spinbutton "Maximum budget (USD)" [disabled, ref=e78]
+                - LabelText
+                  - StaticText "Maximum output tokens"
+                  - spinbutton "Maximum output tokens" [disabled, ref=e79]: 2048
+                    - StaticText "2048"
+                - button "Preview exact transfer" [disabled, ref=e60]
+              - region "Persisted processing jobs" [ref=e49]
+                - heading "Processing history for this extraction" [level=4, ref=e61]
+                - button "Refresh jobs" [ref=e62]
+                - paragraph
+                  - StaticText "Queued work runs only when you choose Run. Interrupted or timed-out submissions remain uncertain; no automatic paid retry occurs. Canceling a submitted request may still incur a charge."
+                - article
+                  - paragraph
+                    - StaticText "inv_0cf29c1b8b28494a841f19fb355c831c · "
+                    - strong
+                      - StaticText "completed"
+                    - StaticText " · 2026-09-05T22:14:57.714Z · validated-output"
+                  - button "Review saved transfer inv_0cf29c1b8b28494a841f19fb355c831c" [ref=e80]
+                    - StaticText "Review saved transfer inv_0cf29c1b8b28494a841f19fb355c831c"
+                  - button "Read result inv_0cf29c1b8b28494a841f19fb355c831c" [ref=e81]
+                    - StaticText "Read result inv_0cf29c1b8b28494a841f19fb355c831c"
+        - region "Evidence filters" [ref=e9]
+          - LabelText
+            - StaticText "Filter evidence"
+            - searchbox "Filter evidence" [ref=e29]
+          - LabelText
+            - StaticText "Governance tag"
+            - combobox "Governance tag" [expanded=false, ref=e30]: All tags
+              - MenuListPopup
+                - option "All tags" [selected, ref=e63]
+                - option "public_safe" [ref=e64]
+          - LabelText
+            - StaticText "Parse state"
+            - combobox "Parse state" [expanded=false, ref=e31]: All parse states
+              - MenuListPopup
+                - option "All parse states" [selected, ref=e65]
+                - option "queued" [ref=e66]
+                - option "running" [ref=e67]
+                - option "succeeded" [ref=e68]
+                - option "partial text extraction" [ref=e69]
+                - option "failed" [ref=e70]
+        - region "Evidence corpus" [ref=e10]
+          - sectionheader
+            - heading "Canonical evidence" [level=2, ref=e32]
+            - paragraph
+              - StaticText "1 items"
+          - list
+            - listitem [level=1]
+              - button "Inspect evidence ev_ing_29b4e5647919f05a2bbc6730ba3d039bd4450c6f17958f4bc83e9f8ab082c2ae" [ref=e50]
+                - StaticText "ev_ing_29b4e5647919f05a2bbc6730ba3d039bd4450c6f17958f4bc83e9f8ab082c2ae"
+                - StaticText "register.txt"
+                - StaticText "1"
+                - StaticText " occurrences · "
+                - StaticText "provenance complete"
+        - region "Evidence detail" [ref=e11]
+          - paragraph
+            - StaticText "EVIDENCE PROVENANCE"
+          - heading "ev_ing_29b4e5647919f05a2bbc6730ba3d039bd4450c6f17958f4bc83e9f8ab082c2ae" [level=2, ref=e17]
+          - DescriptionList
+            - term "CONTENT HASH"
+            - definition
+              - StaticText "sha256:f379cc944394382ed39e9c688f4ccd4eade14af84068cce7666467b08092741c"
+            - term "MEDIA"
+            - definition
+              - StaticText "text/plain · 192 bytes"
+            - term "SOURCE COLLECTIONS"
+            - definition
+              - StaticText "Synthetic written-date register · src_d1af7506-1ac5-48bf-9dc2-a9dafe27649e"
+            - term "IMPORT BATCHES"
+            - definition
+              - StaticText "imp_ba4c5e43-6f0d-4235-b72e-8b4d4d5b16bf"
+            - term "GOVERNANCE STATE"
+            - definition
+              - StaticText "not quarantined · active"
+            - term "LINKED PRR OR INVESTIGATIONS"
+            - definition
+              - StaticText "None recorded"
+          - region "Source occurrences" [ref=e18]
+            - heading "Source occurrences" [level=3, ref=e33]
+            - list
+              - listitem [level=1]
+                - paragraph
+                  - StaticText "register.txt"
+                - paragraph
+                  - StaticText "occ_73f54e43a93e25c75b398199bb5ca94b6072698e0ea4dc3a26785c86375a6369 · new"
+          - region "Parse and derivatives" [ref=e19]
+            - heading "Parse and derivatives" [level=3, ref=e34]
+            - list
+              - listitem [level=1]
+                - StaticText "cestus-local-extraction@1.1.0 · local · succeeded"
+                - StaticText "sha256:b7cab1e0ca475f186d6c37ef7c27da7cc5cdfb6419b6e909ab646a3a1f43ebae"
+                - StaticText " · "
+                - StaticText "application/vnd.cestus.extraction+json"
+          - region "Governance tags" [ref=e20]
+            - heading "Governance tags" [level=3, ref=e35]
+            - list
+              - listitem [level=1]
+                - StaticText "public_safe · human · active · 100%"
+                - StaticText "Authored fictional register for a disposable loopback-only test; no real personal data."
+          - form "Prepare assertion candidate"
+            - heading "Prepare review-required assertion" [level=3, ref=e36]
+            - LabelText
+              - StaticText "Assertion ID"
+              - textbox "Assertion ID" [ref=e51]
+            - LabelText
+              - StaticText "Subject reference (optional)"
+              - textbox "Subject reference" [ref=e52]
+            - LabelText
+              - StaticText "Predicate"
+              - textbox "Predicate" [ref=e53]
+            - LabelText
+              - StaticText "Object"
+              - textbox "Object" [ref=e54]
+            - LabelText
+              - StaticText "Confidence"
+              - spinbutton "Confidence" [ref=e55]: 0.800000011920929
+                - StaticText "0.8"
+            - button "Prepare assertion candidate" [disabled, ref=e37]
+        - region "Governance review" [ref=e12]
+          - sectionheader
+            - paragraph
+              - StaticText "APPEND-ONLY GOVERNANCE REVIEW"
+            - heading "ev_ing_29b4e5647919f05a2bbc6730ba3d039bd4450c6f17958f4bc83e9f8ab082c2ae" [level=2, ref=e38]
+            - paragraph
+              - StaticText "Human decisions append to the ledger; original classifier proposals remain visible."
+          - region "Proposed governance tags" [ref=e21]
+            - heading "Independent classifier proposals" [level=3, ref=e39]
+            - list
+              - listitem [level=1]
+                - paragraph
+                  - StaticText "public_safe"
+                - paragraph
+                  - StaticText "100% confidence"
+                - paragraph
+                  - StaticText "Authored fictional register for a disposable loopback-only test; no real personal data."
+                - paragraph
+                  - StaticText "ordinary-internal-only"
+                - paragraph
+                  - StaticText "evt_9f901c35761044be895083925f90907c"
+          - region "Human governance history" [ref=e22]
+            - heading "Human decisions" [level=3, ref=e40]
+            - list
+              - listitem [level=1]
+                - StaticText "affirm · public_safe"
+                - StaticText "Authored fictional register for a disposable loopback-only test; no real personal data."
+                - StaticText "evt_12ce7b2218224da3b55256dbc4ea290d"
+          - form "Append governance review"
+            - LabelText
+              - StaticText "Review tag"
+              - combobox "Review tag" [expanded=false, ref=e56]: public_safe
+                - MenuListPopup
+                  - option "public_record" [ref=e82]
+                  - option "public_safe" [selected, ref=e83]
+                  - option "contains_pii" [ref=e84]
+                  - option "source_identity" [ref=e85]
+                  - option "private_correspondence" [ref=e86]
+                  - option "legal_risk" [ref=e87]
+                  - option "credential_risk" [ref=e88]
+                  - option "export_restricted" [ref=e89]
+                  - option "law_enforcement_sensitive" [ref=e90]
+            - LabelText
+              - StaticText "Review action"
+              - combobox "Review action" [expanded=false, ref=e57]: affirm
+                - MenuListPopup
+                  - option "affirm" [selected, ref=e91]
+                  - option "add" [ref=e92]
+                  - option "remove" [ref=e93]
+                  - option "supersede" [ref=e94]
+            - LabelText
+              - StaticText "Review rationale"
+              - textbox "Review rationale" [ref=e58]
+            - button "Append governance review" [disabled, ref=e41]
+        - region "Governance export preview" [ref=e13]
+          - sectionheader
+            - paragraph
+              - StaticText "PUBLIC-SAFE EXPORT PREVIEW"
+            - heading "Preview only" [level=2, ref=e42]
+            - paragraph
+              - StaticText "Preview only — no export or publication occurs."
+          - region "Included by default" [ref=e23]
+            - heading "Included by default" [level=3, ref=e43]
+            - list
+              - listitem [level=1]
+                - StaticText "ev_ing_29b4e5647919f05a2bbc6730ba3d039bd4450c6f17958f4bc83e9f8ab082c2ae"
+          - region "Excluded by default" [ref=e24]
+            - heading "Excluded by default" [level=3, ref=e44]
+            - list

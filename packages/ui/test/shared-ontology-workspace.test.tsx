@@ -2,6 +2,7 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { displayValue, type ReviewProposal } from "../src/ontology/shared-ontology-adapter.js";
+import { investigationVocabulary } from "../../ontology/src/knowledge-contracts.js";
 import { SharedOntologyWorkspace } from "../src/ontology/SharedOntologyWorkspace.js";
 
 const workspace = { workspaceId: "ws_test", revision: 0, selectedCaseId: null, cases: [], entities: [], proposals: [], schemas: [], memberships: [], hypotheses: [], bindings: [], lineage: [], bindingHistory: [], relationships: [], occurrences: [] };
@@ -36,6 +37,40 @@ const citation = { workspaceId: "ws_test", evidenceId: "ev_source", sourceConten
 const proposal = { assertionId: "as_alex", workspaceId: "ws_test", schemaId: "investigation.v1", kind: "entity", predicate: "name", value: { type: "string", value: "Alex Reed" }, mentionId: "mention_alex", entityType: "person", evidence: [citation], provenance: { kind: "manual" }, proposalEventId: "evt_proposal", reviewState: "proposed", history: [] };
 
 describe("source grounded review controls", () => {
+  it("shows the exact additive vocabulary change before sending a separate human approval", async () => {
+    const fetcher = vi.fn(async (path: string, _init?: RequestInit) => ({ ok: true, json: async () => path === "/api/evidence/workspace" ? { items: [] } : { ...workspace, revision: 7 } }) as Response);
+    vi.stubGlobal("fetch", fetcher); render(<SharedOntologyWorkspace />);
+    fireEvent.click(await screen.findByText("Add a vocabulary term"));
+    fireEvent.change(screen.getByLabelText("New term"), { target: { value: "cooperative" } });
+    fireEvent.change(screen.getByLabelText("Why this term is needed"), { target: { value: "Member-owned source organization" } });
+    fireEvent.click(screen.getByRole("button", { name: "Preview vocabulary addition" }));
+    const preview = screen.getByRole("region", { name: "Vocabulary addition preview" });
+    expect(preview).toHaveTextContent("cooperative");
+    expect(fetcher.mock.calls.some(([, init]) => init?.method === "POST")).toBe(false);
+    fireEvent.click(within(preview).getByRole("button", { name: "Approve this vocabulary addition" }));
+    await waitFor(() => expect(fetcher.mock.calls.some(([, init]) => init?.method === "POST")).toBe(true));
+    const command = JSON.parse(fetcher.mock.calls.find(([, init]) => init?.method === "POST")![1]!.body as string);
+    expect(command).toMatchObject({ action: "extendSchema", baseSchemaId: "investigation.v1", expectedRevision: 7, addition: { kind: "entityType", name: "cooperative" } });
+    expect(command.actorId).toBeUndefined();
+  });
+  it("previews a written date and records its interpretation against the selected exact citation", async () => {
+    const written = { ...citation, quote: "Alex Reed was registered September 5, 2026." };
+    const fetcher = vi.fn(async (path: string, _init?: RequestInit) => ({ ok: true, json: async () => path === "/api/evidence/workspace" ? { items: [{ evidenceId: "ev_source", occurrences: [{ sourcePath: "written.txt" }] }] } : path.endsWith("/content") ? { citations: [written], extraction: { format: "text", passages: [{ locator: written.locator, text: written.quote }] } } : { ...workspace, proposals: [proposal] } }) as Response);
+    vi.stubGlobal("fetch", fetcher); render(<SharedOntologyWorkspace />);
+    fireEvent.change(await screen.findByLabelText("Supporting source"), { target: { value: "ev_source" } });
+    fireEvent.click(await screen.findByRole("button", { name: "Add supporting passage" }));
+    fireEvent.change(screen.getByLabelText("Knowledge kind"), { target: { value: "fact" } });
+    fireEvent.change(screen.getByLabelText("Predicate"), { target: { value: "date" } });
+    fireEvent.change(screen.getByLabelText("Subject source mention"), { target: { value: "mention_alex" } });
+    fireEvent.change(screen.getByLabelText("Proposed value"), { target: { value: "September 5, 2026" } });
+    expect(screen.getByText(/Written source expression.*2026-09-05/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Save unreviewed proposal" }));
+    await waitFor(() => expect(fetcher.mock.calls.some(([, init]) => init?.method === "POST")).toBe(true));
+    const command = JSON.parse(fetcher.mock.calls.find(([, init]) => init?.method === "POST")![1]!.body as string);
+    expect(command.proposals[0].value).toEqual({ type: "date", value: "2026-09-05", normalization: { method: "written-date.v1", sourceExpression: "September 5, 2026", citationIndex: 0 } });
+    expect(command.proposals[0].evidence).toEqual([written]);
+    expect(command.action).toBe("propose");
+  });
   it("preserves canonical citations and the actual manually entered value without accepting itself", async () => {
     const fetcher = vi.fn(async (path: string, init?: RequestInit) => {
       const value = path === "/api/evidence/workspace" ? { items: [{ evidenceId: "ev_source", occurrences: [{ sourcePath: "synthetic.txt" }] }] } : path.endsWith("/content") ? { item: { evidenceId: "ev_source" }, citations: [citation], extraction: { format: "text", passages: [{ locator: citation.locator, text: citation.quote }] } } : workspace;
@@ -44,12 +79,14 @@ describe("source grounded review controls", () => {
     vi.stubGlobal("fetch", fetcher); render(<SharedOntologyWorkspace />);
     fireEvent.change(await screen.findByLabelText("Supporting source"), { target: { value: "ev_source" } });
     fireEvent.click(await screen.findByRole("button", { name: "Add supporting passage" }));
+    fireEvent.change(screen.getByLabelText("Entity type"), { target: { value: "cooperative" } });
     fireEvent.change(screen.getByLabelText("Proposed value"), { target: { value: "Alex Reed" } });
     fireEvent.click(screen.getByRole("button", { name: "Save unreviewed proposal" }));
     await waitFor(() => expect(fetcher.mock.calls.some(([, init]) => init?.method === "POST")).toBe(true));
     const command = JSON.parse(fetcher.mock.calls.find(([, init]) => init?.method === "POST")![1]!.body as string);
     expect(command.action).toBe("propose");
     expect(command.proposals[0].value).toEqual({ type: "string", value: "Alex Reed" });
+    expect(command.proposals[0].entityType).toBe("cooperative");
     expect(command.proposals[0].evidence).toEqual([citation]);
     expect(command.proposals[0].provenance).toEqual({ kind: "manual" });
     expect(command.proposals[0].reviewState).toBeUndefined();
@@ -134,4 +171,33 @@ it("uses explicit identity bindings when dossier support overlaps", () => {
   const beta = { ...proposal, assertionId: "as_beta", mentionId: "m_beta", reviewState: "accepted", value: { type: "string", value: "Beta" } } as ReviewProposal;
   const entity = (id: string, name: string) => ({ entityId: id, canonicalLabel: name, entityType: "organization", assertionIds: ["as_beta"], caseIds: [], evidenceIds: [], independentSourceCount: 0, sourceIndependence: "uncertain" as const });
   expect(displayValue({ type: "entity", mentionId: "m_beta" }, [beta], [entity("ent_acme", "Acme"), entity("ent_beta", "Beta")], [{ mentionId: "m_beta", entityId: "ent_beta" }])).toBe("Beta");
+});
+
+it.each([false, true])("keeps reviewed boolean occurrence attributes typed and omits entity-scoped facts (edit: %s)", async (editing) => {
+  const schema = { ...investigationVocabulary, schemaId: "investigation.v3", predicates: [...investigationVocabulary.predicates,
+    { name: "verified", kind: "fact", valueType: "boolean", fromTypes: [], toTypes: [] },
+    { name: "registered_on", kind: "fact", valueType: "date", fromTypes: ["organization"], toTypes: [] }] };
+  const quoted = { ...citation, quote: "Alex Reed meeting verified true." };
+  const occurrence = { ...proposal, assertionId: "as_boolean", kind: "occurrence", predicate: "meeting", value: { type: "string", value: "meeting" }, evidence: [quoted], occurrenceId: "occ_boolean", participants: [{ role: "participant", mentionId: "mention_alex" }], attributes: [{ predicate: "verified", value: { type: "boolean", value: false } }] };
+  const fetcher = vi.fn(async (path: string, _init?: RequestInit) => ({ ok: true, json: async () => path === "/api/evidence/workspace" ? { items: [{ evidenceId: "ev_source", occurrences: [{ sourcePath: "synthetic.txt" }] }] } : path.endsWith("/content") ? { citations: [quoted], extraction: { format: "text", passages: [{ locator: quoted.locator, text: quoted.quote }] } } : { ...workspace, schema, proposals: [proposal, ...(editing ? [occurrence] : [])] } }) as Response);
+  vi.stubGlobal("fetch", fetcher); render(<SharedOntologyWorkspace />);
+  if (editing) {
+    await screen.findByRole("article", { name: "Proposal as_boolean" });
+    document.getElementById("knowledge-composer")!.scrollIntoView = vi.fn();
+    fireEvent.click(within(await screen.findByRole("article", { name: "Proposal as_boolean" })).getByRole("button", { name: "Edit as new proposal" }));
+  } else {
+  fireEvent.change(await screen.findByLabelText("Supporting source"), { target: { value: "ev_source" } });
+  fireEvent.click(await screen.findByRole("button", { name: "Add supporting passage" }));
+  fireEvent.change(screen.getByLabelText("Knowledge kind"), { target: { value: "occurrence" } });
+  fireEvent.change(screen.getByLabelText("Proposed value"), { target: { value: "meeting" } });
+  fireEvent.change(screen.getByLabelText("Occurrence participant 1"), { target: { value: "mention_alex" } });
+  fireEvent.click(screen.getByRole("button", { name: "Add occurrence attribute" }));
+  fireEvent.change(screen.getByLabelText("Occurrence attribute 1"), { target: { value: "verified" } });
+  }
+  fireEvent.change(screen.getByLabelText("Occurrence attribute value 1"), { target: { value: "true" } });
+  fireEvent.click(screen.getByRole("button", { name: "Save unreviewed proposal" }));
+  await waitFor(() => expect(fetcher.mock.calls.some(([, init]) => init?.method === "POST")).toBe(true));
+  const command = JSON.parse(fetcher.mock.calls.find(([, init]) => init?.method === "POST")![1]!.body as string);
+  expect(command.proposals[0].attributes).toEqual([{ predicate: "verified", value: { type: "boolean", value: true } }]);
+  expect(within(screen.getByLabelText("Occurrence attribute 1")).queryByRole("option", { name: "registered_on" })).not.toBeInTheDocument();
 });
