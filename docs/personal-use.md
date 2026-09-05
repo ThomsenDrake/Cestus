@@ -17,7 +17,9 @@ npm run local:runtime
 
 Open the **browser session URL printed by the server**. It grants the configured operator's session, is usable once, and expires after ten minutes. Keep it private. The HttpOnly, SameSite=Strict session expires after eight hours or a server restart. Restart and open the new link to sign in again. A plain visit to the server displays session-required guidance. Use the same host as the printed link; the cookie is host-specific.
 
-On Command, click **New request**, complete the existing PRR draft fields, and choose **Create draft**. No correspondence is sent. Stop with Ctrl-C, run `npm run local:runtime` again in the same shell, open the new session URL, and find the saved draft under Requests.
+On Command, click **New request**. Choose the applicable jurisdiction pack, fill **Agency name**, **Requester name**, and **Request text**, then choose **Create draft**. Email and phone are optional. An empty submission names the three required fields. An unfiled draft needs no agency receipt timestamp: it appears under **Drafting** with **No deadline**. No correspondence is sent.
+
+Reload, open **Requests**, and confirm the draft remains. Then stop with Ctrl-C, wait for exit, run `npm run local:runtime` again in the same shell, open the new session URL, and find the same draft under Requests, still with **No deadline**. The old browser session stops working after restart; this is expected.
 
 For a durable daily workspace, choose a persistent path instead of `/tmp`. Keep `CESTUS_LOCAL_CONFIG_PATH` outside the portable workspace and set it again in each new shell. `configure` preserves the operator ID and credential unless credential rotation is requested. `--operator-label` changes its display name without changing identity. Do not recreate an existing workspace.
 
