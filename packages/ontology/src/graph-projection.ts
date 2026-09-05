@@ -1,4 +1,8 @@
 import type { KnowledgeEvent } from "./contracts.js";
+import {
+  applyKnowledgeEvents,
+  type KnowledgeWorkspaceDto,
+} from "./knowledge-projection.js";
 
 type AssertionObject = string | number | boolean | null;
 
@@ -44,7 +48,13 @@ export interface GraphProjection {
   provenanceForAssertion(assertionId: string): AssertionProvenance | undefined;
 }
 
-export function buildGraphProjection(events: readonly KnowledgeEvent[]): GraphProjection {
+export interface KnowledgeGraphProjection extends GraphProjection {
+  knowledge: KnowledgeWorkspaceDto;
+}
+
+export function buildGraphProjection(
+  events: readonly KnowledgeEvent[],
+): KnowledgeGraphProjection {
   const proposedAssertions = new Map<string, ProjectedAssertion>();
   const assertions = new Map<string, ProjectedAssertion>();
   const entities = new Map<string, ProjectedEntity>();
@@ -63,17 +73,20 @@ export function buildGraphProjection(events: readonly KnowledgeEvent[]): GraphPr
           predicate: event.payload.predicate,
           object: event.payload.object,
           confidence: event.payload.confidence,
-          proposedByEventId: event.id
+          proposedByEventId: event.id,
         });
         break;
 
       case "assertion.accepted": {
         const assertion = proposedAssertions.get(event.payload.assertionId);
-        if (assertion && event.context.causationId === assertion.proposedByEventId) {
+        if (
+          assertion &&
+          event.context.causationId === assertion.proposedByEventId
+        ) {
           assertions.set(event.payload.assertionId, {
             ...assertion,
             reviewState: "accepted",
-            acceptedByEventId: event.id
+            acceptedByEventId: event.id,
           });
         }
         break;
@@ -84,7 +97,7 @@ export function buildGraphProjection(events: readonly KnowledgeEvent[]): GraphPr
           entityId: event.payload.entityId,
           canonicalLabel: event.payload.canonicalLabel,
           entityType: event.payload.entityType,
-          assertionIds: [...event.payload.assertionIds]
+          assertionIds: [...event.payload.assertionIds],
         });
         break;
 
@@ -96,7 +109,7 @@ export function buildGraphProjection(events: readonly KnowledgeEvent[]): GraphPr
           relationshipType: event.payload.relationshipType,
           assertionIds: [...event.payload.assertionIds],
           reviewState: "accepted",
-          acceptedByEventId: event.id
+          acceptedByEventId: event.id,
         });
         break;
 
@@ -107,7 +120,7 @@ export function buildGraphProjection(events: readonly KnowledgeEvent[]): GraphPr
 
   for (const entity of entityCandidates) {
     const supportedByAcceptedAssertions = entity.assertionIds.every(
-      (assertionId) => assertions.get(assertionId)?.reviewState === "accepted"
+      (assertionId) => assertions.get(assertionId)?.reviewState === "accepted",
     );
     if (supportedByAcceptedAssertions) {
       entities.set(entity.entityId, entity);
@@ -116,20 +129,22 @@ export function buildGraphProjection(events: readonly KnowledgeEvent[]): GraphPr
 
   for (const relationship of relationshipCandidates) {
     const endpointsAreResolved =
-      entities.has(relationship.fromEntityId) && entities.has(relationship.toEntityId);
+      entities.has(relationship.fromEntityId) &&
+      entities.has(relationship.toEntityId);
     const supportedByAcceptedAssertions = relationship.assertionIds.every(
-      (assertionId) => assertions.get(assertionId)?.reviewState === "accepted"
+      (assertionId) => assertions.get(assertionId)?.reviewState === "accepted",
     );
     if (endpointsAreResolved && supportedByAcceptedAssertions) {
       relationships.set(relationship.relationshipId, relationship);
     }
   }
 
-  return {
+  const graph = {
+    knowledge: undefined as unknown as KnowledgeWorkspaceDto,
     assertions,
     entities,
     relationships,
-    provenanceForAssertion(assertionId) {
+    provenanceForAssertion(assertionId: string) {
       const assertion = assertions.get(assertionId);
       if (!assertion) {
         return undefined;
@@ -138,13 +153,15 @@ export function buildGraphProjection(events: readonly KnowledgeEvent[]): GraphPr
       const provenance: AssertionProvenance = {
         assertionId: assertion.assertionId,
         evidenceId: assertion.evidenceId,
-        proposedByEventId: assertion.proposedByEventId
+        proposedByEventId: assertion.proposedByEventId,
       };
       if (assertion.acceptedByEventId) {
         provenance.acceptedByEventId = assertion.acceptedByEventId;
       }
 
       return provenance;
-    }
+    },
   };
+  graph.knowledge = applyKnowledgeEvents(graph, events);
+  return graph;
 }

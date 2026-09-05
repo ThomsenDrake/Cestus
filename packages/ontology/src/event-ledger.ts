@@ -52,9 +52,17 @@ export function prepareAppendBatch(events: AppendableKnowledgeEvent[], options: 
 export interface EventLedger {
   append(event: AppendableKnowledgeEvent, options?: AppendOptions): Promise<KnowledgeEvent>;
   /** Retry with identical event content returns the original committed decision. */
-  appendBatch(events: AppendableKnowledgeEvent[], options: AppendBatchOptions): Promise<KnowledgeEvent[]>;
+  appendBatch?(events: AppendableKnowledgeEvent[], options: AppendBatchOptions): Promise<KnowledgeEvent[]>;
   readStream(streamId: string): Promise<KnowledgeEvent[]>;
   readAll(): Promise<KnowledgeEvent[]>;
+}
+
+/** Restricted adapters may intentionally omit atomic write authority. */
+export interface AtomicEventLedger extends EventLedger {
+  appendBatch(events: AppendableKnowledgeEvent[], options: AppendBatchOptions): Promise<KnowledgeEvent[]>;
+}
+export function hasAtomicAppendBatch(ledger: EventLedger): ledger is AtomicEventLedger {
+  return typeof ledger.appendBatch === "function";
 }
 
 export class ConcurrencyConflictError extends Error {
@@ -74,7 +82,7 @@ function cloneSnapshot<T>(value: T): T {
   return structuredClone(value);
 }
 
-export class InMemoryEventLedger implements EventLedger {
+export class InMemoryEventLedger implements AtomicEventLedger {
   private readonly events: KnowledgeEvent[] = [];
   private readonly decisions = new Map<string, { fingerprint: string; events: KnowledgeEvent[] }>();
 

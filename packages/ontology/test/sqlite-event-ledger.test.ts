@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -55,6 +56,31 @@ describe("SQLiteEventLedger", () => {
     expect(await reopened.appendBatch(events, decision)).toEqual(committed);
     expect(await reopened.readAll()).toEqual(committed);
     reopened.close();
+  });
+
+  it("recovers without half a decision after the writer process exits immediately before COMMIT", async () => {
+    const path = dbPath();
+    const events = [evidenceEvent("ev_crash_first"), evidenceEvent("ev_crash_second")];
+    const decision = { decisionId: "decision_process_crash", expectedGlobalEventCount: 0 };
+    const child = spawnSync(process.execPath, ["--import", "tsx", "--input-type=module", "-e", `
+      import { SQLiteEventLedger } from ${JSON.stringify(new URL("../src/sqlite-event-ledger.ts", import.meta.url).href)};
+      const ledger = new SQLiteEventLedger(process.argv[1]);
+      const originalExec = ledger.db.exec.bind(ledger.db);
+      ledger.db.exec = (statement) => {
+        if (statement === "COMMIT") process.exit(71);
+        return originalExec(statement);
+      };
+      await ledger.appendBatch(JSON.parse(process.argv[2]), JSON.parse(process.argv[3]));
+    `, path, JSON.stringify(events), JSON.stringify(decision)], { encoding: "utf8", timeout: 10_000 });
+    expect(child.error).toBeUndefined();
+    expect(child.status, child.stderr).toBe(71);
+    const recovered = new SQLiteEventLedger(path);
+    expect(await recovered.readAll()).toEqual([]);
+    const committed = await recovered.appendBatch(events, decision);
+    expect(committed.map((event) => event.sequence)).toEqual([1, 1]);
+    expect(await recovered.appendBatch(events, decision)).toEqual(committed);
+    expect(await recovered.readAll()).toHaveLength(2);
+    recovered.close();
   });
 
   it("recovers decision receipts and rejects competing connections at a stale revision", async () => {
