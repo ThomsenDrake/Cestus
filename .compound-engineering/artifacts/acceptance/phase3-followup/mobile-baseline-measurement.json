@@ -1,0 +1,41 @@
+{
+  "viewport": 390,
+  "width": 401,
+  "occurrences": [
+    {
+      "text": "occurrence_4fb9c857b2a844f9932fb7da02d15839 · 2 supporting assertions",
+      "width": 306,
+      "right": 348,
+      "overflowWrap": "normal",
+      "fragments": [
+        {
+          "left": 42,
+          "right": 400.546875,
+          "width": 358.546875
+        },
+        {
+          "left": 42,
+          "right": 51.78125,
+          "width": 9.78125
+        },
+        {
+          "left": 51.78125,
+          "right": 60.6875,
+          "width": 8.90625
+        },
+        {
+          "left": 60.6875,
+          "right": 217.21875,
+          "width": 156.53125
+        }
+      ]
+    }
+  ],
+  "relationshipTable": [
+    {
+      "width": 529.453125,
+      "parentWidth": 324,
+      "parentOverflow": "auto"
+    }
+  ]
+}

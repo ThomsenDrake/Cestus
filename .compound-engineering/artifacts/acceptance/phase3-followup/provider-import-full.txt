@@ -1,0 +1,380 @@
+- generic [ref=e1] clickable [onclick]
+  - region "Local workspace status" [ref=e2]
+    - status
+      - StaticText "Backend running · Workspace ready"
+    - button "Refresh workspace status" [ref=e3]
+    - paragraph
+      - StaticText "Synthetic Phase 3 follow-up · Synthetic investigator"
+    - paragraph
+      - StaticText "Storage: /tmp/cestus-phase3-followup.jwx3nlh1/workspace"
+  - generic
+    - navigation "Cestus tactical modules" [ref=e4]
+      - link "Cestus home" [ref=e6]
+        - StaticText "CESTUS"
+      - StaticText "NEO"
+      - list
+        - listitem [level=1]
+          - link "Command" [ref=e11]
+            - StaticText "COMMAND"
+        - listitem [level=1]
+          - link "Requests" [ref=e12]
+            - StaticText "REQUESTS"
+        - listitem [level=1]
+          - link "Evidence" [ref=e13]
+            - StaticText "EVIDENCE"
+        - listitem [level=1]
+          - link "Ontology" [ref=e14]
+            - StaticText "ONTOLOGY"
+        - listitem [level=1]
+          - link "Agent" [ref=e15]
+            - StaticText "AGENT"
+        - listitem [level=1]
+          - link "Ingestion" [ref=e16]
+            - StaticText "INGESTION"
+    - banner "Cestus command band"
+      - link "Cestus home" [ref=e7]
+        - StaticText "CESTUS"
+      - paragraph
+        - StaticText "ONTOLOGY"
+      - paragraph
+        - StaticText "Cestus Local"
+    - main "Ontology workspace" [ref=e5]
+      - region "Shared ontology" [ref=e8]
+        - heading "Shared investigation knowledge" [level=2, ref=e9]
+        - button "Refresh shared ontology" [ref=e10]
+        - StaticText "Revision "
+        - StaticText "43"
+        - paragraph
+          - StaticText "Cases share workspace identities and evidence. Proposals require human review. Manual curation works without an external provider."
+        - group
+          - region "Investigations" [ref=e17]
+            - LabelText
+              - StaticText "Current investigation"
+              - combobox "Current investigation" [expanded=false, ref=e44]: All cases · workspace view
+                - MenuListPopup
+                  - option "All cases · workspace view" [selected, ref=e114]
+                  - option "Synthetic cooperative inquiry" [ref=e115]
+            - group
+              - DisclosureTriangle "Create an investigation" [expanded=false]
+                - StaticText "Create an investigation"
+          - region "Reviewed vocabulary" [ref=e18]
+            - heading "Reviewed vocabulary · investigation.v3" [level=3, ref=e24]
+              - StaticText "Reviewed vocabulary · investigation.v3"
+            - paragraph
+              - StaticText "Add one necessary term after inspecting its meaning and constraints. Existing definitions cannot change. Adding a term never accepts knowledge."
+            - group
+              - DisclosureTriangle "Add a vocabulary term" [expanded=false]
+                - StaticText "Add a vocabulary term"
+            - group
+              - DisclosureTriangle "Vocabulary review history" [expanded=false]
+                - StaticText "Vocabulary review history"
+          - region "Manual knowledge proposal" [ref=e19]
+            - heading "Propose knowledge from a source" [level=3, ref=e25]
+            - paragraph
+              - StaticText "Create entities first, then reference their source mentions in facts, relationships and occurrences. Review can keep a new entity distinct or explicitly bind it to a verified existing identity."
+            - LabelText
+              - StaticText "Supporting source"
+              - combobox "Supporting source" [expanded=false, ref=e45]: Choose an imported source
+                - MenuListPopup
+                  - option "Choose an imported source" [selected, ref=e116]
+                  - option "register.txt" [ref=e117]
+            - paragraph
+              - StaticText "0 supporting passages selected. Add several sources when they support this same value."
+            - form "Propose knowledge"
+              - LabelText
+                - StaticText "Knowledge kind"
+                - combobox "Knowledge kind" [expanded=false, ref=e97]: Entity mention
+                  - MenuListPopup
+                    - option "Entity mention" [selected, ref=e128]
+                    - option "Typed fact" [ref=e129]
+                    - option "Relationship" [ref=e130]
+                    - option "Real-world occurrence" [ref=e131]
+              - LabelText
+                - StaticText "Predicate"
+                - combobox "Predicate" [required, ref=e98]: name
+                  - StaticText "name"
+              - paragraph
+                - StaticText "Proposal schema: investigation.v3. Unfamiliar terms can be proposed but require a reviewed vocabulary addition and an explicit new proposal before acceptance."
+              - LabelText
+                - StaticText "Entity type"
+                - combobox "Entity type" [required, ref=e99]: person
+                  - StaticText "person"
+              - LabelText
+                - StaticText "Proposed value"
+                - textbox "Proposed value" [required, ref=e100]
+              - button "Save unreviewed proposal" [disabled, ref=e46]
+          - region "Entity search and dossiers" [ref=e20]
+            - heading "Entities across investigations" [level=3, ref=e26]
+            - LabelText
+              - StaticText "Search entities"
+              - textbox "Search entities" [ref=e47]
+            - button "Show all knowledge" [ref=e27]
+            - button "Harbor Circle · cooperative" [ref=e28]
+              - StaticText "Harbor Circle · cooperative"
+          - region "Knowledge review" [ref=e21]
+            - heading "Proposals and current knowledge" [level=3, ref=e29]
+            - paragraph
+              - StaticText "Values are shown beside their source quotations. A model score is not a probability of truth. Unknown vocabulary remains proposed. Approve a necessary vocabulary addition, then explicitly revise the proposal under that schema before acceptance."
+            - LabelText
+              - StaticText "Decision rationale"
+              - textbox "Decision rationale" [ref=e48]
+            - button "Accept selected proposals (0)" [disabled, ref=e30]
+              - StaticText "Accept selected proposals (0)"
+            - button "Reject selected proposals" [disabled, ref=e31]
+            - article "Proposal as_f3950be33dea4dccb296b8b6da9aaab0" [ref=e32]
+              - strong
+                - StaticText "entity · name: Harbor Circle"
+              - StaticText "withdrawn"
+              - paragraph
+                - StaticText "Entity type: person · · manual"
+              - blockquote
+                - paragraph
+                  - StaticText "Synthetic cooperative register. Harbor Circle is a cooperative. Harbor Circle was registered on September 5, 2026. Harbor Circle held a meeting on September 5, 2026. Published September 2026."
+                - link "Open source passage · block 1, characters 0–191" [ref=e101]
+                  - StaticText "Open source passage · block 1, characters 0–191"
+              - paragraph
+                - StaticText "Cases: Synthetic cooperative inquiry"
+              - button "Sources and history as_f3950be33dea4dccb296b8b6da9aaab0" [ref=e49]
+                - StaticText "Sources and history as_f3950be33dea4dccb296b8b6da9aaab0"
+              - button "Edit as new proposal" [ref=e50]
+              - button "Preserve dispute" [disabled, ref=e51]
+            - article "Proposal as_2b616c3c509d4ade9a1fd0eebcbfa006" [ref=e33]
+              - checkbox "Select as_2b616c3c509d4ade9a1fd0eebcbfa006" [checked=false, ref=e52]
+              - strong
+                - StaticText "entity · name: Harbor Circle"
+              - StaticText "proposed"
+              - paragraph
+                - StaticText "Entity type: cooperative · · manual"
+              - paragraph
+                - StaticText "Proposal schema investigation.v1; explicitly edit as a new proposal to use the active vocabulary before acceptance."
+              - blockquote
+                - paragraph
+                  - StaticText "Synthetic cooperative register. Harbor Circle is a cooperative. Harbor Circle was registered on September 5, 2026. Harbor Circle held a meeting on September 5, 2026. Published September 2026."
+                - link "Open source passage · block 1, characters 0–191" [ref=e102]
+                  - StaticText "Open source passage · block 1, characters 0–191"
+              - paragraph
+                - StaticText "Cases: Synthetic cooperative inquiry"
+              - button "Sources and history as_2b616c3c509d4ade9a1fd0eebcbfa006" [ref=e53]
+                - StaticText "Sources and history as_2b616c3c509d4ade9a1fd0eebcbfa006"
+              - button "Edit as new proposal" [ref=e54]
+              - button "Accept" [disabled, ref=e55]
+              - button "Reject" [disabled, ref=e56]
+              - button "Preserve dispute" [disabled, ref=e57]
+            - article "Proposal as_10e7c60d438b4a6ba9ff42a8a3aff9db" [ref=e34]
+              - strong
+                - StaticText "entity · name: Harbor Circle"
+              - StaticText "accepted"
+              - paragraph
+                - StaticText "Entity type: cooperative · · manual"
+              - blockquote
+                - paragraph
+                  - StaticText "Synthetic cooperative register. Harbor Circle is a cooperative. Harbor Circle was registered on September 5, 2026. Harbor Circle held a meeting on September 5, 2026. Published September 2026."
+                - link "Open source passage · block 1, characters 0–191" [ref=e103]
+                  - StaticText "Open source passage · block 1, characters 0–191"
+              - paragraph
+                - StaticText "Cases: Synthetic cooperative inquiry"
+              - button "Sources and history as_10e7c60d438b4a6ba9ff42a8a3aff9db" [ref=e58]
+                - StaticText "Sources and history as_10e7c60d438b4a6ba9ff42a8a3aff9db"
+              - button "Edit as new proposal" [ref=e59]
+              - button "Withdraw" [disabled, ref=e60]
+              - button "Preserve dispute" [disabled, ref=e61]
+            - article "Proposal as_51f77a9239b24be48e0f5a2c3599237c" [ref=e35]
+              - checkbox "Select as_51f77a9239b24be48e0f5a2c3599237c" [checked=false, ref=e62]
+              - strong
+                - StaticText "fact · registered_on: 2026-09-05"
+              - StaticText "proposed"
+              - paragraph
+                - StaticText "Harbor Circle · manual"
+              - paragraph
+                - StaticText "Proposal schema investigation.v2; explicitly edit as a new proposal to use the active vocabulary before acceptance."
+              - paragraph
+                - StaticText "registered_on: “September 5, 2026” → 2026-09-05 · written-date.v1 · supporting quotation 1. Precision: day."
+              - blockquote
+                - paragraph
+                  - StaticText "Synthetic cooperative register. Harbor Circle is a cooperative. Harbor Circle was registered on September 5, 2026. Harbor Circle held a meeting on September 5, 2026. Published September 2026."
+                - link "Open source passage · block 1, characters 0–191" [ref=e104]
+                  - StaticText "Open source passage · block 1, characters 0–191"
+              - paragraph
+                - StaticText "Cases: Synthetic cooperative inquiry"
+              - button "Sources and history as_51f77a9239b24be48e0f5a2c3599237c" [ref=e63]
+                - StaticText "Sources and history as_51f77a9239b24be48e0f5a2c3599237c"
+              - button "Edit as new proposal" [ref=e64]
+              - button "Accept" [disabled, ref=e65]
+              - button "Reject" [disabled, ref=e66]
+              - button "Preserve dispute" [disabled, ref=e67]
+            - article "Proposal as_6f31121e179d4c769d34847fff049416" [ref=e36]
+              - strong
+                - StaticText "fact · registered_on: 2026-09-05"
+              - StaticText "accepted"
+              - paragraph
+                - StaticText "Harbor Circle · manual"
+              - paragraph
+                - StaticText "registered_on: “September 5, 2026” → 2026-09-05 · written-date.v1 · supporting quotation 1. Precision: day."
+              - blockquote
+                - paragraph
+                  - StaticText "Synthetic cooperative register. Harbor Circle is a cooperative. Harbor Circle was registered on September 5, 2026. Harbor Circle held a meeting on September 5, 2026. Published September 2026."
+                - link "Open source passage · block 1, characters 0–191" [ref=e105]
+                  - StaticText "Open source passage · block 1, characters 0–191"
+              - paragraph
+                - StaticText "Cases: Synthetic cooperative inquiry"
+              - button "Sources and history as_6f31121e179d4c769d34847fff049416" [ref=e68]
+                - StaticText "Sources and history as_6f31121e179d4c769d34847fff049416"
+              - button "Edit as new proposal" [ref=e69]
+              - button "Withdraw" [disabled, ref=e70]
+              - button "Preserve dispute" [disabled, ref=e71]
+            - article "Proposal as_bcb9fd460b98465b906af650f09bbe62" [ref=e37]
+              - strong
+                - StaticText "occurrence · meeting: meeting"
+              - StaticText "accepted"
+              - paragraph
+                - StaticText "· manual"
+              - paragraph
+                - StaticText "Occurrence start: “September 5, 2026” → 2026-09-05 · written-date.v1 · supporting quotation 1. Precision: day."
+              - paragraph
+                - StaticText "Publication start: “September 2026” → 2026-09 · written-date.v1 · supporting quotation 1. Precision: month."
+              - blockquote
+                - paragraph
+                  - StaticText "Synthetic cooperative register. Harbor Circle is a cooperative. Harbor Circle was registered on September 5, 2026. Harbor Circle held a meeting on September 5, 2026. Published September 2026."
+                - link "Open source passage · block 1, characters 0–191" [ref=e106]
+                  - StaticText "Open source passage · block 1, characters 0–191"
+              - paragraph
+                - StaticText "Participants: participant: Harbor Circle"
+              - paragraph
+                - StaticText "Occurred: 2026-09-05"
+              - paragraph
+                - StaticText "Cases: Synthetic cooperative inquiry"
+              - button "Sources and history as_bcb9fd460b98465b906af650f09bbe62" [ref=e72]
+                - StaticText "Sources and history as_bcb9fd460b98465b906af650f09bbe62"
+              - button "Edit as new proposal" [ref=e73]
+              - button "Withdraw" [disabled, ref=e74]
+              - button "Preserve dispute" [disabled, ref=e75]
+            - article "Proposal as_0cf29c1b8b28494a841f19fb355c831c_0" [ref=e38]
+              - checkbox "Select as_0cf29c1b8b28494a841f19fb355c831c_0" [checked=false, ref=e76]
+              - strong
+                - StaticText "entity · name: Harbor Circle"
+              - StaticText "proposed"
+              - paragraph
+                - StaticText "Entity type: cooperative · · provider"
+              - blockquote
+                - paragraph
+                  - StaticText "Synthetic cooperative register. Harbor Circle is a cooperative. Harbor Circle was registered on September 5, 2026. Harbor Circle held a meeting on September 5, 2026. Published September 2026."
+                - link "Open source passage · block 1, characters 0–191" [ref=e107]
+                  - StaticText "Open source passage · block 1, characters 0–191"
+              - paragraph
+                - StaticText "Cases: Synthetic cooperative inquiry"
+              - button "Sources and history as_0cf29c1b8b28494a841f19fb355c831c_0" [ref=e77]
+                - StaticText "Sources and history as_0cf29c1b8b28494a841f19fb355c831c_0"
+              - button "Edit as new proposal" [ref=e78]
+              - button "Accept" [disabled, ref=e79]
+              - button "Reject" [disabled, ref=e80]
+              - button "Preserve dispute" [disabled, ref=e81]
+            - article "Proposal as_0cf29c1b8b28494a841f19fb355c831c_1" [ref=e39]
+              - checkbox "Select as_0cf29c1b8b28494a841f19fb355c831c_1" [checked=false, ref=e82]
+              - strong
+                - StaticText "fact · registered_on: 2026-09-05"
+              - StaticText "proposed"
+              - paragraph
+                - StaticText "Subject identity unresolved · provider"
+              - paragraph
+                - StaticText "registered_on: “September 5, 2026” → 2026-09-05 · written-date.v1 · supporting quotation 1. Precision: day."
+              - blockquote
+                - paragraph
+                  - StaticText "Synthetic cooperative register. Harbor Circle is a cooperative. Harbor Circle was registered on September 5, 2026. Harbor Circle held a meeting on September 5, 2026. Published September 2026."
+                - link "Open source passage · block 1, characters 0–191" [ref=e108]
+                  - StaticText "Open source passage · block 1, characters 0–191"
+              - paragraph
+                - StaticText "Cases: Synthetic cooperative inquiry"
+              - button "Sources and history as_0cf29c1b8b28494a841f19fb355c831c_1" [ref=e83]
+                - StaticText "Sources and history as_0cf29c1b8b28494a841f19fb355c831c_1"
+              - button "Edit as new proposal" [ref=e84]
+              - button "Accept" [disabled, ref=e85]
+              - button "Reject" [disabled, ref=e86]
+              - button "Preserve dispute" [disabled, ref=e87]
+            - article "Proposal as_0cf29c1b8b28494a841f19fb355c831c_2" [ref=e40]
+              - checkbox "Select as_0cf29c1b8b28494a841f19fb355c831c_2" [checked=false, ref=e88]
+              - strong
+                - StaticText "occurrence · meeting: meeting"
+              - StaticText "proposed"
+              - paragraph
+                - StaticText "· provider"
+              - paragraph
+                - StaticText "Occurrence start: “September 5, 2026” → 2026-09-05 · written-date.v1 · supporting quotation 1. Precision: day."
+              - paragraph
+                - StaticText "Publication start: “September 2026” → 2026-09 · written-date.v1 · supporting quotation 1. Precision: month."
+              - blockquote
+                - paragraph
+                  - StaticText "Synthetic cooperative register. Harbor Circle is a cooperative. Harbor Circle was registered on September 5, 2026. Harbor Circle held a meeting on September 5, 2026. Published September 2026."
+                - link "Open source passage · block 1, characters 0–191" [ref=e109]
+                  - StaticText "Open source passage · block 1, characters 0–191"
+              - paragraph
+                - StaticText "Participants: participant: Harbor Circle"
+              - paragraph
+                - StaticText "Occurred: 2026-09-05"
+              - paragraph
+                - StaticText "Cases: Synthetic cooperative inquiry"
+              - button "Sources and history as_0cf29c1b8b28494a841f19fb355c831c_2" [ref=e89]
+                - StaticText "Sources and history as_0cf29c1b8b28494a841f19fb355c831c_2"
+              - button "Edit as new proposal" [ref=e90]
+              - button "Accept" [disabled, ref=e91]
+              - button "Reject" [disabled, ref=e92]
+              - button "Preserve dispute" [disabled, ref=e93]
+          - region "Relationships and occurrences" [ref=e22]
+            - heading "Relationships" [level=3, ref=e41]
+            - LabelText
+              - StaticText "Relationship filter"
+              - combobox "Relationship filter" [expanded=false, ref=e94]: All relationship types
+                - MenuListPopup
+                  - option "All relationship types" [selected, ref=e118]
+                  - option "paid" [ref=e119]
+                  - option "awarded" [ref=e120]
+                  - option "employed_by" [ref=e121]
+                  - option "owns" [ref=e122]
+                  - option "associated_with" [ref=e123]
+            - table
+              - rowgroup
+                - row
+                  - columnheader "Subject" [ref=e124]
+                  - columnheader "Relationship" [ref=e125]
+                  - columnheader "Object" [ref=e126]
+                  - columnheader "Review" [ref=e127]
+            - heading "Real-world occurrences" [level=3, ref=e42]
+            - paragraph
+              - StaticText "Occurrence dates below are separate from publication, discovery and ingestion dates. Multiple assertions may describe the same occurrence. Identity across sources remains unresolved until you review and select a shared occurrence identity. These groups are not independent event totals."
+            - article
+              - paragraph
+                - StaticText "occurrence_c2a275c54be0400599751117f2185e89 · 1 supporting assertions"
+              - button "meeting: meeting · Occurred 2026-09-05 · Published 2026-09" [ref=e95]
+                - StaticText "meeting: meeting · Occurred 2026-09-05 · Published 2026-09"
+          - region "Source independence review" [ref=e23]
+            - heading "Source lineage and independence" [level=3, ref=e43]
+            - paragraph
+              - StaticText "Copies and reports quoting the same origin are not independent corroboration. Leave independence unknown unless you have reviewed the origin."
+            - form
+              - LabelText
+                - StaticText "Source to review"
+                - combobox "Source to review" [expanded=false, ref=e110]: Choose a source
+                  - MenuListPopup
+                    - option "Choose a source" [selected, ref=e132]
+                    - option "register.txt" [ref=e133]
+              - paragraph
+                - StaticText "Current: unknown · Origin unresolved"
+              - LabelText
+                - StaticText "Independence decision"
+                - combobox "Independence decision" [expanded=false, ref=e111]: Unknown
+                  - MenuListPopup
+                    - option "Unknown" [selected, ref=e134]
+                    - option "Reviewed independent origin" [ref=e135]
+                    - option "Derived from another source" [ref=e136]
+              - LabelText
+                - StaticText "Shared origin"
+                - combobox "Shared origin" [expanded=false, ref=e112]: This source is its own origin
+                  - MenuListPopup
+                    - option "This source is its own origin" [selected, ref=e137]
+                    - option "register.txt" [ref=e138]
+              - LabelText
+                - StaticText "Source independence rationale"
+                - textbox "Source independence rationale" [required, ref=e113]
+              - button "Record source lineage" [disabled, ref=e96]
+      - group
+        - DisclosureTriangle "Legacy provenance" [expanded=false]
+          - StaticText "Legacy provenance"
