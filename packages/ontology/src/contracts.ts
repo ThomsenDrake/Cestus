@@ -2763,6 +2763,7 @@ const ingestionParseCompletedPayloadSchema = z.object({
   parser: ingestionAdapterRefSchema,
   outputHash: contentHashSchema,
   outputMediaType: z.string().min(1),
+  coverageStatus: z.enum(["complete", "partial"]).optional(),
   completedAt: z.string().datetime()
 }).strict();
 

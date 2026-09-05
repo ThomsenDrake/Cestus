@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import type { ExtractionArtifact } from "../../../ontology/src/extraction-contracts.js";
 import type { DocumentProcessingJob, DocumentProcessingManifest } from "../../../ontology/src/document-processing-contracts.js";
 
-const button = "rounded border border-[var(--console-line-strong)] px-3 py-2 text-sm disabled:opacity-50";
+import { PdfCoverageNotice } from "./PdfCoverageNotice.js";
+
+const button = "max-w-full break-words rounded border border-[var(--console-line-strong)] px-3 py-2 text-sm disabled:opacity-50";
 const field = "rounded border border-[var(--console-line)] bg-[var(--console-panel)] p-2";
 const base = "/api/document-processing";
 type Preview = { invocationId: string; manifestHash: string; manifest: DocumentProcessingManifest; warning?: string };
@@ -129,6 +131,10 @@ function ProcessingSelection({ evidenceId, extraction, extractionHash }: Props) 
       <p>Maximum estimated cost: ${preview.manifest.maximumEstimatedUsd.toFixed(6)} · Budget: ${preview.manifest.budgetUsd}. Operator-supplied prices: ${preview.manifest.destination.inputUsdPerMillion} input / ${preview.manifest.destination.outputUsdPerMillion} output per million tokens. Verify pricing with the provider; actual charges depend on provider accounting.</p>
       <p>Timeout: {preview.manifest.timeoutMs / 1000} seconds · Maximum response: {preview.manifest.maxResponseBytes} bytes · One invocation at a time.</p>
       <p className="break-all text-xs">Original: {preview.manifest.resolved.sourceHash} · Extraction: {preview.manifest.resolved.extractionHash} · Approval manifest: {preview.manifestHash}</p>
+      {preview.manifest.resolved.pdfCoverage && <>
+        <PdfCoverageNotice coverage={preview.manifest.resolved.pdfCoverage} />
+        <p>Only the selected extracted passages and their coverage context will be sent. Original PDF pages and images are not transferred.</p>
+      </>}
       <details><summary>Exact outgoing instructions and content</summary><pre className="whitespace-pre-wrap break-words">{preview.manifest.systemPrompt}</pre><pre className="mt-2 whitespace-pre-wrap break-words">{preview.manifest.inputText}</pre></details>
       <p>Approval covers this exact content, destination, model, operation and limits. Content, authority and policy are checked again immediately before transfer.</p>
       {previewJob?.state === "awaiting_approval" && <button className={button} disabled={busy || hasRunning || !readiness?.ready} onClick={() => void action(async () => { await request("/approve", { manifestHash: preview.manifestHash }); await refresh(); })}>Approve this transfer</button>}
@@ -140,6 +146,7 @@ function ProcessingSelection({ evidenceId, extraction, extractionHash }: Props) 
       <p>Queued work runs only when you choose Run. Interrupted or timed-out submissions remain uncertain; no automatic paid retry occurs. Canceling a submitted request may still incur a charge.</p>
       {jobs.map(job => <article key={job.invocationId} className="space-y-2 border border-[var(--console-line)] p-2">
         <p className="break-all">{job.invocationId} · <strong>{job.state.replaceAll("_", " ")}</strong> · {job.createdAt}{job.reason ? ` · ${job.reason}` : ""}</p>
+        {job.state === "failed" && <p>No validated result is available. Failed does not mean unbilled; the provider may have charged for this request. A retry requires a new preview, budget and explicit approval.</p>}
         {job.state === "uncertain" && <p>The provider may have completed and charged for this request. Check its records before preparing another potentially billable invocation.</p>}
         <div className="flex flex-wrap gap-2">
           <button className={button} disabled={busy || hasRunning} onClick={() => void action(async () => { const value = await request<Preview>(`/jobs/${encodeURIComponent(job.invocationId)}/preview`); if (mounted.current) { setPreview(value); setOutput(undefined); } })}>Review saved transfer {job.invocationId}</button>

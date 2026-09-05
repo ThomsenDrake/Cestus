@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { EvidenceReader } from "../src/evidence/EvidenceReader.js";
 import { EvidenceWorkspace } from "../src/evidence/EvidenceWorkspace.js";
@@ -68,5 +68,56 @@ describe("evidence reader selection and governance recovery", () => {
     await waitFor(() => expect(screen.getByRole("button", { name: "Search contents" })).toBeEnabled());
     fireEvent.click(screen.getByRole("button", { name: "Search contents" }));
     await screen.findByText("0 matching passages");
+  });
+});
+
+
+describe("PDF extraction coverage", () => {
+  function pdfContent(coverage?: { status: "partial" | "complete"; pages: { page: number; status: "text-extracted" | "unextracted" }[] }, empty = false) {
+    return { ...content("ev_ing_001"), extractionHash: "sha256:derivative", extraction: {
+      schemaVersion: "evidence-extraction.v1", evidenceId: "ev_ing_001", extractionId: "extract_pdf", sourceContentHash: "sha256:original",
+      extractor: { name: "local", version: "1.1.0" }, format: "pdf", text: empty ? "" : "Readable page three",
+      ...(coverage ? { pdfCoverage: coverage } : {}),
+      passages: empty ? [] : (coverage?.status === "complete" ? [1, 2, 3] : [3]).map(page => ({ text: "Readable page three", locator: { kind: "pdf", page, block: 1, start: 0, end: 19 } }))
+    } };
+  }
+  function backend(document: ReturnType<typeof pdfContent>, results = searchResult) {
+    vi.stubGlobal("fetch", vi.fn(async (path: string) => response(path.includes("/search?") ? results : path.endsWith("/readiness") ? { ready: false, message: "Provider missing." } : path.endsWith("/jobs") ? { jobs: [] } : document)));
+  }
+
+  it("shows gaps without renumbering readable pages or presenting partial output as complete", async () => {
+    backend(pdfContent({ status: "partial", pages: [{ page: 1, status: "unextracted" }, { page: 2, status: "unextracted" }, { page: 3, status: "text-extracted" }] }));
+    render(reader());
+    const selected = await screen.findByRole("region", { name: "Selected document contents" });
+    expect(within(selected).getByText("Partial PDF text extraction: text from 1 of 3 pages.")).toBeInTheDocument();
+    expect(within(selected).getByText("Pages without extracted text: 1, 2.")).toBeInTheDocument();
+    expect(within(selected).getByRole("link", { name: /Page 3/i })).toHaveAttribute("href", "#evidence/ev_ing_001/extract_pdf/0");
+    expect(within(selected).getByText(/No OCR was run/)).toBeInTheDocument();
+  });
+
+  it("qualifies all-page embedded text coverage without claiming that visual evidence was extracted", async () => {
+    backend(pdfContent({ status: "complete", pages: [{ page: 1, status: "text-extracted" }, { page: 2, status: "text-extracted" }, { page: 3, status: "text-extracted" }] }));
+    render(reader());
+    await screen.findByText("PDF text extracted from 3 of 3 pages.");
+    expect(screen.getByText("Images and other visual content are not covered, including on pages with text. No OCR was run.")).toBeInTheDocument();
+    expect(screen.queryByText(/Pages without extracted text:/)).not.toBeInTheDocument();
+  });
+
+  it("keeps legacy PDF coverage unknown and says when no passages can be read", async () => {
+    backend(pdfContent(undefined, true)); render(reader());
+    await screen.findByText("PDF page coverage is unknown for this extraction. Inspect the original for omitted evidence.");
+    expect(screen.getByText("No readable passages were extracted. Open the immutable original to inspect the document.")).toBeInTheDocument();
+  });
+
+  it("retains a coverage warning on search matches and on zero results", async () => {
+    const results = { ...searchResult, results: searchResult.results.map(result => ({ ...result, pdfCoverage: { status: "partial" as const, pages: [{ page: 1, status: "text-extracted" as const }, { page: 2, status: "unextracted" as const }] } })) };
+    backend(pdfContent(undefined), results); render(reader()); search();
+    const matches = await screen.findByRole("region", { name: "Passage search results" });
+    expect(within(matches).getByText("Partial PDF text extraction: text from 1 of 2 pages.")).toBeInTheDocument();
+    expect(screen.getByText("Search covers extracted text only. A search with no matches does not establish that evidence is absent; unreadable pages and visual content are not searched.")).toBeInTheDocument();
+    backend(pdfContent(undefined), { total: 0, offset: 0, results: [] });
+    fireEvent.click(screen.getByRole("button", { name: "Search contents" }));
+    await screen.findByText("0 matching passages");
+    expect(screen.getByText(/A search with no matches does not establish/)).toBeInTheDocument();
   });
 });

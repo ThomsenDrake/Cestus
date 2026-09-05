@@ -497,6 +497,7 @@ async function executeLocalParse(workspace: MountedWorkspace, job: IngestionPars
   if (current?.state === "succeeded") return;
   await parser.startParseJob(input);
   try {
+    if (job.parser.name !== localExtractorIdentity.name || job.parser.version !== localExtractorIdentity.version) throw new ExtractionFailure("version");
     const evidence = projection.evidenceById.get(job.evidenceId);
     if (evidence === undefined) throw new ExtractionFailure("storage", true);
     await assertLocalProcessingAllowed(workspace, job.evidenceId);
@@ -554,7 +555,7 @@ async function createLocalParseJobsForImport(
 }
 
 function localParseJobId(importBatchId: string, contentHash: string): string {
-  return `parse_${importBatchId}_extraction_v1_${contentHash.replace("sha256:", "")}`;
+  return `parse_${importBatchId}_extraction_v2_${contentHash.replace("sha256:", "")}`;
 }
 
 async function projectionFor(workspace: MountedWorkspace): Promise<IngestionProjection> {
@@ -904,6 +905,7 @@ function parseJobsForProjection(
       jobId: job.parseJobId,
       kind: job.lane === "provider" ? "provider-parse" as const : "local-parse" as const,
       state: parseJobState(job),
+      ...(job.coverageStatus === undefined ? {} : { coverageStatus: job.coverageStatus }),
       retryable: job.lane === "local" && job.state === "failed" && job.retryable === true && job.createdEventId !== undefined && projection.evidenceById.has(job.evidenceId),
       ...(job.message === undefined ? {} : { message: job.message }),
       sourceCollectionId: job.sourceCollectionId,

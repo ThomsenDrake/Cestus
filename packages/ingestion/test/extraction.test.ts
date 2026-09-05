@@ -15,8 +15,23 @@ describe("bounded actual local extraction", () => {
     expect(result.passages).toContainEqual(expect.objectContaining({ locator: expect.objectContaining({ kind: "pdf", page: 2 }), text: "Needle behind the harbor" }));
     expect(result.extractor.engine).toBe("poppler-pdftotext");
   });
-  it("fails closed on invalid UTF8, incomplete CSV, corrupt and scanned PDFs", async () => {
-    for (const [mediaType, content] of [["text/plain", Buffer.from([0xff])], ["text/csv", Buffer.from('a,"unclosed')], ["application/pdf", Buffer.from("%PDF-1.4 broken")], ["application/pdf", syntheticPdf([""])], ["application/octet-stream", Buffer.from("binary")]] as const) {
+  it.each(["blank", "image-only"] as const)("keeps readable PDF pages when another page is %s without claiming the gap is blank", async (kind) => {
+    const content = syntheticPdf(["First page evidence", kind === "blank" ? "" : { imageOnly: true }, "Third page evidence"]);
+    const result = await extractDocument({ ...base, mediaType: "application/pdf", content });
+    expect(result.pdfCoverage).toEqual({ status: "partial", pages: [{ page: 1, status: "text-extracted" }, { page: 2, status: "unextracted" }, { page: 3, status: "text-extracted" }] });
+    expect(result.passages.map((passage) => passage.locator)).toEqual([
+      expect.objectContaining({ kind: "pdf", page: 1 }), expect.objectContaining({ kind: "pdf", page: 3 })
+    ]);
+    expect(result.text).toContain("Third page evidence");
+  });
+  it("persists an explicit coverage gap when no PDF page has readable text", async () => {
+    const result = await extractDocument({ ...base, mediaType: "application/pdf", content: syntheticPdf([{ imageOnly: true }]) });
+    expect(result.pdfCoverage).toEqual({ status: "partial", pages: [{ page: 1, status: "unextracted" }] });
+    expect(result.passages).toEqual([]);
+    expect(result.text).toBe("");
+  });
+  it("fails closed on invalid UTF8, incomplete CSV, corrupt PDFs and unsupported formats", async () => {
+    for (const [mediaType, content] of [["text/plain", Buffer.from([0xff])], ["text/csv", Buffer.from('a,"unclosed')], ["application/pdf", Buffer.from("%PDF-1.4 broken")], ["application/octet-stream", Buffer.from("binary")]] as const) {
       await expect(extractDocument({ ...base, mediaType, content })).rejects.toBeInstanceOf(ExtractionFailure);
     }
   });

@@ -2,9 +2,10 @@ import { execFile } from "node:child_process";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { extractionArtifactSchema, localExtractorIdentity, type ExtractionArtifact } from "../../ontology/src/extraction-contracts.js";
+import { extractionArtifactSchema, localExtractorIdentity, type ExtractionArtifact, type PdfCoverage } from "../../ontology/src/extraction-contracts.js";
 
 export const extractionFailureMessages = {
+  version: "The local extractor version has changed. Scan, approve, and import the source again to create a current extraction; previous citations remain preserved.",
   unsupported: "This format is not supported by the local extractor. Use UTF-8 text, CSV, or a text-bearing PDF.",
   invalidText: "Text is not valid UTF-8 or contains binary control characters. Convert a copy to UTF-8 and import it as a new source version.",
   invalidCsv: "CSV is incomplete or malformed. Repair a copy and import it as a new source version.",
@@ -25,11 +26,13 @@ export async function extractDocument(input: { evidenceId: string; extractionId:
   if (input.content.length > 32 * 1024 * 1024) throw new ExtractionFailure("limit");
   let format: ExtractionArtifact["format"];
   let passages: ExtractionArtifact["passages"];
+  let pdfCoverage: PdfCoverage | undefined;
   let extractor: ExtractionArtifact["extractor"] = { ...localExtractorIdentity };
   if (input.mediaType === "application/pdf") {
     format = "pdf";
     const result = await extractPdf(input.content);
     passages = result.passages;
+    pdfCoverage = result.coverage;
     extractor = { ...extractor, engine: "poppler-pdftotext", engineVersion: result.version };
   } else if (["text/plain", "text/csv", "application/csv"].includes(input.mediaType)) {
     const text = decodeText(input.content);
@@ -38,7 +41,7 @@ export async function extractDocument(input: { evidenceId: string; extractionId:
   } else throw new ExtractionFailure("unsupported");
   const text = passages.map((passage) => passage.text).join("\n\n");
   if (text.length > maxOutput || passages.length > 100_000) throw new ExtractionFailure("limit");
-  return extractionArtifactSchema.parse({ schemaVersion: "evidence-extraction.v1", extractionId: input.extractionId, evidenceId: input.evidenceId, sourceContentHash: input.sourceContentHash, extractor, format, text, passages });
+  return extractionArtifactSchema.parse({ schemaVersion: "evidence-extraction.v1", extractionId: input.extractionId, evidenceId: input.evidenceId, sourceContentHash: input.sourceContentHash, extractor, format, text, passages, ...(pdfCoverage === undefined ? {} : { pdfCoverage }) });
 }
 function decodeText(content: Buffer): string {
   let text: string;
@@ -86,7 +89,7 @@ async function runTool(tool: string, args: string[]): Promise<{ stdout: string; 
     });
   });
 }
-async function extractPdf(content: Buffer): Promise<{ passages: ExtractionArtifact["passages"]; version: string }> {
+async function extractPdf(content: Buffer): Promise<{ passages: ExtractionArtifact["passages"]; version: string; coverage: PdfCoverage }> {
   if (!content.subarray(0, 8).toString("ascii").startsWith("%PDF-") || !/%%EOF\s*$/.test(content.subarray(-2048).toString("latin1"))) throw new ExtractionFailure("invalidPdf");
   const directory = await mkdtemp(join(tmpdir(), "cestus-local-extraction-"));
   try {
@@ -101,9 +104,15 @@ async function extractPdf(content: Buffer): Promise<{ passages: ExtractionArtifa
     const pages = output.stdout.split("\f");
     if (pages.at(-1)?.trim() === "") pages.pop();
     if (pages.length !== pageCount) throw new ExtractionFailure("invalidPdf");
-    if (pages.some((page) => !page.trim())) throw new ExtractionFailure("scan");
+    // No text is a coverage gap, not proof that a page is blank or scanned.
+    // Keep original page numbering while making the readable pages available.
+    const pagePassages = pages.map((page, index) => textPassages(page, index + 1));
+    const coverage: PdfCoverage = {
+      status: pagePassages.some((passages) => passages.length === 0) ? "partial" : "complete",
+      pages: pagePassages.map((passages, index) => ({ page: index + 1, status: passages.length === 0 ? "unextracted" : "text-extracted" }))
+    };
     const versionResult = await runTool("pdftotext", ["-v"]);
     const version = /pdftotext version ([\w.-]+)/.exec(versionResult.stderr + versionResult.stdout)?.[1] ?? "unknown";
-    return { passages: pages.flatMap((page, index) => textPassages(page, index + 1)), version };
+    return { passages: pagePassages.flat(), version, coverage };
   } finally { await rm(directory, { recursive: true, force: true }); }
 }

@@ -300,7 +300,7 @@ export function IngestionWorkspace({
                   <div className="min-w-0">
                     <p className="font-mono text-xs break-all text-[var(--paper-light)]">{job.jobId}</p>
                     <p className="mt-1 text-sm text-[var(--muted-amber)]">
-                      {job.kind} · {job.state}
+                      {job.kind} · {job.coverageStatus === "partial" ? "partial text extraction" : job.state}
                     </p>
                     {job.message === undefined ? null : <p className="mt-1 text-sm text-[var(--paper-light)]">{job.message}</p>}
                   </div>

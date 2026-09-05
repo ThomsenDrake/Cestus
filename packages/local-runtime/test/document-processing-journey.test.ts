@@ -25,12 +25,14 @@ afterEach(async () => {
 
 it("gates real production document transfer, preserves exact approval, and reopens its result after restart (synthetic loopback protocol)", async () => {
   const bodies: string[] = [];
+  let responseOverride: { status: number; body: string } | undefined;
   const upstream = createServer((request, response) => {
     const chunks: Buffer[] = [];
     request.on("data", (chunk: Buffer) => chunks.push(chunk));
     request.on("end", () => {
       bodies.push(Buffer.concat(chunks).toString("utf8"));
       response.setHeader("content-type", "application/json");
+      if (responseOverride) { response.statusCode = responseOverride.status; response.end(responseOverride.body); return; }
       response.end(JSON.stringify({
         choices: [{ message: { content: JSON.stringify({
           summary: "The synthetic record links the two incidents.",
@@ -132,4 +134,32 @@ it("gates real production document transfer, preserves exact approval, and reope
   await restarted.request(`/api/document-processing/jobs/${fresh.invocationId}/run`, {}, 409);
   expect(bodies).toHaveLength(1);
   expect((await fetch(restarted.origin + outputPath)).status).toBe(401);
+  const stopped: { invocationId: string; state: string; reason: string }[] = [];
+  for (const [status, body, state, reason] of [
+    [401, "private provider response", "failed", "provider-rejected"],
+    [200, "{broken", "failed", "invalid-output"],
+    [200, JSON.stringify({ choices: [{ message: { content: "output without usage" } }] }), "failed", "invalid-output"],
+    [503, "private provider response", "uncertain", "submission-uncertain"]
+  ] as const) {
+    responseOverride = { status, body };
+    const preview = await restarted.request("/api/document-processing/preview", previewInput);
+    await restarted.request("/api/document-processing/approve", { manifestHash: preview.manifestHash });
+    const result = await restarted.request(`/api/document-processing/jobs/${preview.invocationId}/run`, {});
+    expect(result).toMatchObject({ state, reason });
+    expect(JSON.stringify(result)).not.toContain("private provider response");
+    stopped.push({ invocationId: preview.invocationId, state, reason });
+  }
+  expect(bodies).toHaveLength(5);
+  await restarted.runtime.close();
+  const recovered = await start();
+  for (const job of stopped) {
+    expect((await recovered.request("/api/document-processing/jobs")).jobs).toContainEqual(expect.objectContaining(job));
+    await recovered.request(`/api/document-processing/jobs/${job.invocationId}/run`, {}, 409);
+    await recovered.request(`/api/document-processing/jobs/${job.invocationId}/output`, undefined, 409);
+    const retry = await recovered.request("/api/document-processing/preview", { ...previewInput, retryOf: job.invocationId });
+    expect(retry.warning).toContain("potentially billable");
+    await recovered.request(`/api/document-processing/jobs/${retry.invocationId}/run`, {}, 409);
+  }
+  expect(bodies).toHaveLength(5);
+
 });

@@ -31,6 +31,7 @@ const parseJobInputSchema = z.object({
 const completeTextParseInputSchema = parseJobInputSchema.extend({
   text: z.string(),
   outputMediaType: z.enum(["text/plain", extractionMediaType]).optional(),
+  coverageStatus: z.enum(["complete", "partial"]).optional(),
   completedAt: z.string().datetime().optional()
 }).strict();
 
@@ -60,6 +61,7 @@ export interface CreateLocalParseJobInput {
 export interface CompleteTextParseInput extends CreateLocalParseJobInput {
   text: string;
   outputMediaType?: "text/plain" | typeof extractionMediaType;
+  coverageStatus?: "complete" | "partial";
   completedAt?: string;
 }
 
@@ -148,7 +150,7 @@ export class LocalParseService {
   async completeExtraction(input: CreateLocalParseJobInput, artifact: ExtractionArtifact): Promise<KnowledgeEventOf<"ingestion.parse.completed">> {
     const parsed = extractionArtifactSchema.parse(artifact);
     if (parsed.evidenceId !== input.evidenceId || parsed.extractionId !== input.parseJobId) throw new Error("Extraction identity mismatch");
-    return this.completeTextParse({ ...input, text: JSON.stringify(parsed), outputMediaType: extractionMediaType });
+    return this.completeTextParse({ ...input, text: JSON.stringify(parsed), outputMediaType: extractionMediaType, ...(parsed.pdfCoverage === undefined ? {} : { coverageStatus: parsed.pdfCoverage.status }) });
   }
 
   async completeTextParse(input: CompleteTextParseInput): Promise<KnowledgeEventOf<"ingestion.parse.completed">> {
@@ -180,6 +182,7 @@ export class LocalParseService {
         parser: state.created.payload.parser,
         outputHash: stored.contentHash,
         outputMediaType: parsed.outputMediaType ?? "text/plain",
+        ...(parsed.coverageStatus === undefined ? {} : { coverageStatus: parsed.coverageStatus }),
         completedAt: parsed.completedAt ?? new Date().toISOString()
       }
     };

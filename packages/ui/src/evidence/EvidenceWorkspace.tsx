@@ -176,8 +176,8 @@ export function EvidenceWorkspace({
           Parse state
           <select aria-label="Parse state" value={parseState} onChange={(event) => setParseState(event.target.value)} className={inputClass}>
             <option value="all">All parse states</option>
-            {(["queued", "running", "succeeded", "failed"] as const).map((state) => (
-              <option key={state} value={state}>{state}</option>
+            {(["queued", "running", "succeeded", "partial", "failed"] as const).map((state) => (
+              <option key={state} value={state}>{state === "partial" ? "partial text extraction" : state}</option>
             ))}
           </select>
         </label>
@@ -260,7 +260,7 @@ export function EvidenceWorkspace({
               <ul role="list" className="mt-2 space-y-2">
                 {selectedItem.parseJobs.map((job) => (
                   <li key={job.parseJobId} className="text-base text-[var(--paper-light)] sm:text-sm">
-                    <span className="font-mono">{job.parser.name}@{job.parser.version}</span> · {job.lane} · {job.state}
+                    <span className="font-mono">{job.parser.name}@{job.parser.version}</span> · {job.lane} · {job.coverageStatus === "partial" ? "partial text extraction" : job.state}
                     {job.derivative === undefined ? null : <span className="block break-all text-[var(--muted-amber)]">{job.derivative.contentHash} · {job.derivative.mediaType}</span>}
                   </li>
                 ))}
@@ -354,7 +354,7 @@ function evidenceMatches(item: EvidenceItemDto, query: string, governanceTag: st
   ].join(" ").toLowerCase();
   return (normalized === "" || searchable.includes(normalized)) &&
     (governanceTag === "all" || item.governanceTags.some((tag) => tag.tag === governanceTag)) &&
-    (parseState === "all" || item.parseJobs.some((job) => job.state === parseState));
+    (parseState === "all" || item.parseJobs.some((job) => (job.coverageStatus === "partial" ? "partial" : job.state) === parseState));
 }
 
 function Detail({ label, values }: { readonly label: string; readonly values: readonly string[] }) {

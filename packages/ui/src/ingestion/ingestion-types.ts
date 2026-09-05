@@ -57,6 +57,7 @@ export interface IngestionParseJobDto {
     readonly version: string;
   };
   readonly state: "queued" | "running" | "succeeded" | "failed";
+  readonly coverageStatus?: "complete" | "partial";
 }
 
 export interface IngestionWorkspaceDto {
@@ -172,6 +173,7 @@ export interface IngestionJobDto {
   readonly jobId: string;
   readonly kind: "scan" | "import" | "local-parse" | "provider-parse";
   readonly state: "queued" | "running" | "succeeded" | "failed" | "skipped";
+  readonly coverageStatus?: "complete" | "partial";
   readonly retryable: boolean;
   readonly message?: string;
   readonly sourceCollectionId?: string;

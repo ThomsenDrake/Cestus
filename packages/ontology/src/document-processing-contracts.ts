@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { PdfCoverage } from "./extraction-contracts.js";
 
 const hash = z.string().regex(/^sha256:[a-f0-9]{64}$/);
 const invocationId = z.string().regex(/^inv_[a-zA-Z0-9_-]+$/);
@@ -45,6 +46,7 @@ export const documentSummaryOutputSchema = z.object({
 }).strict();
 
 export interface ResolvedDocumentSelection {
+  pdfCoverage?: PdfCoverage | { status: "unknown" };
   evidenceId: string;
   extractionId: string;
   sourceHash: string;

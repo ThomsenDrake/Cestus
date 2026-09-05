@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import { z } from "zod";
 import { OpenAICompatibleChatProvider } from "../../agent/src/openai-compatible-provider.js";
+import { ProviderInvocationError } from "../../agent/src/provider.js";
 import { SecretMaterial, StaticSecretStore } from "../../agent/src/secret-store.js";
 import { assertAgentSecretSafeText } from "../../agent/src/secret-safety.js";
 import type { ActorRef, AppendableKnowledgeEvent, KnowledgeEvent } from "../../ontology/src/contracts.js";
@@ -60,7 +61,7 @@ export class DocumentProcessingService {
     const resolved = await this.resolve(selection, actor);
     const destination = this.configuration();
     const invocationId = `inv_${randomUUID().replaceAll("-", "")}`;
-    const inputText = JSON.stringify({ evidenceId: resolved.evidenceId, extractionId: resolved.extractionId, passages: resolved.passages });
+    const inputText = JSON.stringify({ evidenceId: resolved.evidenceId, extractionId: resolved.extractionId, ...(resolved.pdfCoverage ? { pdfCoverage: resolved.pdfCoverage } : {}), passages: resolved.passages });
     const inputBytes = Buffer.byteLength(inputText) + Buffer.byteLength(systemPrompt);
     // One token per UTF-8 byte plus a generous envelope allowance is conservative for the supported chat text path.
     const inputTokenUpperBound = inputBytes + 512;
@@ -154,9 +155,12 @@ export class DocumentProcessingService {
       })));
       await this.finish(invocationId, "completed", "validated-output", actor, { outputHash: outputBlob.contentHash,
         usage: { inputTokens: result.usage.inputUnits, outputTokens: result.usage.outputUnits } });
-    } catch {
-      await this.finish(invocationId, submitted && !received ? "uncertain" : "failed",
-        submitted && !received ? "submission-uncertain" : submitted ? "invalid-output" : "selection-or-authority-changed", actor);
+    } catch (error) {
+      const outcome = error instanceof ProviderInvocationError ? error.outcome : undefined;
+      const unknown = submitted && !received && outcome !== "rejected" && outcome !== "invalid-response";
+      await this.finish(invocationId, unknown ? "uncertain" : "failed",
+        unknown ? "submission-uncertain" : !submitted ? "selection-or-authority-changed"
+          : outcome === "rejected" ? "provider-rejected" : "invalid-output", actor);
     } finally {
       clearTimeout(timer);
       this.controllers.delete(invocationId);

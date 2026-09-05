@@ -1,7 +1,7 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createServer, type Server } from "node:http";
+import { createServer, type Server, type ServerResponse } from "node:http";
 import { once } from "node:events";
 import { afterEach, describe, expect, it } from "vitest";
 import { FileBlobStore } from "../../ontology/src/blob-store.js";
@@ -15,7 +15,7 @@ const cleanup: (() => Promise<unknown>)[] = [];
 afterEach(async () => { for (const fn of cleanup.splice(0).reverse()) await fn(); });
 
 // The loopback endpoint is a protocol fixture, never live-provider acceptance.
-async function fixture(options: { delay?: number; timeout?: number; content?: string; usage?: { prompt_tokens: number; completion_tokens: number } } = {}) {
+async function fixture(options: { delay?: number; timeout?: number; content?: string; usage?: { prompt_tokens: number; completion_tokens: number }; respond?: (response: ServerResponse) => void } = {}) {
   let requests = 0;
   let lastBody = "";
   const server: Server = createServer((request, response) => {
@@ -23,6 +23,7 @@ async function fixture(options: { delay?: number; timeout?: number; content?: st
     request.on("data", (chunk: Buffer) => { lastBody += chunk.toString(); });
     request.on("end", () => {
       const send = () => {
+        if (options.respond) { options.respond(response); return; }
         response.setHeader("content-type", "application/json");
         response.end(JSON.stringify({ choices: [{ message: { content: options.content ?? JSON.stringify({ summary: "The violet bridge was closed.", citations: [{ passageIndex: 0, quote: "violet bridge" }] }) } }], usage: options.usage ?? { prompt_tokens: 100, completion_tokens: 40 } }));
       };
@@ -182,6 +183,48 @@ describe("bounded external document processing (synthetic loopback protocol test
     await expect(createDocumentProcessingService(f.dependencies).run(second.invocationId, actor)).rejects.toThrow(/Concurrency/);
     await f.service.cancel(first.invocationId, actor);
     await running;
+    expect(f.requestCount()).toBe(1);
+  });
+  it.each([
+    { name: "authorization rejection", status: 401, body: "private provider diagnostic", state: "failed" },
+    { name: "rate rejection", status: 429, body: "private provider diagnostic", state: "failed" },
+    { name: "malformed complete JSON", status: 200, body: "{broken", state: "failed" },
+    { name: "invalid completed envelope", status: 200, body: "{}", state: "failed" },
+    { name: "missing usage", status: 200, body: JSON.stringify({ choices: [{ message: { content: "output" } }] }), state: "failed" },
+    { name: "server error", status: 500, body: "private provider diagnostic", state: "uncertain" },
+    { name: "request timeout status", status: 408, body: "private provider diagnostic", state: "uncertain" },
+    { name: "accepted async status", status: 202, body: "{}", state: "uncertain" },
+    { name: "partial content status", status: 206, body: "{}", state: "uncertain" }
+  ])("records $name honestly through the production service and HTTP transport", async ({ status, body, state }) => {
+    const f = await fixture({ respond: (response) => { response.statusCode = status; response.end(body); } });
+    const preview = await f.approve();
+    expect(await f.service.run(preview.invocationId, actor)).toMatchObject({ state, reason: state === "uncertain" ? "submission-uncertain" : status === 200 ? "invalid-output" : "provider-rejected" });
+    expect(JSON.stringify(await f.ledger.readAll())).not.toContain("private provider diagnostic");
+    await expect(f.service.output(preview.invocationId, actor)).rejects.toThrow();
+    f.reopenLedger();
+    const restarted = createDocumentProcessingService(f.dependencies);
+    await restarted.recoverInterrupted();
+    expect(await restarted.get(preview.invocationId, actor)).toMatchObject({ state });
+    await expect(restarted.run(preview.invocationId, actor)).rejects.toThrow();
+    const retry = await restarted.preview({ selection, budgetUsd: 0.05, retryOf: preview.invocationId }, actor);
+    expect(retry.warning).toContain("potentially billable");
+    await expect(restarted.run(retry.invocationId, actor)).rejects.toThrow();
+    expect(f.requestCount()).toBe(1);
+  });
+  it.each(["disconnect", "truncated-body", "oversized-body"] as const)("preserves unknown completion after %s", async (mode) => {
+    const f = await fixture({ respond: (response) => {
+      if (mode === "disconnect") { response.destroy(); return; }
+      if (mode === "truncated-body") {
+        response.setHeader("content-length", "2000");
+        response.write("{broken");
+        setTimeout(() => response.destroy(), 10).unref();
+        return;
+      }
+      response.end("x".repeat(300_000));
+    } });
+    const preview = await f.approve();
+    expect(await f.service.run(preview.invocationId, actor)).toMatchObject({ state: "uncertain", reason: "submission-uncertain" });
+    await expect(f.service.run(preview.invocationId, actor)).rejects.toThrow();
     expect(f.requestCount()).toBe(1);
   });
   it("rejects fabricated citations and excessive reported usage without publishing output", async () => {
