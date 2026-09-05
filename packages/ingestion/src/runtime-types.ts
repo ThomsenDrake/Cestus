@@ -105,6 +105,7 @@ export interface IngestionJobDto {
   readonly importBatchId?: string;
   readonly evidenceId?: string;
   readonly diagnosticIds: readonly string[];
+  readonly message?: string;
 }
 
 export interface IngestionDiagnosticsDto {

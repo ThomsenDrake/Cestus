@@ -212,7 +212,7 @@ describe("IngestionRuntime jobs, retry, provider approval, and diagnostics", () 
     });
   });
 
-  it("does not advertise retryability until retry execution exists", async () => {
+  it("does not advertise retryability for an orphan failure without evidence and job creation", async () => {
     const { runtime, workspace } = await preparedRuntime();
     await appendRetryableParseFailure(workspace);
 

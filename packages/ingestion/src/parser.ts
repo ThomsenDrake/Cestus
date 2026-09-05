@@ -1,5 +1,7 @@
 import { z } from "zod";
-import type { FileBlobStore } from "../../ontology/src/blob-store.js";
+import type { WorkspaceBlobStore } from "./mount-contract.js";
+import { extractionArtifactSchema, extractionMediaType, type ExtractionArtifact } from "../../ontology/src/extraction-contracts.js";
+import { extractionFailureMessages } from "./extraction.js";
 import {
   actorRefSchema,
   type AppendableKnowledgeEvent,
@@ -28,6 +30,7 @@ const parseJobInputSchema = z.object({
 
 const completeTextParseInputSchema = parseJobInputSchema.extend({
   text: z.string(),
+  outputMediaType: z.enum(["text/plain", extractionMediaType]).optional(),
   completedAt: z.string().datetime().optional()
 }).strict();
 
@@ -39,7 +42,7 @@ const failParseJobInputSchema = parseJobInputSchema.extend({
 
 export interface LocalParseServiceDependencies {
   ledger: EventLedger;
-  derivativeStore: FileBlobStore;
+  derivativeStore: WorkspaceBlobStore;
   actor: ActorRef;
 }
 
@@ -56,6 +59,7 @@ export interface CreateLocalParseJobInput {
 
 export interface CompleteTextParseInput extends CreateLocalParseJobInput {
   text: string;
+  outputMediaType?: "text/plain" | typeof extractionMediaType;
   completedAt?: string;
 }
 
@@ -72,6 +76,7 @@ interface LocalParseJobStreamState {
   latestEvent:
     | KnowledgeEventOf<"ingestion.parse.job.created">
     | KnowledgeEventOf<"ingestion.parse.completed">
+    | KnowledgeEventOf<"ingestion.parse.started">
     | KnowledgeEventOf<"ingestion.parse.failed">;
   nextSequence: number;
 }
@@ -128,6 +133,24 @@ export class LocalParseService {
     return appended;
   }
 
+  async startParseJob(input: CreateLocalParseJobInput): Promise<void> {
+    const parsed = this.parseInput(parseJobInputSchema, input, "parse start");
+    const state = await this.readJobState(parsed);
+    this.assertParserMatchesCreated(state.created, parsed.parser);
+    if (state.completed || state.latestFailed?.payload.retryable === false) throw new Error("Parse job is terminal");
+    await this.dependencies.ledger.append({
+      type: "ingestion.parse.started", version: 1, streamId: this.parseStreamId(parsed),
+      context: this.context(parsed.parseJobId, state.latestEvent.id),
+      payload: { ...parsed, lane: "local", startedAt: new Date().toISOString() }
+    }, { expectedNextSequence: state.nextSequence });
+  }
+
+  async completeExtraction(input: CreateLocalParseJobInput, artifact: ExtractionArtifact): Promise<KnowledgeEventOf<"ingestion.parse.completed">> {
+    const parsed = extractionArtifactSchema.parse(artifact);
+    if (parsed.evidenceId !== input.evidenceId || parsed.extractionId !== input.parseJobId) throw new Error("Extraction identity mismatch");
+    return this.completeTextParse({ ...input, text: JSON.stringify(parsed), outputMediaType: extractionMediaType });
+  }
+
   async completeTextParse(input: CompleteTextParseInput): Promise<KnowledgeEventOf<"ingestion.parse.completed">> {
     const parsed = this.parseInput(completeTextParseInputSchema, input, "text parse completion");
     const state = await this.readJobState(parsed);
@@ -156,7 +179,7 @@ export class LocalParseService {
         lane: "local",
         parser: state.created.payload.parser,
         outputHash: stored.contentHash,
-        outputMediaType: "text/plain",
+        outputMediaType: parsed.outputMediaType ?? "text/plain",
         completedAt: parsed.completedAt ?? new Date().toISOString()
       }
     };
@@ -294,7 +317,8 @@ export class LocalParseService {
         event.payload.importBatchId === input.importBatchId &&
         event.payload.evidenceId === input.evidenceId
     );
-    const latestEvent = completed ?? latestFailed ?? created;
+    const started = events.findLast((event): event is KnowledgeEventOf<"ingestion.parse.started"> => event.type === "ingestion.parse.started");
+    const latestEvent = completed ?? (started && (!latestFailed || started.sequence > latestFailed.sequence) ? started : latestFailed) ?? created;
 
     return {
       created,
@@ -305,8 +329,8 @@ export class LocalParseService {
     };
   }
 
-  private secretSafeFailureMessage(_message: string | undefined): string {
-    return "Local parse failed; details were redacted.";
+  private secretSafeFailureMessage(message: string | undefined): string {
+    return Object.values(extractionFailureMessages).find((allowed) => allowed === message) ?? "Local parse failed; details were redacted.";
   }
 
   private parseStreamId(input: Pick<CreateLocalParseJobInput, "sourceCollectionId" | "importBatchId" | "parseJobId">): string {

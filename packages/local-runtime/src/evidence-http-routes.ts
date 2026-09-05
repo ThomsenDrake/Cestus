@@ -17,6 +17,8 @@ import {
 import { assertSecretSafeText, governanceTags } from "../../ontology/src/governance-policy.js";
 import { GovernanceService } from "../../ontology/src/governance-service.js";
 import type { LocalRuntimeRequest, LocalRuntimeResponse } from "./http-handler.js";
+import type { MountedWorkspace } from "../../ingestion/src/mount-contract.js";
+import { authorizeEvidence, EvidenceContentError, readEvidenceContent, readEvidenceOriginal, searchEvidence } from "./evidence-content.js";
 
 const proposalTextSchema = z.string().min(1).refine(
   (value) => !containsCredentialShapedEvidenceText(value),
@@ -82,6 +84,7 @@ export interface HandleEvidenceHttpRouteInput {
   readonly ledger: EventLedger;
   readonly actor: ActorRef;
   readonly now?: () => string;
+  readonly mountedWorkspace?: MountedWorkspace | undefined;
 }
 
 type RuntimeEvidenceWorkspaceDto = EvidenceWorkspaceDto & {
@@ -91,7 +94,26 @@ type RuntimeEvidenceWorkspaceDto = EvidenceWorkspaceDto & {
 export async function handleEvidenceHttpRoute(
   input: HandleEvidenceHttpRouteInput
 ): Promise<LocalRuntimeResponse | undefined> {
-  const path = new URL(input.request.url, "http://localhost").pathname;
+  const url = new URL(input.request.url, "http://localhost");
+  const path = url.pathname;
+  const contentRoute = /^\/api\/evidence\/(ev_[A-Za-z0-9_-]+)\/(content|original)$/.exec(path);
+  if (input.request.method === "GET" && (contentRoute || path === "/api/evidence/search")) {
+    if (!input.mountedWorkspace) return json(503, { ok: false, message: "Mount a portable workspace to read and search documents." });
+    try {
+      if (contentRoute) {
+        return json(200, contentRoute[2] === "original"
+          ? await readEvidenceOriginal(input.mountedWorkspace, input.actor, contentRoute[1]!)
+          : await readEvidenceContent(input.mountedWorkspace, input.actor, contentRoute[1]!, url.searchParams.get("extractionId") ?? undefined));
+      }
+      return json(200, await searchEvidence(input.mountedWorkspace, input.actor, {
+        q: url.searchParams.get("q") ?? "", limit: Number(url.searchParams.get("limit") ?? 20), offset: Number(url.searchParams.get("offset") ?? 0),
+        ...(url.searchParams.has("sourceCollectionId") ? { sourceCollectionId: url.searchParams.get("sourceCollectionId")! } : {}),
+        ...(url.searchParams.has("format") ? { format: url.searchParams.get("format")! } : {})
+      }));
+    } catch (error) {
+      return json(error instanceof EvidenceContentError ? error.status : 409, { ok: false, message: error instanceof EvidenceContentError ? error.message : "Stored content is missing, corrupt, or unavailable. Restore storage or retry supported extraction." });
+    }
+  }
 
   if (input.request.method === "GET" && path === "/api/evidence/workspace") {
     try {
@@ -103,6 +125,25 @@ export async function handleEvidenceHttpRoute(
 
   if (input.request.method === "POST" && path === "/api/evidence/governance-reviews") {
     return appendGovernanceReview(input);
+  }
+
+  if (input.request.method === "POST" && path === "/api/evidence/initial-classification") {
+    const body = parseJsonBody(input.request.body);
+    const parsed = z.object({ evidenceRef: governanceReviewInputSchema.shape.evidenceRef, tag: governanceReviewInputSchema.shape.tag, rationale: governanceReviewInputSchema.shape.rationale }).strict().safeParse(body.ok ? body.value : undefined);
+    if (!parsed.success) return invalidGovernanceReviewInput();
+    try {
+      const events = await input.ledger.readAll();
+      authorizeEvidence(events, parsed.data.evidenceRef, input.actor);
+      if (events.some(event => event.type === "evidence.governance.classified" && event.payload.evidenceId === parsed.data.evidenceRef)) throw new Error("Use existing governance review");
+      const service = new GovernanceService({ ledger: input.ledger, actor: input.actor });
+      const policy = activeGovernancePolicyRef(events);
+      await service.classifyEvidence({ evidenceId: parsed.data.evidenceRef, policy,
+        classifier: { actorId: input.actor.id, kind: "human", label: input.actor.label },
+        tags: [{ tag: parsed.data.tag, confidence: 1, rationale: parsed.data.rationale }] });
+      await service.reviewEvidenceGovernance({ evidenceId: parsed.data.evidenceRef, policy, reviewedBy: input.actor.id,
+        decisions: [{ tag: parsed.data.tag, action: "affirm", rationale: parsed.data.rationale }] });
+      return json(201, { ok: true });
+    } catch { return json(409, { ok: false, message: "Initial classification is unavailable. Reopen evidence and use the existing Governance review if a classification was already saved." }); }
   }
 
   if (input.request.method !== "POST" || path !== "/api/evidence/assertion-candidates") {

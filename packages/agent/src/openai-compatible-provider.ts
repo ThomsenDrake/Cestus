@@ -14,7 +14,7 @@ import {
 import type { SecretStore } from "./secret-store.js";
 import { assertAgentSecretSafeText } from "./secret-safety.js";
 
-type FetchLike = (url: string, init: RequestInit) => Promise<Pick<Response, "ok" | "status" | "json">>;
+type FetchLike = (url: string, init: RequestInit) => Promise<Pick<Response, "ok" | "status" | "json"> & Partial<Pick<Response, "body">>>;
 
 export interface OpenAICompatibleChatProviderOptions {
   readonly providerId: string;
@@ -32,6 +32,8 @@ export interface OpenAICompatibleChatProviderOptions {
   readonly includeReasoning?: boolean;
   readonly reasoningEffort?: NousReasoningEffort;
   readonly temperature?: number;
+  readonly maxResponseBytes?: number;
+  readonly requireUsage?: boolean;
 }
 
 export interface CreateNousPortalProviderInput {
@@ -98,6 +100,8 @@ export class OpenAICompatibleChatProvider implements ModelProviderAdapter {
   private readonly includeReasoning: boolean | undefined;
   private readonly reasoningEffort: NousReasoningEffort | undefined;
   private readonly temperature: number | undefined;
+  private readonly maxResponseBytes: number | undefined;
+  private readonly requireUsage: boolean;
 
   constructor(options: OpenAICompatibleChatProviderOptions) {
     const endpointUrl = endpointSchema.parse(options.endpointUrl);
@@ -121,6 +125,11 @@ export class OpenAICompatibleChatProvider implements ModelProviderAdapter {
       ? undefined
       : reasoningEffortSchema.parse(options.reasoningEffort);
     this.temperature = parseTemperature(options.temperature);
+    this.maxResponseBytes = options.maxResponseBytes;
+    this.requireUsage = options.requireUsage ?? false;
+    if (this.maxResponseBytes !== undefined && (!Number.isInteger(this.maxResponseBytes) || this.maxResponseBytes < 1)) {
+      throw new Error("maxResponseBytes must be a positive integer.");
+    }
     this.descriptor = freezeProviderDescriptor(providerDescriptorSchema.parse({
       providerId: options.providerId,
       label: options.label,
@@ -148,9 +157,13 @@ export class OpenAICompatibleChatProvider implements ModelProviderAdapter {
     if (secret === undefined) {
       throw new Error("Credential binding is missing.");
     }
+    await parsed.beforeTransfer?.();
+    parsed.signal?.throwIfAborted();
 
     const response = await this.fetchImpl(this.endpointUrl, {
       method: "POST",
+      redirect: "error",
+      ...(parsed.signal === undefined ? {} : { signal: parsed.signal }),
       headers: {
         "authorization": `Bearer ${secret.exposeForProviderAdapter()}`,
         "content-type": "application/json"
@@ -175,7 +188,9 @@ export class OpenAICompatibleChatProvider implements ModelProviderAdapter {
 
     let responseJson: unknown;
     try {
-      responseJson = await response.json();
+      responseJson = this.maxResponseBytes === undefined
+        ? await response.json()
+        : await readBoundedResponse(response, this.maxResponseBytes);
     } catch {
       throw new Error("Provider returned invalid output.");
     }
@@ -190,6 +205,10 @@ export class OpenAICompatibleChatProvider implements ModelProviderAdapter {
       throw new Error("Provider returned invalid output.");
     }
     const usage = parsedResponse.data.usage;
+    if (this.requireUsage && (!Number.isSafeInteger(usage?.prompt_tokens) || !Number.isSafeInteger(usage?.completion_tokens) ||
+      usage!.prompt_tokens! < 0 || usage!.completion_tokens! < 0)) {
+      throw new Error("Provider returned invalid output.");
+    }
 
     return Object.freeze({
       outputText,
@@ -296,4 +315,29 @@ function freezeProviderDescriptor(descriptor: ProviderDescriptor): ProviderDescr
     modelFamilies: Object.freeze([...descriptor.modelFamilies]),
     credentialKinds: Object.freeze([...descriptor.credentialKinds])
   }) as ProviderDescriptor;
+}
+
+async function readBoundedResponse(
+  response: Pick<Response, "json"> & Partial<Pick<Response, "body">>,
+  maximumBytes: number
+): Promise<unknown> {
+  if (response.body === undefined || response.body === null) {
+    throw new Error("Provider returned invalid output.");
+  }
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  try {
+    for (;;) {
+      const next = await reader.read();
+      if (next.done) break;
+      size += next.value.byteLength;
+      if (size > maximumBytes) throw new Error("Provider returned invalid output.");
+      chunks.push(next.value);
+    }
+    return JSON.parse(Buffer.concat(chunks).toString("utf8")) as unknown;
+  } finally {
+    await reader.cancel().catch(() => undefined);
+    reader.releaseLock();
+  }
 }

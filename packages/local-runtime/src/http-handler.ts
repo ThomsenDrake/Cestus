@@ -27,6 +27,10 @@ import { authorizedLocalRuntimeRequest } from "./auth.js";
 import type { ResolvedLocalRuntimeConfig } from "./config.js";
 import { handleEvidenceHttpRoute } from "./evidence-http-routes.js";
 import { handleIngestionHttpRoute } from "./ingestion-http-routes.js";
+import { humanIngestionMountResolver } from "./human-ingestion-mount.js";
+import { createDocumentProcessingService } from "./document-processing.js";
+import { handleDocumentProcessingHttpRoute } from "./document-processing-http-routes.js";
+import { resolveExternalDocumentSelection } from "./evidence-content.js";
 import type { LocalIngestionRuntimeFactory } from "./ingestion-runtime-factory.js";
 import { createDefaultOperatorStatusProviders } from "./operator-status-providers.js";
 import { handleOntologyHttpRoute } from "./ontology-http-routes.js";
@@ -92,6 +96,16 @@ export function createLocalRuntimeHttpHandler(
       ? {}
       : { residentIdentityBootstrapForTest: input.residentIdentityBootstrapForTest })
   });
+  const humanMountResolver = humanIngestionMountResolver(handle, input.actor);
+  const documentProcessing = humanMountResolver?.resolve({}).then(async mount => {
+    if (!mount.ok) return undefined;
+    const service = createDocumentProcessingService({
+      ledger: mount.workspace.ledger, derivativeStore: mount.workspace.derivativeStore,
+      resolveSelection: (selection, actor) => resolveExternalDocumentSelection(mount.workspace, actor, selection)
+    });
+    await service.recoverInterrupted();
+    return service;
+  }).catch(() => undefined);
   const seedEvents = input.seedEvents ?? prrWorkspaceSeedEvents;
   const runtimeNow = localRuntimeNow(input.now);
   const residentSupervision = createResidentSupervisionRuntime({
@@ -236,7 +250,7 @@ export function createLocalRuntimeHttpHandler(
       const ingestionMountResolver = input.ingestionMountResolver ?? (
         path.startsWith("/api/ingestion/resident-source-boundaries/")
           ? mountedBoundaryIngestionResolver(handle)
-          : undefined
+          : humanMountResolver
       );
       const response = await handleIngestionHttpRoute({
         request,
@@ -251,11 +265,17 @@ export function createLocalRuntimeHttpHandler(
       }
     }
 
+    if (path.startsWith("/api/document-processing/")) {
+      return handleDocumentProcessingHttpRoute(request, await documentProcessing, input.actor);
+    }
+
     if (path.startsWith("/api/evidence/")) {
+      const evidenceMount = await humanMountResolver?.resolve({});
       const response = await handleEvidenceHttpRoute({
         request,
         ledger: handle.ledger,
         actor: input.actor,
+        mountedWorkspace: evidenceMount?.ok ? evidenceMount.workspace : undefined,
         now: localRuntimeNow(input.now)
       });
       if (response !== undefined) {
@@ -314,7 +334,10 @@ export function createLocalRuntimeHttpHandler(
 
   let closePromise: Promise<void> | undefined;
   handler.close = () => {
-    closePromise ??= residentSupervision.stop().finally(() => handle.close());
+    closePromise ??= (async () => {
+      (await documentProcessing)?.close();
+      await residentSupervision.stop();
+    })().finally(() => handle.close());
     return closePromise;
   };
   return handler;

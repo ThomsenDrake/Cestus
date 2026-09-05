@@ -267,6 +267,9 @@ export interface IngestionReviewDto {
     estimatedNewBlobBytes: number;
   };
   approvalRequired: boolean;
+  importCompleted?: boolean;
+  approvedImportBatchId?: string;
+  files?: Array<{ occurrenceId: string; sourcePath: string; contentHash: string; byteLength: number; status: IngestionOccurrenceSummary["status"] }>;
   duplicateGroups: IngestionReviewDuplicateGroupDto[];
   evidenceLinks: Array<{
     contentHash: string;
@@ -315,6 +318,9 @@ export function buildIngestionReviewDto(
     ...(source.latestImportBatchId === undefined ? {} : { latestImportBatchId: source.latestImportBatchId }),
     totals: copyTotals(latestScan?.totals),
     approvalRequired: latestScan?.state === "completed" && approvalBatchIds.length === 0,
+    importCompleted: completionBatchIds.length > 0,
+    ...(approvalBatchIds.at(-1) === undefined ? {} : { approvedImportBatchId: approvalBatchIds.at(-1)! }),
+    files: (latestScan?.occurrenceIds ?? []).map((id) => projection.occurrencesById.get(id)).filter((occurrence): occurrence is IngestionOccurrenceSummary => occurrence !== undefined).map((occurrence) => ({ occurrenceId: occurrence.occurrenceId, sourcePath: occurrence.sourcePath, contentHash: occurrence.contentHash, byteLength: occurrence.sizeBytes, status: occurrence.status })),
     duplicateGroups: duplicateGroupsForSource(projection, sourceCollectionId),
     evidenceLinks: evidenceLinksForSource(projection, sourceCollectionId),
     parseJobs: parseJobsForSource(projection, sourceCollectionId),

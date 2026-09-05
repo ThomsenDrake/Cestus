@@ -62,6 +62,9 @@ export interface ModelInvocationRequest {
   readonly inputArtifactHash: string;
   readonly inputText?: string;
   readonly credentialRef: CredentialReference;
+  /** Revalidate the approved disclosure after credentials resolve, immediately before transfer. */
+  readonly beforeTransfer?: () => Promise<void>;
+  readonly signal?: AbortSignal;
 }
 
 export interface ModelInvocationResult {
