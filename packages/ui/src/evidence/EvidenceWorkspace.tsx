@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { EvidenceReader } from "./EvidenceReader.js";
 import { ExportPreview } from "../governance/ExportPreview.js";
 import { GovernanceReview } from "../governance/GovernanceReview.js";
 import type { AppendGovernanceReviewInput } from "../governance/governance-types.js";
@@ -10,6 +11,7 @@ import type {
 } from "./evidence-types.js";
 
 interface EvidenceWorkspaceProps {
+  readonly initialEvidenceId?: string | undefined;
   readonly workspace: EvidenceWorkspaceDto | undefined;
   readonly loadState: "idle" | "loading" | "loaded" | "error";
   readonly loadError: string | undefined;
@@ -21,6 +23,7 @@ interface EvidenceWorkspaceProps {
 }
 
 export function EvidenceWorkspace({
+  initialEvidenceId,
   workspace,
   loadState,
   loadError,
@@ -31,7 +34,8 @@ export function EvidenceWorkspace({
   const [query, setQuery] = useState("");
   const [governanceTag, setGovernanceTag] = useState("all");
   const [parseState, setParseState] = useState("all");
-  const [selectedEvidenceId, setSelectedEvidenceId] = useState<string | undefined>();
+  const [selectedEvidenceId, setSelectedEvidenceId] = useState<string | undefined>(initialEvidenceId);
+  useEffect(() => { if (initialEvidenceId) setSelectedEvidenceId(initialEvidenceId); }, [initialEvidenceId]);
   const [assertionId, setAssertionId] = useState("");
   const [subjectRef, setSubjectRef] = useState("");
   const [predicate, setPredicate] = useState("");
@@ -55,11 +59,13 @@ export function EvidenceWorkspace({
   );
 
   useEffect(() => {
+    // Loading is not evidence that a requested record disappeared.
+    if (workspace === undefined || loadState !== "loaded") return;
     if (selectedEvidenceId !== undefined && workspace?.items.some((item) => item.evidenceId === selectedEvidenceId)) {
       return;
     }
     setSelectedEvidenceId(workspace?.items[0]?.evidenceId);
-  }, [selectedEvidenceId, workspace]);
+  }, [selectedEvidenceId, workspace, loadState]);
 
   useEffect(() => {
     setAssertionId("");
@@ -132,6 +138,7 @@ export function EvidenceWorkspace({
         </p>
       </header>
 
+      <EvidenceReader workspace={workspace} evidenceId={selectedItem?.evidenceId} onSelectEvidence={setSelectedEvidenceId} onRefresh={onRetry} />
       {workspace.diagnostics.length > 0 ? (
         <section aria-label="Evidence diagnostics" className="border border-[var(--signal-red)] bg-[var(--console-panel)]/72 p-4">
           <h2 className="font-mono text-base text-[var(--signal-red)] sm:text-sm">Safe replay diagnostics</h2>
@@ -169,8 +176,8 @@ export function EvidenceWorkspace({
           Parse state
           <select aria-label="Parse state" value={parseState} onChange={(event) => setParseState(event.target.value)} className={inputClass}>
             <option value="all">All parse states</option>
-            {(["queued", "running", "succeeded", "failed"] as const).map((state) => (
-              <option key={state} value={state}>{state}</option>
+            {(["queued", "running", "succeeded", "partial", "failed"] as const).map((state) => (
+              <option key={state} value={state}>{state === "partial" ? "partial text extraction" : state}</option>
             ))}
           </select>
         </label>
@@ -196,7 +203,7 @@ export function EvidenceWorkspace({
                     className="w-full min-w-0 px-4 py-3 text-left hover:bg-[var(--console-panel)] focus-visible:-outline-offset-2 focus-visible:outline-2 focus-visible:outline-[var(--signal-cyan)]"
                   >
                     <span className="block break-all font-mono text-base text-[var(--signal-cyan)] sm:text-sm">{item.evidenceId}</span>
-                    <span className="mt-1 block truncate text-base text-[var(--paper-light)] sm:text-sm">{item.source?.label ?? "Provenance incomplete"}</span>
+                    <span className="mt-1 block break-words text-base text-[var(--paper-light)] sm:text-sm">{[...new Set(item.occurrences.map(occurrence => occurrence.sourcePath))].join(", ") || item.source?.label || "Provenance incomplete"}</span>
                     <span className="mt-1 block font-mono text-base text-[var(--muted-amber)] sm:text-sm">
                       {item.occurrences.length} occurrences · {item.quarantined ? "quarantined" : item.provenanceComplete ? "provenance complete" : "provenance incomplete"}
                     </span>
@@ -253,7 +260,7 @@ export function EvidenceWorkspace({
               <ul role="list" className="mt-2 space-y-2">
                 {selectedItem.parseJobs.map((job) => (
                   <li key={job.parseJobId} className="text-base text-[var(--paper-light)] sm:text-sm">
-                    <span className="font-mono">{job.parser.name}@{job.parser.version}</span> · {job.lane} · {job.state}
+                    <span className="font-mono">{job.parser.name}@{job.parser.version}</span> · {job.lane} · {job.coverageStatus === "partial" ? "partial text extraction" : job.state}
                     {job.derivative === undefined ? null : <span className="block break-all text-[var(--muted-amber)]">{job.derivative.contentHash} · {job.derivative.mediaType}</span>}
                   </li>
                 ))}
@@ -347,7 +354,7 @@ function evidenceMatches(item: EvidenceItemDto, query: string, governanceTag: st
   ].join(" ").toLowerCase();
   return (normalized === "" || searchable.includes(normalized)) &&
     (governanceTag === "all" || item.governanceTags.some((tag) => tag.tag === governanceTag)) &&
-    (parseState === "all" || item.parseJobs.some((job) => job.state === parseState));
+    (parseState === "all" || item.parseJobs.some((job) => (job.coverageStatus === "partial" ? "partial" : job.state) === parseState));
 }
 
 function Detail({ label, values }: { readonly label: string; readonly values: readonly string[] }) {

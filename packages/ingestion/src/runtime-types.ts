@@ -99,12 +99,14 @@ export interface IngestionJobDto {
   readonly jobId: string;
   readonly kind: "scan" | "import" | "local-parse" | "provider-parse";
   readonly state: "queued" | "running" | "succeeded" | "failed" | "skipped";
+  readonly coverageStatus?: "complete" | "partial";
   readonly retryable: boolean;
   readonly sourceCollectionId?: string;
   readonly scanBatchId?: string;
   readonly importBatchId?: string;
   readonly evidenceId?: string;
   readonly diagnosticIds: readonly string[];
+  readonly message?: string;
 }
 
 export interface IngestionDiagnosticsDto {

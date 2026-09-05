@@ -10,6 +10,9 @@ import type {
   IngestionJobDto,
   IngestionJobListDto,
   IngestionReviewDto,
+  IngestionSourceDto,
+  IngestionSourceListDto,
+  LoadIngestionReviewInput,
   IngestionRuntimeDiagnosticDto,
   IngestionRuntimeError,
   IngestionWorkspaceDto,
@@ -20,6 +23,9 @@ import type {
 
 export interface IngestionWorkspaceAdapter {
   loadWorkspace(): Promise<IngestionWorkspaceDto>;
+  listSources(): Promise<IngestionSourceListDto>;
+  loadReview(input: LoadIngestionReviewInput): Promise<IngestionActionResult>;
+  runLocalParsing(input: ListIngestionJobsInput): Promise<IngestionJobListDto>;
   registerSource(input: RegisterSourceInput): Promise<IngestionActionResult>;
   dryRunScan(input: DryRunScanInput): Promise<IngestionActionResult>;
   approveRawImport(input: ApproveRawImportInput): Promise<IngestionActionResult>;
@@ -39,6 +45,7 @@ export interface HttpIngestionWorkspaceAdapterOptions {
 
 export interface StaticIngestionWorkspaceAdapterOptions {
   readonly jobs?: IngestionJobListDto;
+  readonly sources?: IngestionSourceListDto;
   readonly diagnostics?: IngestionDiagnosticsDto;
   readonly actionResult?: IngestionActionResult;
   readonly jobActionResult?: IngestionJobActionResult;
@@ -68,6 +75,29 @@ export function createHttpIngestionWorkspaceAdapter(
         method: "GET"
       });
       return workspaceDtoFromJson(response);
+    },
+    async listSources() {
+      const response = await getJson(fetcher, `${baseUrl}/api/ingestion/sources`, {
+        credentials, headers: authHeaders(options.authToken), method: "GET"
+      });
+      if (isRuntimeFailure(response)) throw new Error(safeMessage(response.error.message));
+      if (!isJsonObject(response) || !arrayOf(response.sources, isSourceDto)) {
+        throw new Error("Ingestion runtime returned invalid sources payload.");
+      }
+      return { sources: response.sources.map((source) => ({ ...source, label: safeMessage(source.label) })) };
+    },
+    async loadReview(input: LoadIngestionReviewInput) {
+      const response = await getJson(fetcher, `${baseUrl}/api/ingestion/review${queryString(input)}`, {
+        credentials, headers: authHeaders(options.authToken), method: "GET"
+      });
+      return actionResultFromJson(response);
+    },
+    async runLocalParsing(input: ListIngestionJobsInput) {
+      const response = await getJson(fetcher, `${baseUrl}/api/ingestion/parse/run`, {
+        credentials, headers: { ...authHeaders(options.authToken), "content-type": "application/json" },
+        method: "POST", body: JSON.stringify(stripForbiddenBodyFields(input))
+      });
+      return jobListDtoFromJson(response);
     },
     registerSource(input: RegisterSourceInput) {
       return postAction(fetcher, `${baseUrl}/api/ingestion/sources`, input, credentials, options.authToken);
@@ -144,6 +174,20 @@ export function createStaticIngestionWorkspaceAdapter(
     async loadWorkspace() {
       return currentWorkspace;
     },
+    async listSources() {
+      return options.sources ?? { sources: currentWorkspace.review === undefined ? [] : [{
+        sourceCollectionId: currentWorkspace.review.sourceCollectionId,
+        label: currentWorkspace.review.label,
+        scanBatchIds: [], importBatchIds: [], diagnosticIds: []
+      }] };
+    },
+    async loadReview(input: LoadIngestionReviewInput) {
+      if (currentWorkspace.review?.sourceCollectionId === input.sourceCollectionId) {
+        return { ok: true as const, review: currentWorkspace.review, eventIds: [] };
+      }
+      return actionResult;
+    },
+    async runLocalParsing() { return options.jobs ?? { jobs: [] }; },
     registerSource: action,
     dryRunScan: action,
     approveRawImport: action,
@@ -307,7 +351,7 @@ function jobActionResultFromJson(value: unknown): IngestionJobActionResult {
 
   return {
     ok: true,
-    job: value.job,
+    job: safeJobDto(value.job),
     ...(isReviewDto(value.review) ? { review: safeReviewDto(value.review) } : {}),
     eventIds: stringArray(value.eventIds) ?? []
   };
@@ -316,14 +360,14 @@ function jobActionResultFromJson(value: unknown): IngestionJobActionResult {
 function jobListDtoFromJson(value: unknown): IngestionJobListDto {
   if (isJsonObject(value) && value.ok === true && arrayOf(value.jobs, isJobDto)) {
     return {
-      jobs: value.jobs,
+      jobs: value.jobs.map(safeJobDto),
       ...(arrayOf(value.diagnostics, isDiagnosticDto) ? { diagnostics: value.diagnostics.map(safeDiagnostic) } : {})
     };
   }
 
   if (isJsonObject(value) && arrayOf(value.jobs, isJobDto)) {
     return {
-      jobs: value.jobs,
+      jobs: value.jobs.map(safeJobDto),
       ...(arrayOf(value.diagnostics, isDiagnosticDto) ? { diagnostics: value.diagnostics.map(safeDiagnostic) } : {})
     };
   }
@@ -381,6 +425,11 @@ function safeReviewDto(review: IngestionReviewDto): IngestionReviewDto {
     ...(review.latestImportBatchId === undefined ? {} : { latestImportBatchId: safeMessage(review.latestImportBatchId) }),
     totals: { ...review.totals },
     approvalRequired: review.approvalRequired,
+    ...(review.importCompleted === undefined ? {} : { importCompleted: review.importCompleted }),
+    ...(review.approvedImportBatchId === undefined ? {} : { approvedImportBatchId: review.approvedImportBatchId }),
+    ...(review.files === undefined ? {} : { files: review.files.map((file) => ({
+      ...file, sourcePath: safeSourcePath(file.sourcePath), status: safeMessage(file.status)
+    })) }),
     duplicateGroups: review.duplicateGroups.map((group) => ({
       contentHash: safeMessage(group.contentHash),
       occurrenceCount: group.occurrenceCount,
@@ -401,10 +450,20 @@ function safeReviewDto(review: IngestionReviewDto): IngestionReviewDto {
         name: safeMessage(job.parser.name),
         version: safeMessage(job.parser.version)
       },
-      state: job.state
+      state: job.state,
+      ...(job.coverageStatus === undefined ? {} : { coverageStatus: job.coverageStatus })
     })),
     diagnostics: review.diagnostics.map(safeDiagnostic)
   };
+}
+
+function safeSourcePath(sourcePath: string): string {
+  if (sourcePath.startsWith("/") || /^[A-Za-z]:/.test(sourcePath)) return safeMessage(sourcePath);
+  return sourcePath.split("/").map(safeMessage).join("/");
+}
+
+function safeJobDto(job: IngestionJobDto): IngestionJobDto {
+  return { ...job, ...(job.message === undefined ? {} : { message: safeMessage(job.message) }) };
 }
 
 function safeError(error: IngestionRuntimeError): IngestionRuntimeError {
@@ -519,6 +578,12 @@ function isImportTotals(value: unknown): value is NonNullable<Extract<IngestionA
   );
 }
 
+function isSourceDto(value: unknown): value is IngestionSourceDto {
+  return isJsonObject(value) && typeof value.sourceCollectionId === "string" && typeof value.label === "string"
+    && arrayOf(value.scanBatchIds, isString) && arrayOf(value.importBatchIds, isString)
+    && arrayOf(value.diagnosticIds, isString);
+}
+
 function isJobDto(value: unknown): value is IngestionJobDto {
   return (
     isJsonObject(value) &&
@@ -526,6 +591,8 @@ function isJobDto(value: unknown): value is IngestionJobDto {
     typeof value.kind === "string" &&
     typeof value.state === "string" &&
     typeof value.retryable === "boolean" &&
+    (value.coverageStatus === undefined || value.coverageStatus === "complete" || value.coverageStatus === "partial") &&
+    (value.message === undefined || typeof value.message === "string") &&
     arrayOf(value.diagnosticIds, isString)
   );
 }

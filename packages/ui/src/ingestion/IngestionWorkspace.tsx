@@ -1,6 +1,11 @@
+import { useState } from "react";
 import type {
-  ApproveProviderParsingInput,
   ApproveRawImportInput,
+  DryRunScanInput,
+  RegisterSourceInput,
+  LoadIngestionReviewInput,
+  ListIngestionJobsInput,
+  IngestionSourceDto,
   ImportApprovedInput,
   IngestionDiagnosticsInput,
   IngestionJobDto,
@@ -14,10 +19,16 @@ interface IngestionWorkspaceProps {
   readonly loadState: "idle" | "loading" | "loaded" | "error";
   readonly loadError?: string | undefined;
   readonly jobs?: readonly IngestionJobDto[];
+  readonly sources?: readonly IngestionSourceDto[];
+  readonly busy?: boolean;
+  readonly onRegisterSource?: (input: RegisterSourceInput) => void;
+  readonly onSelectSource?: (input: LoadIngestionReviewInput) => void;
+  readonly onDryRunScan?: (input: DryRunScanInput) => void;
+  readonly onRunLocalParsing?: (input: ListIngestionJobsInput) => void;
+  readonly onOpenEvidence?: (evidenceId: string) => void;
   readonly diagnostics?: readonly IngestionRuntimeDiagnosticDto[];
   readonly onApproveRawImport?: (input: ApproveRawImportInput) => void;
   readonly onImportApproved?: (input: ImportApprovedInput) => void;
-  readonly onApproveProviderParsing?: (input: ApproveProviderParsingInput) => void;
   readonly onRetryJob?: (input: RetryIngestionJobInput) => void;
   readonly onLoadDiagnostics?: (input: IngestionDiagnosticsInput) => void;
 }
@@ -29,20 +40,28 @@ export function IngestionWorkspace({
   loadState,
   loadError,
   jobs = [],
+  sources = [],
+  busy = false,
+  onRegisterSource,
+  onSelectSource,
+  onDryRunScan,
+  onRunLocalParsing,
+  onOpenEvidence,
   diagnostics = [],
   onApproveRawImport,
   onImportApproved,
-  onApproveProviderParsing,
   onRetryJob,
   onLoadDiagnostics
 }: IngestionWorkspaceProps) {
+  const [sourceLabel, setSourceLabel] = useState("");
+  const [sourcePath, setSourcePath] = useState("");
   const review = workspace?.review;
+  const actionsAvailable = workspace?.mounted === true && loadState === "loaded" && !busy;
   const allDiagnostics = [
     ...(workspace?.diagnostics ?? []),
     ...(review?.diagnostics ?? []),
     ...diagnostics
   ];
-  const importCompleted = review === undefined ? false : isImportCompleted(review);
 
   return (
     <section aria-label="Ingestion workspace" className="space-y-5">
@@ -58,17 +77,18 @@ export function IngestionWorkspace({
           <ActionButton
             label="Approve raw import"
             input={review === undefined ? undefined : approveRawImportInput(review)}
-            onAction={onApproveRawImport}
+            onAction={actionsAvailable ? onApproveRawImport : undefined}
           />
           <ActionButton
             label="Run approved import"
             input={review === undefined ? undefined : importApprovedInput(review)}
-            onAction={onImportApproved}
+            onAction={actionsAvailable ? onImportApproved : undefined}
           />
           <ActionButton
-            label="Approve provider parsing"
-            input={review === undefined ? undefined : approveProviderInput(review)}
-            onAction={onApproveProviderParsing}
+            label={jobs.some(job => job.kind === "local-parse" && job.state === "running") ? "Recover interrupted extraction" : "Extract queued documents"}
+            input={review !== undefined && jobs.some((job) => job.kind === "local-parse" && (job.state === "queued" || job.state === "running"))
+              ? { sourceCollectionId: review.sourceCollectionId } : undefined}
+            onAction={actionsAvailable ? onRunLocalParsing : undefined}
           />
         </div>
       </div>
@@ -100,12 +120,58 @@ export function IngestionWorkspace({
         </section>
       ) : null}
 
-      {workspace?.mounted === true && review === undefined ? (
-        <section aria-label="Source registration state" className="border border-[var(--console-line)] bg-[var(--console-panel)] p-4">
-          <p className="font-mono text-base text-[var(--signal-amber)] sm:text-sm">No source collection selected</p>
-          <p className="mt-3 text-base text-pretty text-[var(--muted-amber)] sm:text-sm">
-            Source mounting and registration are handled by the local workspace layer.
+      {workspace?.mounted === true ? (
+        <section aria-label="Source registration and selection" className="space-y-4 border border-[var(--console-line)] bg-[var(--console-panel)] p-4">
+          <h2 className="text-base font-semibold text-[var(--paper-light)]">Source folders</h2>
+          <p className="text-sm text-[var(--muted-amber)]">
+            Register a folder on this machine. Scanning reads filenames and bytes without changing the source;
+            importing copies approved originals into the mounted workspace.
           </p>
+          <form className="grid gap-3 md:grid-cols-2" onSubmit={(event) => {
+            event.preventDefault();
+            if (!actionsAvailable || !sourceLabel.trim() || !sourcePath.startsWith("/")) return;
+            onRegisterSource?.({ sourceCollectionId: `src_${crypto.randomUUID()}`, label: sourceLabel.trim(),
+              sourceRoot: sourcePath, rootUri: `file://${sourcePath.split("/").map(encodeURIComponent).join("/")}` });
+          }}>
+            <label className="grid gap-1 text-sm text-[var(--paper-light)]">
+              Source label
+              <input required value={sourceLabel} onChange={(event) => setSourceLabel(event.target.value)}
+                disabled={!actionsAvailable} className="min-h-11 min-w-0 border border-[var(--console-line)] bg-[var(--console-panel-raised)] px-3" />
+            </label>
+            <label className="grid gap-1 text-sm text-[var(--paper-light)]">
+              Source folder path
+              <input required value={sourcePath} onChange={(event) => setSourcePath(event.target.value)}
+                placeholder="/absolute/path/to/records" autoComplete="off" spellCheck={false}
+                disabled={!actionsAvailable} className="min-h-11 min-w-0 border border-[var(--console-line)] bg-[var(--console-panel-raised)] px-3" />
+            </label>
+            <button type="submit" disabled={!actionsAvailable || onRegisterSource === undefined || !sourceLabel.trim() || !sourcePath.startsWith("/")}
+              className="min-h-11 border border-[var(--console-line)] px-3 py-2 text-sm text-[var(--signal-amber)] disabled:opacity-55 md:col-span-2">
+              Register source folder
+            </button>
+          </form>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+            <label className="grid min-w-0 flex-1 gap-1 text-sm text-[var(--paper-light)]">
+              Registered source
+              <select value={review?.sourceCollectionId ?? ""} disabled={!actionsAvailable || onSelectSource === undefined}
+                onChange={(event) => { if (event.target.value) onSelectSource?.({ sourceCollectionId: event.target.value }); }}
+                className="min-h-11 min-w-0 border border-[var(--console-line)] bg-[var(--console-panel-raised)] px-3">
+                <option value="">Select a saved source</option>
+                {review !== undefined && !sources.some((source) => source.sourceCollectionId === review.sourceCollectionId)
+                  ? <option value={review.sourceCollectionId}>{review.label}</option> : null}
+                {sources.map((source) => <option key={source.sourceCollectionId} value={source.sourceCollectionId}>{source.label}</option>)}
+              </select>
+            </label>
+            <ActionButton label="Reopen saved review" input={review === undefined ? undefined : { sourceCollectionId: review.sourceCollectionId }}
+              onAction={actionsAvailable ? onSelectSource : undefined} />
+            <button type="button" disabled={!actionsAvailable || review === undefined || onDryRunScan === undefined}
+              onClick={() => { if (review !== undefined) onDryRunScan?.({ sourceCollectionId: review.sourceCollectionId, scanBatchId: `scan_${crypto.randomUUID()}` }); }}
+              className="min-h-11 border border-[var(--console-line)] px-3 py-2 text-sm text-[var(--signal-amber)] disabled:opacity-55">
+              Scan source folder
+            </button>
+          </div>
+          <p className="text-sm text-[var(--muted-amber)]">Local extraction supports UTF-8 text, CSV, and text-bearing PDFs.
+            Scanned PDFs and images require OCR, which is not supported in this local path.</p>
+          {busy ? <p role="status" className="text-sm text-[var(--signal-amber)]">Processing this action. Jobs and diagnostics will refresh when it finishes.</p> : null}
         </section>
       ) : null}
 
@@ -151,10 +217,25 @@ export function IngestionWorkspace({
                   label="Import execution"
                   state={importExecutionGateState(review)}
                 />
-                <GateState label="Provider parsing" state={providerGateState(review, importCompleted)} />
+                <p className="text-[var(--muted-amber)]">This approval covers the displayed scan only. Originals remain unchanged.
+                  External processing requires a separate exact-content approval in the evidence reader.</p>
               </div>
             </section>
           </div>
+
+          {review.files !== undefined ? (
+            <section aria-label="Documents in this scan" className="border border-[var(--console-line)] bg-[var(--console-panel)]">
+              <h2 className="border-b border-[var(--console-line)] px-4 py-3 text-base font-semibold text-[var(--paper-light)]">Documents in this scan</h2>
+              <p className="px-4 py-3 text-sm text-[var(--muted-amber)]">Approval imports this entire scanned batch. Review the filenames, sizes, and skipped records before approving.</p>
+              <ul className="max-h-96 overflow-auto divide-y divide-[var(--console-line)]">
+                {review.files.map((file) => <li key={file.occurrenceId} className="grid gap-1 px-4 py-3">
+                  <span className="break-all text-sm text-[var(--paper-light)]">{file.sourcePath}</span>
+                  <span className="text-xs text-[var(--muted-amber)]">{formatBytes(file.byteLength)} · {file.status}</span>
+                  <span className="break-all font-mono text-xs text-[var(--muted-amber)]">{file.contentHash}</span>
+                </li>)}
+              </ul>
+            </section>
+          ) : null}
 
           <div className="grid gap-4 lg:grid-cols-2">
             <section aria-label="Duplicate content" className="border border-[var(--console-line)] bg-[var(--console-panel)]">
@@ -191,7 +272,10 @@ export function IngestionWorkspace({
                 <ul className="divide-y divide-[var(--console-line)]">
                   {review.evidenceLinks.map((link) => (
                     <li key={`${link.contentHash}-${link.evidenceId}`} className="grid gap-1 px-4 py-3">
-                      <span className="font-mono text-xs text-[var(--signal-cyan)]">{link.evidenceId}</span>
+                      <button type="button" disabled={onOpenEvidence === undefined} onClick={() => onOpenEvidence?.(link.evidenceId)}
+                        className="min-h-10 text-left font-mono text-xs break-all text-[var(--signal-cyan)] underline disabled:no-underline">
+                        Read {link.evidenceId}
+                      </button>
                       <span className="font-mono text-xs break-all text-[var(--muted-amber)]">{link.contentHash}</span>
                     </li>
                   ))}
@@ -214,14 +298,15 @@ export function IngestionWorkspace({
               {jobs.map((job) => (
                 <li key={job.jobId} className="grid gap-2 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
                   <div className="min-w-0">
-                    <p className="font-mono text-xs text-[var(--paper-light)]">{job.jobId}</p>
+                    <p className="font-mono text-xs break-all text-[var(--paper-light)]">{job.jobId}</p>
                     <p className="mt-1 text-sm text-[var(--muted-amber)]">
-                      {job.kind} · {job.state}
+                      {job.kind} · {job.coverageStatus === "partial" ? "partial text extraction" : job.state}
                     </p>
+                    {job.message === undefined ? null : <p className="mt-1 text-sm text-[var(--paper-light)]">{job.message}</p>}
                   </div>
                   <button
                     type="button"
-                    disabled={!job.retryable || onRetryJob === undefined}
+                    disabled={!actionsAvailable || !job.retryable || onRetryJob === undefined}
                     onClick={() => onRetryJob?.({ jobId: job.jobId })}
                     className="min-h-10 border border-[var(--console-line)] px-3 py-2 text-base text-[var(--signal-amber)] disabled:opacity-55 sm:text-sm"
                   >
@@ -305,7 +390,7 @@ function StatRow({ label, value }: { readonly label: string; readonly value: str
   return (
     <div className="flex items-center justify-between gap-4 px-4 py-3 text-sm">
       <dt className="text-[var(--muted-amber)]">{label}</dt>
-      <dd className="text-right font-mono text-[var(--paper-light)]">{value}</dd>
+      <dd className="min-w-0 break-all text-right font-mono text-[var(--paper-light)]">{value}</dd>
     </div>
   );
 }
@@ -337,15 +422,17 @@ function approveRawImportInput(review: NonNullable<IngestionWorkspaceDto["review
   return {
     sourceCollectionId: review.sourceCollectionId,
     scanBatchId: review.latestScanBatchId,
-    importBatchId: review.latestImportBatchId ?? importBatchIdForScan(review.latestScanBatchId),
+    importBatchId: `imp_${crypto.randomUUID()}`,
     approvedBy: uiActorId
   };
 }
 
 function importApprovedInput(review: NonNullable<IngestionWorkspaceDto["review"]>): ImportApprovedInput | undefined {
+  const importBatchId = review.approvedImportBatchId ?? review.latestImportBatchId;
   if (
     review.latestScanBatchId === undefined ||
-    review.latestImportBatchId === undefined ||
+    review.approvalRequired ||
+    importBatchId === undefined ||
     isImportCompleted(review)
   ) {
     return undefined;
@@ -354,32 +441,8 @@ function importApprovedInput(review: NonNullable<IngestionWorkspaceDto["review"]
   return {
     sourceCollectionId: review.sourceCollectionId,
     scanBatchId: review.latestScanBatchId,
-    importBatchId: review.latestImportBatchId
+    importBatchId
   };
-}
-
-function approveProviderInput(review: NonNullable<IngestionWorkspaceDto["review"]>): ApproveProviderParsingInput | undefined {
-  if (review.latestImportBatchId === undefined || !isImportCompleted(review)) {
-    return undefined;
-  }
-
-  return {
-    providerJobId: `provider_${normalizeIdPart(review.latestImportBatchId)}`,
-    sourceCollectionId: review.sourceCollectionId,
-    importBatchId: review.latestImportBatchId,
-    provider: { name: "mistral-document-ai", version: "0.1.0" },
-    approvedBy: uiActorId,
-    eligibleMediaTypes: ["application/pdf"],
-    maxBytesPerFile: 50000000
-  };
-}
-
-function importBatchIdForScan(scanBatchId: string): string {
-  return `imp_${normalizeIdPart(scanBatchId.replace(/^scan_/, ""))}`;
-}
-
-function normalizeIdPart(value: string): string {
-  return value.replace(/[^a-zA-Z0-9_-]/g, "_");
 }
 
 function rawImportGateState(review: NonNullable<IngestionWorkspaceDto["review"]>) {
@@ -393,25 +456,12 @@ function importExecutionGateState(review: NonNullable<IngestionWorkspaceDto["rev
   if (isImportCompleted(review)) {
     return "Imported evidence ready";
   }
-  return review.latestImportBatchId === undefined ? "Waiting for approval" : review.latestImportBatchId;
-}
-
-function providerGateState(
-  review: NonNullable<IngestionWorkspaceDto["review"]>,
-  importCompleted: boolean
-) {
-  if (!importCompleted) {
-    return "Waiting for import execution";
-  }
-  const providerJob = review.parseJobs.find((job) => job.lane === "provider");
-  if (providerJob === undefined) {
-    return "Approval required before byte transfer";
-  }
-  return `${providerJob.parser.name} ${providerJob.state}`;
+  if (review.approvalRequired) return "Waiting for approval";
+  return review.approvedImportBatchId ?? review.latestImportBatchId ?? "Waiting for approval";
 }
 
 function isImportCompleted(review: NonNullable<IngestionWorkspaceDto["review"]>) {
-  return review.evidenceLinks.length > 0;
+  return review.importCompleted ?? (!review.approvalRequired && review.evidenceLinks.length > 0);
 }
 
 function diagnosticKey(diagnostic: IngestionRuntimeDiagnosticDto, index: number) {

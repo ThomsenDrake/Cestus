@@ -2742,7 +2742,7 @@ describe("agent HTTP routes", () => {
     expect(isAgentSecretSafeText(response.body)).toBe(true);
   });
 
-  it("does not synthesize ingestion authority outside boundary routes and rejects stale boundary mounts before writes", async () => {
+  it("provides separate human ingestion authority and rejects stale boundary mounts before writes", async () => {
     const config = portableConfig("ws_boundary_resolver_scope");
     if (config.storage.strategy !== "portable-workspace") throw new Error("boundary resolver test requires portable storage");
     const sourceRoot = join(config.storage.workspaceRoot, "selected");
@@ -2750,7 +2750,7 @@ describe("agent HTTP routes", () => {
     const handler = testHandler({ config });
 
     const ordinaryRoute = await handler({ method: "GET", url: "/api/ingestion/sources" });
-    expect(ordinaryRoute.status).toBe(503);
+    expect(ordinaryRoute.status).toBe(200);
 
     rmSync(join(config.storage.workspaceRoot, "cestus-workspace.json"));
     const staleBoundary = await handler({

@@ -75,6 +75,7 @@ export interface EvidenceParseJobDto {
   readonly lane: "local" | "provider";
   readonly parser: { readonly name: string; readonly version: string };
   readonly state: "queued" | "running" | "succeeded" | "failed";
+  readonly coverageStatus?: "complete" | "partial";
   readonly derivative?: {
     readonly contentHash: string;
     readonly mediaType: string;
@@ -171,6 +172,7 @@ export function buildEvidenceWorkspaceDto(rawEvents: readonly unknown[]): Eviden
             lane: job.lane,
             parser: { ...job.parser },
             state: job.state,
+            ...(job.coverageStatus === undefined ? {} : { coverageStatus: job.coverageStatus }),
             ...(job.outputHash === undefined || job.outputMediaType === undefined
               ? {}
               : { derivative: { contentHash: job.outputHash, mediaType: job.outputMediaType } })
@@ -267,6 +269,9 @@ export interface IngestionReviewDto {
     estimatedNewBlobBytes: number;
   };
   approvalRequired: boolean;
+  importCompleted?: boolean;
+  approvedImportBatchId?: string;
+  files?: Array<{ occurrenceId: string; sourcePath: string; contentHash: string; byteLength: number; status: IngestionOccurrenceSummary["status"] }>;
   duplicateGroups: IngestionReviewDuplicateGroupDto[];
   evidenceLinks: Array<{
     contentHash: string;
@@ -279,6 +284,7 @@ export interface IngestionReviewDto {
     lane: "local" | "provider";
     parser: { name: string; version: string };
     state: "queued" | "running" | "succeeded" | "failed";
+    coverageStatus?: "complete" | "partial";
   }>;
   diagnostics: Array<{
     diagnosticId: string;
@@ -315,6 +321,9 @@ export function buildIngestionReviewDto(
     ...(source.latestImportBatchId === undefined ? {} : { latestImportBatchId: source.latestImportBatchId }),
     totals: copyTotals(latestScan?.totals),
     approvalRequired: latestScan?.state === "completed" && approvalBatchIds.length === 0,
+    importCompleted: completionBatchIds.length > 0,
+    ...(approvalBatchIds.at(-1) === undefined ? {} : { approvedImportBatchId: approvalBatchIds.at(-1)! }),
+    files: (latestScan?.occurrenceIds ?? []).map((id) => projection.occurrencesById.get(id)).filter((occurrence): occurrence is IngestionOccurrenceSummary => occurrence !== undefined).map((occurrence) => ({ occurrenceId: occurrence.occurrenceId, sourcePath: occurrence.sourcePath, contentHash: occurrence.contentHash, byteLength: occurrence.sizeBytes, status: occurrence.status })),
     duplicateGroups: duplicateGroupsForSource(projection, sourceCollectionId),
     evidenceLinks: evidenceLinksForSource(projection, sourceCollectionId),
     parseJobs: parseJobsForSource(projection, sourceCollectionId),
@@ -392,7 +401,8 @@ function parseJobsForSource(
       evidenceId: job.evidenceId,
       lane: job.lane,
       parser: { ...job.parser },
-      state: job.state
+      state: job.state,
+      ...(job.coverageStatus === undefined ? {} : { coverageStatus: job.coverageStatus })
     }))
     .sort((left, right) => compareCodeUnits(left.parseJobId, right.parseJobId));
 }

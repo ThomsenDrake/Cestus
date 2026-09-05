@@ -20,5 +20,9 @@ jobs:
         with:
           node-version: "26"
           cache: "npm"
+      - name: Install PDF extraction tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends poppler-utils
       - run: npm ci
       - run: npm run verify

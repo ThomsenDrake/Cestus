@@ -8,13 +8,14 @@ import type {
   ProviderDescriptor
 } from "./provider.js";
 import {
+  ProviderInvocationError,
   assertCredentialReferenceIsSafe,
   providerDescriptorSchema
 } from "./provider.js";
 import type { SecretStore } from "./secret-store.js";
 import { assertAgentSecretSafeText } from "./secret-safety.js";
 
-type FetchLike = (url: string, init: RequestInit) => Promise<Pick<Response, "ok" | "status" | "json">>;
+type FetchLike = (url: string, init: RequestInit) => Promise<Pick<Response, "ok" | "status" | "json"> & Partial<Pick<Response, "body">>>;
 
 export interface OpenAICompatibleChatProviderOptions {
   readonly providerId: string;
@@ -32,6 +33,8 @@ export interface OpenAICompatibleChatProviderOptions {
   readonly includeReasoning?: boolean;
   readonly reasoningEffort?: NousReasoningEffort;
   readonly temperature?: number;
+  readonly maxResponseBytes?: number;
+  readonly requireUsage?: boolean;
 }
 
 export interface CreateNousPortalProviderInput {
@@ -56,6 +59,10 @@ const defaultNousPortalRequestTags = Object.freeze([
   "product=cestus",
   "client=cestus-agent-v0.1.0"
 ]);
+
+// Explicit request rejection semantics only. In particular 408, 409 and 5xx
+// cannot prove that upstream generation did not occur. Do not infer billing.
+const rejectedRequestStatuses = new Set([400, 401, 403, 404, 405, 406, 410, 413, 415, 422, 429]);
 
 const contentHashPattern = /^sha256:[a-f0-9]{64}$/;
 const endpointSchema = z.string().url();
@@ -98,6 +105,8 @@ export class OpenAICompatibleChatProvider implements ModelProviderAdapter {
   private readonly includeReasoning: boolean | undefined;
   private readonly reasoningEffort: NousReasoningEffort | undefined;
   private readonly temperature: number | undefined;
+  private readonly maxResponseBytes: number | undefined;
+  private readonly requireUsage: boolean;
 
   constructor(options: OpenAICompatibleChatProviderOptions) {
     const endpointUrl = endpointSchema.parse(options.endpointUrl);
@@ -121,6 +130,11 @@ export class OpenAICompatibleChatProvider implements ModelProviderAdapter {
       ? undefined
       : reasoningEffortSchema.parse(options.reasoningEffort);
     this.temperature = parseTemperature(options.temperature);
+    this.maxResponseBytes = options.maxResponseBytes;
+    this.requireUsage = options.requireUsage ?? false;
+    if (this.maxResponseBytes !== undefined && (!Number.isInteger(this.maxResponseBytes) || this.maxResponseBytes < 1)) {
+      throw new Error("maxResponseBytes must be a positive integer.");
+    }
     this.descriptor = freezeProviderDescriptor(providerDescriptorSchema.parse({
       providerId: options.providerId,
       label: options.label,
@@ -148,9 +162,13 @@ export class OpenAICompatibleChatProvider implements ModelProviderAdapter {
     if (secret === undefined) {
       throw new Error("Credential binding is missing.");
     }
+    await parsed.beforeTransfer?.();
+    parsed.signal?.throwIfAborted();
 
     const response = await this.fetchImpl(this.endpointUrl, {
       method: "POST",
+      redirect: "error",
+      ...(parsed.signal === undefined ? {} : { signal: parsed.signal }),
       headers: {
         "authorization": `Bearer ${secret.exposeForProviderAdapter()}`,
         "content-type": "application/json"
@@ -169,27 +187,40 @@ export class OpenAICompatibleChatProvider implements ModelProviderAdapter {
       })
     });
 
-    if (!response.ok) {
-      throw new Error("Provider request failed.");
+    // This synchronous chat contract requires a completed 200 response. Other
+    // statuses can describe deferred work, partial content or a gateway failure
+    // after upstream submission; receiving headers alone does not settle that.
+    if (response.status !== 200) {
+      await response.body?.cancel().catch(() => undefined);
+      throw new ProviderInvocationError(rejectedRequestStatuses.has(response.status) ? "rejected" : "completion-unknown");
     }
 
     let responseJson: unknown;
     try {
-      responseJson = await response.json();
-    } catch {
-      throw new Error("Provider returned invalid output.");
+      responseJson = this.maxResponseBytes === undefined
+        ? await response.json()
+        : await readBoundedResponse(response, this.maxResponseBytes);
+    } catch (error) {
+      if (error instanceof ProviderInvocationError) throw error;
+      // Response.json() reports SyntaxError only after a complete body was read;
+      // network/abort/decompression errors do not establish remote completion.
+      throw new ProviderInvocationError(error instanceof SyntaxError ? "invalid-response" : "completion-unknown");
     }
 
     const parsedResponse = chatCompletionResponseSchema.safeParse(responseJson);
     if (!parsedResponse.success) {
-      throw new Error("Provider returned invalid output.");
+      throw new ProviderInvocationError("invalid-response");
     }
 
     const outputText = parsedResponse.data.choices[0]?.message.content;
     if (outputText === undefined) {
-      throw new Error("Provider returned invalid output.");
+      throw new ProviderInvocationError("invalid-response");
     }
     const usage = parsedResponse.data.usage;
+    if (this.requireUsage && (!Number.isSafeInteger(usage?.prompt_tokens) || !Number.isSafeInteger(usage?.completion_tokens) ||
+      usage!.prompt_tokens! < 0 || usage!.completion_tokens! < 0)) {
+      throw new ProviderInvocationError("invalid-response");
+    }
 
     return Object.freeze({
       outputText,
@@ -296,4 +327,29 @@ function freezeProviderDescriptor(descriptor: ProviderDescriptor): ProviderDescr
     modelFamilies: Object.freeze([...descriptor.modelFamilies]),
     credentialKinds: Object.freeze([...descriptor.credentialKinds])
   }) as ProviderDescriptor;
+}
+
+async function readBoundedResponse(
+  response: Pick<Response, "json"> & Partial<Pick<Response, "body">>,
+  maximumBytes: number
+): Promise<unknown> {
+  if (response.body === undefined || response.body === null) {
+    throw new ProviderInvocationError("completion-unknown");
+  }
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  try {
+    for (;;) {
+      const next = await reader.read();
+      if (next.done) break;
+      size += next.value.byteLength;
+      if (size > maximumBytes) throw new ProviderInvocationError("completion-unknown");
+      chunks.push(next.value);
+    }
+    return JSON.parse(Buffer.concat(chunks).toString("utf8")) as unknown;
+  } finally {
+    await reader.cancel().catch(() => undefined);
+    reader.releaseLock();
+  }
 }
