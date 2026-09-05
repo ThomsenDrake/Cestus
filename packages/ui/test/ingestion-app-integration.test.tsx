@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { App } from "../src/App.js";
 import {
   createStaticIngestionWorkspaceAdapter,
@@ -10,6 +10,7 @@ import type { IngestionReviewDto } from "../src/ingestion/ingestion-types.js";
 import { createTestRequestsAdapter } from "./request-test-utils.js";
 
 describe("ingestion app integration", () => {
+  afterEach(() => vi.unstubAllGlobals());
   it("exposes the ingestion workspace through an injected adapter without the placeholder review", async () => {
     render(
       <App
@@ -72,6 +73,42 @@ describe("ingestion app integration", () => {
     expect(await screen.findByRole("dialog", { name: "Guided request builder" })).toBeInTheDocument();
   });
 
+  it("restores a saved source after reopening and runs local extraction from the app", async () => {
+    const saved = new Map<string, string>();
+    vi.stubGlobal("localStorage", {
+      getItem: (key: string) => saved.get(key) ?? null,
+      setItem: (key: string, value: string) => saved.set(key, value),
+      removeItem: (key: string) => saved.delete(key)
+    });
+    const workspaceId = "ws_ingestion_restore";
+    const savedReview = reviewDto({ sourceCollectionId: "src_saved", label: "Saved selection" });
+    window.localStorage.setItem(`cestus.ingestion.source.${workspaceId}`, "src_saved");
+    const loadReview = vi.fn(async () => ({ ok: true as const, review: savedReview, eventIds: [] }));
+    const job = { jobId: "parse_saved", kind: "local-parse" as const, state: "queued" as const, retryable: false, diagnosticIds: [] };
+    const runLocalParsing = vi.fn(async () => ({ jobs: [{ ...job, state: "succeeded" as const }] }));
+    const adapter = {
+      ...createStaticIngestionWorkspaceAdapter({ mounted: true, workspaceId, diagnostics: [] }, {
+        sources: { sources: [
+          { sourceCollectionId: "src_other", label: "Another source", scanBatchIds: [], importBatchIds: [], diagnosticIds: [] },
+          { sourceCollectionId: "src_saved", label: "Saved selection", scanBatchIds: [], importBatchIds: [], diagnosticIds: [] }
+        ] }, jobs: { jobs: [job] }
+      }), loadReview, runLocalParsing
+    };
+    const first = render(<App requestsAdapter={createTestRequestsAdapter()} ingestionAdapter={adapter} />);
+    fireEvent.click(screen.getByRole("link", { name: "Ingestion" }));
+    await waitFor(() => expect(screen.getByLabelText("Registered source")).toHaveValue("src_saved"));
+    expect(loadReview).toHaveBeenCalledWith({ sourceCollectionId: "src_saved" });
+    fireEvent.click(screen.getByRole("button", { name: "Extract queued documents" }));
+    await waitFor(() => expect(runLocalParsing).toHaveBeenCalledWith({ sourceCollectionId: "src_saved" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Reopen saved review" })).toBeEnabled());
+    first.unmount();
+    render(<App requestsAdapter={createTestRequestsAdapter()} ingestionAdapter={adapter} />);
+    fireEvent.click(screen.getByRole("link", { name: "Ingestion" }));
+    await waitFor(() => expect(screen.getByLabelText("Registered source")).toHaveValue("src_saved"));
+    expect(runLocalParsing).toHaveBeenCalledTimes(1);
+    window.localStorage.removeItem(`cestus.ingestion.source.${workspaceId}`);
+  });
+
   it("keeps successful ingestion actions committed when support refresh fails", async () => {
     const approvedReview = reviewDto({
       approvalRequired: false,
@@ -89,6 +126,9 @@ describe("ingestion app integration", () => {
           diagnostics: []
         };
       },
+      async listSources() { return { sources: [] }; },
+      async loadReview() { return { ok: true, review: approvedReview, eventIds: [] }; },
+      async runLocalParsing() { return { jobs: [] }; },
       async registerSource() {
         return { ok: true, review: approvedReview, eventIds: ["evt_source"] };
       },

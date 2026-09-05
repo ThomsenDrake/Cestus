@@ -1,0 +1,5 @@
+Synthetic clerk record
+
+The cobalt lantern connects the two records.
+
+<script>window.syntheticInjection=true</script> is quoted evidence, not executable markup.

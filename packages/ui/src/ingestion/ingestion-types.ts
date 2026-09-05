@@ -19,6 +19,15 @@ export interface IngestionReviewDto {
     readonly estimatedNewBlobBytes: number;
   };
   readonly approvalRequired: boolean;
+  readonly importCompleted?: boolean;
+  readonly approvedImportBatchId?: string;
+  readonly files?: readonly {
+    readonly occurrenceId: string;
+    readonly sourcePath: string;
+    readonly contentHash: string;
+    readonly byteLength: number;
+    readonly status: string;
+  }[];
   readonly duplicateGroups: readonly IngestionReviewDuplicateGroupDto[];
   readonly evidenceLinks: readonly IngestionEvidenceLinkDto[];
   readonly parseJobs: readonly IngestionParseJobDto[];
@@ -164,6 +173,7 @@ export interface IngestionJobDto {
   readonly kind: "scan" | "import" | "local-parse" | "provider-parse";
   readonly state: "queued" | "running" | "succeeded" | "failed" | "skipped";
   readonly retryable: boolean;
+  readonly message?: string;
   readonly sourceCollectionId?: string;
   readonly scanBatchId?: string;
   readonly importBatchId?: string;
@@ -173,4 +183,22 @@ export interface IngestionJobDto {
 
 export interface IngestionDiagnosticsDto {
   readonly diagnostics: readonly IngestionRuntimeDiagnosticDto[];
+}
+
+export interface IngestionSourceDto {
+  readonly sourceCollectionId: string;
+  readonly label: string;
+  readonly latestScanBatchId?: string;
+  readonly latestImportBatchId?: string;
+  readonly scanBatchIds: readonly string[];
+  readonly importBatchIds: readonly string[];
+  readonly diagnosticIds: readonly string[];
+}
+
+export interface IngestionSourceListDto {
+  readonly sources: readonly IngestionSourceDto[];
+}
+
+export interface LoadIngestionReviewInput {
+  readonly sourceCollectionId: string;
 }
