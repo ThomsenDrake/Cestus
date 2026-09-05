@@ -200,6 +200,12 @@ export function buildIngestionProjection(events: readonly unknown[]): IngestionP
         sourceCollectionIdByStreamId.set(event.streamId, event.payload.sourceCollectionId);
         projectParseJobCreated(projection, event);
         break;
+      case "ingestion.parse.started": {
+        sourceCollectionIdByStreamId.set(event.streamId, event.payload.sourceCollectionId);
+        const job = projection.parseJobs.get(event.payload.parseJobId);
+        if (job !== undefined && job.state !== "succeeded") { job.state = "running"; delete job.message; delete job.retryable; }
+        break;
+      }
       case "ingestion.parse.completed":
         sourceCollectionIdByStreamId.set(event.streamId, event.payload.sourceCollectionId);
         projectParseCompleted(projection, event);

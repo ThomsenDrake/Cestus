@@ -191,6 +191,8 @@ type RuntimeRoute = {
   readonly kind: "runtime";
   readonly runtimeMethod:
     | "listJobs"
+    | "readReview"
+    | "runParseJobs"
     | "listSources"
     | "retryJob"
     | "registerSource"
@@ -204,6 +206,12 @@ type RuntimeRoute = {
 };
 
 function routeFor(method: string, path: string): Route | undefined {
+  if (method === "GET" && path === "/api/ingestion/review") {
+    return { kind: "runtime", runtimeMethod: "readReview", bodyKind: "query", queryFields: ["sourceCollectionId"] };
+  }
+  if (method === "POST" && path === "/api/ingestion/parse/run") {
+    return { kind: "runtime", runtimeMethod: "runParseJobs", bodyKind: "json" };
+  }
   if (method === "POST" && path === "/api/ingestion/resident-source-boundaries/discover") {
     return { kind: "resident-source-boundary", bodyKind: "json", action: "discover" };
   }

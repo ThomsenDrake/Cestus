@@ -342,3 +342,44 @@ function headerEntries(headers: HeadersInit): Array<readonly [string, string]> {
   }
   return Object.entries(headers).map(([key, value]) => [key, String(value)]);
 }
+
+describe("bounded document provider transport", () => {
+  const request = {
+    invocationId: "inv_transport_001", runId: "run_transport_001", modelFamily: "fixture-model",
+    inputArtifactHash, inputText: providerInputText,
+    credentialRef: { credentialRefId: "agent_credref_nous_portal", providerId: "provider_nous_portal", kind: "api-key-bearer" as const }
+  };
+  it("resolves credentials before the last authority gate and performs zero calls when it rejects", async () => {
+    const sequence: string[] = [];
+    const provider = new OpenAICompatibleChatProvider({
+      providerId: "provider_nous_portal", label: "Fixture", endpointUrl: "https://example.test/v1/chat/completions",
+      modelId: "fixture-model", credentialRefId: "agent_credref_nous_portal",
+      secretStore: { resolve: async () => { sequence.push("resolve"); return SecretMaterial.fromTestValue(fixtureProviderMaterial); }, health: fixtureStoreForNous().health.bind(fixtureStoreForNous()) },
+      fetch: async () => { sequence.push("fetch"); return new Response("{}"); }
+    });
+    await expect(provider.invoke({ ...request, beforeTransfer: async () => { sequence.push("revalidate"); throw new Error("Changed"); } })).rejects.toThrow("Changed");
+    expect(sequence).toEqual(["resolve", "revalidate"]);
+  });
+  it("passes cancellation and forbids redirect forwarding; oversized response streams fail closed", async () => {
+    const controller = new AbortController();
+    let init: RequestInit | undefined;
+    const provider = new OpenAICompatibleChatProvider({
+      providerId: "provider_nous_portal", label: "Fixture", endpointUrl: "https://example.test/v1/chat/completions",
+      modelId: "fixture-model", credentialRefId: "agent_credref_nous_portal", secretStore: fixtureStoreForNous(),
+      maxResponseBytes: 8,
+      fetch: async (_url, options) => { init = options; return new Response("a".repeat(100)); }
+    });
+    await expect(provider.invoke({ ...request, signal: controller.signal })).rejects.toThrow("Provider returned invalid output.");
+    expect(init?.redirect).toBe("error");
+    expect(init?.signal).toBe(controller.signal);
+  });
+  it("requires real usage accounting when requested by the bounded processing path", async () => {
+    const provider = new OpenAICompatibleChatProvider({
+      providerId: "provider_nous_portal", label: "Fixture", endpointUrl: "https://example.test/v1/chat/completions",
+      modelId: "fixture-model", credentialRefId: "agent_credref_nous_portal", secretStore: fixtureStoreForNous(),
+      maxResponseBytes: 1000, requireUsage: true,
+      fetch: async () => new Response(JSON.stringify({ choices: [{ message: { content: "A summary." } }] }))
+    });
+    await expect(provider.invoke(request)).rejects.toThrow("Provider returned invalid output.");
+  });
+});

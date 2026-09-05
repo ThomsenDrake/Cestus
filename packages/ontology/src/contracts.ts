@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { z } from "zod";
+import { documentProcessingPreviewedSchema, documentProcessingApprovedSchema, documentProcessingStateChangedSchema } from "./document-processing-contracts.js";
 import { validateGovernancePolicy } from "./governance-policy.js";
 
 const credentialShapedTextPattern = /api[_-]?key|authorization|bearer|token|secret|password|oauth|credential|(?:^|[\s;])(?:(?:(?:x|set)-)?cookie\s*:|session\s*=\s*\S+)/i;
@@ -2765,6 +2766,10 @@ const ingestionParseCompletedPayloadSchema = z.object({
   completedAt: z.string().datetime()
 }).strict();
 
+const ingestionParseStartedPayloadSchema = ingestionParseJobCreatedPayloadSchema.omit({ state: true }).extend({
+  startedAt: z.string().datetime()
+}).strict();
+
 const ingestionParseFailedPayloadSchema = z.object({
   parseJobId: parseJobIdSchema,
   sourceCollectionId: sourceCollectionIdSchema,
@@ -3457,6 +3462,10 @@ export const payloadSchemas = {
   "ingestion.import.completed": ingestionImportCompletedPayloadSchema,
   "ingestion.evidence.linked": ingestionEvidenceLinkedPayloadSchema,
   "ingestion.parse.job.created": ingestionParseJobCreatedPayloadSchema,
+  "ingestion.parse.started": ingestionParseStartedPayloadSchema,
+  "document.processing.previewed": documentProcessingPreviewedSchema,
+  "document.processing.approved": documentProcessingApprovedSchema,
+  "document.processing.state.changed": documentProcessingStateChangedSchema,
   "ingestion.parse.completed": ingestionParseCompletedPayloadSchema,
   "ingestion.parse.failed": ingestionParseFailedPayloadSchema,
   "ingestion.provider.approved": ingestionProviderApprovedPayloadSchema,
@@ -4097,6 +4106,31 @@ export const eventContracts = {
       "lane must be local or provider"
     ]
   },
+  "document.processing.previewed": {
+    type: "document.processing.previewed", version: 1,
+    description: "Binds a bounded document operation to its protected exact disclosure manifest.",
+    agentGuidance: "Preview does not authorize transfer.",
+    invariants: ["manifest is immutable", "selection addresses exact extraction passages", "human actor required"]
+  },
+  "document.processing.approved": {
+    type: "document.processing.approved", version: 1,
+    description: "Records human approval of an exact disclosure manifest and budget.",
+    agentGuidance: "Revalidate authority, policy and content immediately before transfer.",
+    invariants: ["approvedBy matches human actor", "manifestHash matches preview"]
+  },
+  "document.processing.state.changed": {
+    type: "document.processing.state.changed", version: 1,
+    description: "Records durable document processing submission and result state.",
+    agentGuidance: "Uncertain submissions must never be retried automatically.",
+    invariants: ["completion references validated immutable output", "states preserve possible paid submission"]
+  },
+  "ingestion.parse.started": {
+    type: "ingestion.parse.started",
+    version: 1,
+    description: "Records a local parse attempt before extraction begins.",
+    agentGuidance: "An interrupted local attempt requires explicit recovery; it is not completed output.",
+    invariants: ["parseJobId identifies the existing job", "startedAt must be an ISO datetime"]
+  },
   "ingestion.parse.completed": {
     type: "ingestion.parse.completed",
     version: 1,
@@ -4402,6 +4436,8 @@ function isKnowledgeEventType(value: unknown): value is KnowledgeEventType {
 }
 
 const alwaysHumanGatedEventTypes = new Set<KnowledgeEventType>([
+  "document.processing.previewed",
+  "document.processing.approved",
   "assertion.accepted",
   "entity.resolved",
   "relationship.accepted",
@@ -4750,6 +4786,11 @@ const rawKnowledgeEventSchema = knowledgeEventBaseSchema
     }
 
     const agentStreamId = expectedAgentStreamId(event.type, payload.data);
+    if (event.type.startsWith("document.processing.")) {
+      const processing = payload.data as { invocationId: string; approvedBy?: string };
+      if (event.streamId !== `document_processing_${processing.invocationId}`) ctx.addIssue({ code: "custom", message: "Document processing stream must match invocation identity", path: ["streamId"] });
+      if (event.type === "document.processing.approved" && processing.approvedBy !== event.context.actor.id) ctx.addIssue({ code: "custom", message: "Document approval must match its human actor", path: ["payload", "approvedBy"] });
+    }
     if (agentStreamId !== undefined && event.streamId !== agentStreamId) {
       ctx.addIssue({
         code: "custom",
