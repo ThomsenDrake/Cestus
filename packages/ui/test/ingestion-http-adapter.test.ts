@@ -2,6 +2,39 @@ import { describe, expect, it, vi } from "vitest";
 import { createHttpIngestionWorkspaceAdapter } from "../src/ingestion/ingestion-adapter.js";
 
 describe("createHttpIngestionWorkspaceAdapter", () => {
+  it("reopens persisted source reviews and executes local parsing through authenticated routes", async () => {
+    const sources = [{ sourceCollectionId: "src_saved", label: "Saved folder", scanBatchIds: [], importBatchIds: [], diagnosticIds: [] }];
+    const fetcher = vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) => {
+      if (String(input).endsWith("/sources")) return jsonResponse(200, { ok: true, sources });
+      if (String(input).includes("/review?")) return jsonResponse(200, { ok: true, review: reviewDto() });
+      return jsonResponse(200, { ok: true, jobs: [] });
+    });
+    const adapter = createHttpIngestionWorkspaceAdapter({ fetcher, authToken: "local-session" });
+    await expect(adapter.listSources()).resolves.toEqual({ sources });
+    await expect(adapter.loadReview({ sourceCollectionId: "src_saved" })).resolves.toMatchObject({ ok: true, review: reviewDto() });
+    await expect(adapter.runLocalParsing({ sourceCollectionId: "src_saved" })).resolves.toEqual({ jobs: [] });
+    expect(fetcher).toHaveBeenNthCalledWith(2, "/api/ingestion/review?sourceCollectionId=src_saved", expect.objectContaining({
+      method: "GET", credentials: "same-origin", headers: { authorization: "Bearer local-session" }
+    }));
+    expect(fetcher).toHaveBeenNthCalledWith(3, "/api/ingestion/parse/run", expect.objectContaining({
+      method: "POST", body: JSON.stringify({ sourceCollectionId: "src_saved" })
+    }));
+  });
+
+  it("keeps relative filenames reviewable and returns safe processing failures", async () => {
+    const fetcher = vi.fn(async (input: RequestInfo | URL) => String(input).includes("/review?")
+      ? jsonResponse(200, { ok: true, review: { ...reviewDto(), importCompleted: false, approvedImportBatchId: "imp_new",
+        files: [{ occurrenceId: "occ_file", sourcePath: "minutes/meeting.txt", contentHash: "sha256:abc", byteLength: 20, status: "observed" }] } })
+      : jsonResponse(200, { ok: true, jobs: [{ jobId: "parse_failed", kind: "local-parse", state: "failed", retryable: false,
+        diagnosticIds: [], message: "Encrypted PDF at /private/source.pdf token=secret" }] }));
+    const adapter = createHttpIngestionWorkspaceAdapter({ fetcher });
+    const result = await adapter.loadReview({ sourceCollectionId: "src_drive_001" });
+    expect(result).toMatchObject({ ok: true, review: { importCompleted: false, approvedImportBatchId: "imp_new",
+      files: [{ sourcePath: "minutes/meeting.txt" }] } });
+    const jobs = await adapter.runLocalParsing({});
+    expect(jobs.jobs[0]?.message).toBe("Encrypted PDF at [path redacted] token=[redacted]");
+  });
+
   it("loads mounted workspace DTOs from the local ingestion runtime API", async () => {
     const payload = {
       mounted: true,
