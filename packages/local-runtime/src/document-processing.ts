@@ -65,7 +65,7 @@ export class DocumentProcessingService {
     const destination = this.configuration();
     const invocationId = `inv_${randomUUID().replaceAll("-", "")}`;
     const operation = parsed.operation ?? "document-summary.v1";
-    const schemaSnapshot = operation === "knowledge-extraction.v1" ? structuredClone(investigationVocabulary) : undefined;
+    const schemaSnapshot = operation === "knowledge-extraction.v1" ? await this.activeSchema() : undefined;
     if (schemaSnapshot && (!this.options.workspaceId || !resolved.provenanceEventIds?.length)) throw new Error("Knowledge extraction requires workspace and source provenance.");
     const systemPrompt = schemaSnapshot ? extractionSystemPrompt(schemaSnapshot) : summarySystemPrompt;
     const inputText = JSON.stringify({ evidenceId: resolved.evidenceId, extractionId: resolved.extractionId,
@@ -80,7 +80,7 @@ export class DocumentProcessingService {
     const manifest: DocumentProcessingManifest = {
       schemaVersion: "document-processing-manifest.v1", invocationId, actorId: actor.id, selection,
       resolved, destination, operation, provider: "openai-compatible-chat.v1",
-      ...(schemaSnapshot ? { workspaceId: this.options.workspaceId!, schemaSnapshot, promptVersion: "knowledge-extraction-prompt.v1" as const } : {}),
+      ...(schemaSnapshot ? { workspaceId: this.options.workspaceId!, schemaSnapshot, promptVersion: "knowledge-extraction-prompt.v2" as const } : {}),
       inputText, systemPrompt, inputBytes, inputTokenUpperBound, maxOutputTokens,
       maxResponseBytes: 65536, maximumEstimatedUsd, budgetUsd: parsed.budgetUsd,
       timeoutMs: this.options.timeoutMs ?? 30000,
@@ -246,11 +246,18 @@ export class DocumentProcessingService {
     if (size > 32768) throw new Error("Select at most 32 KiB of extracted passages.");
     return snapshot;
   }
+  private async activeSchema() {
+    const events = await this.options.ledger.readAll();
+    return structuredClone(events.findLast(event => event.type === "knowledge.schema.recorded")?.payload ?? investigationVocabulary);
+  }
   private async revalidate(manifest: DocumentProcessingManifest, actor: ActorRef) {
     this.assertHuman(actor);
     if (manifest.actorId !== actor.id || JSON.stringify(this.configuration()) !== JSON.stringify(manifest.destination) ||
       JSON.stringify(await this.resolve(manifest.selection, actor)) !== JSON.stringify(manifest.resolved)) {
       throw new Error("Content, classification, policy, authority or destination changed. Create and approve a new preview.");
+    }
+    if (manifest.operation === "knowledge-extraction.v1" && JSON.stringify(manifest.schemaSnapshot) !== JSON.stringify(await this.activeSchema())) {
+      throw new Error("Reviewed vocabulary schema changed. Create and approve a new preview.");
     }
   }
   private configuration(): ProviderConfiguration {
@@ -345,8 +352,9 @@ function extractionSystemPrompt(schema: typeof investigationVocabulary): string 
 Use these known predicates and entity types: ${JSON.stringify(schema)}.
 Each proposal has kind (entity, fact, relationship, occurrence), predicate, value, and citations [{"passageIndex":0,"quote":"exact substring"}]. Value is exactly {"type":"string","value":"literal source text"}, {"type":"number","value":250,"unit":"USD"}, {"type":"date","value":"2024-03"}, {"type":"boolean","value":true}, or {"type":"entity","mentionId":"local mention"}. Optional modelScore is your model score, not a probability of truth. Unknown vocabulary may be proposed, never accepted automatically.
 Entity proposals require unique mentionId, entityType, predicate name and string name value. Facts require subjectMentionId. Relationships require subjectMentionId and entity value. Every mention reference must point to an entity proposal in THIS response. Use separate mentions for unresolved same-name people. Occurrences require local occurrenceId, literal string value and participants [{"role":"payer","mentionId":"local mention"}]. Optional attributes [{"predicate":"amount","value":{"type":"number","value":250}}] must be grounded in the occurrence citations.
-Optional occurredTime and publicationTime are separate objects {"start":"2024-03","uncertain":true,"end":"2024-04"}. Preserve year/month/day precision; never invent dates or confuse publication, discovery, ingestion and real occurrence times. Include dates only when supported in the quoted text. Partial or unknown PDF coverage means missing text or visual evidence is unknown; this is not OCR or complete visual coverage.
-Citations must contain the actual value, and for relationships both endpoint names. Cite selected passages only. Never supply assertionId, workspaceId, evidence, schemaId, provenance or derivedFrom.
+Dates written in unambiguous English may use explicit normalization: {"type":"date","value":"2026-09-05","normalization":{"method":"written-date.v1","sourceExpression":"September 5, 2026","citationIndex":0}}. citationIndex identifies this proposal's citations array, not a passage index. The exact sourceExpression must occur in that citation. Supported written dates preserve full year, month or day precision; never guess numeric date order, missing year/day, relative dates, locale or time zone. If unsupported or ambiguous, leave the interpretation unresolved instead of inventing a date.
+Optional occurredTime and publicationTime are separate objects {"start":"2024-03","uncertain":true,"end":"2024-04"}. Preserve year/month/day precision; never invent dates or confuse publication, discovery, ingestion and real occurrence times. Include dates only when supported in the quoted text. Time qualifiers may include startNormalization and endNormalization with the same normalization object for their respective bounds. Partial or unknown PDF coverage means missing text or visual evidence is unknown; this is not OCR or complete visual coverage.
+Citations must contain the literal value or the explicit written-date source expression, and for relationships both endpoint names. Cite selected passages only. Never supply assertionId, workspaceId, evidence, schemaId, provenance or derivedFrom.
 Example for source "Violet Agency paid 250": {"proposals":[{"kind":"entity","predicate":"name","mentionId":"payer","entityType":"agency","value":{"type":"string","value":"Violet Agency"},"citations":[{"passageIndex":0,"quote":"Violet Agency"}]},{"kind":"fact","predicate":"amount","subjectMentionId":"payer","value":{"type":"number","value":250},"citations":[{"passageIndex":0,"quote":"Violet Agency paid 250"}]}]}`;
 }
 
@@ -373,6 +381,7 @@ function resolveKnowledgeOutput(raw: unknown, manifest: DocumentProcessingManife
     const quotes = citations.map(citation => { selectedPassage(manifest, citation); return citation.quote; }).join("\n");
     const predicate = schema.predicates.find(entry => entry.name === candidate.predicate);
     if (predicate && (predicate.kind !== candidate.kind || predicate.valueType !== candidate.value.type)) throw new Error("Known predicate has an unsupported kind or value type.");
+    if (candidate.kind === "entity" && predicate?.fromTypes.length && !predicate.fromTypes.includes(candidate.entityType!)) throw new Error("Unsupported entity type for predicate.");
     const mention = (id: string) => {
       const entity = entities.get(id);
       if (!entity) throw new Error("Relationship or participant endpoint is unresolved.");
@@ -383,7 +392,7 @@ function resolveKnowledgeOutput(raw: unknown, manifest: DocumentProcessingManife
         if (!quotes.includes(mention(value.mentionId).label)) throw new Error("Endpoint name is unsupported by citations.");
         return { type: "entity", mentionId: namespace(value.mentionId) };
       }
-      if (!citations.some(citation => isKnowledgeValueGrounded(value, citation.quote))) throw new Error("Proposed value is unsupported by cited text.");
+      if (!citations.some((citation, citationIndex) => (value.type !== "date" || !value.normalization || value.normalization.citationIndex === citationIndex) && isKnowledgeValueGrounded(value, citation.quote))) throw new Error("Proposed value is unsupported by cited text.");
       return value;
     };
     if (candidate.kind === "fact" || candidate.kind === "relationship") {
@@ -400,7 +409,8 @@ function resolveKnowledgeOutput(raw: unknown, manifest: DocumentProcessingManife
       occurrences.add(candidate.occurrenceId);
     }
     for (const time of [candidate.occurredTime, candidate.publicationTime]) if (time) {
-      if (![time.start, ...(time.end ? [time.end] : [])].every(value => citations.some(citation => isKnowledgeValueGrounded({ type: "date", value }, citation.quote)))) throw new Error("Proposed time is unsupported by cited text.");
+      convertValue({ type: "date", value: time.start, ...(time.startNormalization ? { normalization: time.startNormalization } : {}) });
+      if (time.end) convertValue({ type: "date", value: time.end, ...(time.endNormalization ? { normalization: time.endNormalization } : {}) });
     }
     return knowledgeProposalSchema.parse({
       ...fields, assertionId: `as_${manifest.invocationId.slice(4)}_${index}`, workspaceId: manifest.workspaceId,
@@ -409,12 +419,14 @@ function resolveKnowledgeOutput(raw: unknown, manifest: DocumentProcessingManife
       ...(candidate.subjectMentionId ? { subjectMentionId: namespace(candidate.subjectMentionId) } : {}),
       ...(candidate.occurrenceId ? { occurrenceId: `occurrence_${manifest.invocationId.slice(4)}_${createHash("sha256").update(candidate.occurrenceId).digest("hex").slice(0, 24)}` } : {}),
       ...(candidate.participants ? { participants: candidate.participants.map(participant => {
-        if (!quotes.includes(mention(participant.mentionId).label)) throw new Error("Participant name is unsupported by citations.");
+        const entity = mention(participant.mentionId);
+        if (!quotes.includes(entity.label)) throw new Error("Participant name is unsupported by citations.");
+        if (candidate.kind === "occurrence" && predicate?.fromTypes.length && !predicate.fromTypes.includes(entity.type)) throw new Error("Unsupported occurrence participant type.");
         return { ...participant, mentionId: namespace(participant.mentionId) };
       }) } : {}),
       ...(candidate.attributes ? { attributes: candidate.attributes.map(attribute => {
         const definition = schema.predicates.find(entry => entry.name === attribute.predicate);
-        if (definition && definition.valueType !== attribute.value.type) throw new Error("Unsupported attribute type.");
+        if (definition && (definition.kind !== "fact" || definition.valueType !== attribute.value.type || definition.fromTypes.length)) throw new Error("Unsupported attribute kind, type or subject constraint.");
         return { ...attribute, value: convertValue(attribute.value) };
       }) } : {}),
       evidence: citations.map(citation => ({

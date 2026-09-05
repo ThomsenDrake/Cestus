@@ -84,7 +84,7 @@ export interface DocumentProcessingManifest {
   destination: ProviderConfiguration;
   operation: DocumentProcessingOperation;
   workspaceId?: string;
-  promptVersion?: "knowledge-extraction-prompt.v1";
+  promptVersion?: "knowledge-extraction-prompt.v1" | "knowledge-extraction-prompt.v2";
   schemaSnapshot?: z.infer<typeof vocabularySchema>;
   provider: "openai-compatible-chat.v1";
   inputText: string;

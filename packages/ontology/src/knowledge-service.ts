@@ -12,11 +12,13 @@ import {
   isKnowledgeValueGrounded,
   knowledgePayloadSchemas,
   knowledgeProposalSchema,
+  vocabularyAdditionSchema,
   type KnowledgeCitation,
   type KnowledgeProposal,
   type KnowledgeValue,
   type KnowledgeV2Type,
 } from "./knowledge-contracts.js";
+import { extendKnowledgeVocabulary } from "./knowledge-vocabulary.js";
 import { buildOntologyWorkspaceReadDto } from "./ontology-workspace-read.js";
 import { buildGraphProjection } from "./graph-projection.js";
 import type {
@@ -44,6 +46,7 @@ const review = z
   })
   .strict();
 export const knowledgeCommandSchema = z.discriminatedUnion("action", [
+  z.object({ ...common, action: z.literal("extendSchema"), baseSchemaId: id, addition: vocabularyAdditionSchema, rationale }).strict(),
   z
     .object({
       ...common,
@@ -261,13 +264,12 @@ export class KnowledgeService {
       ? events.slice(0, command.expectedRevision)
       : events;
     const dto = buildGraphProjection(historical).knowledge;
-    const current = receipt.length ? buildGraphProjection(events).knowledge : dto;
     const context = {
       actor,
       occurredAt: receipt[0]?.context.occurredAt ?? new Date().toISOString(),
       correlationId: fingerprint,
       coreVersion: "2",
-      packVersions: { knowledge: investigationVocabulary.schemaId },
+      packVersions: { knowledge: dto.schema?.schemaId ?? investigationVocabulary.schemaId },
     };
     const batch: AppendableKnowledgeEvent[] = [];
     const emit = (
@@ -294,6 +296,18 @@ export class KnowledgeService {
       await this.options.authorizeEvidence(evidenceId, actor);
     };
     switch (command.action) {
+      case "extendSchema": {
+        const base = dto.schema ?? investigationVocabulary;
+        if (command.baseSchemaId !== base.schemaId) throw new ConcurrencyConflictError("Vocabulary preview is stale; refresh and inspect the addition again.");
+        const nextId = `investigation.v${historical.filter(e => e.type === "knowledge.schema.recorded").length + (dto.schema ? 1 : 2)}`;
+        let next;
+        try { next = extendKnowledgeVocabulary(base, command.addition, nextId); }
+        catch (error) { throw new KnowledgeCommandError(error instanceof Error ? error.message : "Invalid additive vocabulary change."); }
+        if (!dto.schema) emit("knowledge.schema.recorded", base);
+        emit("knowledge.schema.extended", { baseSchemaId: base.schemaId, schemaId: nextId, addition: command.addition, rationale: command.rationale, decisionId: command.decisionId });
+        emit("knowledge.schema.recorded", next);
+        break;
+      }
       case "createCase":
         if (dto.cases.some((c) => c.caseId === command.caseId))
           throw new KnowledgeCommandError("Investigation already exists.");
@@ -315,7 +329,7 @@ export class KnowledgeService {
             (p) => p.assertionId === command.targetId,
           );
           if (!p) throw new KnowledgeCommandError("Unknown knowledge.");
-          await this.validateEvidence(p, actor);
+          await this.validateCitationAuthority(p, actor);
         }
         if (command.targetKind === "entity") {
           const entity = dto.entities.find(
@@ -325,7 +339,7 @@ export class KnowledgeService {
           for (const p of dto.proposals.filter((p) =>
             entity.assertionIds.includes(p.assertionId),
           ))
-            await this.validateEvidence(p, actor);
+            await this.validateCitationAuthority(p, actor);
         }
         emit(
           "investigation.membership.changed",
@@ -342,7 +356,7 @@ export class KnowledgeService {
           const p = dto.proposals.find((p) => p.assertionId === assertionId);
           if (!p)
             throw new KnowledgeCommandError("Unknown hypothesis evidence.");
-          await this.validateEvidence(p, actor);
+          await this.validateCitationAuthority(p, actor);
         }
         emit(
           "investigation.hypothesis.recorded",
@@ -387,7 +401,7 @@ export class KnowledgeService {
           this.validateShape(p, dto, false);
           if (
             p.schemaId !==
-            (current.schema?.schemaId ?? investigationVocabulary.schemaId)
+            (dto.schema?.schemaId ?? investigationVocabulary.schemaId)
           )
             throw new KnowledgeCommandError("Schema version is stale.");
           if (
@@ -425,7 +439,8 @@ export class KnowledgeService {
           );
           if (!p || p.proposalEventId !== item.proposalEventId)
             throw new ConcurrencyConflictError("Proposal review is stale.");
-          await this.validateEvidence(p, actor);
+          if (item.action === "accept") await this.validateEvidence(p, actor);
+          else await this.validateCitationAuthority(p, actor);
           if (item.action === "accept" || item.action === "reject") {
             if (p.reviewState !== "proposed")
               throw new ConcurrencyConflictError(
@@ -443,9 +458,9 @@ export class KnowledgeService {
             this.validateShape(p, virtual, true);
             await this.validateEndpoints(p, virtual, actor);
             if (
-              p.schemaId !== current.schema?.schemaId ||
+              p.schemaId !== dto.schema?.schemaId ||
               !p.schemaSnapshot ||
-              hash(p.schemaSnapshot) !== hash(current.schema)
+              hash(p.schemaSnapshot) !== hash(dto.schema)
             )
               throw new KnowledgeCommandError("Review schema is stale.");
             if (p.kind === "entity") {
@@ -461,7 +476,7 @@ export class KnowledgeService {
                 for (const support of dto.proposals.filter((s) =>
                   existing.assertionIds.includes(s.assertionId),
                 ))
-                  await this.validateEvidence(support, actor);
+                  await this.validateCitationAuthority(support, actor);
               const binding = {
                 mentionId: p.mentionId!,
                 entityId,
@@ -509,7 +524,7 @@ export class KnowledgeService {
               throw new KnowledgeCommandError(
                 "Correction requires an accepted replacement or its acceptance in the same decision.",
               );
-            await this.validateEvidence(replacement, actor);
+            await this.validateCitationAuthority(replacement, actor);
           }
           emit(
             "knowledge.reviewed",
@@ -544,7 +559,7 @@ export class KnowledgeService {
           throw new ConcurrencyConflictError(
             "Identity binding is stale or unsupported.",
           );
-        await this.validateEvidence(p, actor);
+        await this.validateCitationAuthority(p, actor);
         const entity = dto.entities.find(
           (e) => e.entityId === command.entityId,
         );
@@ -556,7 +571,7 @@ export class KnowledgeService {
           for (const support of dto.proposals.filter((s) =>
             entity.assertionIds.includes(s.assertionId),
           ))
-            await this.validateEvidence(support, actor);
+            await this.validateCitationAuthority(support, actor);
         emit(
           "knowledge.mention.bound",
           {
@@ -601,7 +616,9 @@ export class KnowledgeService {
       expectedGlobalEventCount: command.expectedRevision,
     });
   }
-  private async validateEvidence(proposal: KnowledgeProposal, actor: ActorRef) {
+  // Existing decisions retain their historical interpretation; all uses still resolve
+  // canonical citations against current evidence authority. New writes validate grounding below.
+  private async validateCitationAuthority(proposal: KnowledgeProposal, actor: ActorRef) {
     if (
       proposal.workspaceId !== this.options.workspaceId ||
       proposal.evidence.some((e) => e.workspaceId !== this.options.workspaceId)
@@ -609,10 +626,14 @@ export class KnowledgeService {
       throw new KnowledgeCommandError("Evidence belongs to another workspace.");
     for (const citation of proposal.evidence)
       await this.options.resolveCitation(citation, actor);
+  }
+  private async validateEvidence(proposal: KnowledgeProposal, actor: ActorRef) {
+    await this.validateCitationAuthority(proposal, actor);
     const quotes = proposal.evidence.map((e) => e.quote);
     const grounded = (value: KnowledgeValue) => {
       if (value.type === "entity") return;
-      if (!quotes.some((quote) => isKnowledgeValueGrounded(value, quote)))
+      const selectedQuotes = value.type === "date" && value.normalization ? [quotes[value.normalization.citationIndex] ?? ""] : quotes;
+      if (!selectedQuotes.some((quote) => isKnowledgeValueGrounded(value, quote)))
         throw new KnowledgeCommandError(
           "Proposed value is not grounded in its source quotation.",
         );
@@ -621,12 +642,10 @@ export class KnowledgeService {
     for (const attribute of proposal.attributes ?? [])
       grounded(attribute.value);
     for (const time of [proposal.occurredTime, proposal.publicationTime])
-      if (time)
-        for (const value of [time.start, time.end])
-          if (value && !quotes.some((quote) => quote.includes(value)))
-            throw new KnowledgeCommandError(
-              "Time qualifier is not grounded in its source quotation.",
-            );
+      if (time) {
+        grounded({ type: "date", value: time.start, ...(time.startNormalization ? { normalization: time.startNormalization } : {}) });
+        if (time.end) grounded({ type: "date", value: time.end, ...(time.endNormalization ? { normalization: time.endNormalization } : {}) });
+      }
   }
   private async validateEndpoints(
     p: KnowledgeProposal,
@@ -652,7 +671,7 @@ export class KnowledgeService {
         throw new KnowledgeCommandError(
           "Endpoint identity lacks source provenance.",
         );
-      await this.validateEvidence(support, actor);
+      await this.validateCitationAuthority(support, actor);
       if (
         !p.evidence.some((citation) =>
           citation.quote.toLowerCase().includes(binding.label.toLowerCase()),
@@ -704,6 +723,8 @@ export class KnowledgeService {
     )
       throw new KnowledgeCommandError("Unsupported entity type vocabulary.");
     if (!accept) return;
+    if (p.kind === "entity" && predicate?.fromTypes.length && !predicate.fromTypes.includes(p.entityType!))
+      throw new KnowledgeCommandError("Unsupported entity label type.");
     const requireMention = (mentionId: string) => {
       const binding = dto.bindings.find((b) => b.mentionId === mentionId);
       if (!binding)
@@ -728,8 +749,11 @@ export class KnowledgeService {
       )
         throw new KnowledgeCommandError("Unsupported object endpoint type.");
     }
-    for (const participant of p.participants ?? [])
-      requireMention(participant.mentionId);
+    for (const participant of p.participants ?? []) {
+      const binding = requireMention(participant.mentionId);
+      if (predicate?.fromTypes.length && p.kind === "occurrence" && !predicate.fromTypes.includes(binding.entityType))
+        throw new KnowledgeCommandError("Unsupported occurrence participant type.");
+    }
     for (const attribute of p.attributes ?? []) {
       const v = vocabulary.predicates.find(
         (v) => v.name === attribute.predicate && v.kind === "fact",
@@ -738,6 +762,7 @@ export class KnowledgeService {
         throw new KnowledgeCommandError(
           "Unsupported attribute vocabulary or type.",
         );
+      if (v.fromTypes.length) throw new KnowledgeCommandError("An occurrence attribute cannot use a fact restricted to entity subjects.");
       if (attribute.value.type === "entity")
         requireMention(attribute.value.mentionId);
     }

@@ -3,7 +3,7 @@ import { acceptedKnowledgeSource } from "../src/accepted-knowledge-source.js";
 import { buildGraphProjection } from "../src/graph-projection.js";
 import { KnowledgeService } from "../src/knowledge-service.js";
 import { InMemoryEventLedger } from "../src/event-ledger.js";
-import type { KnowledgeProposal } from "../src/knowledge-contracts.js";
+import { investigationVocabulary, type KnowledgeProposal } from "../src/knowledge-contracts.js";
 const actor = {
   id: "human_local",
   kind: "human" as const,
@@ -55,6 +55,70 @@ async function command(
   );
 }
 describe("shared knowledge decisions", () => {
+  it("rejects stale, incompatible, duplicate and unauthenticated schema additions and retries one atomic extension", async () => {
+    const { service, ledger } = setup();
+    const extension = { action: "extendSchema", baseSchemaId: "investigation.v1", addition: { kind: "entityType", name: "cooperative" }, rationale: "Reviewed necessary distinction", decisionId: "schema_one", expectedRevision: 0 };
+    await expect(service.execute(extension, { ...actor, kind: "agent" })).rejects.toThrow(/human/);
+    const committed = await service.execute(extension, actor);
+    expect(committed.map(e => e.type)).toEqual(["knowledge.schema.recorded", "knowledge.schema.extended", "knowledge.schema.recorded"]);
+    expect(await service.execute(extension, actor)).toEqual(committed);
+    expect(await ledger.readAll()).toHaveLength(3);
+    await expect(service.execute({ ...extension, decisionId: "schema_stale" }, actor)).rejects.toThrow(/stale/);
+    await expect(command(service, { ...extension, decisionId: "base_stale", expectedRevision: 3 })).rejects.toThrow(/stale/);
+    const base = { action: "extendSchema", baseSchemaId: "investigation.v2", rationale: "Review addition" };
+    const predicate = { name: "member_of", kind: "relationship", valueType: "entity", fromTypes: ["person"], toTypes: ["cooperative"] };
+    for (const addition of [
+      { kind: "entityType", name: "cooperative" },
+      { kind: "entityType", name: "Unknown type" },
+      ...[{ ...predicate, name: "paid" }, { ...predicate, toTypes: ["unreviewed"] }, { ...predicate, fromTypes: ["person", "person"] }, { ...predicate, valueType: "number" }, { ...predicate, fromTypes: [] }, { ...predicate, kind: "fact" }, { ...predicate, kind: "occurrence", valueType: "date", toTypes: [] }].map(definition => ({ kind: "predicate", definition }))
+    ]) await expect(command(service, { ...base, addition })).rejects.toThrow();
+    expect(await ledger.readAll()).toHaveLength(3);
+    await command(service, { ...base, addition: { kind: "predicate", definition: predicate } });
+    const replay = new KnowledgeService({ ledger, workspaceId: "ws_test", resolveCitation: async () => {} });
+    expect((await replay.read()).schema?.predicates.at(-1)).toEqual(predicate);
+    expect((await replay.read()).schemaHistory?.map(item => item.actorId)).toEqual([actor.id, actor.id]);
+  });
+  it("binds written date interpretations to exact citations and preserves correction and replay history", async () => {
+    const { service, ledger } = setup();
+    const evidence = [{ ...citation, quote: "Acme was registered September 5, 2026. Published September 2026." }];
+    await command(service, { action: "propose", proposals: [{ ...entity("as_actor", "m_actor"), evidence }] });
+    const actorProposal = (await service.read()).proposals[0]!;
+    await command(service, { action: "review", reviews: [{ assertionId: actorProposal.assertionId, proposalEventId: actorProposal.proposalEventId, action: "accept", rationale: "Read name" }] });
+    const proposal: KnowledgeProposal = { ...entity("as_written", "unused"), mentionId: undefined, entityType: undefined, kind: "fact", predicate: "date", subjectMentionId: "m_actor", evidence,
+      value: { type: "date", value: "2026-09-05", normalization: { method: "written-date.v1", sourceExpression: "September 5, 2026", citationIndex: 0 } } };
+    await command(service, { action: "propose", proposals: [proposal] });
+    for (const value of ["2026-09-06", "2026-02-30"]) await expect(command(service, { action: "propose", proposals: [{ ...proposal, assertionId: "as_bad", value: { ...proposal.value, value } }] })).rejects.toThrow();
+    await expect(command(service, { action: "propose", proposals: [{ ...proposal, assertionId: "as_index", value: { type: "date", value: "2026-09-05", normalization: { method: "written-date.v1", sourceExpression: "September 5, 2026", citationIndex: 1 } } }] })).rejects.toThrow(/ground/);
+    const date = (await service.read()).proposals.find(p => p.assertionId === proposal.assertionId)!;
+    await command(service, { action: "review", reviews: [{ assertionId: date.assertionId, proposalEventId: date.proposalEventId, action: "accept", rationale: "Written day reviewed" }] });
+    await command(service, { action: "propose", proposals: [{ ...proposal, assertionId: "as_month", derivedFrom: date.assertionId, value: { type: "date", value: "2026-09", normalization: { method: "written-date.v1", sourceExpression: "September 2026", citationIndex: 0 } } }] });
+    const month = (await service.read()).proposals.find(p => p.assertionId === "as_month")!;
+    await command(service, { action: "review", reviews: [{ assertionId: month.assertionId, proposalEventId: month.proposalEventId, action: "accept", rationale: "Publication month has month precision" }, { assertionId: date.assertionId, proposalEventId: date.proposalEventId, action: "supersede", replacementId: month.assertionId, rationale: "Correct time meaning" }] });
+    const replay = new KnowledgeService({ ledger, workspaceId: "ws_test", resolveCitation: async () => {} });
+    const recovered = await replay.read();
+    expect(recovered.proposals.find(p => p.assertionId === date.assertionId)?.reviewState).toBe("superseded");
+    expect(recovered.proposals.find(p => p.assertionId === month.assertionId)?.value).toEqual(month.value);
+    expect(recovered.proposals.find(p => p.assertionId === month.assertionId)?.evidence).toEqual(evidence);
+  });
+  it("requires a reviewed additive snapshot and an explicit new proposal before unknown vocabulary can be accepted", async () => {
+    const { service, ledger } = setup();
+    await command(service, { action: "propose", proposals: [{ ...entity("as_unknown", "m_unknown"), entityType: "cooperative" }] });
+    const original = (await service.read()).proposals[0]!;
+    const review = { assertionId: original.assertionId, proposalEventId: original.proposalEventId, action: "accept", rationale: "Reviewed source" };
+    await expect(command(service, { action: "review", reviews: [review] })).rejects.toThrow(/vocabulary/);
+    const before = await ledger.readAll();
+    await command(service, { action: "extendSchema", baseSchemaId: "investigation.v1", addition: { kind: "entityType", name: "cooperative" }, rationale: "Distinguish member-owned organizations" });
+    const extended = await service.read();
+    expect(extended.schema?.schemaId).toBe("investigation.v2");
+    expect(extended.schema?.entityTypes).toContain("cooperative");
+    expect(extended.proposals[0]?.schemaSnapshot?.entityTypes).not.toContain("cooperative");
+    await expect(command(service, { action: "review", reviews: [review] })).rejects.toThrow(/schema|vocabulary/i);
+    await command(service, { action: "propose", proposals: [{ ...entity("as_revised", "m_unknown"), entityType: "cooperative", schemaId: extended.schema!.schemaId, derivedFrom: original.assertionId }] });
+    const revised = (await service.read()).proposals.find(p => p.assertionId === "as_revised")!;
+    await command(service, { action: "review", reviews: [{ ...review, assertionId: revised.assertionId, proposalEventId: revised.proposalEventId }] });
+    expect((await service.read()).entities[0]?.entityType).toBe("cooperative");
+    expect((await ledger.readAll()).slice(0, before.length)).toEqual(before);
+  });
   it("persists proposals, atomically accepts entities, and repairs cross-case bindings without rewriting history", async () => {
     const { service, ledger } = setup();
     await command(service, {
@@ -476,4 +540,64 @@ it("requires a quoted unit for manual numeric values and occurrence attributes",
   const quoted = { ...citation, quote: "Acme paid 120 USD in 2024." };
   await expect(command(service, { action: "propose", proposals: [{ ...fact("as_wrong_unit"), evidence: [quoted], value: { type: "number", value: 120, unit: "EUR" } }] })).rejects.toThrow(/ground/i);
   await command(service, { action: "propose", proposals: [{ ...fact("as_right_unit"), evidence: [quoted], value: { type: "number", value: 120, unit: "USD" } }] });
+});
+
+
+// These immutable v2 records were legal before written-date normalization shipped:
+// the old literal check accepted a year occurring within a complete ISO date.
+async function historicalPartialDates() {
+  const { ledger } = setup();
+  const evidence = [{ ...citation, quote: "Acme occurred 2026-09-05." }];
+  const context = { actor, occurredAt: "2026-09-05T12:00:00.000Z", correlationId: "historical", coreVersion: "2", packVersions: { knowledge: "investigation.v1" } };
+  await ledger.append({ type: "knowledge.schema.recorded", version: 2, streamId: "historical", context, payload: investigationVocabulary });
+  const oldEntity = { ...entity("as_actor", "m_actor"), evidence, occurredTime: { start: "2026", uncertain: true } };
+  const oldDate: KnowledgeProposal = { ...fact("as_old_date"), evidence, predicate: "date", value: { type: "date", value: "2026" } };
+  for (const p of [oldEntity, oldDate]) {
+    const proposed = await ledger.append({ type: "knowledge.proposed", version: 2, streamId: "historical", context, payload: p });
+    if (p.kind === "entity") await ledger.append({ type: "knowledge.mention.bound", version: 2, streamId: "historical", context, payload: { mentionId: "m_actor", entityId: "ent_actor", entityType: "organization", label: "Acme", assertionId: p.assertionId, previousEntityId: null, rationale: "Historical review", decisionId: "historical_entity" } });
+    await ledger.append({ type: "knowledge.reviewed", version: 2, streamId: "historical", context, payload: { assertionId: p.assertionId, proposalEventId: proposed.id, action: "accept", rationale: "Historical review", decisionId: `historical_${p.assertionId}` } });
+  }
+  const pending = { ...oldDate, assertionId: "as_pending_date" };
+  await ledger.append({ type: "knowledge.proposed", version: 2, streamId: "historical", context, payload: pending });
+  const resolved: string[] = [];
+  const service = new KnowledgeService({ ledger, workspaceId: "ws_test", resolveCitation: async (ref, reviewer) => { expect(ref).toEqual(evidence[0]); expect(reviewer).toEqual(actor); resolved.push(ref.evidenceId); } });
+  return { ledger, service, oldDate, resolved };
+}
+
+describe("historical accepted date lifecycle", () => {
+  it.each(["withdraw", "dispute", "supersede"])("permits %s after revalidating canonical evidence without retroactively changing grounding", async action => {
+    const { ledger, service, oldDate, resolved } = await historicalPartialDates();
+    const before = await ledger.readAll();
+    const old = (await service.read()).proposals.find(p => p.assertionId === oldDate.assertionId)!;
+    const review = { assertionId: old.assertionId, proposalEventId: old.proposalEventId, action, rationale: "Review historical interpretation", ...(action === "supersede" ? { replacementId: "as_replacement" } : {}) };
+    const denied = new KnowledgeService({ ledger, workspaceId: "ws_test", resolveCitation: async () => { throw new Error("Canonical evidence authorization revoked"); } });
+    await expect(command(denied, { action: "review", reviews: [review] })).rejects.toThrow(/authorization/);
+    expect(await ledger.readAll()).toEqual(before);
+    if (action === "supersede") {
+      await command(service, { action: "propose", proposals: [{ ...oldDate, assertionId: "as_replacement", derivedFrom: old.assertionId, value: { type: "date", value: "2026-09-05" } }] });
+      const replacement = (await service.read()).proposals.find(p => p.assertionId === "as_replacement")!;
+      await command(service, { action: "review", reviews: [{ assertionId: replacement.assertionId, proposalEventId: replacement.proposalEventId, action: "accept", rationale: "Full precision in source" }, review] });
+    } else await command(service, { action: "review", reviews: [review] });
+    expect(resolved.length).toBeGreaterThan(0);
+    const replay = new KnowledgeService({ ledger, workspaceId: "ws_test", resolveCitation: async () => {} });
+    expect((await replay.read()).proposals.find(p => p.assertionId === old.assertionId)?.history.at(-1)?.action).toBe(action);
+    expect((await ledger.readAll()).slice(0, before.length)).toEqual(before);
+  });
+
+  it("keeps accepted records referenceable while strict new proposals and acceptances remain grounded", async () => {
+    const { ledger, service, oldDate } = await historicalPartialDates();
+    await command(service, { action: "createCase", caseId: "case_history", title: "History", question: "When?", scope: "Synthetic", notes: "" });
+    for (const [targetKind, targetId] of [["entity", "ent_actor"], ["knowledge", oldDate.assertionId]]) await command(service, { action: "membership", caseId: "case_history", targetKind, targetId, included: true });
+    await command(service, { action: "hypothesis", caseId: "case_history", hypothesisId: "h_history", statement: "The source year remains relevant", supporting: [oldDate.assertionId], contradicting: [] });
+    await command(service, { action: "bind", mentionId: "m_actor", entityId: "ent_repaired", previousEntityId: "ent_actor", assertionId: "as_actor", rationale: "Repair source identity" });
+    await expect(command(service, { action: "propose", proposals: [{ ...oldDate, assertionId: "as_new_partial" }] })).rejects.toThrow(/ground/);
+    const pending = (await service.read()).proposals.find(p => p.assertionId === "as_pending_date")!;
+    const review = { assertionId: pending.assertionId, proposalEventId: pending.proposalEventId, rationale: "Reassess old unreviewed proposal" };
+    await expect(command(service, { action: "review", reviews: [{ ...review, action: "accept" }] })).rejects.toThrow(/ground/);
+    await command(service, { action: "review", reviews: [{ ...review, action: "reject" }] });
+    const before = await ledger.readAll();
+    const denied = new KnowledgeService({ ledger, workspaceId: "ws_test", resolveCitation: async () => { throw new Error("Canonical evidence authorization revoked"); } });
+    await expect(command(denied, { action: "membership", caseId: "case_history", targetKind: "knowledge", targetId: oldDate.assertionId, included: false })).rejects.toThrow(/authorization/);
+    expect(await ledger.readAll()).toEqual(before);
+  });
 });
