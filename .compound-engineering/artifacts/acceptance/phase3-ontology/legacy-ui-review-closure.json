@@ -1,0 +1,21 @@
+{
+  "status": "complete",
+  "reviewed_at": "2026-09-05T20:10:28.146868+00:00",
+  "scope": "Bounded read-only follow-up of legacy ontology UI DTO decoding and value/citation rendering",
+  "verdict": "Closed; no additional confirmed defect.",
+  "remaining_findings": [],
+  "evidence": [
+    "UI assertion decoder and TypeScript DTO now match server optional scalar object and whole-document/passage citationScope fields. Other strict DTO checks remain intact.",
+    "AssertionRow renders supplied scalar values as escaped React text and displays the supplied citation scope; it does not create passage locators for whole-document history.",
+    "New regression derives its input from the actual buildOntologyWorkspaceReadDto(goldenOntologyWorkspaceEvents), detecting producer/consumer schema drift rather than comparing independent fixture shapes.",
+    "Red log records strict decoder rejecting object/citationScope; green /tmp/cestus-phase3-legacy-ui-green.log shows6 tests passed."
+  ],
+  "prior_closures": [
+    "closure.json",
+    "final-closure.json"
+  ],
+  "limitations": [
+    "No source edits, commits, global rerouting or full-suite execution by reviewer.",
+    "Root owns rebuilt production-browser confirmation and final verify after this latest source change."
+  ]
+}

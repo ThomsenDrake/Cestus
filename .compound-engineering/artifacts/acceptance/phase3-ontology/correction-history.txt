@@ -1,0 +1,16 @@
+amount: 1200
+
+as_a6f350cf9f1e457bb9d93c1ca46721f3 · Schema investigation.v1 · Proposal evt_49f5c0e2553244c0a1bfe587fc02a72c
+
+Synthetic case A. Alex Vale, identifier AV-101, received an award of 1200 from Harbor Agency in 2025-03.
+
+Open source passage · block 1, characters 0–104
+
+Origin: manual
+
+2026-09-05T19:30:59.690Z · operator_10d64f22-f99d-4c08-94dd-162becb66d3d · accept: Reviewed the identifier and exact amount in this fictional register.
+2026-09-05T19:34:26.859Z · operator_10d64f22-f99d-4c08-94dd-162becb66d3d · dispute: Repair: council actor AV-909 is not recipient AV-101.
+2026-09-05T19:34:37.215Z · operator_10d64f22-f99d-4c08-94dd-162becb66d3d · supersede: Payment register gives 1300. Supersede this curated amount while retaining the earlier award and dispute. · Replacement as_4a5e50694f9d4248a0d56d3520813d7c
+Knowledge membership in Synthetic award case
+Knowledge membership in Synthetic payment case
+Knowledge membership in Synthetic namesake case

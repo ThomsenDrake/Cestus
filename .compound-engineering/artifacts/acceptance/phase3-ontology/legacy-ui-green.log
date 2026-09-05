@@ -1,0 +1,8 @@
+
+ RUN  v4.1.9 /home/drake/Projects/Cestus
+
+
+ Test Files  1 passed (1)
+      Tests  6 passed (6)
+   Start at  16:09:44
+   Duration  2.79s (transform 853ms, setup 112ms, import 1.33s, tests 614ms, environment 598ms)

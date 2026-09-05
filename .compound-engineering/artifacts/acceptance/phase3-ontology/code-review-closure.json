@@ -1,0 +1,36 @@
+{
+  "status": "complete",
+  "verdict": "All confirmed review findings closed; final verification and acceptance remain caller-owned.",
+  "reviewed_at": "2026-09-05T19:49:11.303378+00:00",
+  "scope": "Bounded read-only final follow-up of explicit mention binding resolution and entity-valued ontology render call sites. No new persona orchestration.",
+  "closed_findings": [
+    1,
+    2,
+    3,
+    5
+  ],
+  "caller_tracked_boundary": "Proposal max40 alignment closed in followup1.",
+  "remaining_findings": [],
+  "finding_3_closure": {
+    "implementation": "displayValue resolves bindings.find(mentionId), then entities.find(entityId). It no longer infers identity from proposal creation order or dossier assertion overlap. Only unreviewed proposals provide the unresolved fallback.",
+    "callsite_review": "All current entity-valued ontology render paths pass workspace.bindings: proposal values, participant and attribute values, selected-source/history heading, correction replacement options, relationship table, neighborhood, hypotheses and entity search. Composer mention labels and identifier/address matching without bindings format scalar entity-name/attribute values. Provider output preview remains unreviewed and does not claim a current identity binding.",
+    "regressions": "Simple supersession, reverse review order and overlapping dossier support are covered. Inspected red overlapping regression: expected Beta, received Acme. Latest green log16 tests2 files passed."
+  },
+  "verification_logs": [
+    "/tmp/cestus-phase3-overlapping-label-red.log",
+    "/tmp/cestus-phase3-overlapping-label-green.log",
+    "/tmp/cestus-phase3-label-order-red.log",
+    "/tmp/cestus-phase3-label-order-green.log",
+    "/tmp/cestus-phase3-review-grounding.log"
+  ],
+  "prior_artifacts": [
+    "review.json",
+    "followup-1.json",
+    "followup-2.json"
+  ],
+  "limitations": [
+    "Original review used three independent personas plus eight bounded orchestrator lenses after host capacity rejection; the fresh validator confirmed four findings and rejected occurrence convenience-field finding4.",
+    "This closure does not replace final npm run verify, production browser acceptance, restart/recovery evidence, or authorized real/live provider acceptance.",
+    "Reviewer made no source edits or commits."
+  ]
+}

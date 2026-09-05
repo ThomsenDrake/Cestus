@@ -1,0 +1,26 @@
+{
+  "status": "complete",
+  "reviewed_at": "2026-09-05T20:02:12.597339+00:00",
+  "scope": "Bounded final closure of legacy whole-document governance compatibility guard",
+  "verdict": "Closed; no remaining confirmed review findings.",
+  "closed_findings": [
+    1,
+    2,
+    3,
+    5,
+    "proposal-count-limit",
+    "legacy-authority-canonical-stream"
+  ],
+  "remaining_findings": [],
+  "evidence": [
+    "createWorkspaceKnowledgeService authorizeEvidence now requires a human actor, nonundefined governance state, and matching canonical evidence_${id} ingestion.",
+    "Existing quarantine/tombstone/credential-risk/redaction restrictions remain. Rich proposals still validate actual source/extraction/hash/locator through resolveKnowledgeCitation; the legacy policy callback does not grant passage provenance.",
+    "New authenticated HTTP regression changes ingestion streams and verifies legacy entities/relationships/names are hidden. Existing valid legacy fixture and revocation/domain tests remain green.",
+    "Red /tmp/cestus-phase3-legacy-provenance-red.log shows invalid-stream source entities were incorrectly exposed before the guard. Green /tmp/cestus-phase3-legacy-provenance-green.log shows21 tests across3 files passed."
+  ],
+  "prior_closure": "closure.json",
+  "limitations": [
+    "Bounded review only; no reviewer source edits or commits.",
+    "Root owns final npm run verify, production-browser acceptance and real/live acceptance requirements."
+  ]
+}

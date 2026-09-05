@@ -1,0 +1,27 @@
+External document processing
+
+Extract proposed entities, facts, relationships and occurrences for the shared ontology. A completed run remains unreviewed until you import and review its proposals in Ontology.
+
+Configure CESTUS_DOCUMENT_PROVIDER_ENDPOINT, CESTUS_DOCUMENT_PROVIDER_MODEL, CESTUS_DOCUMENT_PROVIDER_API_KEY, CESTUS_DOCUMENT_PROVIDER_INPUT_USD_PER_MILLION and CESTUS_DOCUMENT_PROVIDER_OUTPUT_USD_PER_MILLION. No fallback provider is selected.
+
+Only evidence reviewed as public_safe can leave this machine. Use the Governance review below. Restricted, unclassified, or redacted records are blocked; importing and reviewing a separately redacted copy is required when safe redaction is needed.
+
+Selection identity: ev_ing_f499dbe90e8cedc4405d21dbecd6cf319384599bcbe94f37c813e398a15c47c1 · parse_imp_64020458-ad28-4791-99a4-29d235b28f9c_extraction_v2_baefe266687803d163fb05ef5378bc1847299c732a5a5aaa5626b6d060cad71c · sha256:5be8da314869b56fe589c2aea30c1b481d666fadf3dc38a82f32074f00caba81
+
+Select up to 24 passages to send (0 selected)
+block 1, characters 0–104
+Synthetic case A. Alex Vale, identifier AV-101, received an award of 1200 from Harbor Agency in 2025-03.
+block 2, characters 106–165
+The award was a payment for research. Published 2025-04-02.
+Maximum budget (USD)
+Maximum output tokens
+Preview exact transfer
+Processing history for this extraction
+Refresh jobs
+
+Queued work runs only when you choose Run. Interrupted or timed-out submissions remain uncertain; no automatic paid retry occurs. Canceling a submitted request may still incur a charge.
+
+inv_2fe3d262cc294bb1beb5f90404bc318c · completed · 2026-09-05T19:37:36.566Z · validated-output
+
+Review saved transfer inv_2fe3d262cc294bb1beb5f90404bc318c
+Read result inv_2fe3d262cc294bb1beb5f90404bc318c

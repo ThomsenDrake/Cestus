@@ -1,0 +1,17 @@
+Relationships
+Relationship filter
+All relationship types
+paid
+awarded
+employed_by
+owns
+associated_with
+Subject	Relationship	Object	Review
+Harbor Agency	awarded	Alex	Inspect as_c364256aa798439094e094e3f0f1c512
+Real-world occurrences
+
+Occurrence dates below are separate from publication, discovery and ingestion dates. Multiple assertions may describe the same occurrence. Identity across sources remains unresolved until you review and select a shared occurrence identity. These groups are not independent event totals.
+
+occurrence_4fb9c857b2a844f9932fb7da02d15839 · 2 supporting assertions
+
+award: award · Occurred 2025-03 · Published unknownaward: award · Occurred 2025-03 · Published unknown
