@@ -1,3 +1,4 @@
+import { createAuthenticatedTestHandler as createLocalRuntimeHttpHandler } from "./support/authenticated-handler.js";
 import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -6,7 +7,6 @@ import { createPortableWorkspace } from "../../workspace/src/index.js";
 import { SQLiteEventLedger } from "../../ontology/src/sqlite-event-ledger.js";
 import { resolveLocalRuntimeConfig } from "../src/config.js";
 import {
-  createLocalRuntimeHttpHandler,
   type CreateLocalRuntimeHttpHandlerInput,
   type LocalRuntimeHttpHandler
 } from "../src/http-handler.js";
@@ -262,7 +262,7 @@ describe("createLocalRuntimeHttpHandler", () => {
       diagnostic: {
         message: "Draft request body is invalid.",
         allowedRepairActions: [
-          "send agency, requester, jurisdiction, request text, and received timestamp"
+          "send agency, requester, jurisdiction, and request text; any supplied received timestamp must be a valid UTC datetime"
         ]
       }
     });
@@ -421,7 +421,7 @@ function invalidDraftRequestBodyDiagnostic() {
     ok: false,
     diagnostic: {
       message: "Draft request body is invalid.",
-      allowedRepairActions: ["send agency, requester, jurisdiction, request text, and received timestamp"]
+      allowedRepairActions: ["send agency, requester, jurisdiction, and request text; any supplied received timestamp must be a valid UTC datetime"]
     }
   };
 }

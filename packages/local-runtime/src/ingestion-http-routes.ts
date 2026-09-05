@@ -400,8 +400,8 @@ async function resolveMountedWorkspace(
       ok: false,
       error: {
         code: "INGESTION_WORKSPACE_NOT_MOUNTED",
-        message: "Portable workspace is not mounted.",
-        allowedRepairActions: ["mount the portable workspace", "retry the ingestion action"]
+        message: "Browser ingestion is not connected to a workspace. Source selection and imports are unavailable through this route.",
+        allowedRepairActions: ["inspect the active workspace status", "use the supported workspace and PRR controls"]
       }
     };
   }

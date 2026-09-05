@@ -164,7 +164,7 @@ describe("local runtime config files", () => {
     expect(readFileSync(configPath, "utf8")).toBe(existing);
   });
 
-  it("resets host and auth material when changing exposed config back to loopback", () => {
+  it("resets host and preserves auth material when changing exposed config back to loopback", () => {
     const cwd = tempDir();
     writeLocalRuntimeOnboardingConfig({
       cwd,
@@ -177,7 +177,7 @@ describe("local runtime config files", () => {
     const loopback = writeLocalRuntimeOnboardingConfig({ cwd, env: {}, bindMode: "loopback" });
     const resolved = resolveLocalRuntimeConfig({ cwd, env: {} });
 
-    expect(loopback.config.http).toEqual({
+    expect(loopback.config.http).toMatchObject({
       bindMode: "loopback",
       host: "127.0.0.1",
       port: 8790
@@ -186,9 +186,9 @@ describe("local runtime config files", () => {
       bindMode: "loopback",
       host: "127.0.0.1",
       port: 8790,
-      authRequired: false
+      authRequired: true
     });
-    expect("authToken" in resolved.http).toBe(false);
+    expect(resolved.http.authToken).toEqual(expect.any(String));
   });
 
   it("lets env vars override config-file defaults", () => {
@@ -328,7 +328,7 @@ describe("local runtime config files", () => {
       strategy: "portable-workspace",
       workspaceRoot: "external/case-a"
     });
-    expect(JSON.stringify(written.config)).not.toMatch(
+    expect(JSON.stringify(written.config.storage)).not.toMatch(
       /token|secret|password|oauth|credential|api[_-]?key|private[_-]?key|session/i
     );
     expect(resolved.storage).toEqual({
@@ -355,7 +355,7 @@ describe("local runtime config files", () => {
       workspaceRoot: "external/case-a",
       expectedWorkspaceId: "ws_config_case"
     });
-    expect(JSON.stringify(written.config)).not.toMatch(
+    expect(JSON.stringify(written.config.storage)).not.toMatch(
       /token|secret|password|oauth|credential|api[_-]?key|private[_-]?key|session/i
     );
   });

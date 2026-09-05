@@ -170,7 +170,7 @@ describe("IngestionWorkspace", () => {
     );
 
     expect(screen.getByRole("heading", { name: "Ingestion" })).toBeInTheDocument();
-    expect(screen.getByRole("region", { name: "Workspace not mounted" })).toHaveTextContent(
+    expect(screen.getByRole("region", { name: "Ingestion workspace not connected" })).toHaveTextContent(
       "Portable workspace is not mounted."
     );
     expect(screen.queryByLabelText(/workspace path/i)).not.toBeInTheDocument();

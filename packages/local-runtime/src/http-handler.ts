@@ -380,7 +380,7 @@ function draftRequestInputFromBody(value: unknown): CreateDraftRequestInput | un
     agency === undefined ||
     requester === undefined ||
     !isNonEmptyString(value.requestText) ||
-    !isValidReceivedAt(value.receivedAt) ||
+    (Object.hasOwn(value, "receivedAt") && !isValidReceivedAt(value.receivedAt)) ||
     (Object.hasOwn(value, "deadlineEstimateKind") && !isDeadlineEstimateKind(deadlineEstimateKind))
   ) {
     return undefined;
@@ -391,7 +391,7 @@ function draftRequestInputFromBody(value: unknown): CreateDraftRequestInput | un
     agency,
     requester,
     requestText: value.requestText,
-    receivedAt: value.receivedAt
+    ...(value.receivedAt === undefined ? {} : { receivedAt: value.receivedAt as string })
   };
 
   if (Object.hasOwn(value, "deadlineEstimateKind")) {
@@ -495,7 +495,7 @@ function invalidDraftRequestBodyDiagnostic(): {
   };
 } {
   return diagnostic("Draft request body is invalid.", [
-    "send agency, requester, jurisdiction, request text, and received timestamp"
+    "send agency, requester, jurisdiction, and request text; any supplied received timestamp must be a valid UTC datetime"
   ]);
 }
 

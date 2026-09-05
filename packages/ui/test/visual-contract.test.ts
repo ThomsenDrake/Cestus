@@ -21,7 +21,6 @@ const uiTsxFiles = [
   "packages/ui/src/requests/RequestCard.tsx",
   "packages/ui/src/requests/RequestDetailSections.tsx",
   "packages/ui/src/requests/RequestDetailModal.tsx",
-  "packages/ui/src/requests/RequestDetailRail.tsx",
   "packages/ui/src/requests/RequestWorkspaceIntelligenceRail.tsx",
   "packages/ui/src/requests/RequestSignalMap.tsx",
   "packages/ui/src/requests/RequestBuilder.tsx",
@@ -111,7 +110,7 @@ describe("visual system contract", () => {
     expect(runtimeStatusSource).toContain("var(--signal-amber)");
     expect(runtimeStatusSource).toContain("var(--signal-red)");
     expect(runtimeStatusSource).not.toMatch(/rounded-|bg-gradient|shadow-(?:sm|md|lg|xl|2xl)/);
-    expect(navigationSource).toContain('{ id: "settings", label: "Settings", href: "#settings", preview: true }');
+    expect(navigationSource).not.toContain('id: "settings"');
   });
 
   it("keeps final Requests workspace contracts dimensioned, sparse, and multi-signal", () => {

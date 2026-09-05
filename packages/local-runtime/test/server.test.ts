@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { resolveLocalRuntimeConfig, type ResolvedLocalRuntimeConfig } from "../src/config.js";
 import { browserHostsFor, startLocalRuntimeServer, type LocalRuntimeServerHandle } from "../src/server.js";
+import { SQLiteEventLedger } from "../../ontology/src/sqlite-event-ledger.js";
 import { createPortableWorkspace } from "../../workspace/src/index.js";
 import { operatorStatusDtoSchema } from "../../operator-status/src/contracts.js";
 
@@ -25,6 +26,15 @@ afterEach(async () => {
 });
 
 describe("startLocalRuntimeServer", () => {
+  it("accepts browser-normalized IPv6 loopback origins", async () => {
+    const base = authRequiredConfig();
+    const handle = await startTestServer({ ...base, http: { ...base.http, host: "0:0:0:0:0:0:0:1" } });
+    const origin = `http://[::1]:${serverPort(handle)}`;
+    const session = await fetch(handle.sessionBootstrapUrl!, { redirect: "manual", headers: { origin } });
+    expect(session.status).toBe(303);
+    const response = await fetch(origin + "/api/requests/workspace", { headers: { origin, cookie: cookieHeaderFromSetCookie(session.headers.get("set-cookie")!) } });
+    expect(response.status).toBe(200);
+  });
   it("rejects unauthenticated protected requests before the body completes", async () => {
     const handle = await startTestServer(authRequiredConfig());
     const request = httpRequest({
@@ -86,7 +96,7 @@ describe("startLocalRuntimeServer", () => {
     const setCookie = session.headers.get("set-cookie") ?? "";
     expect(setCookie).toContain("cestus_local_runtime_session=");
     expect(setCookie).toContain("HttpOnly");
-    expect(setCookie).toContain("SameSite=Lax");
+    expect(setCookie).toContain("SameSite=Strict");
     expect(setCookie).not.toContain("secret-local-token");
 
     const authenticated = await fetch(`http://127.0.0.1:${serverPort(handle)}/api/requests/workspace`, {
@@ -107,7 +117,7 @@ describe("startLocalRuntimeServer", () => {
     });
     const handle = await startTestServer(portableWorkspaceConfig(workspaceRoot));
 
-    const response = await fetch(`http://127.0.0.1:${serverPort(handle)}/api/operator/status`);
+    const response = await fetch(`http://127.0.0.1:${serverPort(handle)}/api/operator/status`, { headers: { authorization: "Bearer secret-local-token" } });
     const body = operatorStatusDtoSchema.parse(await response.json());
 
     expect(response.status).toBe(200);
@@ -218,7 +228,7 @@ describe("startLocalRuntimeServer", () => {
         bindMode: "tailnet",
         host: "100.99.12.34",
         authRequired,
-        ...(authToken === undefined ? {} : { authToken })
+        authToken: authToken ?? ""
       }
     };
 
@@ -290,8 +300,10 @@ function configWithPortZero(config: ResolvedLocalRuntimeConfig): ResolvedLocalRu
   writeFileSync(join(distDir, "index.html"), "<main>Cestus</main>");
   return {
     ...config,
+    operator: { id: "operator_server_test", kind: "human", label: "Server test" },
     http: {
       ...config.http,
+      authToken: config.http.authToken ?? "secret-local-token",
       port: 0
     },
     staticUi: {
@@ -301,6 +313,7 @@ function configWithPortZero(config: ResolvedLocalRuntimeConfig): ResolvedLocalRu
 }
 
 async function startTestServer(config: ResolvedLocalRuntimeConfig): Promise<LocalRuntimeServerHandle> {
+  if (config.storage.strategy === "portable-workspace") new SQLiteEventLedger(config.storage.sqlitePath).close();
   const handle = await startLocalRuntimeServer({ config });
   handles.push(handle);
   return handle;

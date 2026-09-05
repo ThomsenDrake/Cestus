@@ -18,7 +18,7 @@ describe("resolveLocalRuntimeConfig", () => {
       host: "127.0.0.1",
       port: 8787,
       bindMode: "loopback",
-      authRequired: false,
+      authRequired: true,
       devSeedEnabled: false
     });
     expect(config.staticUi.distDir).toBe(resolve(cwd, "dist"));
@@ -39,7 +39,7 @@ describe("resolveLocalRuntimeConfig", () => {
       sqlitePath: resolve(cwd, "state/custom.sqlite")
     });
     expect(config.http.bindMode).toBe("loopback");
-    expect(config.http.authRequired).toBe(false);
+    expect(config.http.authRequired).toBe(true);
   });
 
   it("requires a workspace root for portable workspace storage", () => {
@@ -68,7 +68,7 @@ describe("resolveLocalRuntimeConfig", () => {
       sqlitePath: resolve(cwd, "external/case-a/ledger/ontology.sqlite")
     });
     expect(config.http.bindMode).toBe("loopback");
-    expect(config.http.authRequired).toBe(false);
+    expect(config.http.authRequired).toBe(true);
   });
 
   it("resolves expected portable workspace identity from env over config", () => {
@@ -290,7 +290,7 @@ describe("resolveLocalRuntimeConfig", () => {
     });
 
     expect(config.http.bindMode).toBe("loopback");
-    expect(config.http.authRequired).toBe(false);
+    expect(config.http.authRequired).toBe(true);
     expect(config.http.devSeedEnabled).toBe(true);
   });
 });

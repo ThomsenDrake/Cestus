@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { SQLiteEventLedger } from "../../ontology/src/sqlite-event-ledger.js";
 import { createPortableWorkspace } from "../../workspace/src/index.js";
 import { runLocalRuntimeCli } from "../src/cli.js";
@@ -11,6 +11,7 @@ import { writeLocalRuntimeOnboardingConfig } from "../src/config-file.js";
 let tempDir: string | undefined;
 
 afterEach(() => {
+  vi.unstubAllGlobals();
   if (tempDir !== undefined) {
     rmSync(tempDir, { recursive: true, force: true });
     tempDir = undefined;
@@ -18,11 +19,21 @@ afterEach(() => {
 });
 
 describe("runLocalRuntimeCli", () => {
+  it.each([["0.0.0.0", "127.0.0.1"], ["::", "[::1]"]])("probes wildcard %s through loopback without opening a public listener", async (host, probeHost) => {
+    tempDir = mkdtempSync(join(tmpdir(), "cestus-cli-"));
+    const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify({ ok: true, backend: "running" })));
+    vi.stubGlobal("fetch", fetcher);
+    expect(await runLocalRuntimeCli(["health"], {
+      cwd: tempDir, env: { CESTUS_LOCAL_BIND: "lan", CESTUS_LOCAL_HOST: host, CESTUS_LOCAL_AUTH_TOKEN: "test-token" }, stdout: () => undefined
+    })).toBe(0);
+    expect(fetcher).toHaveBeenCalledWith(`http://${probeHost}:8787/api/health`, expect.any(Object));
+  });
   it("prints resident agent status as stable JSON without live credentials", async () => {
     const stdout: string[] = [];
     const stderr: string[] = [];
     const cwd = mkdtempSync(join(tmpdir(), "cestus-cli-"));
     tempDir = cwd;
+    writeLocalRuntimeOnboardingConfig({ cwd, env: {}, bindMode: "loopback" });
 
     const exitCode = await runLocalRuntimeCli(["agent-status"], {
       cwd,
@@ -50,6 +61,7 @@ describe("runLocalRuntimeCli", () => {
     const statusStdout: string[] = [];
     const stderr: string[] = [];
     tempDir = mkdtempSync(join(tmpdir(), "cestus-cli-"));
+    writeLocalRuntimeOnboardingConfig({ cwd: tempDir, env: {}, bindMode: "loopback" });
     const workspaceRoot = join(tempDir, "task-workspace");
     createPortableWorkspace({
       rootDir: workspaceRoot,

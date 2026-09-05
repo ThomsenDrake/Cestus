@@ -4,12 +4,12 @@ import { networkInterfaces, type NetworkInterfaceInfo } from "node:os";
 import { join } from "node:path";
 import {
   authorizedLocalRuntimeRequest,
-  createLocalRuntimeSessionBootstrapCode,
-  localRuntimeSessionSetCookie
+  createLocalRuntimeSessions
 } from "./auth.js";
 import type { ActorRef } from "../../prr/src/draft-events.js";
 import { resolveLocalRuntimeConfig, type ResolvedLocalRuntimeConfig } from "./config.js";
-import { createLocalRuntimeHttpHandler } from "./http-handler.js";
+import { observeServerWorkspace, unavailableWorkspaceDiagnostic } from "./server-workspace.js";
+import { createLocalRuntimeHttpHandler, type LocalRuntimeHttpHandler } from "./http-handler.js";
 import { readStaticUiFile } from "./static-files.js";
 import { assertTailnetAddress, ipAddressesEquivalent, isTailnetAddress } from "./tailnet-address.js";
 
@@ -31,12 +31,6 @@ export interface LocalRuntimeServerHandle {
 
 export const MAX_LOCAL_RUNTIME_REQUEST_BODY_BYTES = 1_048_576;
 
-const defaultActor = {
-  id: "actor_local_runtime",
-  kind: "human",
-  label: "Local Runtime User"
-} as const;
-
 export async function startLocalRuntimeServer(
   input: StartLocalRuntimeServerInput = {}
 ): Promise<LocalRuntimeServerHandle> {
@@ -49,36 +43,108 @@ export async function startLocalRuntimeServer(
   const interfaces = input.networkInterfaces ?? networkInterfaces;
   assertTailnetAuthentication(config);
   assertTailnetHostAssigned(config, interfaces);
-  const actor = input.actor ?? defaultActor;
-  const handler = createLocalRuntimeHttpHandler({ config, actor });
-  mkdirSync(config.logs.dir, { recursive: true });
+  if (!config.http.authRequired || !config.http.authToken?.trim()) {
+    throw new Error("Local runtime requires authentication. Run local:runtime:configure first.");
+  }
+  const actor = input.actor ?? config.operator;
+  if (!actor || actor.kind !== "human" || !actor.id.trim() || !actor.label?.trim()) {
+    throw new Error("A configured human operator is required. Run local:runtime:configure first.");
+  }
+  let handler: LocalRuntimeHttpHandler | undefined;
+  let workspace: ReturnType<typeof observeServerWorkspace> | undefined;
+  let unavailable = false;
+  try {
+    workspace = observeServerWorkspace(config);
+  } catch {
+    unavailable = true;
+  }
+  if (!unavailable) {
+    try {
+      mkdirSync(config.logs.dir, { recursive: true });
+    } catch {
+      throw new Error("Local runtime log directory is unavailable. Check its configured path and write permissions, then restart Cestus.");
+    }
+    try {
+      handler = createLocalRuntimeHttpHandler({ config, actor });
+    } catch (error) {
+      appendSafeRuntimeLog(config, error);
+      throw new Error("Local runtime initialization failed. Inspect the local runtime logs and workspace database, then restart Cestus.");
+    }
+  }
   let closed = false;
-  const sessionBootstrapCode = config.http.authRequired
-    ? createLocalRuntimeSessionBootstrapCode()
-    : undefined;
+  const sessions = createLocalRuntimeSessions(config);
+  const sessionBootstrapCode = sessions.bootstrapCode;
+  function storageAvailable(): boolean {
+    if (unavailable) return false;
+    try {
+      if (observeServerWorkspace(config).identity !== workspace?.identity) unavailable = true;
+    } catch { unavailable = true; }
+    return !unavailable;
+  }
 
   const server = createServer(async (request, response) => {
     try {
+      response.setHeader("cache-control", "no-store");
+      response.setHeader("referrer-policy", "no-referrer");
+      response.setHeader("x-content-type-options", "nosniff");
+      response.setHeader("x-frame-options", "DENY");
       const path = pathnameFromRequestUrl(request.url);
+      const headers = headersFrom(request);
+      const allowedOrigins = buildServerOrigins(config, server, interfaces);
+      const hostOrigin = new URL(`http://${headers.host}`).origin;
+      const origin = headers.origin;
+      if (!allowedOrigins.includes(hostOrigin) ||
+          (origin !== undefined && (origin !== hostOrigin || !allowedOrigins.includes(origin))) ||
+          headers["sec-fetch-site"] === "cross-site" || headers["sec-fetch-site"] === "same-site") {
+        writeJsonDiagnostic(response, 403, "This browser origin is not authorized.", ["open the local runtime URL from the server output"]);
+        return;
+      }
       if (request.method === "GET" && path === "/api/local-session") {
-        writeLocalSessionResponse(config, sessionBootstrapCode, request, response);
+        writeLocalSessionResponse(sessions, request, response);
         return;
       }
 
       if (path?.startsWith("/api/") === true) {
-        const headers = headersFrom(request);
-        if (isProtectedApiPath(path) && !authorizedLocalRuntimeRequest(config, headers)) {
+        if (isProtectedApiPath(path) && !sessions.authorized(headers)) {
           writeJsonDiagnostic(response, 401, "Authentication is required for this local runtime route.", [
             "provide the configured local runtime auth token"
           ]);
           return;
         }
 
-        const body = shouldReadRequestBody(request) ? await readRequestBody(request) : undefined;
+        if (shouldReadRequestBody(request) && !authorizedLocalRuntimeRequest(config, headers) && origin !== hostOrigin) {
+          writeJsonDiagnostic(response, 403, "Browser mutations require the same origin.", ["reload Cestus from its session URL"]);
+          return;
+        }
+        const available = storageAvailable();
+        if (request.method === "GET" && (path === "/api/health" || path === "/api/workspace-status")) {
+          const state = available ? workspace?.state ?? "unavailable" : "unavailable";
+          writeResponse(response, available ? 200 : 503, "application/json; charset=utf-8", Buffer.from(JSON.stringify({
+            ok: available, backend: "running", workspaceState: state,
+            authRequired: true, devSeedEnabled: config.http.devSeedEnabled,
+            ...(path === "/api/workspace-status" && available ? {
+              workspaceId: workspace?.workspaceId, label: workspace?.label,
+              storageLocation: workspace?.storageLocation, operator: actor
+            } : {}),
+            ...(available ? {} : { diagnostic: unavailableWorkspaceDiagnostic })
+          })));
+          return;
+        }
+        if (!available || !handler) {
+          writeJsonDiagnostic(response, 503, unavailableWorkspaceDiagnostic.message, unavailableWorkspaceDiagnostic.allowedRepairActions);
+          return;
+        }
+        const readsBody = shouldReadRequestBody(request);
+        const body = readsBody ? await readRequestBody(request) : undefined;
+        // Body reads can yield while a drive is disconnected. Recheck before dispatch.
+        if (readsBody && !storageAvailable()) {
+          writeJsonDiagnostic(response, 503, unavailableWorkspaceDiagnostic.message, unavailableWorkspaceDiagnostic.allowedRepairActions);
+          return;
+        }
         const handled = await handler({
           method: request.method ?? "GET",
           url: request.url ?? path,
-          headers,
+          headers: { ...headers, authorization: `Bearer ${config.http.authToken}` },
           ...(body === undefined ? {} : { body })
         });
         writeResponse(
@@ -97,7 +163,7 @@ export async function startLocalRuntimeServer(
         writeJsonDiagnostic(response, 413, "Request body is too large.", ["send a smaller JSON request body"]);
         return;
       }
-      appendSafeRuntimeLog(config, error);
+      if (storageAvailable()) appendSafeRuntimeLog(config, error);
       writeResponse(
         response,
         500,
@@ -118,7 +184,7 @@ export async function startLocalRuntimeServer(
   try {
     await listen(server, config);
   } catch (error) {
-    await handler.close();
+    await handler?.close();
     throw error;
   }
 
@@ -144,7 +210,7 @@ export async function startLocalRuntimeServer(
       try {
         await closeServer(server);
       } finally {
-        await handler.close();
+        await handler?.close();
       }
     }
   });
@@ -209,40 +275,31 @@ function isProtectedApiPath(path: string): boolean {
 }
 
 function writeLocalSessionResponse(
-  config: ResolvedLocalRuntimeConfig,
-  sessionBootstrapCode: string | undefined,
+  sessions: ReturnType<typeof createLocalRuntimeSessions>,
   request: IncomingMessage,
   response: ServerResponse
 ): void {
-  if (!config.http.authRequired) {
-    writeRedirect(response, "/", {});
-    return;
-  }
-
-  const actualCode = sessionCodeFrom(request.url);
-  if (
-    sessionBootstrapCode === undefined ||
-    actualCode === undefined ||
-    actualCode !== sessionBootstrapCode
-  ) {
-    writeJsonDiagnostic(response, 401, "Local runtime browser session could not be established.", [
-      "open the current local runtime session URL from the server output"
-    ]);
-    return;
-  }
-
-  const setCookie = localRuntimeSessionSetCookie(config);
+  const setCookie = sessions.establish(sessionCodeFrom(request.url));
   if (setCookie === undefined) {
-    writeJsonDiagnostic(response, 500, "Local runtime session configuration is unavailable.", [
-      "restart the local runtime"
+    writeJsonDiagnostic(response, 401, "Local browser session link is expired or already used.", [
+      "restart Cestus and open the new session URL from the server output"
     ]);
     return;
   }
+  writeRedirect(response, "/", { "set-cookie": setCookie });
+}
 
-  writeRedirect(response, "/", {
-    "cache-control": "no-store",
-    "set-cookie": setCookie
-  });
+function buildServerOrigins(
+  config: ResolvedLocalRuntimeConfig,
+  server: Server,
+  interfaces: () => NodeJS.Dict<NetworkInterfaceInfo[]>
+): readonly string[] {
+  const address = server.address();
+  const port = typeof address === "object" && address !== null ? address.port : config.http.port;
+  const hosts = [...browserHostsFor(config, interfaces)];
+  if (isWildcardHost(config.http.host)) hosts.push(config.http.host === "::" ? "::1" : "127.0.0.1");
+  if (config.http.bindMode === "loopback") hosts.push("localhost");
+  return hosts.map(host => new URL(`http://${hostForUrl(host)}:${port}`).origin);
 }
 
 function sessionCodeFrom(url: string | undefined): string | undefined {
@@ -421,7 +478,7 @@ async function closeServer(server: Server): Promise<void> {
 function appendSafeRuntimeLog(config: ResolvedLocalRuntimeConfig, error: unknown): void {
   const message = error instanceof Error ? error.message : String(error);
   const line = `${new Date().toISOString()} ${redactSecretMaterial(message)}\n`;
-  appendFileSync(join(config.logs.dir, "runtime.log"), line);
+  try { appendFileSync(join(config.logs.dir, "runtime.log"), line); } catch { /* Logging must not recreate missing storage. */ }
 }
 
 function redactSecretMaterial(message: string): string {

@@ -1,3 +1,4 @@
+import { createAuthenticatedTestHandler as createLocalRuntimeHttpHandler } from "./support/authenticated-handler.js";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -10,7 +11,6 @@ import {
 } from "../../workspace-ops/src/contracts.js";
 import { resolveLocalRuntimeConfig } from "../src/config.js";
 import {
-  createLocalRuntimeHttpHandler,
   type CreateLocalRuntimeHttpHandlerInput,
   type LocalRuntimeHttpHandler
 } from "../src/http-handler.js";

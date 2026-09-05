@@ -24,6 +24,12 @@ import { agentMemoryDetail, agentMemoryList } from "./fixtures/agent-memory.js";
 describe("Cestus UI bootstrap", () => {
   const operatorStatusAdapter = createStaticOperatorStatusAdapter(appSmokeOperatorStatus);
 
+  it("opens the builder from the default Command New request action", async () => {
+    render(<App requestsAdapter={createTestRequestsAdapter()} operatorStatusAdapter={operatorStatusAdapter} />);
+    fireEvent.click(screen.getByRole("button", { name: "New request" }));
+    expect(await screen.findByRole("dialog", { name: "Guided request builder" })).toBeInTheDocument();
+  });
+
   function replaceCardAgency(
     workspace: PrrWorkspaceDto,
     prrRequestId: string,
@@ -514,9 +520,6 @@ describe("Cestus UI bootstrap", () => {
     fireEvent.change(screen.getByLabelText("Request text"), {
       target: { value: "All budget amendment memos from January 2026." }
     });
-    fireEvent.change(screen.getByLabelText("Received timestamp"), {
-      target: { value: "2026-07-05T12:00:00.000Z" }
-    });
     fireEvent.click(screen.getByRole("button", { name: "Create draft" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Requests runtime returned HTTP 503.");
@@ -525,7 +528,7 @@ describe("Cestus UI bootstrap", () => {
     expect(requestCount).toBe(2);
   });
 
-  it("stores two local replay events for a successful builder draft submit", async () => {
+  it("stores only draft creation when an unfiled request has no agency receipt", async () => {
     const adapter = createLocalReplayRequestsAdapter([], {
       idFactory: () => "evt_draft_test_created",
       now: () => "2026-07-03T18:00:00.000Z",
@@ -540,13 +543,11 @@ describe("Cestus UI bootstrap", () => {
     });
 
     expect(result.ok).toBe(true);
-    expect(result.committedEventIds).toEqual(["evt_draft_test_created", "evt_draft_test_created_2"]);
+    expect(result.committedEventIds).toEqual(["evt_draft_test_created"]);
     expect(adapter.readEventsForTest().map((event) => event.type)).toEqual([
-      "prr.request.created",
-      "prr.deadline.estimated"
+      "prr.request.created"
     ]);
-    expect(adapter.readEventsForTest().map((event) => event.sequence)).toEqual([1, 2]);
-    expect(adapter.readEventsForTest()[1]?.context.causationId).toBe("evt_draft_test_created");
+    expect(adapter.readEventsForTest().map((event) => event.sequence)).toEqual([1]);
     expect(result.workspace.cards.map((card) => card.prrRequestId)).toContain("prr_draft_test_city_clerk");
     expect(result.workspace.cards.find((card) => card.prrRequestId === "prr_draft_test_city_clerk")).toMatchObject({
       agencyName: "City Clerk",

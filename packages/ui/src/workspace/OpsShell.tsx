@@ -9,11 +9,6 @@ interface OpsShellProps {
   readonly activeModuleId: string;
   readonly workspaceName: string;
   readonly modeLabel: string;
-  readonly ledgerLabel: string;
-  readonly syncLabel: string;
-  readonly deploymentLabel: string;
-  readonly searchLabel?: string | undefined;
-  readonly searchPlaceholder?: string | undefined;
   readonly mainId: string;
   readonly mainLabel: string;
   readonly onNewRequest?: (() => void) | undefined;
@@ -27,11 +22,6 @@ export function OpsShell({
   activeModuleId,
   workspaceName,
   modeLabel,
-  ledgerLabel,
-  syncLabel,
-  deploymentLabel,
-  searchLabel,
-  searchPlaceholder,
   mainId,
   mainLabel,
   onNewRequest,
@@ -153,11 +143,6 @@ export function OpsShell({
           <CommandBand
             workspaceName={workspaceName}
             modeLabel={modeLabel}
-            ledgerLabel={ledgerLabel}
-            syncLabel={syncLabel}
-            deploymentLabel={deploymentLabel}
-            searchLabel={searchLabel}
-            searchPlaceholder={searchPlaceholder}
             onNewRequest={onNewRequest}
             onOpenMenu={openMobileMenu}
           />
