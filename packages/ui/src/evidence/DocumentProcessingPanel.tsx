@@ -2,6 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import type { ExtractionArtifact } from "../../../ontology/src/extraction-contracts.js";
 import type { DocumentProcessingJob, DocumentProcessingManifest } from "../../../ontology/src/document-processing-contracts.js";
 
+import type { KnowledgeProposal } from "../../../ontology/src/knowledge-contracts.js";
+import { displayValue, knowledgeRequest, newKnowledgeId } from "../ontology/shared-ontology-adapter.js";
+
 import { PdfCoverageNotice } from "./PdfCoverageNotice.js";
 
 const button = "max-w-full break-words rounded border border-[var(--console-line-strong)] px-3 py-2 text-sm disabled:opacity-50";
@@ -10,6 +13,7 @@ const base = "/api/document-processing";
 type Preview = { invocationId: string; manifestHash: string; manifest: DocumentProcessingManifest; warning?: string };
 type Readiness = { ready: boolean; message: string };
 type Summary = { invocationId: string; model: string; proposalState: "unreviewed"; output: { summary: string; citations: { passageIndex: number; quote: string }[] } };
+type KnowledgeOutput = { schemaVersion: "knowledge-extraction.v1"; invocationId: string; model: string; promptVersion: string; output: { proposals: KnowledgeProposal[] } };
 type Props = { evidenceId: string; extraction: ExtractionArtifact; extractionHash: string };
 
 async function request<T>(path: string, body?: unknown): Promise<T> {
@@ -33,9 +37,10 @@ function ProcessingSelection({ evidenceId, extraction, extractionHash }: Props) 
   const [jobs, setJobs] = useState<DocumentProcessingJob[]>([]);
   const [selected, setSelected] = useState<number[]>([]);
   const [budget, setBudget] = useState("");
-  const [maxOutputTokens, setMaxOutputTokens] = useState("512");
+  const [maxOutputTokens, setMaxOutputTokens] = useState("2048");
   const [preview, setPreview] = useState<Preview>();
-  const [output, setOutput] = useState<Summary>();
+  const [output, setOutput] = useState<Summary | KnowledgeOutput>();
+  const [imported, setImported] = useState<string>();
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);
   const [running, setRunning] = useState<string>();
@@ -80,7 +85,9 @@ function ProcessingSelection({ evidenceId, extraction, extractionHash }: Props) 
   async function makePreview(retry?: DocumentProcessingJob) {
     await action(async () => {
       setPreview(undefined); setOutput(undefined);
+      const operation = retry ? (await request<Preview>(`/jobs/${encodeURIComponent(retry.invocationId)}/preview`)).manifest.operation : "knowledge-extraction.v1";
       const value = await request<Preview>("/preview", {
+        operation,
         selection: retry?.selection ?? { evidenceId, extractionId: extraction.extractionId, passageIndexes: selected },
         budgetUsd: Number(budget), maxOutputTokens: Number(maxOutputTokens), ...(retry ? { retryOf: retry.invocationId } : {})
       });
@@ -107,6 +114,7 @@ function ProcessingSelection({ evidenceId, extraction, extractionHash }: Props) 
 
   return <section aria-label="External document processing" className="space-y-3 rounded border border-[var(--console-line)] p-3">
     <h3 className="font-semibold">External document processing</h3>
+    <p>Extract proposed entities, facts, relationships and occurrences for the shared ontology. A completed run remains unreviewed until you import and review its proposals in Ontology.</p>
     <p role="status" className="break-words">{readiness?.message ?? "Checking provider readiness…"}</p>
     <p>Only evidence reviewed as public_safe can leave this machine. Use the Governance review below. Restricted, unclassified, or redacted records are blocked; importing and reviewing a separately redacted copy is required when safe redaction is needed.</p>
     <p className="break-all text-xs">Selection identity: {evidenceId} · {extraction.extractionId} · {extractionHash}</p>
@@ -151,15 +159,26 @@ function ProcessingSelection({ evidenceId, extraction, extractionHash }: Props) 
         <div className="flex flex-wrap gap-2">
           <button className={button} disabled={busy || hasRunning} onClick={() => void action(async () => { const value = await request<Preview>(`/jobs/${encodeURIComponent(job.invocationId)}/preview`); if (mounted.current) { setPreview(value); setOutput(undefined); } })}>Review saved transfer {job.invocationId}</button>
           {["awaiting_approval", "queued", "running"].includes(job.state) && <button className={button} disabled={busy} onClick={() => void action(async () => { await request(`/jobs/${encodeURIComponent(job.invocationId)}/cancel`, {}); await refresh(); })}>Cancel {job.invocationId}</button>}
-          {job.state === "completed" && <button className={button} disabled={busy} onClick={() => void action(async () => { const value = await request<Summary>(`/jobs/${encodeURIComponent(job.invocationId)}/output`); if (mounted.current) setOutput(value); })}>Read result {job.invocationId}</button>}
+          {job.state === "completed" && <button className={button} disabled={busy} onClick={() => void action(async () => { const value = await request<Summary | KnowledgeOutput>(`/jobs/${encodeURIComponent(job.invocationId)}/output`); if (mounted.current) { setOutput(value); setImported(undefined); } })}>Read result {job.invocationId}</button>}
           {["failed", "canceled", "uncertain"].includes(job.state) && <button className={button} disabled={busy || hasRunning || !readiness?.ready || !validBudget || !validTokens} onClick={() => void makePreview(job)}>Prepare potentially billable retry {job.invocationId}</button>}
         </div>
       </article>)}
     </section>
     {output && <section aria-label="Unreviewed provider result" className="space-y-2 border border-[var(--console-line)] p-3">
-      <h4 className="font-semibold">Unreviewed provider summary</h4><p>Model: {output.model}. This proposal has not been accepted as an investigative fact.</p>
-      <p className="whitespace-pre-wrap break-words">{output.output.summary}</p>
-      {output.output.citations.map((citation, index) => <blockquote className="whitespace-pre-wrap break-words border-l-2 pl-3" key={index}><p>{citation.quote}</p><a className="underline" href={`#evidence/${evidenceId}/${extraction.extractionId}/${citation.passageIndex}`}>Supporting passage {citation.passageIndex + 1}</a></blockquote>)}
+      {"schemaVersion" in output && output.schemaVersion === "knowledge-extraction.v1" ? <>
+        <h4 className="font-semibold">Unreviewed knowledge proposals</h4><p>Model: {output.model} · Prompt: {output.promptVersion}. Model scores are not probabilities of truth. Importing creates proposals only; each acceptance requires a human decision.</p>
+        {output.output.proposals.map(proposal => <article key={proposal.assertionId} className="space-y-2 border border-[var(--console-line)] p-2"><strong>{proposal.kind} · {proposal.predicate}: {displayValue(proposal.value)}</strong>{proposal.modelScore !== undefined && <p>Model score: {proposal.modelScore}</p>}{proposal.evidence.map((citation, index) => <blockquote key={index} className="border-l-2 pl-3"><p className="whitespace-pre-wrap break-words">{citation.quote}</p><a className="underline" href={`#evidence/${citation.evidenceId}/${citation.extractionId}/${citation.passageIndex}`}>Supporting passage {citation.passageIndex + 1}</a>{citation.pdfCoverage && <PdfCoverageNotice coverage={citation.pdfCoverage} />}</blockquote>)}</article>)}
+        <button className={button} disabled={busy || imported === output.invocationId} onClick={() => void action(async () => {
+          const current = await knowledgeRequest<{ revision: number }>("/api/ontology/knowledge");
+          await knowledgeRequest("/api/ontology/import-provider", { invocationId: output.invocationId, decisionId: newKnowledgeId("import"), expectedRevision: current.revision });
+          if (mounted.current) setImported(output.invocationId);
+        })}>Import proposals for human review</button>
+        {imported === output.invocationId && <p role="status">Proposals imported. Open Ontology to review their values and source passages, then accept or reject them.</p>}
+      </> : "summary" in output.output ? <>
+        <h4 className="font-semibold">Unreviewed provider summary</h4><p>Model: {output.model}. This proposal has not been accepted as an investigative fact.</p>
+        <p className="whitespace-pre-wrap break-words">{output.output.summary}</p>
+        {output.output.citations.map((citation, index) => <blockquote className="whitespace-pre-wrap break-words border-l-2 pl-3" key={index}><p>{citation.quote}</p><a className="underline" href={`#evidence/${evidenceId}/${extraction.extractionId}/${citation.passageIndex}`}>Supporting passage {citation.passageIndex + 1}</a></blockquote>)}
+      </> : null}
     </section>}
   </section>;
 }

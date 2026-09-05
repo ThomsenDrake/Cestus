@@ -1,0 +1,85 @@
+
+ RUN  v4.1.9 /home/drake/Projects/Cestus
+
+ ❯ packages/local-runtime/test/agent-ontology-bootstrap-routes.test.ts (11 tests | 1 failed) 219ms
+     × does not expose historical assertions whose source ingestion has invalid stream provenance 48ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  packages/local-runtime/test/agent-ontology-bootstrap-routes.test.ts > ontology-bootstrap agent routes > does not expose historical assertions whose source ingestion has invalid stream provenance
+AssertionError: expected [ { …(8) }, { …(8) } ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   {
++     "canonicalLabel": "Example Agency",
++     "entityId": "ent_example_agency",
++     "entityType": "GovernmentAgency",
++     "eventIds": [
++       "evt_4c7087f7060a437ea710371e966d3b23",
++       "evt_706a75f126884bbb88c7539b006b6a3b",
++       "evt_f24e2c0c64c54ba8a21a37fbce873de4",
++       "evt_fe151225ef2146419830b222b09bd139",
++     ],
++     "evidenceIds": [
++       "ev_agency_pdf",
++     ],
++     "packVersions": [
++       {
++         "name": "core",
++         "version": "0.1.0",
++       },
++     ],
++     "reviewState": "accepted",
++     "supportingAssertionIds": [
++       "as_agency_name",
++     ],
++   },
++   {
++     "canonicalLabel": "Example Contract",
++     "entityId": "ent_example_contract",
++     "entityType": "Contract",
++     "eventIds": [
++       "evt_6cdc79062f0e4791bdf2f890ce2ff0d5",
++       "evt_6ee2078a0be04ebab224c15c8e6c2cc2",
++       "evt_9a16e59ed3384549a4a6f575ddb220a8",
++       "evt_e86ffb403b35452db2d0da8973d3c363",
++     ],
++     "evidenceIds": [
++       "ev_contract_pdf",
++     ],
++     "packVersions": [
++       {
++         "name": "core",
++         "version": "0.1.0",
++       },
++       {
++         "name": "public-records",
++         "version": "1.2.0",
++       },
++     ],
++     "reviewState": "accepted",
++     "supportingAssertionIds": [
++       "as_contract_party",
++     ],
++   },
++ ]
+
+ ❯ packages/local-runtime/test/agent-ontology-bootstrap-routes.test.ts:184:27
+    182|     const response = await handler({ method: "GET", url: "/api/ontolog…
+    183|     const body = JSON.parse(response.body);
+    184|     expect(body.entities).toEqual([]);
+       |                           ^
+    185|     expect(body.relationships).toEqual([]);
+    186|     expect(response.body).not.toContain("Example Agency");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 10 passed (11)
+   Start at  16:01:23
+   Duration  2.53s (transform 1.57s, setup 100ms, import 2.09s, tests 219ms, environment 0ms)

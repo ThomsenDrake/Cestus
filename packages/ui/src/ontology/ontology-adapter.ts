@@ -17,6 +17,8 @@ const assertionSchema = z.object({
   subjectRef: z.string().min(1).optional(),
   predicate: z.string().min(1),
   confidence: z.number().min(0).max(1),
+  object: z.union([z.string(), z.number(), z.boolean(), z.null()]).optional(),
+  citationScope: z.enum(["whole-document", "passage"]).optional(),
   evidenceId: z.string().regex(/^ev_[a-zA-Z0-9_-]+$/),
   eventIds: z.array(z.string().regex(/^evt_[a-zA-Z0-9_-]+$/)),
   packVersions: z.array(packVersionSchema)

@@ -52,6 +52,7 @@ import type {
   PrepareEvidenceAssertionCandidateInput
 } from "./evidence/evidence-types.js";
 import type { AppendGovernanceReviewInput } from "./governance/governance-types.js";
+import { SharedOntologyWorkspace } from "./ontology/SharedOntologyWorkspace.js";
 import { OntologyWorkspace } from "./ontology/OntologyWorkspace.js";
 import {
   httpOntologyWorkspaceAdapter,
@@ -728,6 +729,16 @@ export function App({
     />
   );
   const ontologyMain = (
+    <div className="space-y-5 min-w-0">
+    <SharedOntologyWorkspace />
+    <details className="border border-[var(--console-line)] p-3" onToggle={event => {
+      if (event.currentTarget.open) {
+        setOntologyWorkspace(undefined);
+        setLoadedOntologyAdapter(undefined);
+        setOntologyLoadState("idle");
+        setOntologyReloadKey(current => current + 1);
+      }
+    }}><summary>Legacy provenance</summary>
     <OntologyWorkspace
       workspace={ontologyWorkspace}
       loadState={ontologyLoadState}
@@ -740,6 +751,8 @@ export function App({
         setOntologyReloadKey((current) => current + 1);
       }}
     />
+    </details>
+    </div>
   );
   const agentMain = (
     <AgentWorkspace

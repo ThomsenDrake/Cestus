@@ -7,8 +7,22 @@ import {
   ontologyWorkspaceDtoFromJson
 } from "../src/ontology/ontology-adapter.js";
 import type { OntologyWorkspaceDto } from "../src/ontology/ontology-types.js";
+import { buildOntologyWorkspaceReadDto } from "../../ontology/src/ontology-workspace-read.js";
+import { goldenOntologyWorkspaceEvents } from "../../ontology/test/fixtures/golden-ontology-workspace.js";
 
 describe("ontology workspace", () => {
+  it("decodes the replay DTO and displays actual legacy values without inventing passage anchors", async () => {
+    const dto = buildOntologyWorkspaceReadDto(goldenOntologyWorkspaceEvents);
+    const parsed = ontologyWorkspaceDtoFromJson(dto);
+    expect(parsed.assertions.find((item) => item.assertionId === "as_contract_party"))
+      .toMatchObject({ object: "Example Agency signed Example Contract", citationScope: "whole-document" });
+    render(<App ontologyAdapter={createStaticOntologyWorkspaceAdapter(parsed)} />);
+    fireEvent.click(screen.getByRole("link", { name: "Ontology" }));
+    const material = await screen.findByRole("region", { name: "Ontology review material" });
+    expect(within(material).getByText("Example Agency signed Example Contract")).toBeInTheDocument();
+    expect(within(material).getAllByText("whole-document citation").length).toBeGreaterThan(0);
+  });
+
   it("opens Ontology as a runtime-derived first-class workspace with keyboard-selectable provenance", async () => {
     const adapter = createStaticOntologyWorkspaceAdapter(ontologyWorkspace());
     render(<App ontologyAdapter={adapter} />);

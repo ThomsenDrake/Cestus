@@ -1,0 +1,77 @@
+typecheck passed
+
+ RUN  v4.1.9 /home/drake/Projects/Cestus
+
+3:53:11 PM [vite] (ssr) Failed to load source map for /home/drake/Projects/Cestus/node_modules/typescript/lib/typescript.js.
+Error: An error occurred while trying to read the map file at typescript.js.map
+Error: ENOENT: no such file or directory, open '/home/drake/Projects/Cestus/node_modules/typescript/lib/typescript.js.map'
+    at Object.readFileSync (node:fs:539:20)
+    at file:///home/drake/Projects/Cestus/node_modules/vite/dist/node/chunks/node.js:18740:13
+    at readFromFileMap (file:///home/drake/Projects/Cestus/node_modules/vite/dist/node/chunks/node.js:18440:13)
+    at Object.exports.fromMapFileComment (file:///home/drake/Projects/Cestus/node_modules/vite/dist/node/chunks/node.js:18534:12)
+    at Object.exports.fromMapFileSource (file:///home/drake/Projects/Cestus/node_modules/vite/dist/node/chunks/node.js:18545:22)
+    at extractSourcemapFromFile (file:///home/drake/Projects/Cestus/node_modules/vite/dist/node/chunks/node.js:18726:87)
+    at loadAndTransform (file:///home/drake/Projects/Cestus/node_modules/vite/dist/node/chunks/node.js:19695:22)
+TASK137_POLICY_CORPUS_OK allowed=8 rejected=20
+(node:1460383) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ packages/local-runtime/test/agent-ontology-bootstrap-routes.test.ts (10 tests | 1 failed) 216ms
+     × reads deterministic ontology relationship provenance from the mounted ledger 66ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  packages/local-runtime/test/agent-ontology-bootstrap-routes.test.ts > ontology-bootstrap agent routes > reads deterministic ontology relationship provenance from the mounted ledger
+AssertionError: expected { …(7) } to match object { …(3) }
+(4 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+-   "relationships": [
+-     {
+-       "contradictingAssertionIds": [
+-         "as_contract_dispute",
+-       ],
+-       "evidenceIds": [
+-         "ev_contract_pdf",
+-       ],
+-       "packVersions": [
+-         {
+-           "name": "core",
+-           "version": "0.1.0",
+-         },
+-         {
+-           "name": "public-records",
+-           "version": "1.2.0",
+-         },
+-       ],
+-       "relationshipId": "rel_agency_signed_contract",
+-       "relationshipType": "signed",
+-       "reviewState": "accepted",
+-       "supportingAssertionIds": [
+-         "as_contract_party",
+-       ],
+-     },
+-   ],
++   "relationships": [],
+    "schemaVersion": "ontology-workspace.v1",
+-   "status": "ready",
++   "status": "degraded",
+  }
+
+ ❯ packages/local-runtime/test/agent-ontology-bootstrap-routes.test.ts:194:18
+    192|     expect(first.status).toBe(200);
+    193|     expect(JSON.parse(replayed.body)).toEqual(body);
+    194|     expect(body).toMatchObject({
+       |                  ^
+    195|       schemaVersion: "ontology-workspace.v1",
+    196|       status: "ready",
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 269 passed | 3 skipped (273)
+      Tests  1 failed | 4089 passed | 5 skipped (4095)
+   Start at  15:51:58
+   Duration  297.66s (transform 10.08s, setup 23.64s, import 69.28s, tests 454.57s, environment 15.42s)

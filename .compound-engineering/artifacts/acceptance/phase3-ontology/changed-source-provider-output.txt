@@ -1,0 +1,63 @@
+External document processing
+
+Extract proposed entities, facts, relationships and occurrences for the shared ontology. A completed run remains unreviewed until you import and review its proposals in Ontology.
+
+Explicit provider and pricing configured. Each selection still requires human approval. Prices are operator supplied; verify them against your provider contract. No request has been sent.
+
+Only evidence reviewed as public_safe can leave this machine. Use the Governance review below. Restricted, unclassified, or redacted records are blocked; importing and reviewing a separately redacted copy is required when safe redaction is needed.
+
+Selection identity: ev_ing_a2ae15a60163ba3ba366f075a2cb456da89d1669fea8688941adf8f27cdd6c4c · parse_imp_07152601-f028-46e1-a04e-55fc9a535b9c_extraction_v2_dfc2336f54df9ae9e3ed9608a20777c82f652bf40de4ac591f3ed5039ba0ac5f · sha256:6784c9f92d6fae21ca26799fba1d727fe500cc9fc4c537c310eb908b3f9e416c
+
+Select up to 24 passages to send (1 selected)
+block 1, characters 0–105
+Synthetic case A. Robin Vale, identifier RV-202, received an award of 2400 from Harbor Agency in 2026-07.
+block 2, characters 107–128
+Published 2026-08-02.
+Maximum budget (USD)
+Maximum output tokens
+Preview exact transfer
+Review what will leave this machine
+
+Destination: http://127.0.0.1:28804/v1/chat/completions · Model: synthetic-phase3-fixture · Operation: knowledge-extraction.v1
+
+1 passages · 4994 input bytes including instructions · at most 5506 input tokens and 2048 output tokens.
+
+Maximum estimated cost: $0.009602 · Budget: $0.05. Operator-supplied prices: $1 input / $2 output per million tokens. Verify pricing with the provider; actual charges depend on provider accounting.
+
+Timeout: 30 seconds · Maximum response: 65536 bytes · One invocation at a time.
+
+Original: sha256:dfc2336f54df9ae9e3ed9608a20777c82f652bf40de4ac591f3ed5039ba0ac5f · Extraction: sha256:6784c9f92d6fae21ca26799fba1d727fe500cc9fc4c537c310eb908b3f9e416c · Approval manifest: sha256:9757f8c820d240f7585ed6e5c82d8a28fd3178558e891b09122f334673ac53b8
+
+Exact outgoing instructions and content
+
+Approval covers this exact content, destination, model, operation and limits. Content, authority and policy are checked again immediately before transfer.
+
+Processing history for this extraction
+Refresh jobs
+
+Queued work runs only when you choose Run. Interrupted or timed-out submissions remain uncertain; no automatic paid retry occurs. Canceling a submitted request may still incur a charge.
+
+inv_9bf0bab7322545599f8bc6ece15c0d53 · completed · 2026-09-05T19:40:39.438Z · validated-output
+
+Review saved transfer inv_9bf0bab7322545599f8bc6ece15c0d53
+Read result inv_9bf0bab7322545599f8bc6ece15c0d53
+Unreviewed knowledge proposals
+
+Model: synthetic-phase3-fixture · Prompt: knowledge-extraction-prompt.v1. Model scores are not probabilities of truth. Importing creates proposals only; each acceptance requires a human decision.
+
+entity · name: Robin Vale
+
+Synthetic case A. Robin Vale, identifier RV-202, received an award of 2400 from Harbor Agency in 2026-07.
+
+Supporting passage 1
+fact · amount: 2400
+
+Synthetic case A. Robin Vale, identifier RV-202, received an award of 2400 from Harbor Agency in 2026-07.
+
+Supporting passage 1
+fact · date: 2026-07
+
+Synthetic case A. Robin Vale, identifier RV-202, received an award of 2400 from Harbor Agency in 2026-07.
+
+Supporting passage 1
+Import proposals for human review
