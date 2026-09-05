@@ -22,4 +22,17 @@ describe("bounded workspace evidence and candidate contracts", () => {
     expect(extractionArtifactSchema.safeParse({ ...artifact, originalPath: "/private/file" }).success).toBe(false);
     expect(extractionArtifactSchema.safeParse({ ...artifact, passages: [{ locator: { kind: "pdf", page: -1, block: 1, start: 0, end: 4 }, text: "test" }] }).success).toBe(false);
   });
+  it("validates explicit PDF coverage against original page numbers and passages while accepting old artifacts", () => {
+    const artifact = { schemaVersion: "evidence-extraction.v1", extractionId: "parse_pdf", evidenceId: "ev_one", sourceContentHash: hash, extractor: { name: "extractor", version: "1" }, format: "pdf", text: "test", passages: [{ locator: { kind: "pdf", page: 1, block: 1, start: 0, end: 4 }, text: "test" }] };
+    const pdfCoverage = { status: "partial", pages: [{ page: 1, status: "text-extracted" }, { page: 2, status: "unextracted" }] };
+    expect(extractionArtifactSchema.safeParse(artifact).success).toBe(true);
+    expect(extractionArtifactSchema.safeParse({ ...artifact, pdfCoverage }).success).toBe(true);
+    expect(extractionArtifactSchema.safeParse({ ...artifact, pdfCoverage: { ...pdfCoverage, status: "complete" } }).success).toBe(false);
+    expect(extractionArtifactSchema.safeParse({ ...artifact, pdfCoverage: { ...pdfCoverage, pages: [{ page: 1, status: "text-extracted" }, { page: 3, status: "unextracted" }] } }).success).toBe(false);
+    expect(extractionArtifactSchema.safeParse({ ...artifact, pdfCoverage, passages: [{ ...artifact.passages[0], locator: { kind: "pdf", page: 2, block: 1, start: 0, end: 4 } }] }).success).toBe(false);
+    expect(extractionArtifactSchema.safeParse({ ...artifact, pdfCoverage, passages: [] }).success).toBe(false);
+    expect(extractionArtifactSchema.safeParse({ ...artifact, pdfCoverage, format: "text" }).success).toBe(false);
+    expect(extractionArtifactSchema.safeParse({ ...artifact, pdfCoverage: { status: "complete", pages: [{ page: 1, status: "text-extracted" }] } }).success).toBe(true);
+  });
+
 });

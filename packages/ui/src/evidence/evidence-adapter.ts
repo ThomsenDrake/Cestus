@@ -71,6 +71,7 @@ const parseJobSchema = z.object({
   lane: z.enum(["local", "provider"]),
   parser: adapterRefSchema,
   state: z.enum(["queued", "running", "succeeded", "failed"]),
+  coverageStatus: z.enum(["complete", "partial"]).optional(),
   derivative: z.object({ contentHash: contentHashSchema, mediaType: safeTextSchema }).strict().optional()
 }).strict();
 const governanceTagSchema = z.object({

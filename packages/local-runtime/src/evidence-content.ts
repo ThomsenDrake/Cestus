@@ -5,7 +5,7 @@ import { extractionArtifactSchema, extractionMediaType, type ExtractionArtifact 
 import type { MountedWorkspace } from "../../ingestion/src/mount-contract.js";
 import { buildEvidenceWorkspaceDto, type EvidenceItemDto } from "../../ingestion/src/read-api.js";
 import type { ActorRef, KnowledgeEvent } from "../../ontology/src/contracts.js";
-import { containsCredentialShapedEvidenceText, evaluateEvidenceProposalEligibility } from "../../ontology/src/evidence-service.js";
+import { containsCredentialShapedEvidenceText } from "../../ontology/src/evidence-service.js";
 import { buildGovernanceProjection } from "../../ontology/src/governance-projection.js";
 import { activeGovernancePolicyRef } from "../../ontology/src/governance-read-model.js";
 import { restrictedExportTags } from "../../ontology/src/governance-policy.js";
@@ -16,22 +16,36 @@ export class EvidenceContentError extends Error {
 type Hash = `sha256:${string}`;
 const hash = (value: string) => `sha256:${createHash("sha256").update(value).digest("hex")}` as Hash;
 
-export function authorizeEvidence(events: readonly KnowledgeEvent[], evidenceId: string, actor: ActorRef): EvidenceItemDto {
-  if (actor.kind !== "human" || !/^ev_[A-Za-z0-9_-]+$/.test(evidenceId)) throw new EvidenceContentError(403, "Evidence access is not authorized.");
-  const eligibility = evaluateEvidenceProposalEligibility(events, evidenceId);
-  const governance = buildGovernanceProjection(events).evidenceGovernance.get(evidenceId);
-  const redacted = events.some(event => event.type === "evidence.redaction.applied" && event.payload.evidenceId === evidenceId);
-  if (!eligibility.selectable || governance?.currentTags.get("credential_risk")?.status === "active" || redacted) {
-    throw new EvidenceContentError(403, "Content is unavailable under current provenance or governance. Review the evidence; redacted views require a supported safe derivative.");
-  }
-  const item = buildEvidenceWorkspaceDto(events).items.find(item => item.evidenceId === evidenceId);
-  if (!item?.contentHash) throw new EvidenceContentError(403, "Evidence access is not authorized.");
-  return item;
+// Request-scoped projection only. A snapshot never survives a request or grants
+// authority after an awaited storage read without a fresh ledger check.
+function evidenceAccess(events: readonly KnowledgeEvent[]) {
+  const items = new Map(buildEvidenceWorkspaceDto(events).items.map(item => [item.evidenceId, item]));
+  const redacted = new Set(events.filter(event => event.type === "evidence.redaction.applied").map(event => event.payload.evidenceId));
+  return { items, authorize(evidenceId: string, actor: ActorRef): EvidenceItemDto {
+    if (actor.kind !== "human" || !/^ev_[A-Za-z0-9_-]+$/.test(evidenceId)) throw new EvidenceContentError(403, "Evidence access is not authorized.");
+    const item = items.get(evidenceId);
+    if (!item?.contentHash || !item.selectableForAssertionCandidate || item.governanceTags.some(tag => tag.tag === "credential_risk" && tag.status === "active") || redacted.has(evidenceId)) {
+      throw new EvidenceContentError(403, "Content is unavailable under current provenance or governance. Review the evidence; redacted views require a supported safe derivative.");
+    }
+    return item;
+  } };
 }
+
+export function authorizeEvidence(events: readonly KnowledgeEvent[], evidenceId: string, actor: ActorRef): EvidenceItemDto {
+  return evidenceAccess(events).authorize(evidenceId, actor);
+}
+
 
 export async function readEvidenceContent(workspace: MountedWorkspace, actor: ActorRef, evidenceId: string, extractionId?: string) {
   const events = await workspace.ledger.readAll();
   const item = authorizeEvidence(events, evidenceId, actor);
+  const content = await readContentFromSnapshot(workspace, events, item, extractionId);
+  authorizeEvidence(await workspace.ledger.readAll(), evidenceId, actor);
+  return content;
+}
+
+async function readContentFromSnapshot(workspace: MountedWorkspace, events: readonly KnowledgeEvent[], item: EvidenceItemDto, extractionId?: string) {
+  const evidenceId = item.evidenceId;
   // Validate canonical original before returning any derivative or snippet.
   await workspace.blobStore.get(item.contentHash as Hash);
   const completed = events.filter(event => event.type === "ingestion.parse.completed" && event.payload.evidenceId === evidenceId);
@@ -47,8 +61,6 @@ export async function readEvidenceContent(workspace: MountedWorkspace, actor: Ac
     if (containsCredentialShapedEvidenceText(extraction.text)) throw new EvidenceContentError(403, "Content requires credential-risk review before reading or search.");
     extractionHash = selected.payload.outputHash as Hash;
   }
-  // An awaited storage read is not a lasting authorization grant.
-  authorizeEvidence(await workspace.ledger.readAll(), evidenceId, actor);
   return { item, extraction, extractionHash, extractions: completed.map(event => {
     if (event.type !== "ingestion.parse.completed") throw new Error("Invalid extraction event");
     return { extractionId: event.payload.parseJobId, contentHash: event.payload.outputHash, parser: event.payload.parser, completedAt: event.payload.completedAt };
@@ -78,21 +90,28 @@ export async function readEvidenceOriginal(workspace: MountedWorkspace, actor: A
 export async function searchEvidence(workspace: MountedWorkspace, actor: ActorRef, input: { q: string; sourceCollectionId?: string; format?: string; limit: number; offset: number }) {
   if (!input.q.trim() || input.q.length > 500 || !Number.isInteger(input.limit) || input.limit < 1 || input.limit > 50 || !Number.isInteger(input.offset) || input.offset < 0 || input.offset > 100_000 || (input.format && !["text", "csv", "pdf"].includes(input.format))) throw new EvidenceContentError(400, "Enter a phrase up to 500 characters and valid pagination or filters.");
   const events = await workspace.ledger.readAll();
-  const items = buildEvidenceWorkspaceDto(events).items;
+  const access = evidenceAccess(events);
   const documents: Awaited<ReturnType<typeof readEvidenceContent>>[] = [];
-  for (const item of items) {
-    try { const document = await readEvidenceContent(workspace, actor, item.evidenceId); if (document.extraction) documents.push(document); }
-    catch { /* Exclude inaccessible or corrupt derivatives; never return stale snippets. */ }
+  for (const item of access.items.values()) {
+    try {
+      access.authorize(item.evidenceId, actor);
+      const document = await readContentFromSnapshot(workspace, events, item);
+      if (document.extraction) documents.push(document);
+    } catch { /* Inaccessible or corrupt originals/derivatives never contribute snippets. */ }
   }
-  // All entries are re-authorized and hash-verified each query. Small-corpus scope;
-  // the cache is rebuilt transactionally and never treated as authority.
-  await workspace.ledger.readAll();
+  // Recheck every indexed document after all awaited I/O, before counting or
+  // returning snippets. No long-lived cache, authority, or integrity shortcut.
+  const currentAccess = evidenceAccess(await workspace.ledger.readAll());
+  const eligible = documents.filter(document => {
+    try { return currentAccess.authorize(document.item.evidenceId, actor).contentHash === document.item.contentHash; }
+    catch { return false; }
+  });
   const db = new DatabaseSync(workspace.projectionCacheRoot ? join(workspace.projectionCacheRoot, "evidence-search.sqlite") : ":memory:");
   try {
     db.exec("CREATE VIRTUAL TABLE IF NOT EXISTS evidence_passages USING fts5(evidence_id UNINDEXED, extraction_id UNINDEXED, passage_index UNINDEXED, format UNINDEXED, text)");
     db.exec("BEGIN; DELETE FROM evidence_passages");
     const insert = db.prepare("INSERT INTO evidence_passages VALUES (?, ?, ?, ?, ?)");
-    for (const document of documents) {
+    for (const document of eligible) {
       if (input.sourceCollectionId && !document.item.sourceCollections.some(source => source.sourceCollectionId === input.sourceCollectionId)) continue;
       for (const [index, passage] of document.extraction!.passages.entries()) insert.run(document.item.evidenceId, document.extraction!.extractionId, index, document.extraction!.format, passage.text);
     }
@@ -102,13 +121,11 @@ export async function searchEvidence(workspace: MountedWorkspace, actor: ActorRe
     const params = [phrase, input.format ?? "", input.format ?? ""];
     const total = Number(db.prepare(`SELECT count(*) AS total FROM evidence_passages WHERE ${filter}`).get(...params)?.total ?? 0);
     const rows = db.prepare(`SELECT evidence_id, extraction_id, passage_index, snippet(evidence_passages, 4, '', '', ' … ', 30) AS snippet FROM evidence_passages WHERE ${filter} ORDER BY rank, evidence_id, passage_index LIMIT ? OFFSET ?`).all(...params, input.limit, input.offset);
-    const currentEvents = await workspace.ledger.readAll();
-    const results = rows.flatMap(row => {
-      try { authorizeEvidence(currentEvents, String(row.evidence_id), actor); } catch { return []; }
-      const document = documents.find(doc => doc.item.evidenceId === row.evidence_id)!;
-      return [{ evidenceId: String(row.evidence_id), extractionId: String(row.extraction_id), passageIndex: Number(row.passage_index), locator: document.extraction!.passages[Number(row.passage_index)]!.locator, snippet: String(row.snippet), label: [...new Set(document.item.occurrences.map(occurrence => occurrence.sourcePath))].join(", ") || String(row.evidence_id) }];
+    const results = rows.map(row => {
+      const document = eligible.find(doc => doc.item.evidenceId === row.evidence_id)!;
+      return { evidenceId: String(row.evidence_id), extractionId: String(row.extraction_id), passageIndex: Number(row.passage_index), locator: document.extraction!.passages[Number(row.passage_index)]!.locator, snippet: String(row.snippet), ...coverageMetadata(document.extraction!), label: [...new Set(document.item.occurrences.map(occurrence => occurrence.sourcePath))].join(", ") || String(row.evidence_id) };
     });
-    return { total: results.length === rows.length ? total : results.length, results, limit: input.limit, offset: input.offset };
+    return { total, results, limit: input.limit, offset: input.offset };
   } finally { db.close(); }
 }
 
@@ -123,5 +140,9 @@ export async function resolveExternalDocumentSelection(workspace: MountedWorkspa
   const indexes = selection.passageIndexes;
   if (!indexes.length || indexes.length > 100 || new Set(indexes).size !== indexes.length || indexes.some(index => !Number.isInteger(index) || index < 0 || !content.extraction!.passages[index])) throw new EvidenceContentError(400, "Select 1–100 exact existing passages.");
   const policyEvents = events.filter(event => ("evidenceId" in event.payload && event.payload.evidenceId === selection.evidenceId) || event.type === "governance.policy.installed");
-  return { evidenceId: selection.evidenceId, extractionId: selection.extractionId, sourceHash: content.item.contentHash as Hash, extractionHash: content.extractionHash, policyRevision: hash(JSON.stringify({ policy: activeGovernancePolicyRef(events), events: policyEvents.map(event => event.id) })), classification: "public_safe" as const, classificationEventId: publicSafe.eventId, reviewEventId: publicSafe.eventId, passages: indexes.map(index => ({ index, text: content.extraction!.passages[index]!.text, locator: content.extraction!.passages[index]!.locator })) };
+  return { ...coverageMetadata(content.extraction), evidenceId: selection.evidenceId, extractionId: selection.extractionId, sourceHash: content.item.contentHash as Hash, extractionHash: content.extractionHash, policyRevision: hash(JSON.stringify({ policy: activeGovernancePolicyRef(events), events: policyEvents.map(event => event.id) })), classification: "public_safe" as const, classificationEventId: publicSafe.eventId, reviewEventId: publicSafe.eventId, passages: indexes.map(index => ({ index, text: content.extraction!.passages[index]!.text, locator: content.extraction!.passages[index]!.locator })) };
+}
+
+function coverageMetadata(extraction: ExtractionArtifact) {
+  return extraction.format === "pdf" ? { pdfCoverage: extraction.pdfCoverage ?? { status: "unknown" as const } } : {};
 }

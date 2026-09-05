@@ -75,6 +75,7 @@ export interface EvidenceParseJobDto {
   readonly lane: "local" | "provider";
   readonly parser: { readonly name: string; readonly version: string };
   readonly state: "queued" | "running" | "succeeded" | "failed";
+  readonly coverageStatus?: "complete" | "partial";
   readonly derivative?: {
     readonly contentHash: string;
     readonly mediaType: string;
@@ -171,6 +172,7 @@ export function buildEvidenceWorkspaceDto(rawEvents: readonly unknown[]): Eviden
             lane: job.lane,
             parser: { ...job.parser },
             state: job.state,
+            ...(job.coverageStatus === undefined ? {} : { coverageStatus: job.coverageStatus }),
             ...(job.outputHash === undefined || job.outputMediaType === undefined
               ? {}
               : { derivative: { contentHash: job.outputHash, mediaType: job.outputMediaType } })
@@ -282,6 +284,7 @@ export interface IngestionReviewDto {
     lane: "local" | "provider";
     parser: { name: string; version: string };
     state: "queued" | "running" | "succeeded" | "failed";
+    coverageStatus?: "complete" | "partial";
   }>;
   diagnostics: Array<{
     diagnosticId: string;
@@ -398,7 +401,8 @@ function parseJobsForSource(
       evidenceId: job.evidenceId,
       lane: job.lane,
       parser: { ...job.parser },
-      state: job.state
+      state: job.state,
+      ...(job.coverageStatus === undefined ? {} : { coverageStatus: job.coverageStatus })
     }))
     .sort((left, right) => compareCodeUnits(left.parseJobId, right.parseJobId));
 }

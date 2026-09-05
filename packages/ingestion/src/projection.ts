@@ -71,6 +71,7 @@ export interface IngestionParseJobSummary {
   failedEventId?: string;
   outputHash?: string;
   outputMediaType?: string;
+  coverageStatus?: "complete" | "partial";
   completedAt?: string;
   failedAt?: string;
   message?: string;
@@ -363,6 +364,8 @@ function projectParseCompleted(projection: IngestionProjection, event: Knowledge
   job.completedEventId = event.id;
   job.outputHash = event.payload.outputHash;
   job.outputMediaType = event.payload.outputMediaType;
+  if (event.payload.coverageStatus === undefined) delete job.coverageStatus;
+  else job.coverageStatus = event.payload.coverageStatus;
   job.completedAt = event.payload.completedAt;
   delete job.failedEventId;
   delete job.failedAt;
@@ -382,6 +385,7 @@ function projectParseFailed(projection: IngestionProjection, event: KnowledgeEve
   delete job.completedAt;
   delete job.outputHash;
   delete job.outputMediaType;
+  delete job.coverageStatus;
 }
 
 function projectProviderApproved(

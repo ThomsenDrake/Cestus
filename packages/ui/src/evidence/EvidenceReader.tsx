@@ -3,6 +3,7 @@ import type { ExtractionArtifact, EvidenceLocator } from "../../../ontology/src/
 import type { EvidenceWorkspaceDto } from "./evidence-types.js";
 import { DocumentProcessingPanel } from "./DocumentProcessingPanel.js";
 import { locatorLabel } from "./evidence-location.js";
+import { PdfCoverageNotice, type PdfCoverageDisplay } from "./PdfCoverageNotice.js";
 import { governanceTags } from "../../../ontology/src/governance-policy.js";
 
 const evidenceButton = "rounded border border-[var(--console-line-strong)] px-3 py-2 text-sm text-[var(--paper-light)] disabled:opacity-50";
@@ -13,7 +14,7 @@ type DocumentContent = {
   extractions: { extractionId: string; contentHash: string; completedAt: string; parser: { name: string; version: string } }[];
   failures: { jobId: string; message: string; retryable: boolean; failedAt: string }[];
 };
-type SearchResult = { evidenceId: string; extractionId: string; passageIndex: number; locator: EvidenceLocator; snippet: string; label: string };
+type SearchResult = { evidenceId: string; extractionId: string; passageIndex: number; locator: EvidenceLocator; snippet: string; label: string; pdfCoverage?: PdfCoverageDisplay };
 
 async function evidenceRequest<T>(path: string, body?: unknown): Promise<T> {
   const response = await fetch(path, { credentials: "same-origin", ...(body === undefined ? {} : { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }) });
@@ -118,8 +119,9 @@ export function EvidenceReader({ workspace, evidenceId, onSelectEvidence, onRefr
       <label className="flex flex-col gap-1">Format<select className={field} value={format} onChange={event => setFormat(event.target.value)}><option value="">All formats</option><option value="text">Text</option><option value="csv">CSV</option><option value="pdf">PDF</option></select></label>
       <button className={evidenceButton} disabled={busy || !query.trim()}>{busy ? "Searching…" : "Search contents"}</button>
     </form>
+    <p className="text-sm">Search covers extracted text only. A search with no matches does not establish that evidence is absent; unreadable pages and visual content are not searched.</p>
     {searchError && <p role="alert">{searchError}</p>}
-    {search && search.accessRevision === accessRevision && <section aria-label="Passage search results" className="space-y-2"><p>{search.total} matching passages</p>{search.results.map(result => <button key={`${result.evidenceId}-${result.extractionId}-${result.passageIndex}`} className="block w-full break-words border border-[var(--console-line)] p-3 text-left" onClick={() => navigate(result)}><strong>{result.label} · {locatorLabel(result.locator)}</strong><p className="mt-1 whitespace-pre-wrap">{result.snippet}</p></button>)}<div className="flex gap-2"><button className={evidenceButton} disabled={busy || search.offset === 0} onClick={() => void runSearch(Math.max(0, search.offset - 20))}>Previous results</button><button className={evidenceButton} disabled={busy || search.offset + 20 >= search.total} onClick={() => void runSearch(search.offset + 20)}>Next results</button></div></section>}
+    {search && search.accessRevision === accessRevision && <section aria-label="Passage search results" className="space-y-2"><p>{search.total} matching passages</p>{search.results.map(result => <button key={`${result.evidenceId}-${result.extractionId}-${result.passageIndex}`} className="block w-full break-words border border-[var(--console-line)] p-3 text-left" onClick={() => navigate(result)}><strong>{result.label} · {locatorLabel(result.locator)}</strong><p className="mt-1 whitespace-pre-wrap">{result.snippet}</p>{result.pdfCoverage && <PdfCoverageNotice coverage={result.pdfCoverage} />}</button>)}<div className="flex gap-2"><button className={evidenceButton} disabled={busy || search.offset === 0} onClick={() => void runSearch(Math.max(0, search.offset - 20))}>Previous results</button><button className={evidenceButton} disabled={busy || search.offset + 20 >= search.total} onClick={() => void runSearch(search.offset + 20)}>Next results</button></div></section>}
     {error && <p role="alert">{error}</p>}
     {!evidenceId && <p>Import records from Ingestion to begin.</p>}
     {evidenceId && !document && !error && <p>Loading document…</p>}
@@ -133,6 +135,8 @@ export function EvidenceReader({ workspace, evidenceId, onSelectEvidence, onRefr
       {!document.extraction && <p>No readable extraction yet. Run local extraction in Ingestion. Scanned PDF pages and images require OCR, which this local path does not support.</p>}
       {document.extraction && <>
         <p className="break-all text-xs">{document.extraction.extractor.name} {document.extraction.extractor.version} · {document.extraction.extractor.engine} {document.extraction.extractor.engineVersion} · Extraction {document.extraction.extractionId} · {document.extractionHash}</p>
+        {document.extraction.format === "pdf" && <PdfCoverageNotice coverage={document.extraction.pdfCoverage ?? { status: "unknown" }} />}
+        {!document.extraction.passages.length && <p>No readable passages were extracted. Open the immutable original to inspect the document.</p>}
         <div className="max-h-[36rem] overflow-y-auto space-y-3" aria-label="Extracted passages">{document.extraction.passages.map((passage, index) => <article id={`evidence-passage-${index}`} key={index} className={`min-w-0 rounded border p-3 ${passageIndex === index ? "border-[var(--signal-amber)]" : "border-[var(--console-line)]"}`}>
           <a className="text-xs underline" href={`#evidence/${document.item.evidenceId}/${document.extraction!.extractionId}/${index}`} onClick={() => navigate({ evidenceId: document.item.evidenceId, extractionId: document.extraction!.extractionId, passageIndex: index })}>{locatorLabel(passage.locator)}</a>
           <p className="mt-2 whitespace-pre-wrap break-words">{passage.text}</p>

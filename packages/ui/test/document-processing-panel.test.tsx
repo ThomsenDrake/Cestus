@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ExtractionArtifact } from "../../ontology/src/extraction-contracts.js";
 import type { DocumentProcessingJob, DocumentProcessingManifest } from "../../ontology/src/document-processing-contracts.js";
@@ -26,7 +26,7 @@ const manifest: DocumentProcessingManifest = {
 const preview = { invocationId: "inv_test", manifestHash: "sha256:manifest", manifest };
 const job = (state: DocumentProcessingJob["state"]): DocumentProcessingJob => ({ invocationId: "inv_test", manifestHash: preview.manifestHash, selection, state, createdAt: "2026-09-05T12:00:00Z" });
 
-function backend(options: { ready?: boolean; initialState?: DocumentProcessingJob["state"]; deferRun?: boolean } = {}) {
+function backend(options: { ready?: boolean; initialState?: DocumentProcessingJob["state"]; deferRun?: boolean; manifest?: DocumentProcessingManifest } = {}) {
   let jobs = options.initialState ? [job(options.initialState)] : [];
   let finishRun: (() => void) | undefined;
   const fetch = vi.fn(async (path: string, init?: RequestInit) => {
@@ -37,7 +37,7 @@ function backend(options: { ready?: boolean; initialState?: DocumentProcessingJo
     else if (route === "/jobs") value = { jobs };
     else if (route === "/preview") {
       jobs = [job("awaiting_approval")];
-      value = { ...preview, manifest: { ...manifest, ...(body.retryOf ? { retryOf: body.retryOf } : {}) } };
+      value = { ...preview, manifest: { ...(options.manifest ?? manifest), ...(body.retryOf ? { retryOf: body.retryOf } : {}) } };
     } else if (route === "/approve") { jobs = [job("queued")]; value = jobs[0]; }
     else if (route.endsWith("/run")) {
       jobs = [job("running")];
@@ -45,7 +45,7 @@ function backend(options: { ready?: boolean; initialState?: DocumentProcessingJo
       if (jobs[0]?.state === "running") jobs = [job("completed")];
       value = jobs[0];
     } else if (route.endsWith("/cancel")) { jobs = [job("uncertain")]; value = jobs[0]; }
-    else if (route.endsWith("/preview")) value = preview;
+    else if (route.endsWith("/preview")) value = { ...preview, manifest: options.manifest ?? manifest };
     else if (route.endsWith("/output")) value = { invocationId: "inv_test", model: "example-model", proposalState: "unreviewed", output: {
       summary: '<img src=x onerror="alert(1)">', citations: [{ passageIndex: 1, quote: "second" }]
     } };
@@ -99,10 +99,11 @@ describe("DocumentProcessingPanel", () => {
     expect(api.mutations()).toHaveLength(0);
   });
 
-  it("requires a new budget and fresh approval for an explicitly billable uncertain retry", async () => {
-    const api = backend({ initialState: "uncertain" }); mount();
+  it.each(["uncertain", "failed"] as const)("requires a new budget and fresh approval for an explicitly billable %s retry", async initialState => {
+    const api = backend({ initialState }); mount();
     const retry = await screen.findByRole("button", { name: /Prepare potentially billable retry/ });
     expect(retry).toBeDisabled();
+    if (initialState === "failed") expect(screen.getByText(/Failed does not mean unbilled/)).toBeInTheDocument();
     expect(api.mutations()).toHaveLength(0);
     fireEvent.change(screen.getByLabelText("Maximum budget (USD)"), { target: { value: "0.01" } });
     fireEvent.click(retry);
@@ -133,4 +134,17 @@ describe("DocumentProcessingPanel", () => {
     await waitFor(() => expect(screen.getByRole("button", { name: /Review saved transfer/ })).toBeEnabled());
     expect(screen.queryByRole("button", { name: /Read result/ })).not.toBeInTheDocument();
   });
+
+  it("shows the exact saved transfer coverage rather than inventing it from the open document", async () => {
+    backend({ initialState: "queued", manifest: { ...manifest, resolved: { ...manifest.resolved,
+      pdfCoverage: { status: "partial", pages: [{ page: 1, status: "text-extracted" }, { page: 2, status: "unextracted" }] }
+    } } });
+    mount();
+    fireEvent.click(await screen.findByRole("button", { name: /Review saved transfer/ }));
+    const approval = await screen.findByRole("region", { name: "Exact transfer approval" });
+    expect(within(approval).getByText("Partial PDF text extraction: text from 1 of 2 pages.")).toBeInTheDocument();
+    expect(within(approval).getByText("Pages without extracted text: 2.")).toBeInTheDocument();
+    expect(within(approval).getByText(/Only the selected extracted passages/)).toBeInTheDocument();
+  });
+
 });

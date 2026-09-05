@@ -450,7 +450,8 @@ function safeReviewDto(review: IngestionReviewDto): IngestionReviewDto {
         name: safeMessage(job.parser.name),
         version: safeMessage(job.parser.version)
       },
-      state: job.state
+      state: job.state,
+      ...(job.coverageStatus === undefined ? {} : { coverageStatus: job.coverageStatus })
     })),
     diagnostics: review.diagnostics.map(safeDiagnostic)
   };
@@ -590,6 +591,7 @@ function isJobDto(value: unknown): value is IngestionJobDto {
     typeof value.kind === "string" &&
     typeof value.state === "string" &&
     typeof value.retryable === "boolean" &&
+    (value.coverageStatus === undefined || value.coverageStatus === "complete" || value.coverageStatus === "partial") &&
     (value.message === undefined || typeof value.message === "string") &&
     arrayOf(value.diagnosticIds, isString)
   );

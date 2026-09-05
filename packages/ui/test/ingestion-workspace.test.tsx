@@ -5,6 +5,13 @@ import { IngestionWorkspace } from "../src/ingestion/IngestionWorkspace.js";
 import type { IngestionReviewDto } from "../src/ingestion/ingestion-types.js";
 
 describe("IngestionWorkspace", () => {
+  it("labels successful execution with PDF coverage gaps as partial text extraction", () => {
+    render(<IngestionWorkspace loadState="loaded" workspace={{ mounted: true, review: reviewDto(), diagnostics: [] }}
+      jobs={[{ jobId: "parse_partial", kind: "local-parse", state: "succeeded", coverageStatus: "partial", retryable: false, diagnosticIds: [] }]} />);
+    expect(screen.getByRole("region", { name: "Ingestion jobs" })).toHaveTextContent("partial text extraction");
+    expect(screen.getByRole("region", { name: "Ingestion jobs" })).not.toHaveTextContent("succeeded");
+    expect(screen.getByRole("button", { name: "Retry parse_partial" })).toBeDisabled();
+  });
   it("offers explicit recovery when restart leaves only a running local parse", () => {
     const onRunLocalParsing = vi.fn();
     render(<IngestionWorkspace loadState="loaded" workspace={{ mounted: true, review: reviewDto(), diagnostics: [] }} onRunLocalParsing={onRunLocalParsing}

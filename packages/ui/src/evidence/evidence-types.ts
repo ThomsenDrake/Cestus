@@ -58,6 +58,7 @@ export interface EvidenceParseJobDto {
   readonly lane: "local" | "provider";
   readonly parser: { readonly name: string; readonly version: string };
   readonly state: "queued" | "running" | "succeeded" | "failed";
+  readonly coverageStatus?: "complete" | "partial";
   readonly derivative?: { readonly contentHash: string; readonly mediaType: string };
 }
 
