@@ -32,6 +32,50 @@ describeEventLedgerContract("SQLiteEventLedger", {
 });
 
 describe("SQLiteEventLedger", () => {
+  it.each(["second event", "decision receipt"])("rolls back the whole batch when SQLite interrupts the %s write", async (point) => {
+    const path = dbPath();
+    const ledger = new SQLiteEventLedger(path);
+    const injection = new DatabaseSync(path);
+    const target = point === "second event" ? "ontology_events" : "ontology_decisions";
+    const condition = point === "second event" ? "WHEN NEW.stream_id = 'evidence_ev_interrupt_second'" : "";
+    injection.exec(`CREATE TRIGGER interrupt_decision BEFORE INSERT ON ${target} ${condition}
+      BEGIN SELECT RAISE(ABORT, 'injected transaction interruption'); END;`);
+    const events = [evidenceEvent("ev_interrupt_first"), evidenceEvent("ev_interrupt_second")];
+    const decision = { decisionId: "decision_interrupt", expectedGlobalEventCount: 0 };
+    await expect(ledger.appendBatch(events, decision)).rejects.toThrow("injected transaction interruption");
+    expect(await ledger.readAll()).toEqual([]);
+    expect(injection.prepare("SELECT COUNT(*) AS n FROM ontology_decisions").get()).toEqual({ n: 0 });
+    injection.exec("DROP TRIGGER interrupt_decision");
+    injection.close();
+    ledger.close();
+
+    const reopened = new SQLiteEventLedger(path);
+    const committed = await reopened.appendBatch(events, decision);
+    expect(committed.map((event) => event.sequence)).toEqual([1, 1]);
+    expect(await reopened.appendBatch(events, decision)).toEqual(committed);
+    expect(await reopened.readAll()).toEqual(committed);
+    reopened.close();
+  });
+
+  it("recovers decision receipts and rejects competing connections at a stale revision", async () => {
+    const path = dbPath();
+    const first = new SQLiteEventLedger(path);
+    const second = new SQLiteEventLedger(path);
+    const events = [evidenceEvent("ev_restart_first"), evidenceEvent("ev_restart_second")];
+    const decision = { decisionId: "decision_restart", expectedGlobalEventCount: 0 };
+    const committed = await first.appendBatch(events, decision);
+    await expect(second.appendBatch([evidenceEvent("ev_competitor")], {
+      decisionId: "decision_competitor", expectedGlobalEventCount: 0
+    })).rejects.toBeInstanceOf(ConcurrencyConflictError);
+    first.close();
+    second.close();
+    const reopened = new SQLiteEventLedger(path);
+    await reopened.append(evidenceEvent("ev_after_restart"));
+    expect(await reopened.appendBatch(events, decision)).toEqual(committed);
+    expect(await reopened.readAll()).toHaveLength(3);
+    reopened.close();
+  });
+
   it("rolls back a guarded append when its synchronous precommit guard fails", async () => {
     const ledger = new SQLiteEventLedger(dbPath());
     const guardFailure = new Error("mounted workspace is no longer current");

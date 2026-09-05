@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import { documentProcessingPreviewedSchema, documentProcessingApprovedSchema, documentProcessingStateChangedSchema } from "./document-processing-contracts.js";
+import { knowledgePayloadSchemas, type KnowledgeV2Type } from "./knowledge-contracts.js";
 import { validateGovernancePolicy } from "./governance-policy.js";
 
 const credentialShapedTextPattern = /api[_-]?key|authorization|bearer|token|secret|password|oauth|credential|(?:^|[\s;])(?:(?:(?:x|set)-)?cookie\s*:|session\s*=\s*\S+)/i;
@@ -3387,6 +3388,7 @@ const residentWakeSupervisorUnrecoverablePayloadSchema = residentWakeLifecycleBi
 }).strict();
 
 export const payloadSchemas = {
+  ...knowledgePayloadSchemas,
   "evidence.ingested": evidenceIngestedPayloadSchema,
   "assertion.proposed": assertionProposedPayloadSchema,
   "assertion.accepted": assertionAcceptedPayloadSchema,
@@ -3515,7 +3517,7 @@ type PayloadByEventType = {
 
 export interface EventContract {
   type: KnowledgeEventType;
-  version: 1;
+  version: 1 | 2;
   description: string;
   agentGuidance: string;
   invariants: string[];
@@ -3530,7 +3532,10 @@ type EventContractMap = {
   [Type in KnowledgeEventType]: EventContract & { type: Type };
 };
 
+const knowledgeContracts = Object.fromEntries(Object.keys(knowledgePayloadSchemas).map(type => [type, { type, version: 2, description: "Records a versioned shared investigation knowledge decision.", agentGuidance: "Propose source-grounded knowledge; only the authenticated human reviews it.", invariants: ["Append-only decisions preserve evidence and human authority"] }])) as { [Type in KnowledgeV2Type]: EventContract & { type: Type } };
+
 export const eventContracts = {
+  ...knowledgeContracts,
   "evidence.ingested": {
     type: "evidence.ingested",
     version: 1,
@@ -4416,7 +4421,7 @@ export const eventContracts = {
 interface KnowledgeEventBase<Type extends KnowledgeEventType> {
   id: string;
   type: Type;
-  version: 1;
+  version: Type extends KnowledgeV2Type ? 2 : 1;
   streamId: string;
   sequence: number;
   context: z.infer<typeof eventContextSchema>;
@@ -4437,6 +4442,7 @@ function isKnowledgeEventType(value: unknown): value is KnowledgeEventType {
 }
 
 const alwaysHumanGatedEventTypes = new Set<KnowledgeEventType>([
+  ...Object.keys(knowledgePayloadSchemas).filter(type => type !== "knowledge.proposed") as KnowledgeV2Type[],
   "document.processing.previewed",
   "document.processing.approved",
   "assertion.accepted",
@@ -4590,7 +4596,7 @@ function expectedAgentStreamId(type: KnowledgeEventType, payload: unknown): stri
 const knowledgeEventBaseSchema = z.object({
   id: z.string().regex(/^evt_[a-zA-Z0-9_-]+$/),
   type: z.custom<KnowledgeEventType>(isKnowledgeEventType),
-  version: z.literal(1),
+  version: z.union([z.literal(1), z.literal(2)]),
   streamId: z.string().min(3),
   sequence: z.number().int().positive(),
   context: eventContextSchema,
@@ -4723,6 +4729,8 @@ function payloadIssueParams(issue: z.ZodIssue): Record<string, unknown> {
 
 const rawKnowledgeEventSchema = knowledgeEventBaseSchema
   .superRefine((event, ctx) => {
+    const expectedVersion = Object.hasOwn(knowledgePayloadSchemas, event.type) ? 2 : 1;
+    if (event.version !== expectedVersion) ctx.addIssue({ code: "custom", message: "Unsupported version for event type", path: ["version"] });
     const payloadSchema = payloadSchemas[event.type] as z.ZodType<unknown>;
 
     if (
