@@ -1,4 +1,5 @@
 import { agentStatusFromJson } from "../../ui/src/agent/agent-adapter.js";
+import { createHttpRequestsAdapter } from "../../ui/src/requests/request-adapter.js";
 import { runLocalRuntimeCli } from "../src/cli.js";
 import { existsSync, mkdtempSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -47,6 +48,27 @@ const draft = {
   actor: { id: "impersonated", kind: "human" }, createdBy: "impersonated"
 };
 describe("personal production server boundary", () => {
+  it("saves an unfiled browser draft without a receipt date or invented deadline and recovers it after restart", async () => {
+    const { config } = setup();
+    const { server, origin } = await start(config);
+    const adapter = createHttpRequestsAdapter({ baseUrl: origin, authToken: config.http.authToken! });
+    const result = await adapter.createDraftRequest({
+      jurisdictionPack: draft.jurisdictionPack, agency: draft.agency, requester: draft.requester,
+      requestText: "Synthetic unfiled request without agency receipt"
+    });
+    expect(result).toMatchObject({ ok: true });
+    if (!result.ok) throw new Error(result.diagnostic.message);
+    expect(result.committedEventIds).toHaveLength(1);
+    await server.close();
+    const restarted = await start(config);
+    const recovered = await createHttpRequestsAdapter({ baseUrl: restarted.origin, authToken: config.http.authToken! }).loadRequestsWorkspace();
+    expect(recovered.cards.some(card => card.prrRequestId === result.prrRequestId)).toBe(true);
+    await restarted.server.close();
+    const ledger = new SQLiteEventLedger(config.storage.sqlitePath);
+    try {
+      expect((await ledger.readStream(result.prrRequestId)).map(event => event.type)).toEqual(["prr.request.created"]);
+    } finally { ledger.close(); }
+  });
   it("reports log initialization failures without claiming the mounted storage is missing", async () => {
     const { config, cwd, rootDir } = setup();
     const logFile = join(cwd, "not-a-log-directory");

@@ -36,7 +36,7 @@ export interface CreateDraftRequestInput {
   readonly agency: ContactRef;
   readonly requester: ContactRef;
   readonly requestText: string;
-  readonly receivedAt: string;
+  readonly receivedAt?: string;
   readonly deadlineEstimateKind?: DeadlineEstimateKind;
 }
 
@@ -80,7 +80,7 @@ export function buildDraftRequestEvents(
 }
 
 export function buildDraftRequestCreatedEvent(
-  input: BuildDraftRequestEventsInput & { readonly correlationId?: string }
+  input: Omit<BuildDraftRequestEventsInput, "receivedAt"> & { readonly correlationId?: string }
 ): AppendableKnowledgeEvent<"prr.request.created"> {
   return {
     type: "prr.request.created",

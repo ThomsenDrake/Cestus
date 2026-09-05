@@ -19,7 +19,6 @@ interface DraftFormState {
   readonly requesterEmail: string;
   readonly requesterPhone: string;
   readonly requestText: string;
-  readonly receivedAt: string;
 }
 
 const stateLabels: Record<PrrBuilderStep["state"], string> = {
@@ -322,12 +321,6 @@ function DraftRequestFields({
           disabled={disabled}
           onChange={(value) => onFieldChange("requesterPhone", value)}
         />
-        <DraftTextField
-          label="Received timestamp"
-          value={form.receivedAt}
-          disabled={disabled}
-          onChange={(value) => onFieldChange("receivedAt", value)}
-        />
         <label className="block min-w-0 md:col-span-2">
           <span className="block text-base font-medium text-[var(--paper-light)] sm:text-sm">Request text</span>
           <textarea
@@ -454,8 +447,7 @@ function getInitialDraftForm(builder: PrrBuilderModel): DraftFormState {
     requesterName: "",
     requesterEmail: "",
     requesterPhone: "",
-    requestText: "",
-    receivedAt: ""
+    requestText: ""
   };
 }
 
@@ -481,14 +473,11 @@ function jurisdictionPackOptions(builder: PrrBuilderModel): readonly { readonly 
 }
 
 function toCreateDraftInput(form: DraftFormState): RequestsCreateDraftInput {
-  const receivedAt = optionalTrimmedValue(form.receivedAt);
-
   return {
     jurisdictionPack: parseJurisdictionPackValue(form.jurisdictionPackValue),
     agency: contactInput(form.agencyName, form.agencyEmail, form.agencyPhone),
     requester: contactInput(form.requesterName, form.requesterEmail, form.requesterPhone),
-    requestText: form.requestText.trim(),
-    ...(receivedAt === undefined ? {} : { receivedAt })
+    requestText: form.requestText.trim()
   };
 }
 
@@ -504,35 +493,11 @@ function validateDraftForm(form: DraftFormState): readonly string[] {
     messages.push("Request text is required.");
   }
 
-  const receivedAt = optionalTrimmedValue(form.receivedAt);
-  if (receivedAt !== undefined && !isValidReceivedTimestamp(receivedAt)) {
-    messages.push("Received timestamp must be an ISO 8601 datetime.");
-  }
-
   return Object.freeze(messages);
 }
 
 function missingRequiredText(value: string): boolean {
   return value.trim().length === 0;
-}
-
-function isValidReceivedTimestamp(value: string): boolean {
-  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?Z$/);
-  if (match === null) {
-    return false;
-  }
-
-  const [, yearText, monthText, dayText, hourText, minuteText, secondText] = match;
-  const date = new Date(value);
-  return (
-    Number.isFinite(date.getTime()) &&
-    date.getUTCFullYear() === Number(yearText) &&
-    date.getUTCMonth() === Number(monthText) - 1 &&
-    date.getUTCDate() === Number(dayText) &&
-    date.getUTCHours() === Number(hourText) &&
-    date.getUTCMinutes() === Number(minuteText) &&
-    date.getUTCSeconds() === Number(secondText)
-  );
 }
 
 function parseJurisdictionPackValue(value: string): RequestsCreateDraftInput["jurisdictionPack"] {
