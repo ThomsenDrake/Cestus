@@ -1,3 +1,4 @@
+import { createAuthenticatedTestHandler as createLocalRuntimeHttpHandler } from "./support/authenticated-handler.js";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -22,7 +23,6 @@ import {
   mountPortableWorkspace,
   type MountedPortableWorkspace
 } from "../../workspace/src/index.js";
-import { LOCAL_RUNTIME_SESSION_COOKIE_NAME, localRuntimeSessionCookieValue } from "../src/auth.js";
 import { resolveLocalRuntimeConfig } from "../src/config.js";
 import {
   contextFreeLocalAgentRuntimeFactory,
@@ -31,7 +31,6 @@ import {
 } from "../src/agent-runtime-factory.js";
 import { createMountedEvidenceTriageBackgroundExecutionPort } from "../src/agent-runtime-mounted-task.js";
 import {
-  createLocalRuntimeHttpHandler,
   type CreateLocalRuntimeHttpHandlerInput,
   type LocalRuntimeHttpHandler
 } from "../src/http-handler.js";
@@ -2660,8 +2659,6 @@ describe("agent HTTP routes", () => {
   it("uses existing auth policy for protected agent routes", async () => {
     const config = protectedConfig();
     const handler = testHandler({ config });
-    const sessionCookie = localRuntimeSessionCookieValue(config);
-    expect(sessionCookie).toBeDefined();
 
     const rejected = await handler({ method: "GET", url: "/api/agent/status" });
     const rejectedCockpit = await handler({ method: "GET", url: "/api/agent/cockpit" });
@@ -2669,14 +2666,14 @@ describe("agent HTTP routes", () => {
       method: "GET",
       url: "/api/agent/status",
       headers: {
-        cookie: `${LOCAL_RUNTIME_SESSION_COOKIE_NAME}=${sessionCookie}`
+        authorization: `Bearer ${config.http.authToken}`
       }
     });
     const acceptedCockpit = await handler({
       method: "GET",
       url: "/api/agent/cockpit",
       headers: {
-        cookie: `${LOCAL_RUNTIME_SESSION_COOKIE_NAME}=${sessionCookie}`
+        authorization: `Bearer ${config.http.authToken}`
       }
     });
 
@@ -2697,15 +2694,13 @@ describe("agent HTTP routes", () => {
   it("applies the same auth policy to agent memory routes", async () => {
     const config = protectedConfig();
     const handler = testHandler({ config });
-    const sessionCookie = localRuntimeSessionCookieValue(config);
-    expect(sessionCookie).toBeDefined();
 
     const rejected = await handler({ method: "GET", url: "/api/agent/memory" });
     const accepted = await handler({
       method: "GET",
       url: "/api/agent/memory",
       headers: {
-        cookie: `${LOCAL_RUNTIME_SESSION_COOKIE_NAME}=${sessionCookie}`
+        authorization: `Bearer ${config.http.authToken}`
       }
     });
 

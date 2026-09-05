@@ -24,6 +24,12 @@ import { agentMemoryDetail, agentMemoryList } from "./fixtures/agent-memory.js";
 describe("Cestus UI bootstrap", () => {
   const operatorStatusAdapter = createStaticOperatorStatusAdapter(appSmokeOperatorStatus);
 
+  it("opens the builder from the default Command New request action", async () => {
+    render(<App requestsAdapter={createTestRequestsAdapter()} operatorStatusAdapter={operatorStatusAdapter} />);
+    fireEvent.click(screen.getByRole("button", { name: "New request" }));
+    expect(await screen.findByRole("dialog", { name: "Guided request builder" })).toBeInTheDocument();
+  });
+
   function replaceCardAgency(
     workspace: PrrWorkspaceDto,
     prrRequestId: string,

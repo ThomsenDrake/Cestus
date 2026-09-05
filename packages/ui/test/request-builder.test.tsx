@@ -162,11 +162,12 @@ describe("RequestBuilder", () => {
     expect(screen.queryByRole("dialog", { name: /Request investigation detail/i })).not.toBeInTheDocument();
   });
 
-  it("does not open the guided request builder from the Command shell action", () => {
+  it("shows Requests unavailable when Command New request has no backend", async () => {
     render(<App />);
 
     fireEvent.click(screen.getByRole("button", { name: "New request" }));
 
+    expect(await screen.findByText("Requests unavailable")).toBeInTheDocument();
     expect(screen.queryByRole("dialog", { name: "Guided request builder" })).not.toBeInTheDocument();
   });
 

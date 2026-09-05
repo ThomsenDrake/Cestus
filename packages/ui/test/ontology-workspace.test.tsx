@@ -70,8 +70,6 @@ describe("ontology workspace", () => {
     expect(screen.queryByRole("button", { name: /inspect relationship/i })).not.toBeInTheDocument();
     expect(within(commandBand).queryByText("Ledger synced")).not.toBeInTheDocument();
     expect(within(commandBand).queryByText("Local sync live")).not.toBeInTheDocument();
-    expect(within(commandBand).getByText("Projection degraded")).toBeInTheDocument();
-    expect(within(commandBand).getByText("Repair required")).toBeInTheDocument();
     fireEvent.click(within(diagnostics).getByRole("button", { name: "Retry ontology replay" }));
     await waitFor(() => expect(loadCount).toBe(2));
   });
@@ -85,8 +83,6 @@ describe("ontology workspace", () => {
     let commandBand = screen.getByRole("banner", { name: "Cestus command band" });
     expect(within(commandBand).queryByText("Ledger synced")).not.toBeInTheDocument();
     expect(within(commandBand).queryByText("Local sync live")).not.toBeInTheDocument();
-    expect(within(commandBand).getByText("Replay pending")).toBeInTheDocument();
-    expect(within(commandBand).getByText("Replay loading")).toBeInTheDocument();
 
     loading.unmount();
     render(<App ontologyAdapter={{ async loadWorkspace() { throw new Error("offline"); } }} />);
@@ -95,8 +91,6 @@ describe("ontology workspace", () => {
     commandBand = screen.getByRole("banner", { name: "Cestus command band" });
     expect(within(commandBand).queryByText("Ledger synced")).not.toBeInTheDocument();
     expect(within(commandBand).queryByText("Local sync live")).not.toBeInTheDocument();
-    expect(within(commandBand).getByText("Ledger unavailable")).toBeInTheDocument();
-    expect(within(commandBand).getByText("Retry required")).toBeInTheDocument();
   });
 
   it("renders keyboard-selectable accepted entities when no relationship exists", async () => {

@@ -14,7 +14,6 @@ describe("RequestWorkspace", () => {
         onOpenBuilder={() => undefined}
         onOpenRequestDetail={() => undefined}
         onSelectRequest={() => undefined}
-        onSelectedRequestChange={() => undefined}
       />
     );
 
@@ -47,7 +46,6 @@ describe("RequestWorkspace", () => {
         onOpenBuilder={() => undefined}
         onOpenRequestDetail={() => undefined}
         onSelectRequest={() => undefined}
-        onSelectedRequestChange={() => undefined}
       />
     );
 

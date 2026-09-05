@@ -1,0 +1,7 @@
+SYNTHETIC PUBLIC RECORD — Case Quay
+Question: Why is payment Q17 absent from the February ledger?
+January 9: scope amended. January 12: Northline Works (registry NW101) awarded Q17.
+Reviewer Mara Vale, employee MV001, countersigned the notice.
+The corrected award register states January 13. Preserve the date conflict.
+Invoice Q17-I1 is mentioned, but its disposition is absent from the supplied initial set.
+Competing explanations to test: payment was delayed; the invoice was voided and replaced.

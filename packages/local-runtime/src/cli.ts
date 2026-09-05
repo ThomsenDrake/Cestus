@@ -156,20 +156,22 @@ export async function runLocalRuntimeCli(
 
     if (command === "health") {
       const config = resolveLocalRuntimeConfig(configInputFrom(dependencies));
-      stdout(
-        JSON.stringify(
-          {
-            ok: true,
-            host: config.http.host,
-            port: config.http.port,
-            bindMode: config.http.bindMode,
-            authRequired: config.http.authRequired
-          },
-          null,
-          2
-        )
-      );
-      return 0;
+      const probeHost = config.http.host === "0.0.0.0" ? "127.0.0.1" : config.http.host === "::" ? "::1" : config.http.host;
+      const host = probeHost.includes(":") ? `[${probeHost}]` : probeHost;
+      try {
+        const response = await fetch(`http://${host}:${config.http.port}/api/health`, {
+          signal: AbortSignal.timeout(2500), redirect: "error"
+        });
+        const body = await response.json() as { backend?: unknown; ok?: unknown };
+        if (body.backend !== "running" || typeof body.ok !== "boolean") throw new Error("Invalid health response");
+        stdout(JSON.stringify(body, null, 2));
+        return response.ok && body.ok ? 0 : 1;
+      } catch {
+        stdout(JSON.stringify({ ok: false, backend: "unreachable", diagnostic: {
+          message: "Cestus did not answer its health check. Start the local runtime and check the configured host and port."
+        } }, null, 2));
+        return 1;
+      }
     }
 
     if (command === "serve") {
@@ -185,6 +187,9 @@ export async function runLocalRuntimeCli(
       stdout(
         `Cestus local runtime listening on http://${started.config.http.host}:${started.config.http.port}`
       );
+      for (const signal of ["SIGINT", "SIGTERM"] as const) {
+        process.once(signal, () => { void started.close().then(() => process.exit(0)); });
+      }
       for (const sessionUrl of started.sessionBootstrapUrls ?? []) {
         stdout(`Cestus browser session URL: ${sessionUrl}`);
       }
@@ -233,7 +238,7 @@ async function requestLocalAgent(
   const config = resolveLocalRuntimeConfig(configInputFrom(dependencies));
   const handler = createLocalRuntimeHttpHandler({
     config,
-    actor: { id: "actor_local_agent_cli", kind: "human", label: "Local Agent CLI" }
+    actor: requireConfiguredOperator(config)
   });
 
   try {
@@ -251,6 +256,11 @@ async function requestLocalAgent(
   } finally {
     await handler.close();
   }
+}
+
+function requireConfiguredOperator(config: ResolvedLocalRuntimeConfig): NonNullable<ResolvedLocalRuntimeConfig["operator"]> {
+  if (!config.operator || !config.http.authToken) throw new Error("Run local:runtime:configure to establish the local operator first.");
+  return config.operator;
 }
 
 function messageFromLocalRuntimeBody(body: unknown): string {
@@ -308,6 +318,7 @@ function parseConfigureArgs(argv: readonly string[]): ConfigureFlags {
     logDir?: string;
     devSeedEnabled?: boolean;
     rotateAuthToken?: boolean;
+    operatorLabel?: string;
   } = {
     bindMode: "loopback"
   };
@@ -330,6 +341,12 @@ function parseConfigureArgs(argv: readonly string[]): ConfigureFlags {
       continue;
     }
 
+    if (arg === "--operator-label") {
+      const { value, nextIndex } = readFlagValue(argv, index, arg);
+      options.operatorLabel = value;
+      index = nextIndex;
+      continue;
+    }
     if (arg === "--bind") {
       const { value, nextIndex } = readFlagValue(argv, index, arg);
       options.bindMode = parseConfigureBindMode(value);
@@ -398,6 +415,7 @@ function parseConfigureArgs(argv: readonly string[]): ConfigureFlags {
 
   return {
     bindMode: options.bindMode,
+    ...(options.operatorLabel === undefined ? {} : { operatorLabel: options.operatorLabel }),
     ...(options.host === undefined ? {} : { host: options.host }),
     ...(options.port === undefined ? {} : { port: options.port }),
     ...(options.storageStrategy === undefined ? {} : { storageStrategy: options.storageStrategy }),

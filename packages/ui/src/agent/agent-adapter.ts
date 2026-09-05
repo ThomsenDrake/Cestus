@@ -1166,7 +1166,17 @@ export function createStaticAgentAdapter(
 }
 
 export function agentStatusFromJson(value: unknown): AgentStatusDto {
-  return deepFreeze(agentStatusDtoSchema.parse(safeAgentValue(value)) as AgentStatusDto);
+  // Check object descriptors before selecting fields, so accessors never run.
+  const plain = safeAgentValueForCockpit(value);
+  if (!isJsonObject(plain)) return deepFreeze(agentStatusDtoSchema.parse(plain) as AgentStatusDto);
+  // The browser does not consume the server's orchestration projection.
+  const { taskOrchestrator: _unrenderedProjection, providerReadiness, ...browserStatus } = plain;
+  return deepFreeze(agentStatusDtoSchema.parse({
+    ...safeAgentValue(browserStatus) as Record<string, unknown>,
+    // This contract validates secret safety itself. Generic prose redaction
+    // would corrupt diagnostic IDs such as diag_nous_portal_missing_credentials.
+    ...(providerReadiness === undefined ? {} : { providerReadiness: providerReadinessDtoSchema.parse(providerReadiness) })
+  }) as AgentStatusDto);
 }
 
 export function agentCockpitFromJson(value: unknown): AgentCockpitDto {

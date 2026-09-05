@@ -92,8 +92,8 @@ export function IngestionWorkspace({
       ) : null}
 
       {workspace !== undefined && !workspace.mounted ? (
-        <section aria-label="Workspace not mounted" className="border border-[var(--signal-amber)] bg-[var(--console-panel)] p-4">
-          <p className="font-mono text-base text-[var(--signal-amber)] sm:text-sm">Workspace not mounted</p>
+        <section aria-label="Ingestion workspace not connected" className="border border-[var(--signal-amber)] bg-[var(--console-panel)] p-4">
+          <p className="font-mono text-base text-[var(--signal-amber)] sm:text-sm">Ingestion workspace not connected</p>
           <p className="mt-3 text-base text-pretty text-[var(--paper-light)] sm:text-sm">
             {workspace.diagnostics[0]?.message ?? "Portable workspace is not mounted."}
           </p>
@@ -324,7 +324,7 @@ function workspaceLabel(workspace: IngestionWorkspaceDto | undefined, loadState:
     return workspace.label ?? "Mounted ingestion workspace";
   }
   if (workspace?.mounted === false) {
-    return "Portable workspace not mounted";
+    return "No ingestion workspace connected";
   }
   return loadState === "error" ? "Ingestion runtime unavailable" : "Awaiting local ingestion runtime";
 }

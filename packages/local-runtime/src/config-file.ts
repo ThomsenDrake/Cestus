@@ -1,10 +1,11 @@
-import { randomBytes } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import { chmodSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { isIP } from "node:net";
 import { dirname, isAbsolute, resolve } from "node:path";
 import { assertTailnetAddress } from "./tailnet-address.js";
 
 export interface LocalRuntimeConfigFile {
+  readonly operator?: { readonly id: string; readonly label: string };
   readonly storage?: {
     readonly strategy?: "repo-local" | "explicit-path" | "app-data" | "portable-workspace";
     readonly sqlitePath?: string;
@@ -42,6 +43,7 @@ export interface WriteLocalRuntimeOnboardingConfigInput {
   readonly logDir?: string;
   readonly devSeedEnabled?: boolean;
   readonly rotateAuthToken?: boolean;
+  readonly operatorLabel?: string;
 }
 
 export interface LocalRuntimeConfigFileInput {
@@ -73,9 +75,8 @@ export function readLocalRuntimeConfigFile(
   let parsed: unknown;
   try {
     parsed = JSON.parse(readFileSync(path, "utf8"));
-  } catch (error) {
-    const reason = error instanceof Error ? error.message : String(error);
-    throw new Error(`Invalid local runtime config JSON at ${path}: ${reason}`);
+  } catch {
+    throw new Error("Invalid local runtime config JSON. Repair the configured file without sharing its contents.");
   }
 
   const config = parseLocalRuntimeConfigFile(parsed, path);
@@ -93,6 +94,7 @@ export function writeLocalRuntimeOnboardingConfig(
   const existing = readLocalRuntimeConfigFile(input) ?? {};
   const config = mergeOnboardingConfig(existing, input);
   validateWritableConfig(config);
+  parseLocalRuntimeConfigFile(config, path);
 
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, `${JSON.stringify(config, null, 2)}\n`, { mode: 0o600 });
@@ -112,6 +114,7 @@ export function redactLocalRuntimeConfigFile(
   }
 
   return Object.freeze({
+    ...(config.operator === undefined ? {} : { operator: Object.freeze({ ...config.operator }) }),
     ...(config.storage === undefined ? {} : { storage: Object.freeze({ ...config.storage }) }),
     ...(config.http === undefined
       ? {}
@@ -142,6 +145,10 @@ function mergeOnboardingConfig(
   };
 
   return Object.freeze({
+    operator: Object.freeze({
+      id: existing.operator?.id ?? `operator_${randomUUID()}`,
+      label: input.operatorLabel?.trim() || existing.operator?.label || "Local operator"
+    }),
     ...(storage === undefined ? {} : { storage: Object.freeze(storage) }),
     http: Object.freeze(http),
     ...(Object.keys(staticUi).length === 0 ? {} : { staticUi: Object.freeze(staticUi) }),
@@ -237,16 +244,9 @@ function mergeHttpConfig(
     ...(input.devSeedEnabled === undefined ? {} : { devSeedEnabled: input.devSeedEnabled })
   };
 
-  if (input.bindMode === "loopback") {
-    const { authToken: _authToken, ...loopbackHttp } = http;
-    return {
-      ...loopbackHttp,
-      host: input.host ?? "127.0.0.1"
-    };
-  }
-
   return {
     ...http,
+    ...(input.bindMode === "loopback" ? { host: input.host ?? "127.0.0.1" } : {}),
     authToken:
       input.rotateAuthToken === true || http.authToken === undefined ? generateAuthToken() : http.authToken
   };
@@ -254,14 +254,24 @@ function mergeHttpConfig(
 
 function parseLocalRuntimeConfigFile(value: unknown, path: string): LocalRuntimeConfigFile {
   const root = expectObject(value, "local runtime config");
-  assertAllowedKeys(root, ["storage", "http", "staticUi", "logs"], "local runtime config");
+  assertAllowedKeys(root, ["storage", "http", "staticUi", "logs", "operator"], "local runtime config");
 
+  const operator = parseOptionalSection(root, "operator", path, (record, path) => {
+    assertAllowedKeys(record, ["id", "label"], "operator");
+    const id = parseOptionalString(record, "id", path).id;
+    const label = parseOptionalString(record, "label", path).label;
+    if (typeof id !== "string" || typeof label !== "string" || !/^operator_[A-Za-z0-9_-]{1,100}$/.test(id) || label.length > 100 || /[\x00-\x1f\x7f]/.test(label)) {
+      throw new Error("Local operator configuration is invalid; run configure.");
+    }
+    return Object.freeze({ id, label });
+  });
   const storage = parseOptionalSection(root, "storage", path, parseStorageConfig);
   const http = parseOptionalSection(root, "http", path, parseHttpConfig);
   const staticUi = parseOptionalSection(root, "staticUi", path, parseStaticUiConfig);
   const logs = parseOptionalSection(root, "logs", path, parseLogsConfig);
 
   return Object.freeze({
+    ...(operator === undefined ? {} : { operator }),
     ...(storage === undefined ? {} : { storage }),
     ...(http === undefined ? {} : { http }),
     ...(staticUi === undefined ? {} : { staticUi }),

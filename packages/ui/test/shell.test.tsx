@@ -12,11 +12,6 @@ describe("operator shell", () => {
         activeModuleId="command"
         workspaceName="Cestus Local"
         modeLabel="Command"
-        ledgerLabel="Ledger synced"
-        syncLabel="Local sync live"
-        deploymentLabel="Solo laptop"
-        searchLabel="Command search"
-        searchPlaceholder="Search requests, evidence, agencies, and assertions"
         mainId="command"
         mainLabel="Command workspace"
         onNewRequest={vi.fn()}
@@ -29,17 +24,17 @@ describe("operator shell", () => {
     expect(screen.getByRole("navigation", { name: "Cestus tactical modules" })).toBeInTheDocument();
     expect(screen.getByRole("banner", { name: "Cestus command band" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "New request" })).toBeInTheDocument();
-    expect(screen.getByRole("searchbox", { name: "Command search" })).toBeInTheDocument();
-    expect(screen.getByText("Ledger synced")).toBeInTheDocument();
-    expect(screen.getByText("Solo laptop")).toBeInTheDocument();
+    expect(screen.queryByRole("searchbox")).not.toBeInTheDocument();
+    expect(screen.queryByText("Ledger synced")).not.toBeInTheDocument();
+    expect(screen.queryByText("Solo laptop")).not.toBeInTheDocument();
     expect(screen.getByText("Command")).toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: "Cestus home" })).toHaveLength(2);
     expect(screen.getByRole("link", { name: "Command" })).toHaveAttribute("aria-current", "page");
     expect(screen.getByRole("link", { name: "Agent" })).not.toHaveAttribute("aria-disabled");
-    expect(screen.getByRole("link", { name: "Settings" })).toHaveAttribute("aria-disabled", "true");
+    expect(screen.queryByRole("link", { name: "Settings" })).not.toBeInTheDocument();
   });
 
-  it("routes every implemented module and leaves unavailable Settings inert", () => {
+  it("routes every implemented module and omits unavailable Settings", () => {
     const onModuleSelect = vi.fn();
     render(
       <OpsShell
@@ -47,9 +42,6 @@ describe("operator shell", () => {
         activeModuleId="command"
         workspaceName="Cestus Local"
         modeLabel="Command"
-        ledgerLabel="Ledger synced"
-        syncLabel="Local sync live"
-        deploymentLabel="Solo laptop"
         mainId="command"
         mainLabel="Command workspace"
         onModuleSelect={onModuleSelect}
@@ -61,7 +53,7 @@ describe("operator shell", () => {
     for (const label of ["Command", "Requests", "Evidence", "Ontology", "Agent", "Ingestion"]) {
       fireEvent.click(screen.getByRole("link", { name: label }));
     }
-    fireEvent.click(screen.getByRole("link", { name: "Settings" }));
+    expect(screen.queryByRole("link", { name: "Settings" })).not.toBeInTheDocument();
 
     expect(onModuleSelect.mock.calls.map(([moduleId]) => moduleId)).toStrictEqual([
       "command",
@@ -81,9 +73,6 @@ describe("operator shell", () => {
         activeModuleId="command"
         workspaceName="Cestus Local"
         modeLabel="Command"
-        ledgerLabel="Ledger synced"
-        syncLabel="Local sync live"
-        deploymentLabel="Solo laptop"
         mainId="command"
         mainLabel="Command workspace"
         onNewRequest={vi.fn()}
@@ -102,7 +91,7 @@ describe("operator shell", () => {
 
     homeLink.focus();
     fireEvent.keyDown(homeLink, { key: "Tab", shiftKey: true });
-    expect(within(menu).getByRole("link", { name: "Settings" })).toHaveFocus();
+    expect(within(menu).getByRole("link", { name: "Ingestion" })).toHaveFocus();
 
     fireEvent.keyDown(menu, { key: "Escape" });
     expect(screen.queryByRole("dialog", { name: "Cestus tactical modules" })).not.toBeInTheDocument();
