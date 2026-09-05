@@ -1,0 +1,29 @@
+{
+  "documents": 100,
+  "originalBytes": 1240176,
+  "passages": 6000,
+  "timings": [
+    {
+      "query": "quartz transit exception",
+      "ms": 15151,
+      "total": 1
+    },
+    {
+      "query": "quartz transit exception",
+      "ms": 14134,
+      "total": 1
+    },
+    {
+      "query": "municipal review",
+      "ms": 15125,
+      "total": 6000
+    },
+    {
+      "query": "no matching invented phrase",
+      "ms": 14370,
+      "total": 0
+    }
+  ],
+  "navigationMs": 145,
+  "correctPassage": true
+}
