@@ -15,7 +15,7 @@ const cleanup: (() => Promise<unknown>)[] = [];
 afterEach(async () => { for (const fn of cleanup.splice(0).reverse()) await fn(); });
 
 // The loopback endpoint is a protocol fixture, never live-provider acceptance.
-async function fixture(options: { delay?: number; timeout?: number; content?: string; usage?: { prompt_tokens: number; completion_tokens: number }; respond?: (response: ServerResponse) => void } = {}) {
+async function fixture(options: { delay?: number; timeout?: number; content?: string; passage?: string; coverage?: ResolvedDocumentSelection["pdfCoverage"]; usage?: { prompt_tokens: number; completion_tokens: number }; respond?: (response: ServerResponse) => void } = {}) {
   let requests = 0;
   let lastBody = "";
   const server: Server = createServer((request, response) => {
@@ -43,10 +43,11 @@ async function fixture(options: { delay?: number; timeout?: number; content?: st
   const derivativeStore = new FileBlobStore(root);
   let resolved: ResolvedDocumentSelection = {
     evidenceId: selection.evidenceId, extractionId: selection.extractionId,
+    ...(options.coverage ? { pdfCoverage: options.coverage } : {}),
     sourceHash: `sha256:${"a".repeat(64)}`, extractionHash: `sha256:${"b".repeat(64)}`,
-    policyRevision: "policy_revision_1", classification: "public_safe",
+    provenanceEventIds: ["evt_source", "evt_extraction"], policyRevision: "policy_revision_1", classification: "public_safe",
     classificationEventId: "evt_classification", reviewEventId: "evt_review",
-    passages: [{ index: 0, text: "The violet bridge was closed in March.", locator: { page: 1, block: 0 } }]
+    passages: [{ index: 0, text: options.passage ?? "The violet bridge was closed in March.", locator: { kind: "text", block: 1, start: 0, end: 100 } }]
   };
   let allowed = true;
   const env = {
@@ -56,7 +57,7 @@ async function fixture(options: { delay?: number; timeout?: number; content?: st
     CESTUS_DOCUMENT_PROVIDER_INPUT_USD_PER_MILLION: "1",
     CESTUS_DOCUMENT_PROVIDER_OUTPUT_USD_PER_MILLION: "2"
   };
-  const dependencies = { ledger, derivativeStore, env, timeoutMs: options.timeout ?? 2000,
+  const dependencies = { ledger, derivativeStore, env, workspaceId: "workspace_synthetic", timeoutMs: options.timeout ?? 2000,
     resolveSelection: async () => { if (!allowed) throw new Error("Denied"); return structuredClone(resolved); } };
   const service = createDocumentProcessingService(dependencies);
   return { service, ledger, ledgerPath, env, dependencies,
@@ -246,4 +247,94 @@ describe("bounded external document processing (synthetic loopback protocol test
     await expect(f.service.preview({ selection, budgetUsd: 0.05 }, { ...actor, kind: "agent" })).rejects.toThrow(/human/);
     expect(f.requestCount()).toBe(0);
   });
+});
+
+
+describe("schema-aware knowledge extraction through synthetic loopback transport", () => {
+  const entity = { kind: "entity", predicate: "name", value: { type: "string", value: "Violet Agency" }, mentionId: "actor", entityType: "agency", citations: [{ passageIndex: 0, quote: "Violet Agency" }] };
+  it("snapshots schema and resolves trusted grounded proposals without accepting them", async () => {
+    const f = await fixture({ passage: "Violet Agency paid 250 in 2024.", content: JSON.stringify({ proposals: [entity, { kind: "fact", predicate: "amount", subjectMentionId: "actor", value: { type: "number", value: 250 }, citations: [{ passageIndex: 0, quote: "paid 250" }] }] }) });
+    const preview = await f.service.preview({ operation: "knowledge-extraction.v1", selection, budgetUsd: 0.05 }, actor);
+    expect(preview.manifest).toMatchObject({ operation: "knowledge-extraction.v1", promptVersion: "knowledge-extraction-prompt.v1", schemaSnapshot: { schemaId: "investigation.v1" } });
+    await f.service.approve({ manifestHash: preview.manifestHash }, actor);
+    expect(await f.service.run(preview.invocationId, actor)).toMatchObject({ state: "completed" });
+    expect(await f.service.output(preview.invocationId, actor)).toMatchObject({ schemaVersion: "knowledge-extraction.v1", output: { proposals: [
+      { workspaceId: "workspace_synthetic", value: { value: "Violet Agency" }, evidence: [{ sourceContentHash: `sha256:${"a".repeat(64)}`, quote: "Violet Agency", locator: { kind: "text" } }], provenance: { kind: "provider", invocationId: preview.invocationId } },
+      { value: { type: "number", value: 250 } }
+    ] } });
+    expect(JSON.parse(f.requestBody()).messages[0].content).toContain("known predicates");
+    expect((await f.ledger.readAll()).some(event => event.type === "knowledge.reviewed")).toBe(false);
+  });
+  it.each([
+    { ...entity, citations: [{ passageIndex: 0, quote: "fabricated" }] },
+    { ...entity, value: { type: "number", value: 250 } },
+    { ...entity, workspaceId: "forged" },
+    { kind: "relationship", predicate: "paid", subjectMentionId: "missing", value: { type: "entity", mentionId: "missing" }, citations: entity.citations }
+  ])("rejects forged citations, known-type mismatch, trusted fields and unresolved endpoints", async (proposal) => {
+    const f = await fixture({ passage: "Violet Agency paid 250 in 2024.", content: JSON.stringify({ proposals: [proposal] }) });
+    const preview = await f.service.preview({ operation: "knowledge-extraction.v1", selection, budgetUsd: 0.05 }, actor);
+    await f.service.approve({ manifestHash: preview.manifestHash }, actor);
+    expect(await f.service.run(preview.invocationId, actor)).toMatchObject({ state: "failed", reason: "invalid-output" });
+    await expect(f.service.output(preview.invocationId, actor)).rejects.toThrow();
+  });
+});
+
+
+it("preserves partial coverage, all four proposal kinds and explicitly unknown vocabulary", async () => {
+  const passage = "Violet Agency paid Azure Ltd 250 USD in 2024-03. The payment was provisional.";
+  const citations = [{ passageIndex: 0, quote: passage }];
+  const proposals = [
+    { kind: "entity", predicate: "name", mentionId: "payer", entityType: "agency", value: { type: "string", value: "Violet Agency" }, citations },
+    { kind: "entity", predicate: "name", mentionId: "payee", entityType: "organization", value: { type: "string", value: "Azure Ltd" }, citations },
+    { kind: "relationship", predicate: "paid", subjectMentionId: "payer", value: { type: "entity", mentionId: "payee" }, citations },
+    { kind: "occurrence", predicate: "payment", occurrenceId: "payment1", value: { type: "string", value: "payment" }, participants: [{ role: "payer", mentionId: "payer" }, { role: "payee", mentionId: "payee" }], attributes: [{ predicate: "amount", value: { type: "number", value: 250, unit: "USD" } }], occurredTime: { start: "2024-03", uncertain: true }, citations },
+    { kind: "fact", predicate: "unreviewed_status", subjectMentionId: "payer", value: { type: "string", value: "provisional" }, citations }
+  ];
+  const coverage = { status: "partial" as const, pages: [{ page: 1, status: "text-extracted" as const }, { page: 2, status: "unextracted" as const }] };
+  const f = await fixture({ passage, coverage, content: JSON.stringify({ proposals }) });
+  const preview = await f.service.preview({ operation: "knowledge-extraction.v1", selection, budgetUsd: 0.05 }, actor);
+  expect(JSON.parse(preview.manifest.inputText)).toMatchObject({ pdfCoverage: coverage, sourceHash: `sha256:${"a".repeat(64)}` });
+  await f.service.approve({ manifestHash: preview.manifestHash }, actor);
+  expect(await f.service.run(preview.invocationId, actor)).toMatchObject({ state: "completed" });
+  const output = await f.service.output(preview.invocationId, actor) as { output: { proposals: { mentionId?: string; value: { mentionId?: string }; evidence: unknown[]; occurredTime?: unknown; predicate: string }[] } };
+  expect(output.output.proposals[2]!.value.mentionId).toBe(output.output.proposals[1]!.mentionId);
+  expect(output.output.proposals[3]).toMatchObject({ occurredTime: { start: "2024-03", uncertain: true }, evidence: [{ pdfCoverage: coverage }] });
+  expect(output.output.proposals[4]!.predicate).toBe("unreviewed_status");
+  expect(JSON.stringify(await f.ledger.readAll())).not.toContain("knowledge.reviewed");
+  f.reopenLedger();
+  expect(await createDocumentProcessingService(f.dependencies).output(preview.invocationId, actor)).toEqual(output);
+});
+
+it.each([
+  { value: { type: "number", value: 25 }, quote: "paid 250" },
+  { value: { type: "string", value: "Invented Agency" }, quote: "Violet Agency" },
+  { value: { type: "date", value: "2025-03" }, quote: "2024-03" }
+])("does not present an ungrounded source value as validated output", async ({ value, quote }) => {
+  const entity = { kind: "entity", predicate: "name", mentionId: "actor", entityType: "agency", value: { type: "string", value: "Violet Agency" }, citations: [{ passageIndex: 0, quote: "Violet Agency" }] };
+  const fact = { kind: "fact", predicate: value.type === "number" ? "amount" : value.type === "date" ? "date" : "description", subjectMentionId: "actor", value, citations: [{ passageIndex: 0, quote }] };
+  const f = await fixture({ passage: "Violet Agency paid 250 in 2024-03.", content: JSON.stringify({ proposals: [entity, fact] }) });
+  const preview = await f.service.preview({ operation: "knowledge-extraction.v1", selection, budgetUsd: 0.05 }, actor);
+  await f.service.approve({ manifestHash: preview.manifestHash }, actor);
+  expect(await f.service.run(preview.invocationId, actor)).toMatchObject({ state: "failed", reason: "invalid-output" });
+});
+
+it("passes changed source names, amounts and dates through to distinct provider proposals", async () => {
+  const outputs: unknown[] = [];
+  for (const [name, amount, date] of [["Violet Agency", 250, "2024-03"], ["Amber Agency", 900, "2025"]] as const) {
+    const passage = `${name} paid ${amount} in ${date}.`;
+    const citations = [{ passageIndex: 0, quote: passage }];
+    const f = await fixture({ passage, content: JSON.stringify({ proposals: [
+      { kind: "entity", predicate: "name", mentionId: "payer", entityType: "agency", value: { type: "string", value: name }, citations },
+      { kind: "fact", predicate: "amount", subjectMentionId: "payer", value: { type: "number", value: amount }, citations },
+      { kind: "fact", predicate: "date", subjectMentionId: "payer", value: { type: "date", value: date }, citations }
+    ] }) });
+    const preview = await f.service.preview({ operation: "knowledge-extraction.v1", selection, budgetUsd: 0.05 }, actor);
+    await f.service.approve({ manifestHash: preview.manifestHash }, actor);
+    expect(await f.service.run(preview.invocationId, actor)).toMatchObject({ state: "completed" });
+    const result = await f.service.output(preview.invocationId, actor) as { output: { proposals: { value: { value: unknown } }[] } };
+    expect(result.output.proposals.map(proposal => proposal.value.value)).toEqual([name, amount, date]);
+    expect(JSON.parse(JSON.parse(f.requestBody()).messages[1].content).passages[0].text).toBe(passage);
+    outputs.push(result);
+  }
+  expect(outputs[0]).not.toEqual(outputs[1]);
 });

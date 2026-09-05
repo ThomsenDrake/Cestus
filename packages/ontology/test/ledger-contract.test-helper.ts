@@ -60,15 +60,15 @@ export function describeEventLedgerContract(name: string, options: LedgerContrac
         const events = [evidenceEvent("ev_batch_a"), evidenceEvent("ev_batch_b"), evidenceEvent("ev_batch_a")];
         const decision = { decisionId: "decision_batch", expectedGlobalEventCount: 0,
           expectedNextSequences: { evidence_ev_batch_a: 1, evidence_ev_batch_b: 1 } };
-        const committed = await ledger.appendBatch(events, decision);
+        const committed = await ledger.appendBatch!(events, decision);
         expect(committed.map((event) => event.sequence)).toEqual([1, 1, 2]);
         await ledger.append(evidenceEvent("ev_batch_later"));
-        expect(await ledger.appendBatch(events, decision)).toEqual(committed);
+        expect(await ledger.appendBatch!(events, decision)).toEqual(committed);
         const reordered = events.map(({ payload, ...rest }) => ({ payload, ...rest }));
-        expect(await ledger.appendBatch(reordered, decision)).toEqual(committed);
+        expect(await ledger.appendBatch!(reordered, decision)).toEqual(committed);
         evidencePayload(committed[0] as KnowledgeEvent).sizeBytes = 999;
-        expect(evidencePayload((await ledger.appendBatch(events, decision))[0] as KnowledgeEvent).sizeBytes).toBe(128);
-        await expect(ledger.appendBatch([evidenceEvent("ev_batch_changed")], decision))
+        expect(evidencePayload((await ledger.appendBatch!(events, decision))[0] as KnowledgeEvent).sizeBytes).toBe(128);
+        await expect(ledger.appendBatch!([evidenceEvent("ev_batch_changed")], decision))
           .rejects.toThrow("Concurrency conflict");
         expect(await ledger.readAll()).toHaveLength(4);
       });
@@ -79,12 +79,12 @@ export function describeEventLedgerContract(name: string, options: LedgerContrac
         const valid = evidenceEvent("ev_batch_valid");
         const invalid = { ...evidenceEvent("ev_batch_invalid"), payload: { ...valid.payload, evidenceId: "not-valid" } };
         const decision = { decisionId: "decision_invalid", expectedGlobalEventCount: 0 };
-        await expect(ledger.appendBatch([valid, invalid], decision)).rejects.toThrow("Invalid knowledge event");
+        await expect(ledger.appendBatch!([valid, invalid], decision)).rejects.toThrow("Invalid knowledge event");
         expect(await ledger.readAll()).toEqual([]);
-        await ledger.appendBatch([valid], decision);
-        await expect(ledger.appendBatch([valid], { decisionId: "decision_stale", expectedGlobalEventCount: 0 }))
+        await ledger.appendBatch!([valid], decision);
+        await expect(ledger.appendBatch!([valid], { decisionId: "decision_stale", expectedGlobalEventCount: 0 }))
           .rejects.toThrow("Concurrency conflict");
-        await expect(ledger.appendBatch([valid], { decisionId: "decision_stream_stale", expectedGlobalEventCount: 1,
+        await expect(ledger.appendBatch!([valid], { decisionId: "decision_stream_stale", expectedGlobalEventCount: 1,
           expectedNextSequences: { evidence_ev_batch_valid: 1 } })).rejects.toThrow("Concurrency conflict");
         expect(await ledger.readAll()).toHaveLength(1);
       });
@@ -92,7 +92,7 @@ export function describeEventLedgerContract(name: string, options: LedgerContrac
 
     it("permits only one concurrent decision at the same revision", async () => {
       await useLedger(options.createLedger, async (ledger) => {
-        const results = await Promise.allSettled(["a", "b"].map((id) => ledger.appendBatch(
+        const results = await Promise.allSettled(["a", "b"].map((id) => ledger.appendBatch!(
           [evidenceEvent(`ev_race_${id}1`), evidenceEvent(`ev_race_${id}2`)],
           { decisionId: `decision_race_${id}`, expectedGlobalEventCount: 0 }
         )));
@@ -105,16 +105,16 @@ export function describeEventLedgerContract(name: string, options: LedgerContrac
     it("rejects missing preconditions, empty or oversized batches", async () => {
       await useLedger(options.createLedger, async (ledger) => {
         const decision = { decisionId: "decision_bounds", expectedGlobalEventCount: 0 };
-        await expect(ledger.appendBatch([], decision)).rejects.toThrow("Invalid batch");
-        await expect(ledger.appendBatch(Array.from({ length: 101 }, () => evidenceEvent("ev_bounds")), decision))
+        await expect(ledger.appendBatch!([], decision)).rejects.toThrow("Invalid batch");
+        await expect(ledger.appendBatch!(Array.from({ length: 101 }, () => evidenceEvent("ev_bounds")), decision))
           .rejects.toThrow("Invalid batch");
-        await expect(ledger.appendBatch([evidenceEvent("ev_bounds")], { ...decision, decisionId: "" }))
+        await expect(ledger.appendBatch!([evidenceEvent("ev_bounds")], { ...decision, decisionId: "" }))
           .rejects.toThrow("Invalid batch");
-        await expect(ledger.appendBatch([evidenceEvent("ev_bounds")], { ...decision, expectedGlobalEventCount: NaN }))
+        await expect(ledger.appendBatch!([evidenceEvent("ev_bounds")], { ...decision, expectedGlobalEventCount: NaN }))
           .rejects.toThrow("Invalid batch");
         const huge = evidenceEvent("ev_bounds");
         huge.payload.source.label = "x".repeat(2 * 1024 * 1024);
-        await expect(ledger.appendBatch([huge], decision)).rejects.toThrow("Invalid batch");
+        await expect(ledger.appendBatch!([huge], decision)).rejects.toThrow("Invalid batch");
         expect(await ledger.readAll()).toEqual([]);
       });
     });

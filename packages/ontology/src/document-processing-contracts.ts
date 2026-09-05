@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { knowledgeProposalSchema, vocabularySchema } from "./knowledge-contracts.js";
 import type { PdfCoverage } from "./extraction-contracts.js";
 
 const hash = z.string().regex(/^sha256:[a-f0-9]{64}$/);
@@ -45,7 +46,18 @@ export const documentSummaryOutputSchema = z.object({
   citations: z.array(z.object({ passageIndex: z.number().int().nonnegative(), quote: z.string().min(1).max(3000) }).strict()).min(1).max(24)
 }).strict();
 
+/** Provider-local fields only; authority, IDs and evidence references are resolved by the server. */
+export const providerKnowledgeProposalSchema = knowledgeProposalSchema.omit({
+  assertionId: true, workspaceId: true, evidence: true, schemaId: true, provenance: true, derivedFrom: true
+}).extend({ citations: documentSummaryOutputSchema.shape.citations }).strict();
+export const knowledgeExtractionOutputSchema = z.object({
+  proposals: z.array(providerKnowledgeProposalSchema).max(40)
+}).strict();
+export type KnowledgeExtractionOutput = z.infer<typeof knowledgeExtractionOutputSchema>;
+export type DocumentProcessingOperation = "document-summary.v1" | "knowledge-extraction.v1";
+
 export interface ResolvedDocumentSelection {
+  provenanceEventIds?: string[];
   pdfCoverage?: PdfCoverage | { status: "unknown" };
   evidenceId: string;
   extractionId: string;
@@ -70,7 +82,10 @@ export interface DocumentProcessingManifest {
   selection: DocumentSelection;
   resolved: ResolvedDocumentSelection;
   destination: ProviderConfiguration;
-  operation: "document-summary.v1";
+  operation: DocumentProcessingOperation;
+  workspaceId?: string;
+  promptVersion?: "knowledge-extraction-prompt.v1";
+  schemaSnapshot?: z.infer<typeof vocabularySchema>;
   provider: "openai-compatible-chat.v1";
   inputText: string;
   systemPrompt: string;

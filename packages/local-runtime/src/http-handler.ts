@@ -33,6 +33,7 @@ import { handleDocumentProcessingHttpRoute } from "./document-processing-http-ro
 import { resolveExternalDocumentSelection } from "./evidence-content.js";
 import type { LocalIngestionRuntimeFactory } from "./ingestion-runtime-factory.js";
 import { createDefaultOperatorStatusProviders } from "./operator-status-providers.js";
+import { handleKnowledgeHttpRoute, createWorkspaceKnowledgeService } from "./knowledge-http-routes.js";
 import { handleOntologyHttpRoute } from "./ontology-http-routes.js";
 import { handleOperatorStatusRoute } from "./operator-status-routes.js";
 import type { OperatorStatusProviderSet } from "./operator-status.js";
@@ -100,7 +101,7 @@ export function createLocalRuntimeHttpHandler(
   const documentProcessing = humanMountResolver?.resolve({}).then(async mount => {
     if (!mount.ok) return undefined;
     const service = createDocumentProcessingService({
-      ledger: mount.workspace.ledger, derivativeStore: mount.workspace.derivativeStore,
+      ledger: mount.workspace.ledger, derivativeStore: mount.workspace.derivativeStore, workspaceId: mount.workspace.workspaceId,
       resolveSelection: (selection, actor) => resolveExternalDocumentSelection(mount.workspace, actor, selection)
     });
     await service.recoverInterrupted();
@@ -284,7 +285,12 @@ export function createLocalRuntimeHttpHandler(
     }
 
     if (path.startsWith("/api/ontology/")) {
-      const response = await handleOntologyHttpRoute({ request, ledger: handle.ledger });
+      const knowledgeMount = await humanMountResolver?.resolve({});
+      const knowledgeResponse = await handleKnowledgeHttpRoute({ request, actor: input.actor,
+        workspace: knowledgeMount?.ok ? knowledgeMount.workspace : undefined, processing: await documentProcessing });
+      if (knowledgeResponse) return knowledgeResponse;
+      const response = await handleOntologyHttpRoute({ request, ledger: handle.ledger,
+        ...(knowledgeMount?.ok ? { readAuthorized: () => createWorkspaceKnowledgeService(knowledgeMount.workspace).readLegacy(input.actor) } : {}) });
       if (response !== undefined) {
         return response;
       }

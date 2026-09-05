@@ -32,15 +32,15 @@ export const vocabularySchema = z.object({
   schemaId: id, entityTypes: z.array(id).min(1).max(30),
   predicates: z.array(z.object({ name: id, kind: z.enum(["entity", "fact", "relationship", "occurrence"]), valueType: z.enum(["string", "number", "boolean", "date", "entity"]), fromTypes: z.array(id), toTypes: z.array(id) }).strict()).min(1).max(100)
 }).strict();
-const actors = ["person", "organization", "agency"];
+const baseEntityTypes = ["person", "organization", "agency"];
 export const investigationVocabulary: z.infer<typeof vocabularySchema> = {
-  schemaId: "investigation.v1", entityTypes: [...actors, "contract", "address"],
+  schemaId: "investigation.v1", entityTypes: [...baseEntityTypes, "contract", "address"],
   predicates: [
     { name: "name", kind: "entity", valueType: "string", fromTypes: [], toTypes: [] },
     ...["identifier", "address", "description"].map(name => ({ name, kind: "fact" as const, valueType: "string" as const, fromTypes: [], toTypes: [] })),
     { name: "amount", kind: "fact", valueType: "number", fromTypes: [], toTypes: [] },
     { name: "date", kind: "fact", valueType: "date", fromTypes: [], toTypes: [] },
-    ...["paid", "awarded", "employed_by", "owns", "associated_with"].map(name => ({ name, kind: "relationship" as const, valueType: "entity" as const, fromTypes: actors, toTypes: [...actors, "contract", "address"] })),
+    ...["paid", "awarded", "employed_by", "owns", "associated_with"].map(name => ({ name, kind: "relationship" as const, valueType: "entity" as const, fromTypes: baseEntityTypes, toTypes: [...baseEntityTypes, "contract", "address"] })),
     ...["payment", "award", "appointment", "meeting", "ownership_change"].map(name => ({ name, kind: "occurrence" as const, valueType: "string" as const, fromTypes: [], toTypes: [] }))
   ]
 };
@@ -56,3 +56,14 @@ export const knowledgePayloadSchemas = {
   "knowledge.source.lineage": z.object({ evidenceId: id, originId: id, independence: z.enum(["independent", "derived", "unknown"]), rationale: text }).strict()
 } as const;
 export type KnowledgeV2Type = keyof typeof knowledgePayloadSchemas;
+
+/** Literal grounding shared by manual commands and external proposal validation. */
+export function isKnowledgeValueGrounded(value: Exclude<KnowledgeValue, { type: "entity" }>, quote: string): boolean {
+  if (value.type === "number") {
+    const numbers = quote.match(/[+-]?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?/g) ?? [];
+    return numbers.some(number => Number(number.replaceAll(",", "")) === value.value)
+      && (!value.unit || quote.includes(value.unit));
+  }
+  const literal = String(value.value);
+  return value.type === "boolean" ? new RegExp(`\\b${literal}\\b`, "i").test(quote) : quote.includes(literal);
+}
