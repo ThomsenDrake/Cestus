@@ -44,7 +44,7 @@ describe("operator cockpit app integration", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Open ingestion" }));
 
     expect(await screen.findByRole("heading", { name: "Ingestion" })).toBeInTheDocument();
-    expect(await screen.findByRole("region", { name: "Workspace not mounted" })).toBeInTheDocument();
+    expect(await screen.findByRole("region", { name: "Ingestion workspace not connected" })).toBeInTheDocument();
     expect(screen.queryByRole("dialog", { name: "Guided request builder" })).not.toBeInTheDocument();
   });
 

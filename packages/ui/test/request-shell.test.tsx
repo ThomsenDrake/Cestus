@@ -12,18 +12,15 @@ describe("requests workspace shell", () => {
 
     expect(await screen.findByRole("heading", { name: "Requests" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Requests" })).toHaveAttribute("aria-current", "page");
-    expect(screen.getByRole("searchbox", { name: "Requests search" })).toHaveAttribute(
-      "placeholder",
-      "Search requests, agencies, evidence, and correspondence"
-    );
+    expect(screen.queryByRole("searchbox", { name: "Requests search" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "New request" })).toBeInTheDocument();
   });
 
-  it("keeps Requests active when unsupported modules are selected", async () => {
+  it("omits unsupported module controls", async () => {
     render(<App requestsAdapter={createTestRequestsAdapter()} />);
 
     fireEvent.click(screen.getByRole("link", { name: "Requests" }));
-    fireEvent.click(screen.getByRole("link", { name: "Settings" }));
+    expect(screen.queryByRole("link", { name: "Settings" })).not.toBeInTheDocument();
 
     expect(screen.getByRole("link", { name: "Requests" })).toHaveAttribute("aria-current", "page");
     expect(await screen.findByRole("heading", { name: "Requests" })).toBeInTheDocument();

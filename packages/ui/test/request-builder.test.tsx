@@ -60,14 +60,13 @@ describe("RequestBuilder", () => {
       "Requester name",
       "Requester email",
       "Requester phone",
-      "Request text",
-      "Received timestamp"
+      "Request text"
     ]) {
       expect(screen.getByLabelText(fieldLabel)).toBeInTheDocument();
     }
 
     expect(screen.getByLabelText("Jurisdiction pack")).toHaveValue("florida-public-records@0.1.0");
-    expect(screen.getByLabelText("Received timestamp")).toHaveValue("");
+    expect(screen.queryByLabelText("Received timestamp")).not.toBeInTheDocument();
   });
 
   it("does not submit an empty builder draft and shows validation guidance", () => {
@@ -84,7 +83,7 @@ describe("RequestBuilder", () => {
     expect(screen.getByText("Request text is required.")).toBeInTheDocument();
   });
 
-  it("does not submit a builder draft with an invalid received timestamp", () => {
+  it("submits an unfiled draft without asking for or inventing agency receipt", () => {
     const workspace = buildTestRequestsWorkspace();
     const onSubmit = vi.fn();
 
@@ -95,11 +94,10 @@ describe("RequestBuilder", () => {
     fireEvent.change(screen.getByLabelText("Request text"), {
       target: { value: "All budget amendment memos from January 2026." }
     });
-    fireEvent.change(screen.getByLabelText("Received timestamp"), { target: { value: "tomorrow morning" } });
     fireEvent.click(screen.getByRole("button", { name: "Create draft" }));
 
-    expect(onSubmit).not.toHaveBeenCalled();
-    expect(screen.getByText("Received timestamp must be an ISO 8601 datetime.")).toBeInTheDocument();
+    expect(onSubmit).toHaveBeenCalledOnce();
+    expect(onSubmit.mock.calls[0]![0]).not.toHaveProperty("receivedAt");
   });
 
   it("moves focus into the dialog and restores it after Escape closes the builder", async () => {
@@ -162,11 +160,12 @@ describe("RequestBuilder", () => {
     expect(screen.queryByRole("dialog", { name: /Request investigation detail/i })).not.toBeInTheDocument();
   });
 
-  it("does not open the guided request builder from the Command shell action", () => {
+  it("shows Requests unavailable when Command New request has no backend", async () => {
     render(<App />);
 
     fireEvent.click(screen.getByRole("button", { name: "New request" }));
 
+    expect(await screen.findByText("Requests unavailable")).toBeInTheDocument();
     expect(screen.queryByRole("dialog", { name: "Guided request builder" })).not.toBeInTheDocument();
   });
 

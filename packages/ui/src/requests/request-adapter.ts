@@ -5,10 +5,10 @@ import {
 } from "../../../ontology/src/contracts.js";
 import {
   buildDraftRequestEvents,
+  buildDraftRequestCreatedEvent,
+  resolveJurisdictionPack,
   type ActorRef,
-  type ContactRef,
-  type DeadlineEstimateKind,
-  type JurisdictionPackRef
+  type CreateDraftRequestInput
 } from "../../../prr/src/draft-events.js";
 import { buildPrrProjection } from "../../../prr/src/projection.js";
 import {
@@ -22,14 +22,7 @@ import { prrWorkspaceSeedEvents } from "../../../prr/src/workspace-seed.js";
 
 export type RequestsAdapterNow = string | (() => string);
 
-export interface RequestsCreateDraftInput {
-  readonly jurisdictionPack: JurisdictionPackRef;
-  readonly agency: ContactRef;
-  readonly requester: ContactRef;
-  readonly requestText: string;
-  readonly receivedAt?: string;
-  readonly deadlineEstimateKind?: DeadlineEstimateKind;
-}
+export type RequestsCreateDraftInput = CreateDraftRequestInput;
 
 export type RequestsCreateDraftFailedStep =
   | "validate-input"
@@ -177,7 +170,7 @@ export function createLocalReplayRequestsAdapter(
 
   async function createDraftRequest(input: RequestsCreateDraftInput): Promise<RequestsCreateDraftResult> {
     const occurredAt = currentTimestamp(now);
-    const receivedAt = normalizeOptionalInput(input.receivedAt) ?? occurredAt;
+    const receivedAt = normalizeOptionalInput(input.receivedAt);
     const prrRequestId = requestIdFactory();
     if (nextStreamSequence(events, prrRequestId) !== 1) {
       return createFailure("append-request", [], diagnosticForStep("append-request"), occurredAt);
@@ -185,17 +178,17 @@ export function createLocalReplayRequestsAdapter(
 
     let appendableEvents: {
       readonly requestCreated: AppendableKnowledgeEvent<"prr.request.created">;
-      readonly deadlineEstimated: AppendableKnowledgeEvent<"prr.deadline.estimated">;
+      readonly deadlineEstimated?: AppendableKnowledgeEvent<"prr.deadline.estimated">;
     };
 
     try {
-      appendableEvents = buildDraftRequestEvents({
-        ...input,
-        prrRequestId,
-        actor,
-        occurredAt,
-        receivedAt
-      });
+      const eventInput = { ...input, prrRequestId, actor, occurredAt };
+      if (receivedAt === undefined) {
+        resolveJurisdictionPack(input.jurisdictionPack);
+        appendableEvents = { requestCreated: buildDraftRequestCreatedEvent(eventInput) };
+      } else {
+        appendableEvents = buildDraftRequestEvents({ ...eventInput, receivedAt });
+      }
     } catch (error) {
       return createFailure(
         "estimate-deadline",
@@ -214,6 +207,15 @@ export function createLocalReplayRequestsAdapter(
       );
     } catch (error) {
       return createFailure("validate-input", [], diagnosticForStep("validate-input"), occurredAt);
+    }
+
+    if (appendableEvents.deadlineEstimated === undefined) {
+      return Object.freeze({
+        ok: true,
+        prrRequestId,
+        committedEventIds: Object.freeze([committedCreated.id]),
+        workspace: buildWorkspace(occurredAt)
+      });
     }
 
     try {

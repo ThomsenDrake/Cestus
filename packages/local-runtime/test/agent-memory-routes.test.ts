@@ -1,3 +1,4 @@
+import { createAuthenticatedTestHandler as createLocalRuntimeHttpHandler } from "./support/authenticated-handler.js";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -5,7 +6,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { SQLiteEventLedger } from "../../ontology/src/sqlite-event-ledger.js";
 import { createPortableWorkspace } from "../../workspace/src/index.js";
 import { resolveLocalRuntimeConfig } from "../src/config.js";
-import { createLocalRuntimeHttpHandler, type LocalRuntimeHttpHandler } from "../src/http-handler.js";
+import { type LocalRuntimeHttpHandler } from "../src/http-handler.js";
 
 const handlers: LocalRuntimeHttpHandler[] = [];
 const tempDirs: string[] = [];

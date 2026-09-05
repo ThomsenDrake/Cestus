@@ -19,6 +19,7 @@ export interface LocalRuntimeConfigInput {
 
 export interface ResolvedLocalRuntimeConfig {
   readonly cwd: string;
+  readonly operator?: { readonly id: string; readonly kind: "human"; readonly label: string };
   readonly storage:
     | {
         readonly strategy: "repo-local" | "explicit-path" | "app-data";
@@ -65,14 +66,15 @@ export function resolveLocalRuntimeConfig(
   const bindMode = parseBindMode(environmentBindMode ?? configFile?.http?.bindMode);
   const host = resolveHost(bindMode, env, configFile);
   const authToken = normalizeOptional(env.CESTUS_LOCAL_AUTH_TOKEN) ?? configFile?.http?.authToken;
-  const authRequired = bindMode !== "loopback" || !isLoopbackHost(host);
+  const authRequired = true;
 
-  if (authRequired && authToken === undefined) {
+  if ((bindMode !== "loopback" || !isLoopbackHost(host)) && authToken === undefined) {
     throw new Error("Auth is required for non-loopback local runtime exposure");
   }
 
   const config = {
     cwd,
+    ...(configFile?.operator === undefined ? {} : { operator: { ...configFile.operator, kind: "human" as const } }),
     storage: resolveStorage(cwd, env, configFile),
     http: {
       host,

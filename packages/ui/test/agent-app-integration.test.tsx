@@ -120,7 +120,8 @@ describe("agent app integration", () => {
       const review = screen.getByRole("region", { name: "Ontology bootstrap review" });
       expect(within(review).getByText("Ontology bootstrap")).toBeInTheDocument();
       expect(within(review).getByText("Review staging approval preview")).toBeInTheDocument();
-      expect(globalThis.fetch).not.toHaveBeenCalled();
+      expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+      expect(globalThis.fetch).toHaveBeenCalledWith("/api/workspace-status", expect.any(Object));
     } finally {
       globalThis.fetch = originalFetch;
     }

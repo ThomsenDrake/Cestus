@@ -1,0 +1,5 @@
+SYNTHETIC PUBLIC RECORD — Case Parks
+Question: How many people attended the March trail cleanup?
+The signed attendance count is 42. Organizer River Parks Club (RP303).
+No contractor award, procurement amendment, or employee MV001 occurs in this case.
+This is the unrelated negative control; do not manufacture a cross-case link.

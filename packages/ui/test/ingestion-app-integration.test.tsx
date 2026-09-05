@@ -25,7 +25,7 @@ describe("ingestion app integration", () => {
 
     expect(await screen.findByRole("heading", { name: "Ingestion" })).toBeInTheDocument();
     expect(screen.queryByText("External investigation archive placeholder")).not.toBeInTheDocument();
-    expect(await screen.findByRole("region", { name: "Workspace not mounted" })).toBeInTheDocument();
+    expect(await screen.findByRole("region", { name: "Ingestion workspace not connected" })).toBeInTheDocument();
   });
 
   it("closes an open request builder when navigating to ingestion", async () => {
