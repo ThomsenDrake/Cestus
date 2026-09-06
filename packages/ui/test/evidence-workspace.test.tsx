@@ -8,6 +8,7 @@ import { buildEvidenceGovernanceWorkspaceDto } from "../../ontology/src/governan
 import { defaultGovernancePolicy } from "../../ontology/src/governance-policy.js";
 import type { GovernanceTag } from "../../ontology/src/governance-policy.js";
 import { GovernanceService } from "../../ontology/src/governance-service.js";
+import { goldenGovernanceLedgerEvents } from "../../ontology/test/fixtures/golden-governance-ledger.js";
 import { EvidenceWorkspace } from "../src/evidence/EvidenceWorkspace.js";
 import { evidenceWorkspaceDtoFromJson } from "../src/evidence/evidence-adapter.js";
 import type {
@@ -16,6 +17,28 @@ import type {
 import { workspaceDto } from "./fixtures/evidence.js";
 
 describe("EvidenceWorkspace", () => {
+  it("loads composed evidence and human governance history with safely displayed rationale", () => {
+    const rationale = "Public posting; no secret-bearing material observed.";
+    const events = goldenGovernanceLedgerEvents.map(event => {
+      if (event.type === "evidence.governance.classified") return { ...event, payload: { ...event.payload, tags: event.payload.tags.map(tag => ({ ...tag, rationale })) } };
+      if (event.type === "evidence.governance.reviewed") return { ...event, payload: { ...event.payload, decisions: event.payload.decisions.map(decision => ({ ...decision, rationale })) } };
+      return event;
+    });
+    const originalEvents = JSON.stringify(events);
+    const workspace = buildEvidenceWorkspaceDto(events);
+    const composed = {
+      ...workspace,
+      governance: buildEvidenceGovernanceWorkspaceDto(events, workspace.items.map(item => item.evidenceId))
+    };
+    const parsed = evidenceWorkspaceDtoFromJson(JSON.parse(JSON.stringify(composed)));
+    expect(parsed.items.length).toBeGreaterThan(0);
+    expect(parsed.governance.reviews.flatMap(review => review.humanDecisions)).toContainEqual(expect.objectContaining({
+      tag: "public_safe", action: "add", rationale: "Rationale withheld by the metadata safety check."
+    }));
+    expect(JSON.stringify(parsed)).not.toContain(rationale);
+    expect(JSON.stringify(events)).toBe(originalEvents);
+  });
+
   it("preserves partial coverage through the adapter and distinguishes it in job labels and filters", () => {
     const fixture = workspaceDto();
     const workspace = evidenceWorkspaceDtoFromJson({ ...fixture, items: fixture.items.map((item, index) => index === 0 ? { ...item, parseJobs: item.parseJobs.map(job => ({ ...job, coverageStatus: "partial" })) } : item) });
