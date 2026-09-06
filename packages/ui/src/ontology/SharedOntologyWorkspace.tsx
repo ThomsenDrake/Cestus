@@ -8,7 +8,7 @@ import { displayValue, suggestEntityMatches, knowledgeRequest, newKnowledgeId, s
 import { KnowledgeVocabularyForm } from "./KnowledgeVocabularyForm.js";
 import { DateInput, DateInputPreview, interpretDateValue, KnowledgeDateInterpretations } from "./KnowledgeDateControls.js";
 
-const button = "rounded border border-[var(--console-line-strong)] px-3 py-2 text-sm disabled:opacity-50";
+const button = "min-w-0 max-w-full rounded border border-[var(--console-line-strong)] px-3 py-2 text-sm [overflow-wrap:anywhere] disabled:opacity-50";
 const field = "min-w-0 max-w-full rounded border border-[var(--console-line)] bg-[var(--console-panel)] p-2";
 const box = "min-w-0 space-y-3 rounded border border-[var(--console-line)] p-4";
 type Command = Record<string, unknown> & { decisionId: string; expectedRevision: number };
