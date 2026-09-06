@@ -54,13 +54,14 @@ describe("ui picker cleanup", () => {
     expect(appSource).toContain('implementedModuleIds.add("ontology")');
     expect(appSource).toContain('const ontologyActive = activeModuleId === "ontology"');
     expect(appSource).toContain('const evidenceActive = activeModuleId === "evidence"');
+    expect(appSource).toContain("<InvestigationWorkspace");
     expect(appSource).toContain("<RequestWorkspace");
     expect(appSource).toContain("<IngestionWorkspace");
     expect(appSource).toContain("<EvidenceWorkspace");
     expect(appSource).toContain("<OntologyWorkspace");
     expect(appSource).toContain("<AgentWorkspace");
     expect(shellSource).toContain(
-      'mainLabel={ontologyActive ? "Ontology workspace" : evidenceActive ? "Evidence workspace" : agentActive ? "Agent workspace" : ingestionActive ? "Ingestion workspace" : requestsActive ? "Requests workspace" : "Command workspace"}'
+      'mainLabel={investigationActive ? "Investigation workspace" : ontologyActive ? "Ontology workspace" : evidenceActive ? "Evidence workspace" : agentActive ? "Agent workspace" : ingestionActive ? "Ingestion workspace" : requestsActive ? "Requests workspace" : "Command workspace"}'
     );
     expect(shellSource).not.toMatch(/Requests\s+Preview/);
     expect(shellSource).not.toMatch(/Ingestion\s+Preview/);
