@@ -321,7 +321,7 @@ describe("Investigation workspace", () => {
       false,
     );
     fireEvent.click(
-      screen.getByRole("checkbox", { name: /All eligible cases/ }),
+      screen.getByRole("checkbox", { name: /All available cases/ }),
     );
     const beta = await screen.findByRole("checkbox", { name: "Beta case" });
     fireEvent.click(beta);
@@ -345,7 +345,9 @@ describe("Investigation workspace", () => {
     const result = await screen.findByRole("region", {
       name: "Cross-case analysis",
     });
-    expect(within(result).getByRole("alert")).toHaveTextContent("Stale");
+    expect(within(result).getByRole("alert")).toHaveTextContent(
+      "Evidence changed—review before relying on this comparison",
+    );
     expect(
       within(result).getByRole("button", { name: "Save pattern hypothesis" }),
     ).toBeDisabled();

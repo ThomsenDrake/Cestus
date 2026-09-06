@@ -22,7 +22,7 @@ const field =
 const box =
   "min-w-0 space-y-3 rounded border border-[var(--console-line)] p-4 [overflow-wrap:anywhere]";
 const defaultQuestion =
-  "Find recurring patterns across these cases, including shared reviewed identities and similar relationships, roles, and event sequences involving different actors. Explain differences, counterexamples, ordinary explanations, and evidence limitations.";
+  "What connects these cases? Look for the same people or organizations, and similar relationships or sequences of events involving different people. Explain what the sources show, what differs, what challenges each possible pattern, and what ordinary circumstances could account for it. Be clear about what the evidence cannot establish.";
 type Workspace = {
   revision: number;
   eligibleCases: { caseId: string; title: string }[];
@@ -43,6 +43,17 @@ type Result = {
   output: CrossCaseOutput;
   stale: boolean;
   invocationId: string;
+};
+const patternLabels: Record<
+  CrossCaseOutput["findings"][number]["kind"],
+  string
+> = {
+  shared_identity: "Same person or organization across cases",
+  relationship_structure:
+    "Similar relationships involving different people or organizations",
+  event_structure: "Similar events involving different people or organizations",
+  event_sequence: "Similar sequences of events",
+  tentative_identity: "Possible identity match — unconfirmed",
 };
 const selectionKey = (ids: string[], question: string) =>
   JSON.stringify([[...ids].sort(), question]);
@@ -65,6 +76,12 @@ function assertionLabel(
       : String(a.value.value);
   return `${a.predicate}: ${a.subjectEntityId ? `${entityName(context, a.subjectEntityId)} → ` : ""}${value}`;
 }
+function linkedFactLabel(context: CaseComparisonContext | null, id: string) {
+  const fact = context?.assertions.find((a) => a.assertionId === id);
+  return fact && context
+    ? assertionLabel(fact, context)
+    : "Previously linked fact (review history)";
+}
 function SourceLinks({ citations }: { citations: KnowledgeCitation[] }) {
   return (
     <ul className="space-y-2">
@@ -84,55 +101,88 @@ function SourceLinks({ citations }: { citations: KnowledgeCitation[] }) {
 function Scope({ context }: { context: CaseComparisonContext }) {
   return (
     <details className={box} open>
-      <summary>Compared scope and source independence</summary>
+      <summary>What was compared and how strong are the sources?</summary>
       <p>
         Compared: {caseNames(context, context.scope.comparedCaseIds)}.{" "}
-        {context.assertions.length} accepted assertions;{" "}
-        {context.scope.uniquePassageCount} unique passages;{" "}
-        {context.candidates.length} retrieval candidates.
+        {context.assertions.length} reviewed facts;{" "}
+        {context.scope.uniquePassageCount} distinct source passages.
       </p>
       <p>
-        {context.scope.unexaminedEligibleCaseIds.length} eligible cases remain
-        unexamined. Excluded material is not part of this view or its counts.
+        {context.scope.unexaminedEligibleCaseIds.length} other available cases
+        are not included. Records excluded from analysis are not used here or
+        included in these counts.
       </p>
-      {context.scope.coverageLimits.map((text, i) => (
-        <p key={i}>{text}</p>
-      ))}
-      <p className="text-xs">
-        Evidence and knowledge fingerprint: {context.fingerprint}
+      <p>
+        This comparison uses facts an investigator has reviewed and the passages
+        supporting them. It does not search every document in these cases.
+        Missing details or different descriptions of the same activity can hide
+        similarities. Check all compared cases for evidence that challenges a
+        possible pattern.
+      </p>
+      <p>
+        Several documents may repeat one original account. Repetition does not
+        provide independent confirmation or prove that separate events occurred.
+        An event date and a document’s publication date may differ; incomplete,
+        uncertain, or overlapping dates cannot reliably establish which came
+        first.
+      </p>
+      <p>
+        {context.candidates.length} possible similarities to examine. These are
+        starting points for analysis, not conclusions.
       </p>
       {context.candidates.map((c, i) => (
         <details key={i}>
           <summary>
-            {c.kind.replaceAll("_", " ")} · {caseNames(context, c.caseIds)}
+            {patternLabels[c.kind]} · {caseNames(context, c.caseIds)}
           </summary>
           <p>
-            {c.independentSourceCount} reviewed independent source groups;
-            source independence {c.sourceIndependence}. This is not a count of
-            independent events.
+            {c.independentSourceCount} source origins have been marked as
+            independent by an investigator. This does not count separate events.
+            {c.sourceIndependence === "uncertain" &&
+              " Some sources may come from the same original account; their independence has not been established."}
           </p>
           <p>
             Actors:{" "}
             {c.entityIds.map((id) => entityName(context, id)).join(", ")}
           </p>
-          {c.limitations.map((text, j) => (
-            <p key={j}>{text}</p>
-          ))}
+          <p>
+            Read the cited passages and consider differences and ordinary
+            explanations. Matching names, shared addresses, or copies of the
+            same document do not prove a connection.
+          </p>
         </details>
       ))}
       <details>
-        <summary>Passage lineage and duplicate groups</summary>
+        <summary>Source origins and repeated material</summary>
         {context.passages.map((p) => (
           <p key={p.index}>
             <a className="underline" href={evidenceHref(p.citation)}>
               Passage {p.index + 1}
             </a>{" "}
-            · {p.duplicateGroup} ·{" "}
-            {p.lineage
-              ? `${p.lineage.independence}; origin ${p.lineage.originId}`
-              : "Unknown lineage; independent corroboration unestablished"}
+            ·{" "}
+            {p.lineage?.independence === "independent"
+              ? "Marked as an independent source"
+              : p.lineage?.independence === "derived"
+                ? "Draws on another source; not independent confirmation"
+                : "Original source or independence not established"}
           </p>
         ))}
+      </details>
+      <details>
+        <summary>Technical comparison details</summary>
+        <p className="text-xs">Evidence version: {context.fingerprint}</p>
+        {context.scope.coverageLimits.map((text, i) => (
+          <p key={i}>{text}</p>
+        ))}
+        {context.passages.map((p) => (
+          <p key={p.index}>
+            Passage {p.index + 1} · {p.duplicateGroup} · origin{" "}
+            {p.lineage?.originId ?? "unknown"}
+          </p>
+        ))}
+        {context.candidates.flatMap((c, i) =>
+          c.limitations.map((text, j) => <p key={`${i}-${j}`}>{text}</p>),
+        )}
       </details>
     </details>
   );
@@ -350,7 +400,7 @@ export function InvestigationWorkspace() {
         investigation records. Recurrence does not establish coordination or
         causation.{" "}
         <a className="underline" href="#ontology">
-          Review and correct shared knowledge
+          Review people, organizations, and facts
         </a>
         .
       </p>
@@ -376,7 +426,7 @@ export function InvestigationWorkspace() {
                     );
                 }}
               />
-              All eligible cases (bounded to 12)
+              All available cases (up to 12)
             </label>
             {explicit && (
               <fieldset className="space-y-2" disabled={busy}>
@@ -472,8 +522,8 @@ export function InvestigationWorkspace() {
               </button>
             </div>
             <p>
-              Each run needs an exact preview, approval, and a separate run
-              action. Insufficient evidence may produce no findings.
+              Review what will be sent, approve it, then start the comparison.
+              The evidence may be too limited to identify a pattern.
             </p>
           </section>
           {workspace.context && <Scope context={workspace.context} />}
@@ -484,8 +534,8 @@ export function InvestigationWorkspace() {
               </h3>
               <p>
                 Destination: official Codex ChatGPT subscription · model{" "}
-                {currentPreview.manifest.destination.model}. One subscription
-                invocation; no automatic retry.
+                {currentPreview.manifest.destination.model}. One use of your
+                subscription; failed comparisons are not retried automatically.
               </p>
               <pre className="max-h-56 overflow-auto whitespace-pre-wrap text-xs">
                 {JSON.stringify(currentPreview.manifest.destination, null, 2)}
@@ -499,7 +549,9 @@ export function InvestigationWorkspace() {
               <pre className="max-h-60 overflow-auto whitespace-pre-wrap text-xs">
                 {currentPreview.manifest.systemPrompt}
               </pre>
-              <h4>Exact outgoing question, accepted knowledge, and passages</h4>
+              <h4>
+                Exact question, reviewed facts, and source passages to be sent
+              </h4>
               <pre className="max-h-96 overflow-auto whitespace-pre-wrap text-xs">
                 {currentPreview.manifest.inputText}
               </pre>
@@ -568,8 +620,15 @@ export function InvestigationWorkspace() {
                 key={j.invocationId}
               >
                 <span>
-                  {j.createdAt} · {j.state} {j.reason && `· ${j.reason}`}
+                  {j.createdAt} · {j.state.replaceAll("_", " ")}
                 </span>
+                <details>
+                  <summary>Run details</summary>
+                  <p>
+                    {j.invocationId}
+                    {j.reason && ` · ${j.reason}`}
+                  </p>
+                </details>
                 {j.state === "completed" ? (
                   <button
                     className={button}
@@ -585,7 +644,7 @@ export function InvestigationWorkspace() {
                       })
                     }
                   >
-                    Read comparison {j.invocationId}
+                    Read comparison
                   </button>
                 ) : (
                   ["queued", "awaiting_approval"].includes(j.state) && (
@@ -611,7 +670,7 @@ export function InvestigationWorkspace() {
                         })
                       }
                     >
-                      Review saved comparison {j.invocationId}
+                      Review saved comparison
                     </button>
                   )
                 )}
@@ -630,7 +689,7 @@ export function InvestigationWorkspace() {
                       })
                     }
                   >
-                    Cancel comparison {j.invocationId}
+                    Cancel comparison
                   </button>
                 )}
               </div>
@@ -639,13 +698,14 @@ export function InvestigationWorkspace() {
           {result && (
             <section className={box} aria-label="Cross-case analysis">
               <h3 className="font-semibold">
-                Cross-case analysis · tentative work product
+                What the cases may have in common
               </h3>
               {result.stale && (
                 <p role="alert">
-                  Stale: supporting knowledge or evidence changed. Select the
-                  examined cases and deliberately preview a scoped rerun before
-                  relying on this analysis.
+                  Evidence changed—review before relying on this comparison. A
+                  fact or source used here has changed since this was written.
+                  To update the analysis, select these cases and use “Find
+                  patterns across cases” to review and approve a new comparison.
                 </p>
               )}
               <p>Question: {result.question}</p>
@@ -665,17 +725,17 @@ export function InvestigationWorkspace() {
               )}
               {!resultSavable && (
                 <p>
-                  Saving provider prose requires a current result with no more
-                  than 100 dependency assertions and 256 citation aliases.
-                  Narrow the compared scope and deliberately rerun; nothing is
-                  silently omitted.
+                  This analysis cannot be saved as current. If its evidence has
+                  changed, run a new comparison first. Results that exceed 100
+                  linked facts or 256 source references require a smaller case
+                  selection; no supporting material is silently dropped.
                 </p>
               )}
               {result.output.findings.map((f, index) => (
                 <article className={box} key={index}>
                   <h4 className="font-semibold">{f.title}</h4>
                   <p>
-                    {f.kind.replaceAll("_", " ")} ·{" "}
+                    {patternLabels[f.kind]} ·{" "}
                     {caseNames(result.comparison, f.caseIds)}
                   </p>
                   <p>{f.explanation}</p>
@@ -688,12 +748,15 @@ export function InvestigationWorkspace() {
                   {(
                     [
                       ["Relevant differences", f.differences],
-                      ["Counterexamples", f.counterexamples],
                       [
-                        "Plausible ordinary explanations",
+                        "Evidence that challenges the pattern",
+                        f.counterexamples,
+                      ],
+                      [
+                        "What else could account for this?",
                         f.ordinaryExplanations,
                       ],
-                      ["Limitations", f.limitations],
+                      ["What the evidence cannot tell us", f.limitations],
                     ] as const
                   ).map(([label, values]) => (
                     <div key={label}>
@@ -726,7 +789,7 @@ export function InvestigationWorkspace() {
                           ...newRecord(
                             "pattern",
                             f.title,
-                            `${f.explanation}\n\nKind: ${f.kind}\nInvolved cases: ${caseNames(result.comparison, f.caseIds)}\n\nDifferences:\n${f.differences.join("\n")}\n\nCounterexamples:\n${f.counterexamples.join("\n")}\n\nOrdinary explanations:\n${f.ordinaryExplanations.join("\n")}\n\nLimitations:\n${f.limitations.join("\n")}\n\nRecurrence does not establish coordination or causation.`,
+                            `${f.explanation}\n\nPattern: ${patternLabels[f.kind]}\nInvolved cases: ${caseNames(result.comparison, f.caseIds)}\n\nDifferences:\n${f.differences.join("\n")}\n\nCounterexamples:\n${f.counterexamples.join("\n")}\n\nOrdinary explanations:\n${f.ordinaryExplanations.join("\n")}\n\nLimitations:\n${f.limitations.join("\n")}\n\nRecurrence does not establish coordination or causation.`,
                             result,
                           ),
                           status: "saved",
@@ -778,14 +841,14 @@ export function InvestigationWorkspace() {
               <section className={box} aria-label="Sourced timeline">
                 <h3 className="font-semibold">Sourced timeline</h3>
                 <p>
-                  Written occurrence time and publication time are distinct.
+                  When an event happened may differ from when it was reported.
                   Partial or uncertain dates do not establish an event order.
                 </p>
                 {!workspace.context.assertions.some(
                   (a) => a.kind === "occurrence",
                 ) && (
                   <p>
-                    Insufficient accepted evidence for a sourced event timeline.
+                    There is not enough reviewed evidence to build a timeline.
                   </p>
                 )}
                 {workspace.context.assertions
@@ -805,7 +868,7 @@ export function InvestigationWorkspace() {
               </section>
               <section className={box} aria-label="Search examined knowledge">
                 <label className="block">
-                  Search cases, actors, assertions, and local records
+                  Search cases, people, facts, and notes
                   <input
                     className={field}
                     value={query}
@@ -813,11 +876,9 @@ export function InvestigationWorkspace() {
                   />
                 </label>
                 <p>
-                  Search covers this bounded comparison and its visible local
-                  records.{" "}
+                  Search covers the cases and records shown here.{" "}
                   <a className="underline" href="#ontology">
-                    Open shared knowledge to inspect or correct identities and
-                    facts
+                    Review or correct a person, organization, or fact
                   </a>
                   .
                 </p>
@@ -844,17 +905,18 @@ export function InvestigationWorkspace() {
             </h3>
             {!workspace.context && (
               <p>
-                Saved local records are hidden while this scope is ineligible or
-                over its limits. Narrow the selection or repair its reviewed
-                knowledge and source authority.
+                Saved records cannot be shown for this selection. Select fewer
+                cases or check whether their facts and sources are available for
+                analysis.
               </p>
             )}
             <p>
-              Requests, correspondence, and responses are manually recorded. New
-              records retain the visible authoring scope’s source dependencies;
-              select fewer cases before drafting a narrower record. Drafting
-              never sends anything. These records and tentative identity links
-              do not become accepted facts.
+              Keep notes and record requests, correspondence, and responses
+              here. New entries link to the sources in the selected cases, so
+              changes to those sources will flag your writing for review. Select
+              fewer cases to write about a smaller set. Request drafts stay
+              local and send nothing. Saving an idea does not make it an
+              established fact.
             </p>
             <button
               className={button}
@@ -882,31 +944,32 @@ export function InvestigationWorkspace() {
                   </p>
                   {(record.stale || record.staleAssertionIds.length > 0) && (
                     <p role="alert">
-                      Stale supporting knowledge or evidence. Review corrections
-                      and deliberately rerun the saved scope.
+                      Evidence changed—review this record. A linked fact or
+                      source has changed. Check your notes; if this record uses
+                      a comparison, compare its cases again before relying on
+                      it.
                     </p>
                   )}
                   <p className="whitespace-pre-wrap">{record.body}</p>
                   <p>
-                    Supporting assertions:{" "}
+                    Supporting facts:{" "}
                     {record.supporting.map((id) => (
                       <a
                         key={id}
                         className="underline mr-2"
                         href={`#ontology/assertion/${encodeURIComponent(id)}`}
                       >
-                        {id}
+                        {linkedFactLabel(workspace.context, id)}
                       </a>
                     ))}
-                    {!record.supporting.length && "none"}. Contradicting
-                    assertions:{" "}
+                    {!record.supporting.length && "none"}. Contradicting facts:{" "}
                     {record.contradicting.map((id) => (
                       <a
                         key={id}
                         className="underline mr-2"
                         href={`#ontology/assertion/${encodeURIComponent(id)}`}
                       >
-                        {id}
+                        {linkedFactLabel(workspace.context, id)}
                       </a>
                     ))}
                     {!record.contradicting.length && "none"}.
@@ -962,11 +1025,11 @@ export function InvestigationWorkspace() {
                           setPreview(undefined);
                           setResult(undefined);
                           setNotice(
-                            "Saved scope selected. Review current knowledge, then preview and approve a deliberate rerun.",
+                            "The same cases are selected. Check their facts and sources, then preview and approve a new comparison.",
                           );
                         }}
                       >
-                        Select saved scope for rerun
+                        Compare these cases again
                       </button>
                     )}
                   </div>
@@ -1021,7 +1084,7 @@ function Assertion({
           className="underline"
           href={`#ontology/assertion/${encodeURIComponent(a.assertionId)}`}
         >
-          Inspect or correct this assertion
+          Review or correct this fact
         </a>
       </p>
       <p>
@@ -1053,7 +1116,7 @@ function Assertion({
       </p>
       {a.kind === "occurrence" && (
         <p>
-          Occurrence: {time(a.occurredTime)}. Publication:{" "}
+          Event date: {time(a.occurredTime)}. Document publication date:{" "}
           {time(a.publicationTime)}.
         </p>
       )}
@@ -1212,10 +1275,11 @@ function RecordEditor({
           {context
             ? caseNames(context, draft.caseIds)
             : draft.caseIds.join(", ")}
-          . Existing evidence dependencies are preserved in append-only history.
+          . Earlier versions and their source links are kept when you save
+          changes.
         </p>
         <details>
-          <summary>Supporting and contradicting knowledge</summary>
+          <summary>Facts that support or challenge this record</summary>
           {context?.assertions.map((a) => (
             <div className="my-2 flex flex-wrap gap-3" key={a.assertionId}>
               <label>
@@ -1272,9 +1336,8 @@ function RecordEditor({
         </p>
         {tooLarge && (
           <p role="alert">
-            A local record supports at most 100 linked assertions in total and
-            256 citations including linked assertion sources. Narrow the record
-            before saving.
+            A record can link to at most 100 facts and 256 source references,
+            including sources for linked facts. Narrow the record before saving.
           </p>
         )}
         <button className={button} disabled={tooLarge}>
