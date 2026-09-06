@@ -32,4 +32,3 @@ AssertionError: expected [] to have a length of 1 but got +0
       Tests  2 failed | 12 passed (14)
    Start at  15:10:56
    Duration  559ms (transform 213ms, setup 91ms, import 321ms, tests 44ms, environment 0ms)
-
