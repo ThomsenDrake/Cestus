@@ -1,3 +1,4 @@
+import { InvestigationWorkspace } from "./ontology/InvestigationWorkspace.js";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { buildCommandBoardViewModel, getSelectedCommandItem } from "./workspace/command-model.js";
 import {
@@ -89,6 +90,7 @@ implementedModuleIds.add("ingestion");
 implementedModuleIds.add("agents");
 implementedModuleIds.add("ontology");
 implementedModuleIds.add("evidence");
+implementedModuleIds.add("investigation");
 
 interface AppProps {
   readonly requestsAdapter?: RequestsWorkspaceAdapter;
@@ -107,6 +109,11 @@ function evidenceIdFromHash(): string | undefined {
   return /^#evidence\/(ev_[a-zA-Z0-9_-]+)(?:\/[^/]+(?:\/\d+)?)?$/.exec(window.location.hash)?.[1];
 }
 
+function moduleFromHash(): string {
+  const fragment = window.location.hash.slice(1);
+  return /^(?:ontology\/(?:entity|assertion)|investigation\/record)\/[A-Za-z0-9_-]+$/.test(fragment) ? fragment.split("/")[0]! : fragment;
+}
+
 export function App({
   requestsAdapter = httpRequestsAdapter,
   ingestionAdapter = httpIngestionWorkspaceAdapter,
@@ -117,7 +124,7 @@ export function App({
   now = systemNow
 }: AppProps = {}) {
   const [commandOpenedAt] = useState(() => now());
-  const [activeModuleId, setActiveModuleId] = useState(() => evidenceIdFromHash() === undefined ? "command" : "evidence");
+  const [activeModuleId, setActiveModuleId] = useState(() => evidenceIdFromHash() === undefined ? (implementedModuleIds.has(moduleFromHash()) ? moduleFromHash() : "command") : "evidence");
   const [activeFilter, setActiveFilter] = useState<QueueFilter>("all");
   const [selectedItemId, setSelectedItemId] = useState<string | undefined>();
   const [reviewedItemIds, setReviewedItemIds] = useState<readonly string[]>([]);
@@ -148,7 +155,11 @@ export function App({
   useEffect(() => {
     function followEvidenceCitation() {
       const evidenceId = evidenceIdFromHash();
-      if (evidenceId === undefined) return;
+      if (evidenceId === undefined) {
+        const module = moduleFromHash();
+        if (implementedModuleIds.has(module)) setActiveModuleId(module);
+        return;
+      }
       setInitialEvidenceId(evidenceId);
       setActiveModuleId("evidence");
     }
@@ -262,6 +273,7 @@ export function App({
   const evidenceActive = activeModuleId === "evidence";
   const agentActive = activeModuleId === "agents";
   const ontologyActive = activeModuleId === "ontology";
+  const investigationActive = activeModuleId === "investigation";
   const requestsRequired = commandActive || requestsActive;
   const ingestionRequired = commandActive || ingestionActive;
   const evidenceRequired = commandActive || evidenceActive;
@@ -794,6 +806,7 @@ export function App({
   );
   function handleModuleSelect(moduleId: string) {
     if (implementedModuleIds.has(moduleId)) {
+      if (window.location.hash !== `#${moduleId}`) window.history.pushState(null, "", `#${moduleId}`);
       setActiveModuleId(moduleId);
       if (moduleId === "agents") {
         setCommandAgentStatus(undefined);
@@ -915,6 +928,7 @@ export function App({
       setRequestBuilderOpen(false);
       setRequestDetailModalOpen(false);
       setPendingRequestBuilderOpen(true);
+      window.history.pushState(null, "", "#requests");
       setActiveModuleId("requests");
     }
   }
@@ -1225,7 +1239,7 @@ export function App({
   }
 
   const commandOrRequestsModeLabel = requestsActive ? "Requests" : "Command";
-  const modeLabel = ontologyActive
+  const modeLabel = investigationActive ? "Investigate" : ontologyActive
     ? "Ontology"
     : evidenceActive
       ? "Evidence"
@@ -1234,7 +1248,7 @@ export function App({
       : ingestionActive
         ? "Ingestion"
         : commandOrRequestsModeLabel;
-  const mainId = requestsActive
+  const mainId = investigationActive ? "investigation" : requestsActive
     ? "requests"
     : evidenceActive
       ? "evidence"
@@ -1245,7 +1259,7 @@ export function App({
         : agentActive
           ? "agents"
           : "command";
-  const main = requestsActive
+  const main = investigationActive ? <InvestigationWorkspace /> : requestsActive
     ? requestsMain
     : evidenceActive
       ? evidenceMain
@@ -1262,7 +1276,7 @@ export function App({
       savedViewId={requestsViewContext.savedViewId}
       viewMode={requestsViewContext.viewMode}
     />
-  ) : agentActive || ontologyActive || evidenceActive ? null : (
+  ) : investigationActive || agentActive || ontologyActive || evidenceActive ? null : (
     commandDecisionRail
   );
 
@@ -1276,8 +1290,8 @@ export function App({
           workspaceName="Cestus Local"
           modeLabel={modeLabel}
           mainId={mainId}
-          mainLabel={ontologyActive ? "Ontology workspace" : evidenceActive ? "Evidence workspace" : agentActive ? "Agent workspace" : ingestionActive ? "Ingestion workspace" : requestsActive ? "Requests workspace" : "Command workspace"}
-          onNewRequest={agentActive || ontologyActive || evidenceActive ? undefined : handleNewRequest}
+          mainLabel={investigationActive ? "Investigation workspace" : ontologyActive ? "Ontology workspace" : evidenceActive ? "Evidence workspace" : agentActive ? "Agent workspace" : ingestionActive ? "Ingestion workspace" : requestsActive ? "Requests workspace" : "Command workspace"}
+          onNewRequest={investigationActive || agentActive || ontologyActive || evidenceActive ? undefined : handleNewRequest}
           onModuleSelect={handleModuleSelect}
           main={main}
           decisionRail={decisionRail}

@@ -51,7 +51,7 @@ describe("App evidence citation routing", () => {
     setHash("#evidence/ev_ing_001/extraction_old/0");
     fireEvent.click(openIngestion);
     const read = await screen.findByRole("button", { name: "Read ev_ing_blocked" });
-    expect(window.location.hash).toBe("#evidence/ev_ing_001/extraction_old/0");
+    expect(window.location.hash).toBe("#ingestion");
     fireEvent.click(read);
     await expectCitedRecord();
     expect(window.location.hash).toBe("#evidence/ev_ing_blocked");
@@ -80,4 +80,11 @@ describe("App evidence citation routing", () => {
     act(() => { setHash("#evidence/ev_ing_blocked/extraction_saved/not-a-passage"); window.dispatchEvent(new HashChangeEvent("hashchange")); });
     expect(screen.getByRole("main", { name: "Command workspace" })).toBeInTheDocument();
   });
+});
+
+it("restores the investigation workspace bookmark and browser navigation", async () => {
+  setHash("#investigation"); mount();
+  expect(await screen.findByRole("main", {name: "Investigation workspace"})).toBeInTheDocument();
+  act(() => { setHash("#ontology"); window.dispatchEvent(new HashChangeEvent("hashchange")); });
+  expect(await screen.findByRole("main", {name: "Ontology workspace"})).toBeInTheDocument();
 });
