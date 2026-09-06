@@ -52,7 +52,22 @@ export const investigationVocabulary: z.infer<typeof vocabularySchema> = {
     ...["payment", "award", "appointment", "meeting", "ownership_change"].map(name => ({ name, kind: "occurrence" as const, valueType: "string" as const, fromTypes: [], toTypes: [] }))
   ]
 };
+export const investigationRecordSchema = z.object({
+  recordId: id, kind: z.enum(["note", "brief", "question", "pattern", "request", "correspondence", "response"]),
+  status: z.enum(["saved", "dismissed", "open"]), title: text, body: z.string().max(10000),
+  caseIds: z.array(id).min(1).max(12), supporting: z.array(id).max(100), contradicting: z.array(id).max(100),
+  citations: z.array(knowledgeCitationSchema).max(256), occurredOn: partialDate.optional(),
+  relatedRecordId: id.optional(), invocationId: id.optional(), scopeFingerprint: id.optional()
+}).strict();
+export type InvestigationRecord = z.infer<typeof investigationRecordSchema>;
 export const knowledgePayloadSchemas = {
+  "investigation.record.saved": investigationRecordSchema.extend({
+    workspaceId: id, decisionId: id,
+    dependencyCitations: z.array(knowledgeCitationSchema).max(256),
+    dependencyAssertionIds: z.array(id).max(100), dependencyRecordIds: z.array(id).max(24),
+    dependencyCaseIds: z.array(id).min(1).max(12),
+    dependencyAssertionFingerprints: z.array(z.object({assertionId: id, fingerprint: id}).strict()).max(100).default([])
+  }).strict(),
   "investigation.created": z.object({ caseId: id, title: text, question: text, scope: text, notes: z.string().max(10000) }).strict(),
   "investigation.selected": z.object({ caseId: id.nullable() }).strict(),
   "investigation.membership.changed": z.object({ caseId: id, targetKind: z.enum(["evidence", "knowledge", "entity"]), targetId: id, included: z.boolean() }).strict(),
