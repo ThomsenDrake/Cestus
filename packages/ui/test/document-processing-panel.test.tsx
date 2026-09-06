@@ -26,7 +26,7 @@ const manifest: DocumentProcessingManifest = {
 const preview = { invocationId: "inv_test", manifestHash: "sha256:manifest", manifest };
 const job = (state: DocumentProcessingJob["state"]): DocumentProcessingJob => ({ invocationId: "inv_test", manifestHash: preview.manifestHash, selection, state, createdAt: "2026-09-05T12:00:00Z" });
 
-function backend(options: { ready?: boolean; initialState?: DocumentProcessingJob["state"]; deferRun?: boolean; manifest?: DocumentProcessingManifest; output?: unknown } = {}) {
+function backend(options: { ready?: boolean; transport?: "codex-chatgpt"; initialState?: DocumentProcessingJob["state"]; deferRun?: boolean; manifest?: DocumentProcessingManifest; output?: unknown } = {}) {
   let jobs = options.initialState ? [job(options.initialState)] : [];
   let finishRun: (() => void) | undefined;
   const fetch = vi.fn(async (path: string, init?: RequestInit) => {
@@ -35,7 +35,7 @@ function backend(options: { ready?: boolean; initialState?: DocumentProcessingJo
     let value: unknown;
     if (path === "/api/ontology/knowledge") value = { revision: 9 };
     else if (path === "/api/ontology/import-provider") value = { ok: true };
-    else if (route === "/readiness") value = { ready: options.ready ?? true, message: options.ready === false ? "Provider missing. No fallback provider is selected." : "Provider configured. No request sent." };
+    else if (route === "/readiness") value = { ready: options.ready ?? true, transport: options.transport, destination: options.manifest?.destination, message: options.ready === false ? "Provider missing. No fallback provider is selected." : "Provider configured. No request sent." };
     else if (route === "/jobs") value = { jobs };
     else if (route === "/preview") {
       jobs = [job("awaiting_approval")];
@@ -163,4 +163,31 @@ describe("DocumentProcessingPanel", () => {
     expect(screen.getByRole("button", { name: "Import proposals for human review" })).toBeDisabled();
   });
 
+});
+
+it("discloses subscription usage and mandatory Codex instructions without fabricated dollar or token caps", async () => {
+  const { inputTokenUpperBound: _input, maxOutputTokens: _output, maximumEstimatedUsd: _estimate, budgetUsd: _budget, ...common } = manifest;
+  const subscription: DocumentProcessingManifest = { ...common, schemaVersion: "document-processing-manifest.v2", provider: "codex-chatgpt.v1", subscriptionInvocations: 1,
+    destination: { transport: "codex-chatgpt.v1", model: "gpt-6-astra", cliVersion: "0.153.4", modelCatalogHash: "sha256:catalog", binaryHash: "sha256:fixture", authentication: "chatgpt", usageBasis: "ChatGPT subscription; quota applies; no API USD estimate", maxInvocations: 1, mandatoryTools: [{ type: "namespace", name: "functions", tools: [{ name: "exec", description: "Execution is disabled in this qualified profile." }] }] } };
+  const api = backend({ manifest: subscription }); mount();
+  await screen.findByText("Provider configured. No request sent.");
+  expect(screen.queryByLabelText("Maximum budget (USD)")).not.toBeInTheDocument();
+  expect(screen.queryByLabelText("Maximum output tokens")).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("checkbox", { name: /Send passage 2/ }));
+  fireEvent.click(screen.getByRole("button", { name: "Preview exact transfer" }));
+  const approval = await screen.findByRole("region", { name: "Exact transfer approval" });
+  expect(approval).toHaveTextContent("gpt-6-astra");
+  expect(approval).toHaveTextContent("quota");
+  expect(approval).toHaveTextContent("Execution is disabled");
+  expect(approval).not.toHaveTextContent("USD cap");
+  expect(JSON.parse(api.mutations()[0]![1]!.body as string)).toEqual({ operation: "knowledge-extraction.v1", selection, subscriptionInvocations: 1 });
+  expect(api.mutations()).toHaveLength(1);
+});
+
+it("keeps subscription usage honest when readiness fails before a destination can be qualified", async () => {
+  backend({ ready: false, transport: "codex-chatgpt" }); mount();
+  await screen.findByText("Provider missing. No fallback provider is selected.");
+  expect(screen.queryByLabelText("Maximum budget (USD)")).not.toBeInTheDocument();
+  expect(screen.getByText(/One Codex turn per approval/)).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Preview exact transfer" })).toBeDisabled();
 });

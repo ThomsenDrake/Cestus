@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import { z } from "zod";
+import { CodexDocumentProvider } from "./codex-document-provider.js";
 import { OpenAICompatibleChatProvider } from "../../agent/src/openai-compatible-provider.js";
 import { ProviderInvocationError } from "../../agent/src/provider.js";
 import { SecretMaterial, StaticSecretStore } from "../../agent/src/secret-store.js";
@@ -25,11 +26,13 @@ export interface DocumentProcessingOptions {
   resolveSelection(selection: DocumentSelection, actor: ActorRef): Promise<ResolvedDocumentSelection>;
   env?: NodeJS.ProcessEnv;
   timeoutMs?: number;
+  subscriptionProvider?: Pick<CodexDocumentProvider, "prepare" | "invoke">;
 }
 const previewInputSchema = z.object({
   selection: documentSelectionSchema,
   operation: z.enum(["document-summary.v1", "knowledge-extraction.v1"]).optional(),
-  budgetUsd: z.number().finite().positive().max(100),
+  budgetUsd: z.number().finite().positive().max(100).optional(),
+  subscriptionInvocations: z.literal(1).optional(),
   maxOutputTokens: z.number().int().min(64).max(2048).optional(),
   retryOf: z.string().regex(/^inv_[a-zA-Z0-9_-]+$/).optional()
 }).strict();
@@ -40,16 +43,24 @@ const stream = (id: string) => `document_processing_${id}`;
 /** Bounded, explicit user-triggered processing. There is deliberately no scheduler or automatic retry. */
 export class DocumentProcessingService {
   private readonly env: NodeJS.ProcessEnv;
+  private readonly subscriptionProvider: Pick<CodexDocumentProvider, "prepare" | "invoke">;
   private readonly controllers = new Map<string, AbortController>();
   constructor(private readonly options: DocumentProcessingOptions) {
     this.env = options.env ?? process.env;
+    this.subscriptionProvider = options.subscriptionProvider ?? new CodexDocumentProvider({ env: this.env });
   }
 
-  readiness(): { ready: boolean; destination?: ProviderConfiguration; message: string } {
+  async readiness(): Promise<{ ready: boolean; transport?: "codex-chatgpt"; destination?: ProviderConfiguration; message: string }> {
+    const selected = this.env.CESTUS_DOCUMENT_PROVIDER_TRANSPORT === "codex-chatgpt" ? { transport: "codex-chatgpt" as const } : {};
     try {
-      return { ready: true, destination: this.configuration(), message: "Explicit provider and pricing configured. Each selection still requires human approval. Prices are operator supplied; verify them against your provider contract. No request has been sent." };
-    } catch {
-      return { ready: false, message: "Configure CESTUS_DOCUMENT_PROVIDER_ENDPOINT, CESTUS_DOCUMENT_PROVIDER_MODEL, CESTUS_DOCUMENT_PROVIDER_API_KEY, CESTUS_DOCUMENT_PROVIDER_INPUT_USD_PER_MILLION and CESTUS_DOCUMENT_PROVIDER_OUTPUT_USD_PER_MILLION. No fallback provider is selected." };
+      const destination = await this.configuration();
+      return { ...selected, ready: true, destination, message: "transport" in destination
+        ? "ChatGPT subscription via official Codex · gpt-6-astra. One approved Codex turn; subscription quotas apply. No API dollar estimate or billing fallback. Each selection still requires human approval."
+        : "Explicit provider and pricing configured. Each selection still requires human approval. Prices are operator supplied; verify them against your provider contract. No request has been sent." };
+    } catch (error) {
+      return { ...selected, ready: false, message: this.env.CESTUS_DOCUMENT_PROVIDER_TRANSPORT === "codex-chatgpt"
+        ? (error instanceof Error ? error.message : "Codex subscription unavailable. No API fallback.")
+        : "Configure the explicitly selected document provider. API processing requires endpoint, model, API key and prices. Subscription processing requires CESTUS_DOCUMENT_PROVIDER_TRANSPORT=codex-chatgpt and official Codex ChatGPT sign-in. No fallback provider is selected." };
     }
   }
 
@@ -62,7 +73,7 @@ export class DocumentProcessingService {
     }
     const selection = { ...parsed.selection, passageIndexes: [...parsed.selection.passageIndexes].sort((a, b) => a - b) };
     const resolved = await this.resolve(selection, actor);
-    const destination = this.configuration();
+    const destination = await this.configuration();
     const invocationId = `inv_${randomUUID().replaceAll("-", "")}`;
     const operation = parsed.operation ?? "document-summary.v1";
     const schemaSnapshot = operation === "knowledge-extraction.v1" ? await this.activeSchema() : undefined;
@@ -72,27 +83,34 @@ export class DocumentProcessingService {
       sourceHash: resolved.sourceHash, extractionHash: resolved.extractionHash,
       ...(resolved.pdfCoverage ? { pdfCoverage: resolved.pdfCoverage } : {}), passages: resolved.passages });
     const inputBytes = Buffer.byteLength(inputText) + Buffer.byteLength(systemPrompt);
-    // One token per UTF-8 byte plus a generous envelope allowance is conservative for the supported chat text path.
-    const inputTokenUpperBound = inputBytes + 512;
-    const maxOutputTokens = parsed.maxOutputTokens ?? (schemaSnapshot ? 2048 : 512);
-    const maximumEstimatedUsd = (inputTokenUpperBound * destination.inputUsdPerMillion + maxOutputTokens * destination.outputUsdPerMillion) / 1_000_000;
-    if (maximumEstimatedUsd > parsed.budgetUsd) throw new Error("Selection exceeds the approved monetary cap. Reduce the selection or raise the explicit budget.");
-    const manifest: DocumentProcessingManifest = {
-      schemaVersion: "document-processing-manifest.v1", invocationId, actorId: actor.id, selection,
-      resolved, destination, operation, provider: "openai-compatible-chat.v1",
+    const common = {
+      invocationId, actorId: actor.id, selection, resolved, operation,
       ...(schemaSnapshot ? { workspaceId: this.options.workspaceId!, schemaSnapshot, promptVersion: "knowledge-extraction-prompt.v2" as const } : {}),
-      inputText, systemPrompt, inputBytes, inputTokenUpperBound, maxOutputTokens,
-      maxResponseBytes: 65536, maximumEstimatedUsd, budgetUsd: parsed.budgetUsd,
-      timeoutMs: this.options.timeoutMs ?? 30000,
+      inputText, systemPrompt, inputBytes, maxResponseBytes: 65536,
+      timeoutMs: this.options.timeoutMs ?? ("transport" in destination ? 120000 : 30000),
       ...(parsed.retryOf === undefined ? {} : { retryOf: parsed.retryOf })
     };
+    let manifest: DocumentProcessingManifest;
+    if ("transport" in destination) {
+      if (parsed.subscriptionInvocations !== 1 || parsed.budgetUsd !== undefined || parsed.maxOutputTokens !== undefined)
+        throw new Error("Subscription approval requires exactly one Codex turn, without API pricing or a fabricated output-token cap.");
+      manifest = { ...common, schemaVersion: "document-processing-manifest.v2", provider: "codex-chatgpt.v1", destination, subscriptionInvocations: 1 };
+    } else {
+      if (parsed.budgetUsd === undefined || parsed.subscriptionInvocations !== undefined) throw new Error("API processing requires an explicit monetary cap.");
+      // Conservative bound for the existing chat text path only, not the subscription harness.
+      const inputTokenUpperBound = inputBytes + 512;
+      const maxOutputTokens = parsed.maxOutputTokens ?? (schemaSnapshot ? 2048 : 512);
+      const maximumEstimatedUsd = (inputTokenUpperBound * destination.inputUsdPerMillion + maxOutputTokens * destination.outputUsdPerMillion) / 1_000_000;
+      if (maximumEstimatedUsd > parsed.budgetUsd) throw new Error("Selection exceeds the approved monetary cap. Reduce the selection or raise the explicit budget.");
+      manifest = { ...common, schemaVersion: "document-processing-manifest.v1", provider: "openai-compatible-chat.v1", destination, inputTokenUpperBound, maxOutputTokens, maximumEstimatedUsd, budgetUsd: parsed.budgetUsd };
+    }
     const stored = await this.options.derivativeStore.put(Buffer.from(JSON.stringify(manifest)));
     await this.append(invocationId, "document.processing.previewed", {
       invocationId, selection, manifestHash: stored.contentHash,
       ...(parsed.retryOf === undefined ? {} : { retryOf: parsed.retryOf })
     }, actor, 1);
     return { invocationId, manifestHash: stored.contentHash, manifest,
-      warning: parsed.retryOf === undefined ? undefined : "This is a new potentially billable invocation. The prior attempt may already have completed at the provider." };
+      warning: parsed.retryOf === undefined ? undefined : manifest.provider === "codex-chatgpt.v1" ? "This is a new invocation that can consume subscription quota. The prior attempt may already have completed at the provider." : "This is a new potentially billable invocation. The prior attempt may already have completed at the provider." };
   }
 
   async approve(input: { manifestHash: string }, actor: ActorRef): Promise<DocumentProcessingJob> {
@@ -124,26 +142,33 @@ export class DocumentProcessingService {
     let received = false;
     const timer = setTimeout(() => controller.abort(), manifest.timeoutMs);
     try {
-      const credentialRefId = "agent_credref_document_processing";
-      const provider = new OpenAICompatibleChatProvider({
-        providerId: "provider_document_processing", label: "Document processing", endpointUrl: manifest.destination.endpoint,
-        modelId: manifest.destination.model, credentialRefId,
-        secretStore: new StaticSecretStore({ [credentialRefId]: SecretMaterial.fromRuntimeValue(this.env.CESTUS_DOCUMENT_PROVIDER_API_KEY!) }),
-        systemPrompt: manifest.systemPrompt, maxTokens: manifest.maxOutputTokens, maxResponseBytes: manifest.maxResponseBytes, requireUsage: true, temperature: 0
-      });
-      const result = await abortable(provider.invoke({
-        invocationId, runId: `run_${invocationId.slice(4)}`, modelFamily: manifest.destination.model,
-        inputArtifactHash: hash(manifest.inputText), inputText: manifest.inputText,
-        credentialRef: { credentialRefId, providerId: "provider_document_processing", kind: "api-key-bearer" },
-        signal: controller.signal,
-        beforeTransfer: async () => {
-          await this.revalidate(manifest, actor);
-          const current = await this.rawJob(invocationId, actor);
-          if (current.state !== "running") throw new Error("Invocation is no longer authorized to run.");
-          controller.signal.throwIfAborted();
-          submitted = true;
-        }
-      }), controller.signal);
+      const beforeTransfer = async () => {
+        await this.revalidate(manifest, actor);
+        const current = await this.rawJob(invocationId, actor);
+        if (current.state !== "running") throw new Error("Invocation is no longer authorized to run.");
+        controller.signal.throwIfAborted();
+        submitted = true;
+      };
+      let result: { outputText: string; usage: { inputUnits: number; outputUnits: number } };
+      if (manifest.provider === "codex-chatgpt.v1") {
+        const subscription = await abortable(this.subscriptionProvider.invoke({ snapshot: manifest.destination, systemPrompt: manifest.systemPrompt,
+          inputText: manifest.inputText, signal: controller.signal, beforeTransfer, maxResponseBytes: manifest.maxResponseBytes }), controller.signal);
+        received = true;
+        if (subscription.model !== "gpt-6-astra") throw new Error("Requested subscription model was not used.");
+        result = subscription;
+      } else {
+        const credentialRefId = "agent_credref_document_processing";
+        const provider = new OpenAICompatibleChatProvider({
+          providerId: "provider_document_processing", label: "Document processing", endpointUrl: manifest.destination.endpoint,
+          modelId: manifest.destination.model, credentialRefId,
+          secretStore: new StaticSecretStore({ [credentialRefId]: SecretMaterial.fromRuntimeValue(this.env.CESTUS_DOCUMENT_PROVIDER_API_KEY!) }),
+          systemPrompt: manifest.systemPrompt, maxTokens: manifest.maxOutputTokens, maxResponseBytes: manifest.maxResponseBytes, requireUsage: true, temperature: 0
+        });
+        result = await abortable(provider.invoke({ invocationId, runId: `run_${invocationId.slice(4)}`, modelFamily: manifest.destination.model,
+          inputArtifactHash: hash(manifest.inputText), inputText: manifest.inputText,
+          credentialRef: { credentialRefId, providerId: "provider_document_processing", kind: "api-key-bearer" },
+          signal: controller.signal, beforeTransfer }), controller.signal);
+      }
       received = true;
       controller.signal.throwIfAborted();
       const rawOutput = JSON.parse(result.outputText) as unknown;
@@ -152,8 +177,9 @@ export class DocumentProcessingService {
         ? { proposals: resolveKnowledgeOutput(rawOutput, manifest, providerOutputHash) }
         : documentSummaryOutputSchema.parse(rawOutput);
       if ("citations" in output) for (const citation of output.citations) selectedPassage(manifest, citation);
-      if (result.usage.inputUnits > manifest.inputTokenUpperBound || result.usage.outputUnits > manifest.maxOutputTokens ||
-        (result.usage.inputUnits * manifest.destination.inputUsdPerMillion + result.usage.outputUnits * manifest.destination.outputUsdPerMillion) / 1_000_000 > manifest.budgetUsd) {
+      if (Buffer.byteLength(result.outputText) > manifest.maxResponseBytes || ![result.usage.inputUnits, result.usage.outputUnits].every(n => Number.isSafeInteger(n) && n >= 0)) throw new Error("Output exceeds the approved limits or lacks valid usage.");
+      if (manifest.provider === "openai-compatible-chat.v1" && (result.usage.inputUnits > manifest.inputTokenUpperBound || result.usage.outputUnits > manifest.maxOutputTokens ||
+        (result.usage.inputUnits * manifest.destination.inputUsdPerMillion + result.usage.outputUnits * manifest.destination.outputUsdPerMillion) / 1_000_000 > manifest.budgetUsd)) {
         throw new Error("Output exceeds the approved limits.");
       }
       // Revalidate before publishing a derivative as well: revocation during a request must stay fail-closed.
@@ -252,7 +278,7 @@ export class DocumentProcessingService {
   }
   private async revalidate(manifest: DocumentProcessingManifest, actor: ActorRef) {
     this.assertHuman(actor);
-    if (manifest.actorId !== actor.id || JSON.stringify(this.configuration()) !== JSON.stringify(manifest.destination) ||
+    if (manifest.actorId !== actor.id || JSON.stringify(await this.configuration()) !== JSON.stringify(manifest.destination) ||
       JSON.stringify(await this.resolve(manifest.selection, actor)) !== JSON.stringify(manifest.resolved)) {
       throw new Error("Content, classification, policy, authority or destination changed. Create and approve a new preview.");
     }
@@ -260,7 +286,10 @@ export class DocumentProcessingService {
       throw new Error("Reviewed vocabulary schema changed. Create and approve a new preview.");
     }
   }
-  private configuration(): ProviderConfiguration {
+  private async configuration(): Promise<ProviderConfiguration> {
+    const transport = this.env.CESTUS_DOCUMENT_PROVIDER_TRANSPORT;
+    if (transport === "codex-chatgpt") return this.subscriptionProvider.prepare();
+    if (transport !== undefined && transport !== "openai-compatible-chat") throw new Error("Unsupported document provider transport. No fallback is permitted.");
     const endpoint = this.env.CESTUS_DOCUMENT_PROVIDER_ENDPOINT;
     const model = this.env.CESTUS_DOCUMENT_PROVIDER_MODEL;
     const key = this.env.CESTUS_DOCUMENT_PROVIDER_API_KEY;
