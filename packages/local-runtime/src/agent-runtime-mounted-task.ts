@@ -1,3 +1,5 @@
+import { assertAgentSecretSafeText } from "../../agent/src/secret-safety.js";
+import { acceptedKnowledgeSource } from "../../ontology/src/accepted-knowledge-source.js";
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -4587,6 +4589,14 @@ function acceptedGraphAssertionRows(
   for (const assertion of projection.assertions.values()) {
     const binding = evidenceById.get(assertion.evidenceId);
     if (binding === undefined || assertion.acceptedByEventId === undefined) continue;
+    const rich = acceptedKnowledgeSource(projection, events, assertion.assertionId);
+    if (rich) {
+      if (rich.evidence.some(ref => !evidenceById.has(ref.evidenceId))) continue;
+      const { evidence: _citations, ...rowMaterial } = rich;
+      assertAgentSecretSafeText(rowMaterial.safeStatement, "Accepted knowledge statement");
+      rows.push(Object.freeze({ ...rowMaterial, rowHash: hashBytes(Buffer.from(serializeContextPackPayload(rowMaterial))) }));
+      continue;
+    }
     const proposed = events.find((event): event is KnowledgeEventOf<"assertion.proposed"> =>
       event.id === assertion.proposedByEventId && event.type === "assertion.proposed");
     const accepted = events.find((event): event is KnowledgeEventOf<"assertion.accepted"> =>

@@ -9,6 +9,8 @@ export interface OntologyAssertionDto {
   readonly subjectRef?: string;
   readonly predicate: string;
   readonly confidence: number;
+  readonly object?: string | number | boolean | null;
+  readonly citationScope?: "whole-document" | "passage";
   readonly evidenceId: string;
   readonly eventIds: readonly string[];
   readonly packVersions: readonly OntologyPackVersionDto[];

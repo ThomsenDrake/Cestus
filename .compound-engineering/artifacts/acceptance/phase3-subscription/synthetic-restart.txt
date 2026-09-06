@@ -1,0 +1,165 @@
+- document:
+  - region "Local workspace status" [ref=e1]:
+    - status: Backend running · Workspace ready
+    - button "Refresh workspace status" [ref=e2]
+    - paragraph: Synthetic subscription trial · Synthetic investigator
+    - paragraph: "Storage: /tmp/cestus-phase3-subscription.3sqnKQ/workspace"
+  - navigation "Cestus tactical modules" [ref=e3]:
+    - link "Cestus home" [ref=e4]:
+      - /url: /
+      - text: CESTUS
+    - text: NEO
+    - list:
+      - listitem:
+        - link "Command" [ref=e5]:
+          - /url: "#command"
+          - text: COMMAND
+      - listitem:
+        - link "Requests" [ref=e6]:
+          - /url: "#requests"
+          - text: REQUESTS
+      - listitem:
+        - link "Evidence" [ref=e7]:
+          - /url: "#evidence"
+          - text: EVIDENCE
+      - listitem:
+        - link "Ontology" [ref=e8]:
+          - /url: "#ontology"
+          - text: ONTOLOGY
+      - listitem:
+        - link "Agent" [ref=e9]:
+          - /url: "#agents"
+          - text: AGENT
+      - listitem:
+        - link "Ingestion" [ref=e10]:
+          - /url: "#ingestion"
+          - text: INGESTION
+  - banner "Cestus command band":
+    - link "Cestus home" [ref=e11] [nth=1]:
+      - /url: /
+      - text: CESTUS
+    - paragraph: ONTOLOGY
+    - paragraph: Cestus Local
+  - main "Ontology workspace" [ref=e12]:
+    - region "Shared ontology" [ref=e13]:
+      - heading "Shared investigation knowledge" [ref=e14] [level=2]
+      - button "Refresh shared ontology" [ref=e15]
+      - text: Revision 27
+      - paragraph: Cases share workspace identities and evidence. Proposals require human review. Manual curation works without an external provider.
+      - group:
+        - region "Investigations" [ref=e16]:
+          - text: Current investigation
+          - combobox "Current investigation" [ref=e17]:
+            - option "All cases · workspace view" [ref=e18] [selected]
+          - group: Create an investigation
+        - region "Reviewed vocabulary" [ref=e19]:
+          - heading "Reviewed vocabulary · investigation.v1" [ref=e20] [level=3]
+          - paragraph: Add one necessary term after inspecting its meaning and constraints. Existing definitions cannot change. Adding a term never accepts knowledge.
+          - group: Add a vocabulary term
+        - region "Manual knowledge proposal" [ref=e21]:
+          - heading "Propose knowledge from a source" [ref=e22] [level=3]
+          - paragraph: Create entities first, then reference their source mentions in facts, relationships and occurrences. Review can keep a new entity distinct or explicitly bind it to a verified existing identity.
+          - text: Supporting source
+          - combobox "Supporting source" [ref=e23]:
+            - option "Choose an imported source" [ref=e24] [selected]
+            - option "register.txt" [ref=e25]
+          - paragraph: 0 supporting passages selected. Add several sources when they support this same value.
+          - form "Propose knowledge":
+            - text: Knowledge kind
+            - combobox "Knowledge kind" [ref=e26]:
+              - option "Entity mention" [ref=e27] [selected]
+              - option "Typed fact" [ref=e28]
+              - option "Relationship" [ref=e29]
+              - option "Real-world occurrence" [ref=e30]
+            - text: Predicate
+            - combobox "Predicate" [ref=e31]: name
+            - paragraph: "Proposal schema: investigation.v1. Unfamiliar terms can be proposed but require a reviewed vocabulary addition and an explicit new proposal before acceptance."
+            - text: Entity type
+            - combobox "Entity type" [ref=e32]: person
+            - text: Proposed value
+            - textbox "Proposed value" [ref=e33]:
+              - /placeholder: Value supported by selected quotations
+            - button "Save unreviewed proposal" [ref=e34] [disabled]
+        - region "Entity search and dossiers" [ref=e35]:
+          - heading "Entities across investigations" [ref=e36] [level=3]
+          - text: Search entities
+          - textbox "Search entities" [ref=e37]:
+            - /placeholder: Name, identifier, or address
+          - button "Show all knowledge" [ref=e38]
+          - button "Harbor Circle · organization" [ref=e39]
+          - button "Harbor Circle · organization" [ref=e40] [nth=1]
+        - region "Knowledge review" [ref=e41]:
+          - heading "Proposals and current knowledge" [ref=e42] [level=3]
+          - paragraph: Values are shown beside their source quotations. A model score is not a probability of truth. Unknown vocabulary remains proposed. Approve a necessary vocabulary addition, then explicitly revise the proposal under that schema before acceptance.
+          - text: Decision rationale
+          - textbox "Decision rationale" [ref=e43]:
+            - /placeholder: Explain your review or correction
+          - button "Accept selected proposals (0)" [ref=e44] [disabled]
+          - button "Reject selected proposals" [ref=e45] [disabled]
+          - article "Proposal as_fd8c286f238b45afa845e47895594ced" [ref=e46]:
+            - strong: "entity · name: Harbor Circle"
+            - text: accepted
+            - paragraph: "Entity type: organization · · manual"
+            - blockquote:
+              - paragraph: Synthetic cooperative register. Harbor Circle is a cooperative. Harbor Circle was registered on September 5, 2026. Harbor Circle held a meeting on September 5, 2026. Published September 2026.
+              - link "Open source passage · block 1, characters 0–191" [ref=e47]:
+                - /url: "#evidence/ev_ing_29b4e5647919f05a2bbc6730ba3d039bd4450c6f17958f4bc83e9f8ab082c2ae/parse_imp_059f3a6e-b01a-47f5-a093-df6d1c491962_extraction_v2_f379cc944394382ed39e9c688f4ccd4eade14af84068cce7666467b08092741c/0"
+            - paragraph: "Cases: No case membership"
+            - button "Sources and history as_fd8c286f238b45afa845e47895594ced" [ref=e48]
+            - button "Edit as new proposal" [ref=e49]
+            - button "Withdraw" [ref=e50] [disabled]
+            - button "Preserve dispute" [ref=e51] [disabled]
+          - article "Proposal as_c141a3a64a044cef8babdbb7d345aad3_0" [ref=e52]:
+            - strong: "entity · name: Harbor Circle"
+            - text: accepted
+            - paragraph: "Entity type: organization · · provider"
+            - blockquote:
+              - paragraph: Synthetic cooperative register. Harbor Circle is a cooperative. Harbor Circle was registered on September 5, 2026. Harbor Circle held a meeting on September 5, 2026. Published September 2026.
+              - link "Open source passage · block 1, characters 0–191" [ref=e53] [nth=1]:
+                - /url: "#evidence/ev_ing_29b4e5647919f05a2bbc6730ba3d039bd4450c6f17958f4bc83e9f8ab082c2ae/parse_imp_059f3a6e-b01a-47f5-a093-df6d1c491962_extraction_v2_f379cc944394382ed39e9c688f4ccd4eade14af84068cce7666467b08092741c/0"
+            - paragraph: "Cases: No case membership"
+            - button "Sources and history as_c141a3a64a044cef8babdbb7d345aad3_0" [ref=e54]
+            - button "Edit as new proposal" [ref=e55] [nth=1]
+            - button "Withdraw" [ref=e56] [nth=1] [disabled]
+            - button "Preserve dispute" [ref=e57] [nth=1] [disabled]
+        - region "Relationships and occurrences" [ref=e58]:
+          - heading "Relationships" [ref=e59] [level=3]
+          - text: Relationship filter
+          - combobox "Relationship filter" [ref=e60]:
+            - option "All relationship types" [ref=e61] [selected]
+            - option "paid" [ref=e62]
+            - option "awarded" [ref=e63]
+            - option "employed_by" [ref=e64]
+            - option "owns" [ref=e65]
+            - option "associated_with" [ref=e66]
+          - table:
+            - rowgroup:
+              - row "Subject Relationship Object Review":
+                - columnheader "Subject" [ref=e67]
+                - columnheader "Relationship" [ref=e68]
+                - columnheader "Object" [ref=e69]
+                - columnheader "Review" [ref=e70]
+            - rowgroup
+          - heading "Real-world occurrences" [ref=e71] [level=3]
+          - paragraph: Occurrence dates below are separate from publication, discovery and ingestion dates. Multiple assertions may describe the same occurrence. Identity across sources remains unresolved until you review and select a shared occurrence identity. These groups are not independent event totals.
+        - region "Source independence review" [ref=e72]:
+          - heading "Source lineage and independence" [ref=e73] [level=3]
+          - paragraph: Copies and reports quoting the same origin are not independent corroboration. Leave independence unknown unless you have reviewed the origin.
+          - text: Source to review
+          - combobox "Source to review" [ref=e74]:
+            - option "Choose a source" [ref=e75] [selected]
+            - option "register.txt" [ref=e76] [nth=1]
+          - paragraph: "Current: unknown · Origin unresolved"
+          - text: Independence decision
+          - combobox "Independence decision" [ref=e77]:
+            - option "Unknown" [ref=e78] [selected]
+            - option "Reviewed independent origin" [ref=e79]
+            - option "Derived from another source" [ref=e80]
+          - text: Shared origin
+          - combobox "Shared origin" [ref=e81]:
+            - option "This source is its own origin" [ref=e82] [selected]
+            - option "register.txt" [ref=e83] [nth=2]
+          - text: Source independence rationale
+          - textbox "Source independence rationale" [ref=e84]
+          - button "Record source lineage" [ref=e85] [disabled]
+    - group: Legacy provenance

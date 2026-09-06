@@ -1,0 +1,77 @@
+{
+  "status": "complete",
+  "verdict": "Ready to merge",
+  "verdict_scope": "Source review only. No merge is authorized. Parent final verification and built browser evidence remain delivery gates; full Phase 3 real-record/live-provider acceptance is pending.",
+  "scope": {
+    "base": "da9d23c2",
+    "branch": "codex/phase3-shared-ontology",
+    "head_sha": "da9d23c2318e464db5bc5b333c9a31c4abdae594",
+    "pr_url": null,
+    "files_changed": 10,
+    "files_sha256": {
+      "packages/local-runtime/src/document-processing-http-routes.ts": "be6b370cfc29513416462273e3f2faa20a18e06e791fcf18da1a6209bbfd3199",
+      "packages/local-runtime/src/document-processing.ts": "869e753751f0fb160c81447d43defe4f7433596ecb54f4efa0e25dab7d79df15",
+      "packages/local-runtime/test/document-processing.test.ts": "a07d443c19548f085e53a883279fc759e3a9f6ab16ebbd63d3ae6b706c19cbd3",
+      "packages/ontology/src/document-processing-contracts.ts": "3cae06efc5f1dc0aa329b9df59c224244b162ac2abe5e8582273d6e91236ddb6",
+      "packages/ui/src/evidence/DocumentProcessingPanel.tsx": "b610c3debb49f7eff1e0838ff4135dd218fbff78cb4892f402d9bd5da537672d",
+      "packages/ui/test/document-processing-panel.test.tsx": "4bbab6f495391fb7db93d48071812b7d33974ef0921144d2575d62b92e2e4ce5",
+      "packages/local-runtime/src/codex-document-provider.ts": "c282fd8341db007d85fef71821b6fdd42cc26f592be5ac27d88df70cf8e33539",
+      "packages/local-runtime/test/codex-document-provider.test.ts": "a7a57d5259637a93393da6507aea04cf60ff4842845ae8fea2835238d1b0c638",
+      "packages/local-runtime/test/fixtures/codex-document-fake.mjs": "df220f30d862d4f8bbf3c807a826fd250224f42f1de34bd53f336314fa47536d",
+      "packages/local-runtime/test/fixtures/codex-document-tools.json": "3700c01eb1eb316280c6ba44b957440209364c838550071968a62880bc278454"
+    }
+  },
+  "intent": "Add a narrow official Codex ChatGPT subscription analysis path using exactly gpt-6-astra. Preserve exact approved source/schema disclosure, isolation, human-reviewed proposals, v1 compatibility, bounded quota use, cancellation and restart.",
+  "intent_confidence": "explicit",
+  "reviewers": [
+    "correctness",
+    "security",
+    "adversarial",
+    "api-contract",
+    "testing",
+    "reliability",
+    "maintainability",
+    "project-standards",
+    "agent-native"
+  ],
+  "findings": [],
+  "actionable_findings": [],
+  "triage_groups": [],
+  "pre_existing_findings": [],
+  "requirements_completeness": {
+    "local_adapter": "met in inspected source",
+    "auth_and_model_metadata": "actual metadata-only preflight succeeded; no inference",
+    "exact_disclosure_and_isolation": "unchanged official catalog, binary and wrapper definitions pinned; official anonymous loopback qualification and runtime checks",
+    "legacy_record_import_and_live_review": "pending selected folder and actual authorized product invocation; not established by synthetic fixtures"
+  },
+  "learnings": [],
+  "agent_native_gaps": [],
+  "deployment_notes": [],
+  "residual_risks": [
+    "Official live-turn notification order, usage accounting, and disposable authentication refresh lifecycle remain unverified by a live inference.",
+    "CLI 0.153.4, unchanged official model catalog and protocol shape are deliberate qualified dependencies. Future upgrades require renewed qualification."
+  ],
+  "testing_gaps": [
+    "Optional: reopen and consume exact pre-change persisted v1 manifest bytes; current API tests produce v1 artifacts with upgraded code.",
+    "Optional: combined delayed subscription service cancellation, durable terminal state and restart regression; separate provider abort and durable-job layers are covered."
+  ],
+  "coverage": {
+    "standards": "Root AGENTS.md and CLAUDE.md fallback; SECURITY.md invariants. No narrower standards.",
+    "scope_signals": "Helper: 289 tracked executable changed lines, not lite; explicit new transport and tests also included by user scope.",
+    "dispatch": "Bounded serial groups: correctness; security/adversarial; API-contract/testing/reliability/maintainability/standards/agent-native. Same-context passes do not count as independent agreement. Every successful reviewer return collected.",
+    "cross_model": "Not run: repository config off and explicit user prohibition. Local adversarial pass completed.",
+    "mechanics": {
+      "malformed_returns": 0,
+      "malformed_findings": 0,
+      "suppressed_findings": 0,
+      "primary_findings": 0
+    },
+    "validators": "No surviving findings; no validator batch selected or shortcut used.",
+    "verification": "Observed integration/UI log: 67 passed. Transport owner: 23 targeted tests and scoped strict TypeScript passed. Actual metadata-only prepare succeeds. Parent owns final npm run verify and built UI/restart evidence; neither is claimed complete here.",
+    "settled_source_followup": "Orchestrator reread settled catalog pin/profile/invocation and authority/manifest seams after transport owner completion; no new defect.",
+    "artifacts": "Intermediate persona JSON and duplicate diff consolidated into this focused receipt at parent request; no review source edits."
+  },
+  "artifact_path": "/home/drake/Projects/Cestus/.compound-engineering/artifacts/acceptance/phase3-subscription/review",
+  "run_id": "20260906-subscription-final-review",
+  "completed_at": "2026-09-06T19:00:20.628597+00:00"
+}

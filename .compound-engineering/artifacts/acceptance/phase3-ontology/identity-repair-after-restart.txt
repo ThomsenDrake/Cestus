@@ -1,0 +1,46 @@
+name: Alex Vale
+
+as_56b4475c90d540d8802d86c9b86595e5 · Schema investigation.v1 · Proposal evt_fca5971ce01e429eb28faa5119887c92
+
+Synthetic case C. Alex Vale, identifier AV-909, met Cedar Council in 2024. This is a different person from AV-101.
+
+Open source passage · block 1, characters 0–114
+
+Origin: manual
+
+2026-09-05T19:33:12.432Z · operator_10d64f22-f99d-4c08-94dd-162becb66d3d · Binding unbound → ent_56b4475c90d540d8802d86c9b86595e5: AV-909 differs from AV-101; preserve distinct same-name actor.
+2026-09-05T19:33:50.798Z · operator_10d64f22-f99d-4c08-94dd-162becb66d3d · Binding ent_56b4475c90d540d8802d86c9b86595e5 → ent_8e4af6a974aa4045b44f5fc610e43b6e: Deliberately reproduce a wrong cross-case binding in this disposable acceptance trial.
+2026-09-05T19:33:53.748Z · operator_10d64f22-f99d-4c08-94dd-162becb66d3d · Binding ent_8e4af6a974aa4045b44f5fc610e43b6e → ent_070d62647a7c47e0aa99b5cc244e7015: Repair: council actor AV-909 is not recipient AV-101.
+2026-09-05T19:33:12.432Z · operator_10d64f22-f99d-4c08-94dd-162becb66d3d · accept: AV-909 differs from AV-101; preserve distinct same-name actor.
+Knowledge membership in Synthetic award case
+Knowledge membership in Synthetic payment case
+Knowledge membership in Synthetic namesake case
+Knowledge membership in Synthetic entity-only case
+Correction replacement
+Choose a replacement (proposals accepted atomically)
+name: Harbor Agency · as_980355ede7414881935834946383eef4
+identifier: AV-101 · as_74f4b682e1564228a705e32b942515c4
+awarded: Alex · as_c364256aa798439094e094e3f0f1c512
+award: award · as_802c2dc55f2b4e55b37cb8c862c81541
+name: Alex Vale · as_bf0eb75e9e66498b88f5f22a48a99bd3
+identifier: AV-909 · as_cb9e6bfcd4724bef859419b85e99a45b
+identifier: AV-101 · as_cae24296667f440c9ce6a92e5d393642
+name: Alex Vale · as_2fe3d262cc294bb1beb5f90404bc318c_0
+amount: 1200 · as_2fe3d262cc294bb1beb5f90404bc318c_1
+date: 2025-03 · as_2fe3d262cc294bb1beb5f90404bc318c_2
+name: Robin Vale · as_9bf0bab7322545599f8bc6ece15c0d53_0
+amount: 2400 · as_9bf0bab7322545599f8bc6ece15c0d53_1
+date: 2026-07 · as_9bf0bab7322545599f8bc6ece15c0d53_2
+name: Alex · as_6c685da983d340ccb2c6d97f1b9f2b99
+award: award · as_60be3bc7d3374b88bfd68c2eb78db47e
+Supersede with correction
+Bind or repair this source mention
+
+Current identity: Alex Vale (ent_070d62647a7c47e0aa99b5cc244e7015). Similar names never merge automatically. Use source identifiers and attributes to verify identity.
+
+Verified entity identity
+Choose explicitly
+Create a distinct identity
+Alex · ent_8e4af6a974aa4045b44f5fc610e43b6e · 3 sources
+Alex Vale · ent_070d62647a7c47e0aa99b5cc244e7015 · 1 sources
+Save identity binding or repair

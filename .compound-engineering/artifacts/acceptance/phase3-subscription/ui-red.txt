@@ -1,0 +1,34 @@
+
+ RUN  v4.1.9 /home/drake/Projects/Cestus
+
+ ❯ packages/ui/test/document-processing-panel.test.tsx (9 tests | 1 failed) 510ms
+   × discloses subscription usage and mandatory Codex instructions without fabricated dollar or token caps 10ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  packages/ui/test/document-processing-panel.test.tsx > discloses subscription usage and mandatory Codex instructions without fabricated dollar or token caps
+Error: expect(element).not.toBeInTheDocument()
+
+expected document not to contain element, found <input
+  class="rounded border border-[var(--console-line)] bg-[var(--console-panel)] p-2"
+  max="100"
+  min="0.000001"
+  step="any"
+  type="number"
+  value=""
+/> instead
+ ❯ packages/ui/test/document-processing-panel.test.tsx:174:63
+    172|   const api = backend({ manifest: subscription }); mount();
+    173|   await screen.findByText("Provider configured. No request sent.");
+    174|   expect(screen.queryByLabelText("Maximum budget (USD)")).not.toBeInTh…
+       |                                                               ^
+    175|   expect(screen.queryByLabelText("Maximum output tokens")).not.toBeInT…
+    176|   fireEvent.click(screen.getByRole("checkbox", { name: /Send passage 2…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 8 passed (9)
+   Start at  14:37:26
+   Duration  1.53s (transform 80ms, setup 88ms, import 111ms, tests 510ms, environment 720ms)

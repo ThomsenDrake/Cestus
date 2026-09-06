@@ -296,6 +296,8 @@ function AssertionRow({ assertion }: { readonly assertion: OntologyAssertionDto 
       <p className="mt-1 break-words text-base text-[var(--muted-amber)] sm:text-sm">
         {assertion.predicate} · evidence {assertion.evidenceId}
       </p>
+      {assertion.object !== undefined && <p className="mt-1 break-words text-base">{String(assertion.object)}</p>}
+      {assertion.citationScope && <p className="text-sm text-[var(--muted-amber)]">{assertion.citationScope} citation</p>}
     </li>
   );
 }

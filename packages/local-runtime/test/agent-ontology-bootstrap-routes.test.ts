@@ -176,6 +176,15 @@ afterEach(() => {
 });
 
 describe("ontology-bootstrap agent routes", () => {
+  it("does not expose historical assertions whose source ingestion has invalid stream provenance", async () => {
+    await appendFixtureEvents(config, goldenOntologyWorkspaceEvents.map(event => event.type === "evidence.ingested" ? { ...event, streamId: `invalid_${event.id}` } : event));
+    handler = createLocalRuntimeHttpHandler({ config, actor: { id: "actor_route_owner", kind: "human", label: "Route Owner" }, now: () => "2026-07-08T16:00:00.000Z" });
+    const response = await handler({ method: "GET", url: "/api/ontology/workspace" });
+    const body = JSON.parse(response.body);
+    expect(body.entities).toEqual([]);
+    expect(body.relationships).toEqual([]);
+    expect(response.body).not.toContain("Example Agency");
+  });
   it("reads deterministic ontology relationship provenance from the mounted ledger", async () => {
     await appendFixtureEvents(config, goldenOntologyWorkspaceEvents);
     handler = createLocalRuntimeHttpHandler({

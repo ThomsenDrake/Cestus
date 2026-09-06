@@ -1,3 +1,4 @@
+import { hasAtomicAppendBatch } from "../../ontology/src/event-ledger.js";
 import { FileBlobStore } from "../../ontology/src/blob-store.js";
 import type { ActorRef } from "../../ontology/src/contracts.js";
 import type { IngestionWorkspaceMountResolver, MountedWorkspace, WorkspaceBlobStore } from "../../ingestion/src/mount-contract.js";
@@ -27,6 +28,7 @@ export function humanIngestionMountResolver(
   const workspace: MountedWorkspace = {
     workspaceId: mounted.workspaceId, label: mounted.label,
     ledger: {
+      appendBatch(events, options) { assertCurrent(); if (!hasAtomicAppendBatch(handle.ledger)) throw new Error("Atomic decision authority is unavailable."); return handle.ledger.appendBatch(events, options); },
       append(event, options) { assertCurrent(); return handle.ledger.append(event, options); },
       readAll() { assertCurrent(); return handle.ledger.readAll(); },
       readStream(id) { assertCurrent(); return handle.ledger.readStream(id); }

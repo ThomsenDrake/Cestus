@@ -1,0 +1,228 @@
+- document:
+  - region "Local workspace status" [ref=e1]:
+    - status: Backend running · Workspace ready
+    - button "Refresh workspace status" [ref=e2]
+    - paragraph: Synthetic subscription trial · Synthetic investigator
+    - paragraph: "Storage: /tmp/cestus-phase3-subscription.3sqnKQ/workspace"
+  - navigation "Cestus tactical modules" [ref=e3]:
+    - link "Cestus home" [ref=e4]:
+      - /url: /
+      - text: CESTUS
+    - text: NEO
+    - list:
+      - listitem:
+        - link "Command" [ref=e5]:
+          - /url: "#command"
+          - text: COMMAND
+      - listitem:
+        - link "Requests" [ref=e6]:
+          - /url: "#requests"
+          - text: REQUESTS
+      - listitem:
+        - link "Evidence" [ref=e7]:
+          - /url: "#evidence"
+          - text: EVIDENCE
+      - listitem:
+        - link "Ontology" [ref=e8]:
+          - /url: "#ontology"
+          - text: ONTOLOGY
+      - listitem:
+        - link "Agent" [ref=e9]:
+          - /url: "#agents"
+          - text: AGENT
+      - listitem:
+        - link "Ingestion" [ref=e10]:
+          - /url: "#ingestion"
+          - text: INGESTION
+  - banner "Cestus command band":
+    - link "Cestus home" [ref=e11] [nth=1]:
+      - /url: /
+      - text: CESTUS
+    - paragraph: EVIDENCE
+    - paragraph: Cestus Local
+  - main "Evidence workspace" [ref=e12]:
+    - region "Evidence review workspace" [ref=e13]:
+      - paragraph: Canonical corpus · high-water 19
+      - heading "Evidence" [ref=e14] [level=1]
+      - paragraph: Inspect source lineage, derivatives, and governance. Prepared assertions remain review-required proposals.
+      - region "Document reader and search" [ref=e15]:
+        - heading "Read and search records" [ref=e16] [level=2]
+        - text: Phrase in document contents
+        - textbox "Phrase in document contents" [ref=e17]
+        - text: Source
+        - combobox "Source" [ref=e18]:
+          - option "All sources" [ref=e19] [selected]
+          - option "Synthetic subscription controls" [ref=e20]
+        - text: Format
+        - combobox "Format" [ref=e21]:
+          - option "All formats" [ref=e22] [selected]
+          - option "Text" [ref=e23]
+          - option "CSV" [ref=e24]
+          - option "PDF" [ref=e25]
+        - button "Search contents" [ref=e26] [disabled]
+        - paragraph: Search covers extracted text only. A search with no matches does not establish that evidence is absent; unreadable pages and visual content are not searched.
+        - region "Selected document contents" [ref=e27]:
+          - heading "register.txt" [ref=e28] [level=3]
+          - paragraph: Evidence ev_ing_29b4e5647919f05a2bbc6730ba3d039bd4450c6f17958f4bc83e9f8ab082c2ae · Original sha256:f379cc944394382ed39e9c688f4ccd4eade14af84068cce7666467b08092741c
+          - button "Open immutable original" [ref=e29]
+          - paragraph: cestus-local-extraction 1.1.0 · · Extraction parse_imp_059f3a6e-b01a-47f5-a093-df6d1c491962_extraction_v2_f379cc944394382ed39e9c688f4ccd4eade14af84068cce7666467b08092741c · sha256:2a5a29f2353c2c7afc0eb753ab9d2e51fcb2a2049b421cdae1aec47cf5559268
+          - article:
+            - link "block 1, characters 0–191" [ref=e30]:
+              - /url: "#evidence/ev_ing_29b4e5647919f05a2bbc6730ba3d039bd4450c6f17958f4bc83e9f8ab082c2ae/parse_imp_059f3a6e-b01a-47f5-a093-df6d1c491962_extraction_v2_f379cc944394382ed39e9c688f4ccd4eade14af84068cce7666467b08092741c/0"
+            - paragraph: Synthetic cooperative register. Harbor Circle is a cooperative. Harbor Circle was registered on September 5, 2026. Harbor Circle held a meeting on September 5, 2026. Published September 2026.
+          - region "External document processing" [ref=e31]:
+            - heading "External document processing" [ref=e32] [level=3]
+            - paragraph: Extract proposed entities, facts, relationships and occurrences for the shared ontology. A completed run remains unreviewed until you import and review its proposals in Ontology.
+            - status: ChatGPT subscription via official Codex · gpt-6-astra. One approved Codex turn; subscription quotas apply. No API dollar estimate or billing fallback. Each selection still requires human approval.
+            - paragraph: Only evidence reviewed as public_safe can leave this machine. Use the Governance review below. Restricted, unclassified, or redacted records are blocked; importing and reviewing a separately redacted copy is required when safe redaction is needed.
+            - paragraph: "Selection identity: ev_ing_29b4e5647919f05a2bbc6730ba3d039bd4450c6f17958f4bc83e9f8ab082c2ae · parse_imp_059f3a6e-b01a-47f5-a093-df6d1c491962_extraction_v2_f379cc944394382ed39e9c688f4ccd4eade14af84068cce7666467b08092741c · sha256:2a5a29f2353c2c7afc0eb753ab9d2e51fcb2a2049b421cdae1aec47cf5559268"
+            - group "Select up to 24 passages to send (1 selected)":
+              - text: Select up to 24 passages to send (1 selected)
+              - 'checkbox "Send passage 1: block 1, characters 0–191" [checked]'
+              - strong: block 1, characters 0–191
+              - text: Synthetic cooperative register. Harbor Circle is a cooperative. Harbor Circle was registered on September 5, 2026. Harbor Circle held a meeting on September 5, 2026. Published September 2026.
+              - paragraph: One Codex turn per approval. Subscription quota applies; this is not unlimited or guaranteed free. The deadline and response-size limit are local bounds, not a guaranteed generation-token or provider-usage cap.
+              - button "Preview exact transfer" [ref=e33]
+            - region "Exact transfer approval" [ref=e34]:
+              - heading "Review what will leave this machine" [ref=e35] [level=4]
+              - paragraph: "Destination: Official Codex / ChatGPT subscription · Model: gpt-6-astra · Operation: knowledge-extraction.v1"
+              - group: "Reviewed extraction vocabulary: investigation.v1"
+              - paragraph: 1 passages · 5853 approved passage/schema/prompt bytes, plus the mandatory Codex definitions below.
+              - paragraph: ChatGPT subscription; quota applies; no API USD estimate. One Codex turn per approval; a turn can involve multiple protocol requests. There is no guaranteed generation-token cap. No API billing fallback.
+              - group: Mandatory Codex definitions included in the transfer
+              - paragraph: Official CLI 0.153.4 · sha256:1bff80a94685bc85dd68f94f71e7d2b64939c962e654d624cd40ef295b8d28c7 · Official model catalog sha256:602db5eefc5ac50d146ec9d0816f10c50128402aa9120379c14c0e28c94481c8
+              - paragraph: "Timeout: 120 seconds · Maximum response: 65536 bytes · One invocation at a time."
+              - paragraph: "Original: sha256:f379cc944394382ed39e9c688f4ccd4eade14af84068cce7666467b08092741c · Extraction: sha256:2a5a29f2353c2c7afc0eb753ab9d2e51fcb2a2049b421cdae1aec47cf5559268 · Approval manifest: sha256:67500976d236710e5a901ecc260923ad1e389e4c5b1751b8498cff47c54425fc"
+              - group: Exact outgoing instructions and content
+              - paragraph: Approval covers this exact content, destination, model, operation and limits. Content, authority and policy are checked again immediately before transfer.
+              - button "Approve this transfer" [ref=e36]
+            - region "Persisted processing jobs" [ref=e37]:
+              - heading "Processing history for this extraction" [ref=e38] [level=4]
+              - button "Refresh jobs" [ref=e39]
+              - paragraph: Queued work runs only when you choose Run. Interrupted or timed-out submissions remain uncertain; there is no automatic retry. Canceling a submitted request may still consume subscription quota or incur API charges.
+              - article:
+                - paragraph:
+                  - text: inv_0ab64b04f8614f33a8c3a48b195f42dd ·
+                  - strong: awaiting approval
+                  - text: · 2026-09-06T18:55:48.781Z
+                - button "Review saved transfer inv_0ab64b04f8614f33a8c3a48b195f42dd" [ref=e40]
+                - button "Cancel inv_0ab64b04f8614f33a8c3a48b195f42dd" [ref=e41]
+              - article:
+                - paragraph:
+                  - text: inv_c141a3a64a044cef8babdbb7d345aad3 ·
+                  - strong: awaiting approval
+                  - text: · 2026-09-06T18:57:41.619Z
+                - button "Review saved transfer inv_c141a3a64a044cef8babdbb7d345aad3" [ref=e42]
+                - button "Cancel inv_c141a3a64a044cef8babdbb7d345aad3" [ref=e43]
+      - region "Evidence filters" [ref=e44]:
+        - text: Filter evidence
+        - searchbox "Filter evidence" [ref=e45]
+        - text: Governance tag
+        - combobox "Governance tag" [ref=e46]:
+          - option "All tags" [ref=e47] [selected]
+          - option "public_safe" [ref=e48]
+        - text: Parse state
+        - combobox "Parse state" [ref=e49]:
+          - option "All parse states" [ref=e50] [selected]
+          - option "queued" [ref=e51]
+          - option "running" [ref=e52]
+          - option "succeeded" [ref=e53]
+          - option "partial text extraction" [ref=e54]
+          - option "failed" [ref=e55]
+      - region "Evidence corpus" [ref=e56]:
+        - heading "Canonical evidence" [ref=e57] [level=2]
+        - paragraph: 1 items
+        - list:
+          - listitem:
+            - button "Inspect evidence ev_ing_29b4e5647919f05a2bbc6730ba3d039bd4450c6f17958f4bc83e9f8ab082c2ae" [ref=e58] [pressed]: ev_ing_29b4e5647919f05a2bbc6730ba3d039bd4450c6f17958f4bc83e9f8ab082c2ae register.txt 1 occurrences · provenance complete
+      - region "Evidence detail" [ref=e59]:
+        - paragraph: Evidence provenance
+        - heading "ev_ing_29b4e5647919f05a2bbc6730ba3d039bd4450c6f17958f4bc83e9f8ab082c2ae" [ref=e60] [level=2]
+        - term: Content hash
+        - definition: sha256:f379cc944394382ed39e9c688f4ccd4eade14af84068cce7666467b08092741c
+        - term: Media
+        - definition: text/plain · 192 bytes
+        - term: Source collections
+        - definition: Synthetic subscription controls · src_134d9b94-d44f-482c-a25f-b36044b08f4d
+        - term: Import batches
+        - definition: imp_059f3a6e-b01a-47f5-a093-df6d1c491962
+        - term: Governance state
+        - definition: not quarantined · active
+        - term: Linked PRR or investigations
+        - definition: None recorded
+        - region "Source occurrences" [ref=e61]:
+          - heading "Source occurrences" [ref=e62] [level=3]
+          - list:
+            - listitem:
+              - paragraph: register.txt
+              - paragraph: occ_4d6d512899815bf18739fbdcdd658d65bb3fd64e85d4d25ca6a1abbbd08c7156 · new
+        - region "Parse and derivatives" [ref=e63]:
+          - heading "Parse and derivatives" [ref=e64] [level=3]
+          - list:
+            - listitem: cestus-local-extraction@1.1.0 · local · succeeded sha256:2a5a29f2353c2c7afc0eb753ab9d2e51fcb2a2049b421cdae1aec47cf5559268 · application/vnd.cestus.extraction+json
+        - region "Governance tags" [ref=e65]:
+          - heading "Governance tags" [ref=e66] [level=3]
+          - list:
+            - listitem: public_safe · human · active · 100% Authored fictional fixture for local subscription interface checks; no personal data.
+        - form "Prepare assertion candidate":
+          - heading "Prepare review-required assertion" [ref=e67] [level=3]
+          - text: Assertion ID
+          - textbox "Assertion ID" [ref=e68]
+          - text: Subject reference (optional)
+          - textbox "Subject reference" [ref=e69]
+          - text: Predicate
+          - textbox "Predicate" [ref=e70]
+          - text: Object
+          - textbox "Object" [ref=e71]
+          - text: Confidence
+          - spinbutton "Confidence" [ref=e72]: "0.8"
+          - button "Prepare assertion candidate" [ref=e73] [disabled]
+      - region "Governance review" [ref=e74]:
+        - paragraph: Append-only governance review
+        - heading "ev_ing_29b4e5647919f05a2bbc6730ba3d039bd4450c6f17958f4bc83e9f8ab082c2ae" [ref=e75] [nth=1] [level=2]
+        - paragraph: Human decisions append to the ledger; original classifier proposals remain visible.
+        - region "Proposed governance tags" [ref=e76]:
+          - heading "Independent classifier proposals" [ref=e77] [level=3]
+          - list:
+            - listitem:
+              - paragraph: public_safe
+              - paragraph: 100% confidence
+              - paragraph: Authored fictional fixture for local subscription interface checks; no personal data.
+              - paragraph: ordinary-internal-only
+              - paragraph: evt_fc06a567f86a4f20bbdd405abef11548
+        - region "Human governance history" [ref=e78]:
+          - heading "Human decisions" [ref=e79] [level=3]
+          - list:
+            - listitem: affirm · public_safe Authored fictional fixture for local subscription interface checks; no personal data. evt_4f5ef81d0f4b4e8fb12d41b544feec3b
+        - form "Append governance review":
+          - text: Review tag
+          - combobox "Review tag" [ref=e80]:
+            - option "public_record" [ref=e81]
+            - option "public_safe" [ref=e82] [nth=1] [selected]
+            - option "contains_pii" [ref=e83]
+            - option "source_identity" [ref=e84]
+            - option "private_correspondence" [ref=e85]
+            - option "legal_risk" [ref=e86]
+            - option "credential_risk" [ref=e87]
+            - option "export_restricted" [ref=e88]
+            - option "law_enforcement_sensitive" [ref=e89]
+          - text: Review action
+          - combobox "Review action" [ref=e90]:
+            - option "affirm" [ref=e91] [selected]
+            - option "add" [ref=e92]
+            - option "remove" [ref=e93]
+            - option "supersede" [ref=e94]
+          - text: Review rationale
+          - textbox "Review rationale" [ref=e95]
+          - button "Append governance review" [ref=e96] [disabled]
+      - region "Governance export preview" [ref=e97]:
+        - paragraph: Public-safe export preview
+        - heading "Preview only" [ref=e98] [level=2]
+        - paragraph: Preview only — no export or publication occurs.
+        - region "Included by default" [ref=e99]:
+          - heading "Included by default" [ref=e100] [level=3]
+          - list:
+            - listitem: ev_ing_29b4e5647919f05a2bbc6730ba3d039bd4450c6f17958f4bc83e9f8ab082c2ae
+        - region "Excluded by default" [ref=e101]:
+          - heading "Excluded by default" [ref=e102] [level=3]
+          - list

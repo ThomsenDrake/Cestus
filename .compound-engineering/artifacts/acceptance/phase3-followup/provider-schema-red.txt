@@ -1,0 +1,128 @@
+
+ RUN  v4.1.9 /home/drake/Projects/Cestus
+
+ ❯ packages/local-runtime/test/document-processing.test.ts (38 tests | 3 failed) 531ms
+   × snapshots the reviewed active vocabulary for extraction and keeps schema meaning across restart 10ms
+   × rejects a stale vocabulary at approval without transferring evidence 5ms
+   × rejects a stale vocabulary at transfer without transferring evidence 7ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  packages/local-runtime/test/document-processing.test.ts > snapshots the reviewed active vocabulary for extraction and keeps schema meaning across restart
+AssertionError: expected { schemaId: 'investigation.v1', …(2) } to deeply equal { …(3) }
+
+- Expected
++ Received
+
+@@ -3,11 +3,10 @@
+      "person",
+      "organization",
+      "agency",
+      "contract",
+      "address",
+-     "vessel",
+    ],
+    "predicates": [
+      {
+        "fromTypes": [],
+        "kind": "entity",
+@@ -168,17 +167,8 @@
+        "kind": "occurrence",
+        "name": "ownership_change",
+        "toTypes": [],
+        "valueType": "string",
+      },
+-     {
+-       "fromTypes": [
+-         "vessel",
+    ],
+-       "kind": "fact",
+-       "name": "registered_on",
+-       "toTypes": [],
+-       "valueType": "date",
+-     },
+-   ],
+-   "schemaId": "investigation.test-extension",
++   "schemaId": "investigation.v1",
+  }
+
+ ❯ packages/local-runtime/test/document-processing.test.ts:357:43
+    355|   const schema = await recordExtendedVocabulary(f);
+    356|   const preview = await f.service.preview({ operation: "knowledge-extr…
+    357|   expect(preview.manifest.schemaSnapshot).toEqual(schema);
+       |                                           ^
+    358|   expect(preview.manifest.systemPrompt).toContain('"vessel"');
+    359|   await f.service.approve({ manifestHash: preview.manifestHash }, acto…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  packages/local-runtime/test/document-processing.test.ts > rejects a stale vocabulary at approval without transferring evidence
+AssertionError: promise resolved "{ …(5) }" instead of rejecting
+
+- Expected
++ Received
+
+- Error {
+-   "message": "rejected promise",
++ {
++   "createdAt": "2026-09-05T21:51:28.133Z",
++   "invocationId": "inv_2dde1c7db33c4442a43fcd072fe789f4",
++   "manifestHash": "sha256:9431b3c5e844041adbbd7e31ba4fafeb1bb928fdb10699983753237360f0f264",
++   "selection": {
++     "evidenceId": "ev_synthetic_document",
++     "extractionId": "extract_synthetic_v1",
++     "passageIndexes": [
++       0,
++     ],
++   },
++   "state": "queued",
+  }
+
+ ❯ packages/local-runtime/test/document-processing.test.ts:372:148
+    370|   if (gate === "transfer") await f.service.approve({ manifestHash: pre…
+    371|   await recordExtendedVocabulary(f);
+    372|   await expect(gate === "approval" ? f.service.approve({ manifestHash:…
+       |                                                                                                                                                    ^
+    373|   expect(f.requestCount()).toBe(0);
+    374| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  packages/local-runtime/test/document-processing.test.ts > rejects a stale vocabulary at transfer without transferring evidence
+AssertionError: promise resolved "{ …(6) }" instead of rejecting
+
+- Expected
++ Received
+
+- Error {
+-   "message": "rejected promise",
++ {
++   "createdAt": "2026-09-05T21:51:28.137Z",
++   "invocationId": "inv_fe85caf6501447f287e4281a4ef6be9c",
++   "manifestHash": "sha256:28e63a813166fc44a8680cac1b729969afe82122f8309e66fa4155f736065e0a",
++   "reason": "invalid-output",
++   "selection": {
++     "evidenceId": "ev_synthetic_document",
++     "extractionId": "extract_synthetic_v1",
++     "passageIndexes": [
++       0,
++     ],
++   },
++   "state": "failed",
+  }
+
+ ❯ packages/local-runtime/test/document-processing.test.ts:372:148
+    370|   if (gate === "transfer") await f.service.approve({ manifestHash: pre…
+    371|   await recordExtendedVocabulary(f);
+    372|   await expect(gate === "approval" ? f.service.approve({ manifestHash:…
+       |                                                                                                                                                    ^
+    373|   expect(f.requestCount()).toBe(0);
+    374| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  3 failed | 35 passed (38)
+   Start at  17:51:27
+   Duration  1.11s (transform 215ms, setup 99ms, import 362ms, tests 531ms, environment 0ms)

@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -32,6 +33,75 @@ describeEventLedgerContract("SQLiteEventLedger", {
 });
 
 describe("SQLiteEventLedger", () => {
+  it.each(["second event", "decision receipt"])("rolls back the whole batch when SQLite interrupts the %s write", async (point) => {
+    const path = dbPath();
+    const ledger = new SQLiteEventLedger(path);
+    const injection = new DatabaseSync(path);
+    const target = point === "second event" ? "ontology_events" : "ontology_decisions";
+    const condition = point === "second event" ? "WHEN NEW.stream_id = 'evidence_ev_interrupt_second'" : "";
+    injection.exec(`CREATE TRIGGER interrupt_decision BEFORE INSERT ON ${target} ${condition}
+      BEGIN SELECT RAISE(ABORT, 'injected transaction interruption'); END;`);
+    const events = [evidenceEvent("ev_interrupt_first"), evidenceEvent("ev_interrupt_second")];
+    const decision = { decisionId: "decision_interrupt", expectedGlobalEventCount: 0 };
+    await expect(ledger.appendBatch(events, decision)).rejects.toThrow("injected transaction interruption");
+    expect(await ledger.readAll()).toEqual([]);
+    expect(injection.prepare("SELECT COUNT(*) AS n FROM ontology_decisions").get()).toEqual({ n: 0 });
+    injection.exec("DROP TRIGGER interrupt_decision");
+    injection.close();
+    ledger.close();
+
+    const reopened = new SQLiteEventLedger(path);
+    const committed = await reopened.appendBatch(events, decision);
+    expect(committed.map((event) => event.sequence)).toEqual([1, 1]);
+    expect(await reopened.appendBatch(events, decision)).toEqual(committed);
+    expect(await reopened.readAll()).toEqual(committed);
+    reopened.close();
+  });
+
+  it("recovers without half a decision after the writer process exits immediately before COMMIT", async () => {
+    const path = dbPath();
+    const events = [evidenceEvent("ev_crash_first"), evidenceEvent("ev_crash_second")];
+    const decision = { decisionId: "decision_process_crash", expectedGlobalEventCount: 0 };
+    const child = spawnSync(process.execPath, ["--import", "tsx", "--input-type=module", "-e", `
+      import { SQLiteEventLedger } from ${JSON.stringify(new URL("../src/sqlite-event-ledger.ts", import.meta.url).href)};
+      const ledger = new SQLiteEventLedger(process.argv[1]);
+      const originalExec = ledger.db.exec.bind(ledger.db);
+      ledger.db.exec = (statement) => {
+        if (statement === "COMMIT") process.exit(71);
+        return originalExec(statement);
+      };
+      await ledger.appendBatch(JSON.parse(process.argv[2]), JSON.parse(process.argv[3]));
+    `, path, JSON.stringify(events), JSON.stringify(decision)], { encoding: "utf8", timeout: 10_000 });
+    expect(child.error).toBeUndefined();
+    expect(child.status, child.stderr).toBe(71);
+    const recovered = new SQLiteEventLedger(path);
+    expect(await recovered.readAll()).toEqual([]);
+    const committed = await recovered.appendBatch(events, decision);
+    expect(committed.map((event) => event.sequence)).toEqual([1, 1]);
+    expect(await recovered.appendBatch(events, decision)).toEqual(committed);
+    expect(await recovered.readAll()).toHaveLength(2);
+    recovered.close();
+  });
+
+  it("recovers decision receipts and rejects competing connections at a stale revision", async () => {
+    const path = dbPath();
+    const first = new SQLiteEventLedger(path);
+    const second = new SQLiteEventLedger(path);
+    const events = [evidenceEvent("ev_restart_first"), evidenceEvent("ev_restart_second")];
+    const decision = { decisionId: "decision_restart", expectedGlobalEventCount: 0 };
+    const committed = await first.appendBatch(events, decision);
+    await expect(second.appendBatch([evidenceEvent("ev_competitor")], {
+      decisionId: "decision_competitor", expectedGlobalEventCount: 0
+    })).rejects.toBeInstanceOf(ConcurrencyConflictError);
+    first.close();
+    second.close();
+    const reopened = new SQLiteEventLedger(path);
+    await reopened.append(evidenceEvent("ev_after_restart"));
+    expect(await reopened.appendBatch(events, decision)).toEqual(committed);
+    expect(await reopened.readAll()).toHaveLength(3);
+    reopened.close();
+  });
+
   it("rolls back a guarded append when its synchronous precommit guard fails", async () => {
     const ledger = new SQLiteEventLedger(dbPath());
     const guardFailure = new Error("mounted workspace is no longer current");

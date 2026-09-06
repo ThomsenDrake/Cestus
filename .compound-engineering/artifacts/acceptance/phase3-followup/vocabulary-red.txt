@@ -1,0 +1,25 @@
+
+ RUN  v4.1.9 /home/drake/Projects/Cestus
+
+ ❯ packages/ontology/test/knowledge-service.test.ts (10 tests | 1 failed) 75ms
+     × requires a reviewed additive snapshot and an explicit new proposal before unknown vocabulary can be accepted 26ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  packages/ontology/test/knowledge-service.test.ts > shared knowledge decisions > requires a reviewed additive snapshot and an explicit new proposal before unknown vocabulary can be accepted
+Error: Invalid knowledge command. Check required fields, supported types and source references.
+ ❯ KnowledgeService.execute packages/ontology/src/knowledge-service.ts:225:15
+    223|       if (error instanceof ConcurrencyConflictError) throw error;
+    224|       if (error instanceof z.ZodError)
+    225|         throw new KnowledgeCommandError(
+       |               ^
+    226|           "Invalid knowledge command. Check required fields, supported…
+    227|         );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 9 passed (10)
+   Start at  17:51:45
+   Duration  606ms (transform 197ms, setup 97ms, import 317ms, tests 75ms, environment 0ms)

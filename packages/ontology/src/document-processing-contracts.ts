@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { knowledgeProposalSchema, vocabularySchema } from "./knowledge-contracts.js";
 import type { PdfCoverage } from "./extraction-contracts.js";
 
 const hash = z.string().regex(/^sha256:[a-f0-9]{64}$/);
@@ -45,7 +46,18 @@ export const documentSummaryOutputSchema = z.object({
   citations: z.array(z.object({ passageIndex: z.number().int().nonnegative(), quote: z.string().min(1).max(3000) }).strict()).min(1).max(24)
 }).strict();
 
+/** Provider-local fields only; authority, IDs and evidence references are resolved by the server. */
+export const providerKnowledgeProposalSchema = knowledgeProposalSchema.omit({
+  assertionId: true, workspaceId: true, evidence: true, schemaId: true, provenance: true, derivedFrom: true
+}).extend({ citations: documentSummaryOutputSchema.shape.citations }).strict();
+export const knowledgeExtractionOutputSchema = z.object({
+  proposals: z.array(providerKnowledgeProposalSchema).max(40)
+}).strict();
+export type KnowledgeExtractionOutput = z.infer<typeof knowledgeExtractionOutputSchema>;
+export type DocumentProcessingOperation = "document-summary.v1" | "knowledge-extraction.v1";
+
 export interface ResolvedDocumentSelection {
+  provenanceEventIds?: string[];
   pdfCoverage?: PdfCoverage | { status: "unknown" };
   evidenceId: string;
   extractionId: string;
@@ -57,32 +69,54 @@ export interface ResolvedDocumentSelection {
   reviewEventId: string;
   passages: { index: number; text: string; locator: unknown }[];
 }
-export interface ProviderConfiguration {
+export interface ApiProviderConfiguration {
   endpoint: string;
   model: string;
   inputUsdPerMillion: number;
   outputUsdPerMillion: number;
 }
-export interface DocumentProcessingManifest {
-  schemaVersion: "document-processing-manifest.v1";
+export interface CodexSubscriptionSnapshot {
+  transport: "codex-chatgpt.v1";
+  model: "gpt-6-astra";
+  cliVersion: string;
+  binaryHash: string;
+  modelCatalogHash: string;
+  mandatoryTools: unknown[];
+  authentication: "chatgpt";
+  usageBasis: string;
+  maxInvocations: 1;
+}
+export type ProviderConfiguration = ApiProviderConfiguration | CodexSubscriptionSnapshot;
+interface DocumentProcessingManifestBase {
   invocationId: string;
   actorId: string;
   selection: DocumentSelection;
   resolved: ResolvedDocumentSelection;
-  destination: ProviderConfiguration;
-  operation: "document-summary.v1";
-  provider: "openai-compatible-chat.v1";
+  operation: DocumentProcessingOperation;
+  workspaceId?: string;
+  promptVersion?: "knowledge-extraction-prompt.v1" | "knowledge-extraction-prompt.v2";
+  schemaSnapshot?: z.infer<typeof vocabularySchema>;
   inputText: string;
   systemPrompt: string;
   inputBytes: number;
-  inputTokenUpperBound: number;
-  maxOutputTokens: number;
   maxResponseBytes: number;
-  maximumEstimatedUsd: number;
-  budgetUsd: number;
   timeoutMs: number;
   retryOf?: string;
 }
+export type DocumentProcessingManifest = DocumentProcessingManifestBase & ({
+  schemaVersion: "document-processing-manifest.v1";
+  provider: "openai-compatible-chat.v1";
+  destination: ApiProviderConfiguration;
+  inputTokenUpperBound: number;
+  maxOutputTokens: number;
+  maximumEstimatedUsd: number;
+  budgetUsd: number;
+} | {
+  schemaVersion: "document-processing-manifest.v2";
+  provider: "codex-chatgpt.v1";
+  destination: CodexSubscriptionSnapshot;
+  subscriptionInvocations: 1;
+});
 export interface DocumentProcessingJob {
   invocationId: string;
   manifestHash: string;

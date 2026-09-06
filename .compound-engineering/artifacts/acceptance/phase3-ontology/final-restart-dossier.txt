@@ -1,0 +1,14 @@
+Alex
+
+ent_8e4af6a974aa4045b44f5fc610e43b6e · person
+
+Cases: Synthetic award case, Synthetic entity-only case, Synthetic payment case
+
+3 source records · 2 reviewed independent origins · Source independence known
+
+Repeated mentions and case memberships do not add independent sources.
+
+Entity membership in Synthetic award case
+Entity membership in Synthetic payment case
+Entity membership in Synthetic namesake case
+Entity membership in Synthetic entity-only case
