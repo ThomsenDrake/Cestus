@@ -1,4 +1,5 @@
 import type { KnowledgeEvent, KnowledgeEventOf } from "./contracts.js";
+import { containsCredentialShapedEvidenceText } from "./evidence-service.js";
 import {
   buildGovernanceExportPreview,
   type GovernanceExportPreviewDto
@@ -64,6 +65,12 @@ export interface EvidenceGovernanceWorkspaceDto {
 export interface ActiveGovernancePolicyRef {
   readonly policyId: string;
   readonly version: string;
+}
+
+export function governanceRationaleForDisplay(rationale: string): string {
+  return containsCredentialShapedEvidenceText(rationale)
+    ? "Rationale withheld by the metadata safety check."
+    : rationale;
 }
 
 export function buildEvidenceGovernanceWorkspaceDto(
@@ -147,7 +154,7 @@ function buildGovernanceReviewDto(
       policy: eventPolicy
     });
     const eventRef = assertSafeEventRef(event.id);
-    const rationale = assertSafeGovernanceText(proposal.rationale);
+    const rationale = governanceRationaleForDisplay(assertSafeGovernanceText(proposal.rationale));
     if (workflowDecision.allowed) {
       return Object.freeze({
         tag: proposal.tag,
@@ -172,7 +179,7 @@ function buildGovernanceReviewDto(
   const humanDecisions = reviews.flatMap((event) => event.payload.decisions.map((decision) => Object.freeze({
     tag: decision.tag,
     action: decision.action,
-    rationale: assertSafeGovernanceText(decision.rationale),
+    rationale: governanceRationaleForDisplay(assertSafeGovernanceText(decision.rationale)),
     eventRef: assertSafeEventRef(event.id),
     ...(decision.supersedesEventId === undefined
       ? {}

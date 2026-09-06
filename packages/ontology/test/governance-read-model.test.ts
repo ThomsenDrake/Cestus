@@ -3,6 +3,13 @@ import { buildEvidenceGovernanceWorkspaceDto } from "../src/governance-read-mode
 import { goldenGovernanceLedgerEvents } from "./fixtures/golden-governance-ledger.js";
 
 describe("governance read model", () => {
+  it("still rejects credential-valued rationale before constructing browser governance history", () => {
+    const events = goldenGovernanceLedgerEvents.map(event => event.type === "evidence.governance.classified"
+      ? { ...event, payload: { ...event.payload, tags: event.payload.tags.map(tag => ({ ...tag, rationale: "ghp_syntheticRationale123" })) } }
+      : event);
+    expect(() => buildEvidenceGovernanceWorkspaceDto(events, ["ev_source_public"])).toThrow("Governance review text must not contain secrets");
+  });
+
   it("derives strict review history and a preview for the visible evidence workspace", () => {
     const readModel = buildEvidenceGovernanceWorkspaceDto(
       goldenGovernanceLedgerEvents,

@@ -8,6 +8,7 @@ import {
   evaluateEvidenceProposalEligibility
 } from "../../ontology/src/evidence-service.js";
 import { buildGovernanceProjection } from "../../ontology/src/governance-projection.js";
+import { governanceRationaleForDisplay } from "../../ontology/src/governance-read-model.js";
 import type {
   IngestionDiagnosticReference,
   IngestionEvidenceLinkSummary,
@@ -179,7 +180,13 @@ export function buildEvidenceWorkspaceDto(rawEvents: readonly unknown[]): Eviden
           })),
         governanceTags: [...(state?.currentTags.values() ?? [])]
           .sort((left, right) => compareCodeUnits(left.tag, right.tag))
-          .map((tag) => ({ ...tag })),
+          .map((tag) => {
+            const rationale = governanceRationaleForDisplay(tag.rationale);
+            if (rationale !== tag.rationale) {
+              secretSafetyViolation = true;
+            }
+            return { ...tag, rationale };
+          }),
         quarantined: state?.quarantined === true,
         quarantineLockLevels,
         tombstoned: false,
