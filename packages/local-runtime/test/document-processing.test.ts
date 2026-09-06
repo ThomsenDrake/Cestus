@@ -8,7 +8,7 @@ import { FileBlobStore } from "../../ontology/src/blob-store.js";
 import { SQLiteEventLedger } from "../../ontology/src/sqlite-event-ledger.js";
 import { createDocumentProcessingService } from "../src/document-processing.js";
 import { investigationVocabulary } from "../../ontology/src/knowledge-contracts.js";
-import type { ResolvedDocumentSelection } from "../../ontology/src/document-processing-contracts.js";
+import type { CodexSubscriptionSnapshot, ResolvedDocumentSelection } from "../../ontology/src/document-processing-contracts.js";
 
 const actor = { id: "actor_document_reviewer", kind: "human", label: "Document reviewer" } as const;
 const selection = { evidenceId: "ev_synthetic_document", extractionId: "extract_synthetic_v1", passageIndexes: [0] };
@@ -73,9 +73,9 @@ async function fixture(options: { delay?: number; timeout?: number; content?: st
 describe("bounded external document processing (synthetic loopback protocol tests)", () => {
   it("fails closed without explicit configuration and exposes no credential in readiness", async () => {
     const f = await fixture();
-    expect(JSON.stringify(f.service.readiness())).not.toContain(f.env.CESTUS_DOCUMENT_PROVIDER_API_KEY);
+    expect(JSON.stringify(await f.service.readiness())).not.toContain(f.env.CESTUS_DOCUMENT_PROVIDER_API_KEY);
     f.env.CESTUS_DOCUMENT_PROVIDER_ENDPOINT = "https://example.test/v1?key=hidden";
-    expect(f.service.readiness().ready).toBe(false);
+    expect((await f.service.readiness()).ready).toBe(false);
     await expect(f.service.preview({ selection, budgetUsd: 0.05 }, actor)).rejects.toThrow();
     expect(f.requestCount()).toBe(0);
   });
@@ -453,4 +453,78 @@ it.each(["entity type", "participant type", "subject-scoped attribute", "non-fac
   const preview = await f.service.preview({ operation: "knowledge-extraction.v1", selection, budgetUsd: 0.05 }, actor);
   await f.service.approve({ manifestHash: preview.manifestHash }, actor);
   expect(await f.service.run(preview.invocationId, actor)).toMatchObject(invalid === "valid" ? { state: "completed" } : { state: "failed", reason: "invalid-output" });
+});
+
+function subscriptionSnapshot(overrides: Partial<CodexSubscriptionSnapshot> = {}): CodexSubscriptionSnapshot {
+  return { transport: "codex-chatgpt.v1", model: "gpt-6-astra", cliVersion: "0.153.4", modelCatalogHash: "sha256:catalog",
+    binaryHash: "qualified", mandatoryTools: [], authentication: "chatgpt", usageBasis: "ChatGPT subscription; quota applies; no API USD estimate", maxInvocations: 1, ...overrides };
+}
+
+it("uses an explicit subscription invocation cap without API pricing or automatic API fallback", async () => {
+  const f = await fixture();
+  const snapshot = subscriptionSnapshot();
+  let calls = 0;
+  const subscriptionProvider = { prepare: async () => snapshot, invoke: async (input: { beforeTransfer: () => void | Promise<void> }) => {
+    await input.beforeTransfer(); calls++;
+    return { model: "gpt-6-astra", outputText: JSON.stringify({ proposals: [] }), usage: { inputUnits: 100, outputUnits: 12 } };
+  } };
+  const service = createDocumentProcessingService({ ...f.dependencies, env: { ...f.env, CESTUS_DOCUMENT_PROVIDER_TRANSPORT: "codex-chatgpt" }, subscriptionProvider });
+  const preview = await service.preview({ selection, operation: "knowledge-extraction.v1", subscriptionInvocations: 1 }, actor);
+  expect(preview.manifest.provider).toBe("codex-chatgpt.v1");
+  expect(preview.manifest).not.toHaveProperty("budgetUsd");
+  expect(preview.manifest).not.toHaveProperty("maximumEstimatedUsd");
+  expect(preview.manifest).not.toHaveProperty("maxOutputTokens");
+  expect(preview.manifest.destination).toEqual(snapshot);
+  await expect(service.run(preview.invocationId, actor)).rejects.toThrow(/queued/);
+  expect(calls).toBe(0);
+  await service.approve({ manifestHash: preview.manifestHash }, actor);
+  expect((await service.run(preview.invocationId, actor)).state).toBe("completed");
+  expect(calls).toBe(1); expect(f.requestCount()).toBe(0);
+  await expect(service.run(preview.invocationId, actor)).rejects.toThrow(/queued/);
+  const reopened = createDocumentProcessingService({ ...f.dependencies, env: {} });
+  expect((await reopened.previewDetails(preview.invocationId, actor)).manifest).toEqual(preview.manifest);
+  expect(await reopened.output(preview.invocationId, actor)).toMatchObject({ provider: "codex-chatgpt.v1", model: "gpt-6-astra", proposalState: "unreviewed" });
+});
+
+it("blocks stale subscription profiles and changed governance before sending passages", async () => {
+  const f = await fixture(); let calls = 0; let profile = "qualified";
+  const subscriptionProvider = {
+    prepare: async () => subscriptionSnapshot({ binaryHash: profile }),
+    invoke: async (input: { beforeTransfer: () => void | Promise<void> }) => { f.change(); await input.beforeTransfer(); calls++; return { model: "gpt-6-astra", outputText: '{"proposals":[]}', usage: { inputUnits: 1, outputUnits: 1 } }; }
+  };
+  const service = createDocumentProcessingService({ ...f.dependencies, env: { CESTUS_DOCUMENT_PROVIDER_TRANSPORT: "codex-chatgpt" }, subscriptionProvider });
+  const preview = await service.preview({ selection, subscriptionInvocations: 1 }, actor);
+  profile = "changed";
+  await expect(service.approve({ manifestHash: preview.manifestHash }, actor)).rejects.toThrow(/changed/);
+  profile = "qualified";
+  await service.approve({ manifestHash: preview.manifestHash }, actor);
+  expect((await service.run(preview.invocationId, actor)).state).toBe("failed");
+  expect(calls).toBe(0); expect(f.requestCount()).toBe(0);
+});
+
+it("keeps subscription unavailability explicit even when API credentials are configured", async () => {
+  const f = await fixture();
+  const subscriptionProvider = { prepare: async () => { throw new Error("GPT-6 Astra is unavailable for this Codex account; no fallback model was used."); }, invoke: async () => { throw new Error("must not run"); } };
+  const service = createDocumentProcessingService({ ...f.dependencies, env: { ...f.env, CESTUS_DOCUMENT_PROVIDER_TRANSPORT: "codex-chatgpt" }, subscriptionProvider });
+  expect(await service.readiness()).toMatchObject({ ready: false, message: expect.stringContaining("GPT-6 Astra is unavailable") });
+  await expect(service.preview({ selection, subscriptionInvocations: 1 }, actor)).rejects.toThrow(/unavailable/);
+  expect(f.requestCount()).toBe(0);
+  expect(await f.ledger.readAll()).toHaveLength(0);
+});
+
+it("records interrupted subscription completion as uncertain and requires a new explicit quota-consuming retry", async () => {
+  const f = await fixture(); let calls = 0;
+  const snapshot = subscriptionSnapshot();
+  const subscriptionProvider = { prepare: async () => snapshot, invoke: async (input: { beforeTransfer: () => void | Promise<void> }) => { await input.beforeTransfer(); calls++; throw new Error("connection lost"); } };
+  const service = createDocumentProcessingService({ ...f.dependencies, env: { CESTUS_DOCUMENT_PROVIDER_TRANSPORT: "codex-chatgpt" }, subscriptionProvider });
+  const preview = await service.preview({ selection, subscriptionInvocations: 1 }, actor);
+  await service.approve({ manifestHash: preview.manifestHash }, actor);
+  expect((await service.run(preview.invocationId, actor)).state).toBe("uncertain");
+  const restarted = createDocumentProcessingService({ ...f.dependencies, env: { CESTUS_DOCUMENT_PROVIDER_TRANSPORT: "codex-chatgpt" }, subscriptionProvider });
+  await restarted.recoverInterrupted();
+  await expect(restarted.run(preview.invocationId, actor)).rejects.toThrow(/queued/);
+  const retry = await restarted.preview({ selection, subscriptionInvocations: 1, retryOf: preview.invocationId }, actor);
+  expect(retry.warning).toContain("subscription quota"); expect(calls).toBe(1);
+  await expect(restarted.run(retry.invocationId, actor)).rejects.toThrow(/queued/);
+  expect(f.requestCount()).toBe(0);
 });

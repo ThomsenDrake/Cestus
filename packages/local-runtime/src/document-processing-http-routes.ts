@@ -6,7 +6,7 @@ export async function handleDocumentProcessingHttpRoute(request: LocalRuntimeReq
   const path = new URL(request.url, "http://localhost").pathname;
   if (!service) return json(503, { ok: false, message: "A current portable workspace is required for document processing." });
   try {
-    if (request.method === "GET" && path === "/api/document-processing/readiness") return json(200, service.readiness());
+    if (request.method === "GET" && path === "/api/document-processing/readiness") return json(200, await service.readiness());
     if (request.method === "GET" && path === "/api/document-processing/jobs") return json(200, { jobs: await service.list(actor) });
     const jobRoute = /^\/api\/document-processing\/jobs\/(inv_[A-Za-z0-9_-]+)(?:\/(run|cancel|output|preview))?$/.exec(path);
     if (jobRoute) {
@@ -25,7 +25,7 @@ export async function handleDocumentProcessingHttpRoute(request: LocalRuntimeReq
     }
     return json(404, { ok: false, message: "Document processing route unavailable." });
   } catch {
-    return json(409, { ok: false, message: "Processing action blocked. Check provider configuration, public_safe human review, exact selection and budget. Changed or unapproved selections require a new preview. Refresh jobs before retrying an interrupted request." });
+    return json(409, { ok: false, message: "Processing action blocked. Check provider configuration, public_safe human review, exact selection and usage limits. Changed or unapproved selections require a new preview. Refresh jobs before retrying an interrupted request." });
   }
 }
 function json(status: number, body: unknown): LocalRuntimeResponse {

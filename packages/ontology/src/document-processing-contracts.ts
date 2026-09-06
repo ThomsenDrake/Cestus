@@ -69,35 +69,54 @@ export interface ResolvedDocumentSelection {
   reviewEventId: string;
   passages: { index: number; text: string; locator: unknown }[];
 }
-export interface ProviderConfiguration {
+export interface ApiProviderConfiguration {
   endpoint: string;
   model: string;
   inputUsdPerMillion: number;
   outputUsdPerMillion: number;
 }
-export interface DocumentProcessingManifest {
-  schemaVersion: "document-processing-manifest.v1";
+export interface CodexSubscriptionSnapshot {
+  transport: "codex-chatgpt.v1";
+  model: "gpt-6-astra";
+  cliVersion: string;
+  binaryHash: string;
+  modelCatalogHash: string;
+  mandatoryTools: unknown[];
+  authentication: "chatgpt";
+  usageBasis: string;
+  maxInvocations: 1;
+}
+export type ProviderConfiguration = ApiProviderConfiguration | CodexSubscriptionSnapshot;
+interface DocumentProcessingManifestBase {
   invocationId: string;
   actorId: string;
   selection: DocumentSelection;
   resolved: ResolvedDocumentSelection;
-  destination: ProviderConfiguration;
   operation: DocumentProcessingOperation;
   workspaceId?: string;
   promptVersion?: "knowledge-extraction-prompt.v1" | "knowledge-extraction-prompt.v2";
   schemaSnapshot?: z.infer<typeof vocabularySchema>;
-  provider: "openai-compatible-chat.v1";
   inputText: string;
   systemPrompt: string;
   inputBytes: number;
-  inputTokenUpperBound: number;
-  maxOutputTokens: number;
   maxResponseBytes: number;
-  maximumEstimatedUsd: number;
-  budgetUsd: number;
   timeoutMs: number;
   retryOf?: string;
 }
+export type DocumentProcessingManifest = DocumentProcessingManifestBase & ({
+  schemaVersion: "document-processing-manifest.v1";
+  provider: "openai-compatible-chat.v1";
+  destination: ApiProviderConfiguration;
+  inputTokenUpperBound: number;
+  maxOutputTokens: number;
+  maximumEstimatedUsd: number;
+  budgetUsd: number;
+} | {
+  schemaVersion: "document-processing-manifest.v2";
+  provider: "codex-chatgpt.v1";
+  destination: CodexSubscriptionSnapshot;
+  subscriptionInvocations: 1;
+});
 export interface DocumentProcessingJob {
   invocationId: string;
   manifestHash: string;
