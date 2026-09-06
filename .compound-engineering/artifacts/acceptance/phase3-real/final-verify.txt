@@ -1,0 +1,56 @@
+typecheck passed
+
+ RUN  v4.1.9 /home/drake/Projects/Cestus
+
+3:30:04 PM [vite] (ssr) Failed to load source map for /home/drake/Projects/Cestus/node_modules/typescript/lib/typescript.js.
+Error: An error occurred while trying to read the map file at typescript.js.map
+Error: ENOENT: no such file or directory, open '/home/drake/Projects/Cestus/node_modules/typescript/lib/typescript.js.map'
+    at Object.readFileSync (node:fs:436:20)
+    at file:///home/drake/Projects/Cestus/node_modules/vite/dist/node/chunks/node.js:18740:13
+    at readFromFileMap (file:///home/drake/Projects/Cestus/node_modules/vite/dist/node/chunks/node.js:18440:13)
+    at Object.exports.fromMapFileComment (file:///home/drake/Projects/Cestus/node_modules/vite/dist/node/chunks/node.js:18534:12)
+    at Object.exports.fromMapFileSource (file:///home/drake/Projects/Cestus/node_modules/vite/dist/node/chunks/node.js:18545:22)
+    at extractSourcemapFromFile (file:///home/drake/Projects/Cestus/node_modules/vite/dist/node/chunks/node.js:18726:87)
+    at loadAndTransform (file:///home/drake/Projects/Cestus/node_modules/vite/dist/node/chunks/node.js:19695:22)
+(node:47835) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+TASK137_POLICY_CORPUS_OK allowed=8 rejected=20
+
+ Test Files  272 passed | 3 skipped (275)
+      Tests  4188 passed | 5 skipped (4193)
+   Start at  15:29:02
+   Duration  277.13s (transform 9.47s, setup 21.86s, import 60.85s, tests 427.01s, environment 14.77s)
+
+✔ old standard-input gate exits after the test double and omits completion (7.466473ms)
+✔ committed terminal gate runs by pathname and emits the ordered v2 markers (24.626ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 81.473278
+tests passed
+vite v8.1.3 building client environment for production...
+[2Ktransforming...[plugin rolldown:vite-resolve] Module "node:crypto" has been externalized for browser compatibility, imported by "/home/drake/Projects/Cestus/packages/ontology/src/contracts.ts". See https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility for more details.
+✓ 190 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                              0.47 kB │ gzip:   0.29 kB
+dist/assets/inter-vietnamese-wght-normal-CBcvBZtf.woff2     10.25 kB
+dist/assets/inter-greek-ext-wght-normal-DlzME5K_.woff2      11.23 kB
+dist/assets/inter-cyrillic-wght-normal-DqGufNeO.woff2       18.74 kB
+dist/assets/inter-greek-wght-normal-CkhJZR-_.woff2          18.99 kB
+dist/assets/inter-cyrillic-ext-wght-normal-BOeWTOD4.woff2   25.96 kB
+dist/assets/inter-latin-wght-normal-Dx4kXJAl.woff2          48.25 kB
+dist/assets/inter-latin-ext-wght-normal-DO1Apj_S.woff2      85.06 kB
+dist/assets/index-BqlhRa7B.css                              41.21 kB │ gzip:   7.90 kB
+dist/assets/index-DdKurj8b.js                              903.54 kB │ gzip: 219.74 kB
+
+[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 393ms

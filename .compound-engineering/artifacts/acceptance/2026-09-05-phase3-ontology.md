@@ -1,5 +1,8 @@
 # Phase 3 shared ontology: local acceptance evidence
 
+> **Current status, September 6:** The authorized legacy-record import → exact approval → live GPT-6 Astra subscription analysis → cited proposals → human review → restart trial now passes for the bounded sample recorded at the end of this document. Earlier missing-folder/no-live statements below describe their original checkpoints and are superseded by that trial. This is not a blanket full Phase 3 acceptance or a broad corpus/scan quality evaluation.
+
+
 Date: 2026-09-05. Baseline: clean `neo` at `60559c00`. Implementation branch: `codex/phase3-shared-ontology`, created in the primary checkout. No helper worktree retains `neo`. No push, PR, merge, deployment, real-record access or live transfer was performed. `SECURITY.md` and historical evidence/events were preserved.
 
 ## Status and limits
@@ -139,3 +142,68 @@ Focused checks passed **23 transport tests** (including installed-CLI anonymous 
 The implementation is committed locally as `de4d8762`; the following runbook/evidence commit is reported in the task delivery.
 
 To finish real-record acceptance, obtain the selected legacy root from the coordinating task, inspect only that authorized folder, choose a small eligible sample, preserve originals and record any necessary TXT conversion provenance. Generated legacy claims/reports remain derived unreviewed material with uncertain independence. Review the exact eligible passages and approve one bounded subscription turn in Cestus, then inspect/import/review and verify restart. Do not relabel restricted material or substitute synthetic fixtures for this remaining check.
+
+
+## Authorized legacy records and live subscription trial — September 6
+
+Baseline `c3417891` was clean on `codex/phase3-shared-ontology`. The user supplied the exact read-only APFS root and three bounded corpus directories, and explicitly selected ChatGPT subscription and exactly `gpt-6-astra`. No new source authorization or provider questionnaire was needed. This trial used the already shipped official subscription adapter; no model switch or API-billing fallback occurred.
+
+### Source preservation and selection
+
+Only three selected files were copied using narrowly scoped privileged reads, with no symlink following, legacy-code execution, permission change or drive write. The mount was confirmed read-only. The larger records collection and unrelated runtime/credential directories were not scanned for contents. Private originals, import copies, provenance, browser evidence and workspace remain outside Git under `/tmp/cestus-phase3-real.jMasWV` (mode 0700).
+
+| Selected source | Bytes | SHA-256 | Treatment |
+| --- | ---: | --- | --- |
+| Public RFQ posting PDF | 92,220 | `e40d539662b89b9f867ca741d374a36065bc5e66c4b80b394c57e640c3778045` | Imported unchanged; RFQ case membership |
+| Public notice PDF | 154,064 | `0aba073e4bcf33835267c05c633ddd1f7cd006c1e46b90778e2a6914f94292ac` | Imported unchanged; seven page-1 passages approved for analysis |
+| Legacy generated briefing Markdown | 6,601 | `1dbe13885309830ca9aa9d831f83146449d5ac5be6f42441f6f2d75b1c958de1` | Byte-identical `.txt` copy for the existing extractor; derived/unreviewed, private correspondence, local only |
+
+`source-provenance.json` outside Git records each full original path, copied path, hash, size, modification time and conversion identity. The Markdown-to-TXT copy preserves every byte and was the only required format adaptation; no general new importer was added. Post-trial hashes match the copied originals. The public notice was inspected locally, including a rendered first page. Text was extracted from all three notice pages, but image/visual coverage remains unknown: no OCR was performed. Neither generated claims nor another representation of the same source was counted as independent corroboration.
+
+### Actual product journey and limits
+
+A fresh workspace and built production UI ran only at `127.0.0.1:28863`, driven through normal controls with local Chromium/agent-browser 0.19.0. Source registration, scan review, import approval, import, extraction, governance review, two case creations and evidence memberships all used browser controls. No accepted-data seeding, SQL writes, browser adapters or console API mutations were used. Read-only ledger/hash inspection corroborated the UI results.
+
+The public notice was classified `public_safe` after content review. The generated briefing was classified `private_correspondence`; its attempted preview was visibly blocked before a processing job or invocation. It has its own unverified case and an explicit unknown-independence decision. Only the public notice was transmitted.
+
+The declared evaluation bound was at most two manually approved attempts, zero automatic retries; **one attempt was used**. The approved selection was page 1 blocks 3–9 (passage indexes 2–8), containing the participants, date, recommendation and its caveat. The exact outgoing passage/schema/instruction content and mandatory Codex definitions were inspected in the browser before approval. Selected approval input was 7,566 bytes, excluding the separately disclosed mandatory definitions.
+
+- Invocation: `inv_16054f10e2334accacb521c6433eb7a8`.
+- Approval manifest: `sha256:9cbe15f95f8586964548a9ef4e727c9e6e7b2b15be48640111455f65f9b09c90`.
+- Source extraction: `sha256:4c2e5311e192327b38e5979bef2403a1f5cde23519394ab72340ddbcb99eb992`.
+- Provider: `codex-chatgpt.v1`; effective model **`gpt-6-astra`**; official CLI **0.153.4**.
+- CLI binary: `sha256:56ef98ab4032d317ab26e9b5e5a175650717351edb16ed9cde0cb6d1734d62da`; unchanged official model catalog: `sha256:ad80d36b101be22e9d03de6ad976b7b2fba6cf35f12db0ac6e4bffa569881132`.
+- Prompt: `knowledge-extraction-prompt.v2`; approved schema: `investigation.v1`.
+- Raw provider output: `sha256:56eb728586cc304e448a45bcee47b54808249026523795b053728c5cc6081c4c`; validated artifact: `sha256:70b1827c667eca4f05e6e9c87efb0716a092942e5fd48063990b35d9206f50f2`.
+- Durable completion: `completed / validated-output`, `2026-09-06T19:15:46.869Z`; reported usage **3,366 input / 899 output tokens**. These are provider-reported usage, not dollars or a guarantee about subscription quota.
+
+The real run exercised successful authentication/model availability and normal output/usage ordering under the official adapter's isolation checks. It produced 13 cited proposals, not a standalone summary. Importing them created unreviewed knowledge. Review accepted the nine supported person/organization identities and one role description in a selected group. Three proposals involving the RFQ's incorrect `contract` interpretation were rejected with explanation. The model omitted the notice date. It proposed no completed-award relationship, and no award occurrence was accepted. This useful but imperfect output demonstrates why human review and manual curation remain necessary. It does not measure broad model recall or reliability.
+
+### Vocabulary, written date, replay and browser findings
+
+Through the UI, the investigator previewed and approved a `solicitation` entity type, creating immutable `investigation.v2`. **Edit as new proposal** revised the rejected provider entity under that schema; its separate acceptance preserved the old proposal and review explanation. A second concrete preview/approval added the `notice_issued_on` typed date predicate, constrained to solicitation subjects, in `investigation.v3`. This records notice issuance separately from a completed award or ingestion date. The original provider artifact and its v1 schema were unchanged.
+
+Manual entry first demonstrated that a bare ISO conversion absent from the quotation is rejected. Entering the actual written expression showed its ISO interpretation and day precision. A date-only quotation then failed acceptance because it did not ground the subject identity. A new linked proposal added the RFQ-identifying passage, retained the original written expression/locator/`written-date.v1` provenance, and was separately accepted. The inadequate earlier proposal was rejected and preserved. The final workspace has **16 proposals: 12 accepted, four rejected; ten entity bindings; two cases; three schema snapshots**. Source independence remains uncertain; no extra corroboration is claimed. Some early driver-filled rationale strings contain a harmless literal argument suffix; they were not rewritten out of history.
+
+The production server was stopped and restarted using the same workspace and final built UI. Browser checks recovered cases, source memberships, ten entity dossiers, accepted and rejected records, v1/v2/v3 schema history, written-date source/interpretation and authenticated review history. The original completed provider result remained readable without another invocation.
+
+Two concrete browser defects were characterized and fixed during this trial:
+
+1. A harmless governance rationale containing “secret-bearing” caused the broad metadata guard to hide the entire notice. The first item-only display fix then failed the composed browser DTO's exact history comparison. A shared safe rationale display mapping now preserves the evidence and keeps both DTOs consistent. Original ledger bytes and classifications are unchanged; credential-valued history still fails closed before display mapping. Synthetic red/green tests cover the complete DTO → JSON → browser decoder contract.
+2. Actual long history identifiers produced **401px document width at a 390px viewport**: 346–355px buttons overflowed a 298px row. A one-line shared button constraint allows shrinking and wrapping the complete identifier. The rebuilt dossier/date history and expanded vocabulary controls both measured **390px at 390px**, with no overflowing controls. Screenshots were inspected to confirm readable full text, rather than clipping.
+
+Private browser evidence includes `live-preview-reviewed.txt`, `live-result.txt`, `private-artifact-blocked.txt`, `vocabulary-preview.txt`, `date-predicate-preview.txt`, `date-interpreted-preview.txt`, `restart-date-history.txt`, `restart-schema-history.txt`, `restart-provider-result.txt`, and the two narrow-screen screenshots. None of these record-bearing files is committed.
+
+### Remaining acceptance scope
+
+The previously missing real-source and live-provider path is now demonstrated for this sample. Full Phase 3 is **not** declared accepted: cross-case identity/correction, independent corroboration, changed-input behavior and interruption/retry adversarial cases still rely on the earlier controlled synthetic/regression evidence rather than a broad real multi-case evaluation. This trial does not establish scanned-PDF coverage, arbitrary legacy JSON import, live quota failure or refreshed-auth lifecycle, model completeness, or account quota accounting. The generated private artifact was imported/reviewed locally but never sent to the model. No second live attempt, paid API use, automatic research, pattern discovery, correspondence or Phase 4/5 behavior was performed.
+
+### Verification and local delivery
+
+The six-file implementation delta passed CE review with no actionable findings (`phase3-live-review.json`); all recorded source hashes match. The composed governance regression passed 56 tests across five files; mobile UI regressions passed 18 tests across two files. The initial full verification after the metadata fix passed 4,188 tests; final verification after the mobile change is recorded below. The small display-only fixes did not justify another abstraction or a duplicate learning document; their causes and composed regression are captured here and in the tests.
+
+The owned browser and production server were stopped after restart/citation checks. No uncaught browser errors were reported. Private originals, workspace and record-bearing evidence remain outside Git; only synthetic test logs, sanitized layout measurements and aggregate trial metadata are under `phase3-real/`. No helper worktree was created, no user workspace was modified, and SECURITY.md is unchanged. No push, PR, merge, deployment or correspondence was performed.
+
+Implementation commits for this trial: `693c9b39` (consistent governance metadata display) and `171a88f2` (long ontology controls wrap at narrow widths). The following documentation/evidence commit is reported in delivery.
+
+Final `npm run verify` completed after all code changes: typecheck passed; **272 test files passed, three skipped; 4,188 tests passed, five skipped**; both assurance tests and the production build passed. Full log: `phase3-real/final-verify.txt`. Final build assets (`index-DdKurj8b.js`, `index-BqlhRa7B.css`) match the restarted browser-tested build. The known non-failing source-map, localStorage, node:crypto and chunk-size warnings remain. `git diff --check` passed; all six reviewed source hashes still match.

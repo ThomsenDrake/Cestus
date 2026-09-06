@@ -135,9 +135,9 @@ For the API transport, queued work runs only after **Run approved operation**. A
 
 ## Acceptance boundaries
 
-The synthetic local import/read/search journey and synthetic loopback provider protocol have separate acceptance evidence under `.compound-engineering/artifacts/acceptance/2026-09-05-phase2-evidence.md`. A live provider operation has **not** been validated. The user selected ChatGPT subscription, GPT-6 Astra and legacy Cestus artifacts. The exact legacy folder path and subsequent eligible passage selection remain pending. Account/model metadata checks and local synthetic fixtures do not establish live-model usefulness. No personal records were selected or transferred during this follow-up.
+The synthetic Phase 2 journey is recorded separately in `.compound-engineering/artifacts/acceptance/2026-09-05-phase2-evidence.md`. On September 6, the built Phase 3 product completed one authorized **real ChatGPT subscription / GPT-6 Astra** run over seven selected passages from a copied public legacy procurement notice. Two PDFs and one derived legacy briefing were imported through normal controls. The private briefing was classified and blocked from external processing; its generated claims remain unreviewed. The live result produced 13 cited proposals: review accepted ten, rejected three involving an incorrectly typed solicitation, and manually added a corrected identity and grounded written date. This is a bounded successful live trial, not a general accuracy or scanned-document evaluation.
 
-Phase 3 adds shared cases and human-reviewed knowledge using those same evidence identities, persisted schema snapshots and append-only decisions. Cross-case automatic pattern discovery and competing explanations/evidence pursuit remain Phases 4 and 5. Phase 3 local evidence is recorded separately in `.compound-engineering/artifacts/acceptance/2026-09-05-phase3-ontology.md`; it does not establish live-provider or real-record acceptance.
+Phase 3 adds shared cases and human-reviewed knowledge using those same evidence identities, persisted schema snapshots and append-only decisions. Cross-case automatic pattern discovery and competing explanations/evidence pursuit remain Phases 4 and 5. Phase 3 evidence, including the real trial and its limits, is recorded in `.compound-engineering/artifacts/acceptance/2026-09-05-phase3-ontology.md`. The initial live-transfer blocker is resolved for that sample; broader corpus usefulness, live quota/refresh behavior and scanned/visual coverage remain unverified.
 
 
 ## Build and correct a small shared ontology (Phase 3)
@@ -179,10 +179,25 @@ A changed workspace revision makes an addition preview stale: refresh and inspec
 
 For a fictional example, copy `test-data/phase3-followup-records` into a disposable selected folder and import/extract it normally. Create and review a `cooperative` entity mention for Harbor Circle, then add a typed date fact `registered_on` restricted to cooperative subjects using the workflow above.
 
-Choose **Typed fact**, `registered_on`, the Harbor Circle source mention, and add the register's supporting passage. Enter **September 5, 2026** as **Proposed value**. The form shows its interpretation as **2026-09-05**. Save, inspect the original expression, day precision and exact supporting quotation beside the proposal, then separately **Accept**. **Sources and history** retains the interpretation method and quotation reference; **Open source passage** opens the saved extraction locator.
+Choose **Typed fact**, `registered_on`, the Harbor Circle source mention, and add the register's supporting passage. The selected quotations must also identify the subject: add its name or supported identifier passage if the date passage does not include it. Enter the written expression **September 5, 2026** as **Proposed value** (entering only an ISO conversion does not record normalization provenance). The form shows its interpretation as **2026-09-05**. Save, inspect the original expression, day precision and exact supporting quotation beside the proposal, then separately **Accept**. **Sources and history** retains the interpretation method and quotation reference; **Open source passage** opens the saved extraction locator.
 
 The shared manual/provider rule supports unambiguous English month names and common abbreviations, for example `5 September 2026`, `September 5, 2026`, and `September 2026`. The last retains month precision as `2026-09`; a year-only ISO value retains year precision. Invalid calendar dates, ambiguous numeric order, missing years, relative dates, unsupported locales and time-zone guesses are not normalized. Keep these unresolved; do not invent missing detail. There is no free-form override that turns an arbitrary date into grounded evidence.
 
 Occurrence time and publication time have separate controls and separate interpretation records. An interval may have mixed precision; it is rejected when even the earliest possible start is later than the latest possible end. Overlapping partial bounds retain their precision and uncertainty rather than gaining invented days. Check the uncertainty box where appropriate. The exact source expression must occur in its identified supporting quotation and normalize to the stated value; an unrelated number is insufficient. Unknown or partial extraction coverage remains visible and is not complete visual coverage.
 
 Use **Edit as new proposal** and **Supersede with correction** to correct a date while keeping the original value, quotation and decisions. Historical accepted records remain withdrawable and disputable under current evidence authorization; stricter rules apply to new proposals and acceptances. Manual vocabulary review and date correction work without a configured provider.
+
+
+### Reopen the bounded legacy-record trial
+
+The disposable trial is retained at `/tmp/cestus-phase3-real.jMasWV`; it is temporary storage, not a durable backup. Its private `source-provenance.json` records original paths, hashes and the byte-identical Markdown-to-TXT copy. Original drive files were only read. Do not register the entire legacy root or copy its credentials/runtime sessions.
+
+```bash
+cd /home/drake/Projects/Cestus
+npm run ui:build
+CESTUS_LOCAL_CONFIG_PATH=/tmp/cestus-phase3-real.jMasWV/runtime.config.json CESTUS_DOCUMENT_PROVIDER_TRANSPORT=codex-chatgpt npm run local:runtime
+```
+
+Open the newly printed local session URL. In **Ontology**, select **RFQ 23-003 — notice review** and open the solicitation dossier. Inspect the accepted notice date, its written expression and **Sources and history**; the earlier rejected proposals remain available under **Show all knowledge**. The vocabulary history contains the reviewed `solicitation` type and `notice_issued_on` date predicate restricted to that type. The **Legacy Scout briefing — unverified** case holds the local-only derived artifact with unknown independence. In **Evidence**, the completed Astra result is readable after restart; reading it does not invoke the provider again.
+
+A governance rationale may be withheld by the browser metadata safety check while the evidence remains visible. This changes only its display; the original decision, classification, ledger history and transfer policy remain intact. Actual credential-valued governance history still fails closed.
