@@ -1,0 +1,28 @@
+
+ RUN  v4.1.9 /home/drake/Projects/Cestus
+
+ ❯ packages/ui/test/evidence-workspace.test.tsx (31 tests | 1 failed) 452ms
+     × loads composed evidence and human governance history with safely displayed rationale 37ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  packages/ui/test/evidence-workspace.test.tsx > EvidenceWorkspace > loads composed evidence and human governance history with safely displayed rationale
+Error: Evidence workspace governance eligibility is inconsistent.
+ ❯ assertGovernanceWorkspaceCoverage packages/ui/src/evidence/evidence-adapter.ts:327:13
+    325|     const review = reviewsByEvidenceRef.get(item.evidenceId);
+    326|     if (review === undefined || !itemGovernanceStateMatchesReview(item…
+    327|       throw new Error("Evidence workspace governance eligibility is in…
+       |             ^
+    328|     }
+    329|   }
+ ❯ evidenceWorkspaceDtoFromJson packages/ui/src/evidence/evidence-adapter.ts:201:3
+ ❯ packages/ui/test/evidence-workspace.test.tsx:33:20
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 30 passed (31)
+   Start at  15:14:03
+   Duration  1.55s (transform 336ms, setup 93ms, import 454ms, tests 452ms, environment 446ms)
+

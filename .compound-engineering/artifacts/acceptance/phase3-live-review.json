@@ -1,0 +1,62 @@
+{
+  "status": "complete",
+  "verdict": "Ready to merge",
+  "verdict_scope": "Inspected local fix only; no merge authorized. Parent owns final npm run verify and built browser acceptance.",
+  "scope": {
+    "base": "c3417891",
+    "branch": "codex/phase3-shared-ontology",
+    "head_sha": "c3417891e4470771ab2dfeda439ccaa24e17e99c",
+    "files_changed": 6,
+    "files_sha256": {
+      "packages/ingestion/src/read-api.ts": "73228feb835fc1e403eeec48e99105f20682a75f422335c4e30939c9dd8ae658",
+      "packages/ingestion/test/read-api.test.ts": "38dfdcbe37db3387101c6aade7089043b9c84bfde355fb410cc3e8a0786f6923",
+      "packages/ontology/src/governance-read-model.ts": "61c18081687ad09b6ffa75b07973c10a40bbdd3f94884202df18e2801a6c32b3",
+      "packages/ontology/test/governance-read-model.test.ts": "2b2c51c28c1e7f4805713f60be410fea83216852e9b73d177a31fe96e4c22053",
+      "packages/ui/test/evidence-workspace.test.tsx": "41372f1c4324ce7f0b6e1e3f49e99ddfcd795751d42bc12d2cad12a7a7b6dc73",
+      "packages/ui/src/ontology/SharedOntologyWorkspace.tsx": "af03af74a9a143afcaea1008b608be5fbda7be0b363f1a62812787b15c957e24"
+    }
+  },
+  "intent": "Keep evidence usable when a governance rationale triggers the broad metadata keyword guard, while withholding that rationale consistently across composed browser DTOs and preserving credential rejection, policy and append-only history. Bound long ontology source/history button identifiers to their container and wrap complete text on narrow screens.",
+  "intent_confidence": "explicit",
+  "reviewers": [
+    "correctness",
+    "security",
+    "api-contract",
+    "testing",
+    "project-standards",
+    "adversarial"
+  ],
+  "findings": [],
+  "actionable_findings": [],
+  "triage_groups": [],
+  "pre_existing_findings": [],
+  "requirements_completeness": {
+    "consistent_display": "Shared governanceRationaleForDisplay maps item tags and governance proposal/human history; UI equality check remains unchanged.",
+    "credential_safety": "Raw assertSafeGovernanceText still executes before history display mapping. Other evidence metadata and original-content guards unchanged.",
+    "history_and_policy": "Only derived display strings change; event bytes, identities, policy evaluation and transfer approval paths unchanged.",
+    "regressions": "Observed 56 tests passed across five files, including composed runtime DTO -> JSON -> UI parsing and explicit credential-valued rationale rejection.",
+    "mobile_layout": "Shared button adds min-w-0 max-w-full and overflow-wrap:anywhere; full content remains visible, with handlers, labels and semantics unchanged. Parent/author measured the actual long-ID control before the fix."
+  },
+  "residual_risks": [],
+  "testing_gaps": [],
+  "coverage": {
+    "scope_signals": "84 changed executable lines including tests; full relevant lenses applied.",
+    "execution": "Two nested reviewer dispatches failed at capacity. Relevant full CE persona rubrics applied inline; reduced independent coverage disclosed, no cross-reviewer confidence promotion.",
+    "cross_model": "Disabled by repository config and user prohibition.",
+    "resolved_during_review": "Initial item-only redaction caused rationale inequality against governance history, which rejected the composed browser workspace. Parent reproduced it in the built browser; author aligned both display projections and added a composed regression. No unresolved finding remains.",
+    "mechanics": {
+      "malformed_returns": 0,
+      "malformed_findings": 0,
+      "primary_findings": 0,
+      "suppressed_findings": 0
+    },
+    "validators": "No surviving finding selected; no validator shortcut claimed. Initial defect independently confirmed by parent browser and characterized before fix.",
+    "standards": "AGENTS.md/CLAUDE.md fallback and SECURITY.md invariants; scope expanded by parent only for the concrete DTO composition fix.",
+    "verification": "Read /tmp/cestus-governance-rationale-composed-green.txt: 56 passed, five files. No duplicate global checks launched. Final verify and post-fix built browser remain parent-owned.",
+    "data_boundary": "Review read repository source and synthetic tests only; no real records or credentials accessed or copied into this receipt.",
+    "mobile_delta": "One-line class change inspected against actual Sources/history control and shared button consumers. No clipping/overflow hiding introduced. Parent reports 18 UI tests passing; rebuilt narrow-browser width and final verify remain parent-owned."
+  },
+  "artifact_path": "/home/drake/Projects/Cestus/.compound-engineering/artifacts/acceptance/phase3-live-review.json",
+  "run_id": "20260906-phase3-governance-display-review",
+  "completed_at": "2026-09-06T19:26:47.011478+00:00"
+}

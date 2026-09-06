@@ -1,0 +1,76 @@
+{
+  "trialDate": "2026-09-06",
+  "baseCommit": "c3417891",
+  "workspaceRoot": "/tmp/cestus-phase3-real.jMasWV/workspace",
+  "privateProvenance": "/tmp/cestus-phase3-real.jMasWV/source-provenance.json",
+  "recordsCommitted": false,
+  "freshWorkspace": true,
+  "normalBrowserControls": true,
+  "loopback": "127.0.0.1:28863",
+  "provider": "codex-chatgpt.v1",
+  "model": "gpt-6-astra",
+  "invocationId": "inv_16054f10e2334accacb521c6433eb7a8",
+  "manifestHash": "sha256:9cbe15f95f8586964548a9ef4e727c9e6e7b2b15be48640111455f65f9b09c90",
+  "validatedArtifactHash": "sha256:70b1827c667eca4f05e6e9c87efb0716a092942e5fd48063990b35d9206f50f2",
+  "providerOutputHash": "sha256:56eb728586cc304e448a45bcee47b54808249026523795b053728c5cc6081c4c",
+  "usage": {
+    "inputTokens": 3366,
+    "outputTokens": 899
+  },
+  "approvedAttemptsLimit": 2,
+  "liveAttemptsUsed": 1,
+  "automaticRetries": 0,
+  "importedFiles": 3,
+  "privateArtifactTransferred": false,
+  "providerProposals": 13,
+  "acceptedProviderProposals": 10,
+  "rejectedProviderProposals": 3,
+  "totalProposals": 16,
+  "acceptedTotal": 12,
+  "rejectedTotal": 4,
+  "entityBindings": 10,
+  "cases": 2,
+  "schemaVersions": [
+    "investigation.v1",
+    "investigation.v2",
+    "investigation.v3"
+  ],
+  "restartRecovered": true,
+  "oldProviderArtifactUnchanged": true,
+  "mobile": {
+    "before": {
+      "viewport": 390,
+      "document": 401
+    },
+    "afterDossierAndDateHistory": {
+      "viewport": 390,
+      "document": 390,
+      "overflowingControls": 0
+    },
+    "afterVocabularyControls": {
+      "viewport": 390,
+      "document": 390
+    },
+    "fullIdentifiersWrap": true
+  },
+  "limitations": [
+    "Single live public-notice selection, not broad model-quality measurement",
+    "Private generated artifact remained local, derived and unreviewed",
+    "No OCR or complete visual coverage",
+    "No live quota/refresh lifecycle test",
+    "Cross-case identity and adversarial acceptance remain supported by earlier synthetic/regression evidence"
+  ],
+  "finalVerification": {
+    "command": "npm run verify",
+    "exitCode": 0,
+    "testsPassed": 4188,
+    "testsSkipped": 5,
+    "testFilesPassed": 272,
+    "testFilesSkipped": 3,
+    "typecheck": true,
+    "assurance": true,
+    "productionBuild": true,
+    "browserBuildMatches": true,
+    "asset": "index-DdKurj8b.js"
+  }
+}
