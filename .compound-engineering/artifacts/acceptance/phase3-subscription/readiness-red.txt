@@ -1,0 +1,34 @@
+
+ RUN  v4.1.9 /home/drake/Projects/Cestus
+
+ ❯ packages/ui/test/document-processing-panel.test.tsx (10 tests | 1 failed) 559ms
+   × keeps subscription usage honest when readiness fails before a destination can be qualified 11ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  packages/ui/test/document-processing-panel.test.tsx > keeps subscription usage honest when readiness fails before a destination can be qualified
+Error: expect(element).not.toBeInTheDocument()
+
+expected document not to contain element, found <input
+  class="rounded border border-[var(--console-line)] bg-[var(--console-panel)] p-2"
+  max="100"
+  min="0.000001"
+  step="any"
+  type="number"
+  value=""
+/> instead
+ ❯ packages/ui/test/document-processing-panel.test.tsx:190:63
+    188|   backend({ ready: false, transport: "codex-chatgpt" }); mount();
+    189|   await screen.findByText("Provider missing. No fallback provider is s…
+    190|   expect(screen.queryByLabelText("Maximum budget (USD)")).not.toBeInTh…
+       |                                                               ^
+    191|   expect(screen.getByText(/One Codex turn per approval/)).toBeInTheDoc…
+    192|   expect(screen.getByRole("button", { name: "Preview exact transfer" }…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 9 passed (10)
+   Start at  14:51:26
+   Duration  1.35s (transform 82ms, setup 95ms, import 116ms, tests 559ms, environment 472ms)

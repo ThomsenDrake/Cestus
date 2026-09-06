@@ -1,0 +1,43 @@
+
+ RUN  v4.1.9 /home/drake/Projects/Cestus
+
+ ❯ packages/local-runtime/test/document-processing.test.ts (54 tests | 1 failed) 653ms
+   × uses an explicit subscription invocation cap without API pricing or automatic API fallback 2ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  packages/local-runtime/test/document-processing.test.ts > uses an explicit subscription invocation cap without API pricing or automatic API fallback
+ZodError: [
+  {
+    "expected": "number",
+    "code": "invalid_type",
+    "path": [
+      "budgetUsd"
+    ],
+    "message": "Invalid input: expected number, received undefined"
+  },
+  {
+    "code": "unrecognized_keys",
+    "keys": [
+      "subscriptionInvocations"
+    ],
+    "path": [],
+    "message": "Unrecognized key: \"subscriptionInvocations\""
+  }
+]
+ ❯ DocumentProcessingService.preview packages/local-runtime/src/document-processing.ts:58:39
+     56|   async preview(input: z.input<typeof previewInputSchema>, actor: Acto…
+     57|     this.assertHuman(actor);
+     58|     const parsed = previewInputSchema.parse(input);
+       |                                       ^
+     59|     if (parsed.retryOf !== undefined) {
+     60|       const previous = await this.get(parsed.retryOf, actor);
+ ❯ packages/local-runtime/test/document-processing.test.ts:467:33
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 53 passed (54)
+   Start at  14:34:49
+   Duration  1.28s (transform 249ms, setup 89ms, import 428ms, tests 653ms, environment 0ms)

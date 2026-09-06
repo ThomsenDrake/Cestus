@@ -1,0 +1,31 @@
+{
+  "status": "complete",
+  "scope": "Current subscription changes from da9d23c2, including explicit new transport/test files",
+  "passes": {
+    "reuse": {
+      "status": "complete",
+      "findings": []
+    },
+    "quality": {
+      "status": "complete",
+      "findings": [
+        "Typed subscription snapshot fixture helper applied by parent.",
+        "Transport test imports and suite grouping consolidated by owner."
+      ]
+    },
+    "efficiency": {
+      "status": "complete",
+      "findings": [
+        "Repeated qualification may be costly; skipped because removing a temporal gate has unproven behavioral equivalence and no measurement justifies performance machinery."
+      ]
+    }
+  },
+  "applied_by_review_agent": 0,
+  "applied_by_parent": {
+    "reuse": 0,
+    "quality": 2,
+    "efficiency": 0
+  },
+  "verification": "Parent owns targeted regressions, typecheck and final npm run verify. No duplicate global check retained.",
+  "capacity": "Three full prompt assets dispatched serially to the available balanced-model reviewer; no lost lens, no independent agreement claimed between its passes."
+}
