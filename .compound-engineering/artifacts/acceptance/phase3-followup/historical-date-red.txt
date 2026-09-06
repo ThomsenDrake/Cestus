@@ -1,0 +1,66 @@
+
+ RUN  v4.1.9 /home/drake/Projects/Cestus
+
+ ❯ packages/ontology/test/knowledge-service.test.ts (16 tests | 4 failed) 136ms
+     × permits withdraw after revalidating canonical evidence without retroactively changing grounding 10ms
+     × permits dispute after revalidating canonical evidence without retroactively changing grounding 5ms
+     × permits supersede after revalidating canonical evidence without retroactively changing grounding 6ms
+     × keeps accepted records referenceable while strict new proposals and acceptances remain grounded 4ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  packages/ontology/test/knowledge-service.test.ts > historical accepted date lifecycle > permits withdraw after revalidating canonical evidence without retroactively changing grounding
+ FAIL  packages/ontology/test/knowledge-service.test.ts > historical accepted date lifecycle > permits dispute after revalidating canonical evidence without retroactively changing grounding
+Error: Proposed value is not grounded in its source quotation.
+ ❯ grounded packages/ontology/src/knowledge-service.ts:631:15
+    629|       const selectedQuotes = value.type === "date" && value.normalizat…
+    630|       if (!selectedQuotes.some((quote) => isKnowledgeValueGrounded(val…
+    631|         throw new KnowledgeCommandError(
+       |               ^
+    632|           "Proposed value is not grounded in its source quotation.",
+    633|         );
+ ❯ KnowledgeService.validateEvidence packages/ontology/src/knowledge-service.ts:635:5
+ ❯ KnowledgeService.executeValidated packages/ontology/src/knowledge-service.ts:442:11
+ ❯ KnowledgeService.execute packages/ontology/src/knowledge-service.ts:224:14
+ ❯ packages/ontology/test/knowledge-service.test.ts:580:12
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  packages/ontology/test/knowledge-service.test.ts > historical accepted date lifecycle > permits supersede after revalidating canonical evidence without retroactively changing grounding
+Error: Proposed value is not grounded in its source quotation.
+ ❯ grounded packages/ontology/src/knowledge-service.ts:631:15
+    629|       const selectedQuotes = value.type === "date" && value.normalizat…
+    630|       if (!selectedQuotes.some((quote) => isKnowledgeValueGrounded(val…
+    631|         throw new KnowledgeCommandError(
+       |               ^
+    632|           "Proposed value is not grounded in its source quotation.",
+    633|         );
+ ❯ KnowledgeService.validateEvidence packages/ontology/src/knowledge-service.ts:640:9
+ ❯ KnowledgeService.validateEndpoints packages/ontology/src/knowledge-service.ts:668:7
+ ❯ KnowledgeService.executeValidated packages/ontology/src/knowledge-service.ts:458:13
+ ❯ KnowledgeService.execute packages/ontology/src/knowledge-service.ts:224:14
+ ❯ packages/ontology/test/knowledge-service.test.ts:579:7
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  packages/ontology/test/knowledge-service.test.ts > historical accepted date lifecycle > keeps accepted records referenceable while strict new proposals and acceptances remain grounded
+Error: Proposed value is not grounded in its source quotation.
+ ❯ grounded packages/ontology/src/knowledge-service.ts:631:15
+    629|       const selectedQuotes = value.type === "date" && value.normalizat…
+    630|       if (!selectedQuotes.some((quote) => isKnowledgeValueGrounded(val…
+    631|         throw new KnowledgeCommandError(
+       |               ^
+    632|           "Proposed value is not grounded in its source quotation.",
+    633|         );
+ ❯ KnowledgeService.validateEvidence packages/ontology/src/knowledge-service.ts:640:9
+ ❯ KnowledgeService.executeValidated packages/ontology/src/knowledge-service.ts:342:13
+ ❯ KnowledgeService.execute packages/ontology/src/knowledge-service.ts:224:14
+ ❯ packages/ontology/test/knowledge-service.test.ts:590:105
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  4 failed | 12 passed (16)
+   Start at  18:21:37
+   Duration  685ms (transform 201ms, setup 99ms, import 330ms, tests 136ms, environment 0ms)

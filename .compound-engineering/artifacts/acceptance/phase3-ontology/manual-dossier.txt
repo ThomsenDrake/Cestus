@@ -1,0 +1,416 @@
+- generic [ref=e1] clickable [onclick]
+  - region "Local workspace status" [ref=e2]
+    - status
+      - StaticText "Backend running · Workspace ready"
+    - button "Refresh workspace status" [ref=e3]
+    - paragraph
+      - StaticText "Synthetic Phase 3 trial · Synthetic investigator"
+    - paragraph
+      - StaticText "Storage: /tmp/cestus-phase3-browser.jw438rcx/workspace"
+  - generic
+    - navigation "Cestus tactical modules" [ref=e4]
+      - link "Cestus home" [ref=e6]
+        - StaticText "CESTUS"
+      - StaticText "NEO"
+      - list
+        - listitem [level=1]
+          - link "Command" [ref=e11]
+            - StaticText "COMMAND"
+        - listitem [level=1]
+          - link "Requests" [ref=e12]
+            - StaticText "REQUESTS"
+        - listitem [level=1]
+          - link "Evidence" [ref=e13]
+            - StaticText "EVIDENCE"
+        - listitem [level=1]
+          - link "Ontology" [ref=e14]
+            - StaticText "ONTOLOGY"
+        - listitem [level=1]
+          - link "Agent" [ref=e15]
+            - StaticText "AGENT"
+        - listitem [level=1]
+          - link "Ingestion" [ref=e16]
+            - StaticText "INGESTION"
+    - banner "Cestus command band"
+      - link "Cestus home" [ref=e7]
+        - StaticText "CESTUS"
+      - paragraph
+        - StaticText "ONTOLOGY"
+      - paragraph
+        - StaticText "Cestus Local"
+    - main "Ontology workspace" [ref=e5]
+      - region "Shared ontology" [ref=e8]
+        - heading "Shared investigation knowledge" [level=2, ref=e9]
+        - button "Refresh shared ontology" [ref=e10]
+        - StaticText "Revision "
+        - StaticText "81"
+        - paragraph
+          - StaticText "Cases share workspace identities and evidence. Proposals require human review. Manual curation works without an external provider."
+        - status
+          - StaticText "Decision saved. Current views and preserved history have been refreshed."
+        - group
+          - region "Investigations" [ref=e17]
+            - LabelText
+              - StaticText "Current investigation"
+              - combobox "Current investigation" [expanded=false, ref=e51]: Synthetic award case
+                - MenuListPopup
+                  - option "All cases · workspace view" [ref=e111]
+                  - option "Synthetic award case" [selected, ref=e112]
+                  - option "Synthetic payment case" [ref=e113]
+                  - option "Synthetic namesake case" [ref=e114]
+            - heading "Synthetic award case" [level=3, ref=e24]
+            - paragraph
+              - StaticText "Question: Who received the award?"
+            - paragraph
+              - StaticText "Scope: Fictional award records"
+            - group
+              - DisclosureTriangle "Create an investigation" [expanded=true]
+                - StaticText "Create an investigation"
+              - form "Create investigation"
+                - LabelText
+                  - StaticText "Investigation title"
+                  - textbox "Investigation title" [required, ref=e115]: Synthetic namesake case
+                    - StaticText "Synthetic namesake case"
+                - LabelText
+                  - StaticText "Investigation question"
+                  - textbox "Investigation question" [required, ref=e116]: Is AV-909 a different person?
+                    - StaticText "Is AV-909 a different person?"
+                - LabelText
+                  - StaticText "Investigation scope"
+                  - textbox "Investigation scope" [required, ref=e117]: Fictional council minutes
+                    - StaticText "Fictional council minutes"
+                - LabelText
+                  - StaticText "Notes"
+                  - textbox "Notes" [ref=e118]
+                - button "Create investigation" [ref=e91]
+            - group
+              - DisclosureTriangle "Evidence memberships" [expanded=false]
+                - StaticText "Evidence memberships"
+            - group
+              - DisclosureTriangle "Case hypotheses" [expanded=false]
+                - StaticText "Case hypotheses"
+          - region "Manual knowledge proposal" [ref=e18]
+            - heading "Propose knowledge from a source" [level=3, ref=e25]
+            - paragraph
+              - StaticText "Create entities first, then reference their source mentions in facts, relationships and occurrences. Review can keep a new entity distinct or explicitly bind it to a verified existing identity."
+            - LabelText
+              - StaticText "Supporting source"
+              - combobox "Supporting source" [expanded=false, ref=e52]: payment.txt
+                - MenuListPopup
+                  - option "Choose an imported source" [ref=e119]
+                  - option "payment.txt" [selected, ref=e120]
+                  - option "namesake.txt" [ref=e121]
+                  - option "award.txt, award-copy.txt" [ref=e122]
+                  - option "report.txt" [ref=e123]
+            - LabelText
+              - StaticText "Supporting passage"
+              - combobox "Supporting passage" [expanded=false, ref=e53]: 1: block 1, characters 0–105 · Synthetic case B. Alex Vale, identifier AV-101, received a payment of 1300 from Harbor Age
+                - MenuListPopup
+                  - option "1: block 1, characters 0–105 · Synthetic case B. Alex Vale, identifier AV-101, received a payment of 1300 from Harbor Age" [selected, ref=e124]
+                  - option "2: block 2, characters 107–158 · Published 2025-06-01. Independent payment register." [ref=e125]
+            - paragraph
+              - StaticText "Synthetic case B. Alex Vale, identifier AV-101, received a payment of 1300 from Harbor Agency in 2025-05."
+            - LabelText
+              - StaticText "Exact supporting quote"
+              - textbox "Exact supporting quote" [ref=e54]: Synthetic case B. Alex Vale, identifier AV-101, received a payment of 1300 from Harbor Agency in 2025-05.
+                - StaticText "Synthetic case B. Alex Vale, identifier AV-101, received a payment of 1300 from Harbor Agency in 2025-05."
+            - button "Add supporting passage" [ref=e26]
+            - paragraph
+              - StaticText "2 supporting passages selected. Add several sources when they support this same value."
+            - blockquote
+              - paragraph
+                - StaticText "Synthetic case A. Alex Vale, identifier AV-101, received an award of 1200 from Harbor Agency in 2025-03."
+              - link "Open source passage · block 1, characters 0–104" [ref=e55]
+                - StaticText "Open source passage · block 1, characters 0–104"
+            - button "Remove supporting passage 1" [ref=e27]
+              - StaticText "Remove supporting passage 1"
+            - blockquote
+              - paragraph
+                - StaticText "Synthetic case B. Alex Vale, identifier AV-101, received a payment of 1300 from Harbor Agency in 2025-05."
+              - link "Open source passage · block 1, characters 0–105" [ref=e56]
+                - StaticText "Open source passage · block 1, characters 0–105"
+            - button "Remove supporting passage 2" [ref=e28]
+              - StaticText "Remove supporting passage 2"
+            - form "Propose knowledge"
+              - LabelText
+                - StaticText "Knowledge kind"
+                - combobox "Knowledge kind" [expanded=false, ref=e92]: Entity mention
+                  - MenuListPopup
+                    - option "Entity mention" [selected, ref=e137]
+                    - option "Typed fact" [ref=e138]
+                    - option "Relationship" [ref=e139]
+                    - option "Real-world occurrence" [ref=e140]
+              - LabelText
+                - StaticText "Predicate"
+                - combobox "Predicate" [expanded=false, ref=e93]: name
+                  - MenuListPopup
+                    - option "name" [selected, ref=e141]
+              - LabelText
+                - StaticText "Entity type"
+                - combobox "Entity type" [expanded=false, ref=e94]: person
+                  - MenuListPopup
+                    - option "person" [selected, ref=e142]
+                    - option "organization" [ref=e143]
+                    - option "agency" [ref=e144]
+                    - option "contract" [ref=e145]
+                    - option "address" [ref=e146]
+              - LabelText
+                - StaticText "Proposed value"
+                - textbox "Proposed value" [required, ref=e95]: Alex Vale
+                  - StaticText "Alex Vale"
+              - button "Save unreviewed proposal" [ref=e57]
+          - region "Entity search and dossiers" [ref=e19]
+            - heading "Entities across investigations" [level=3, ref=e29]
+            - LabelText
+              - StaticText "Search entities"
+              - textbox "Search entities" [ref=e58]
+            - button "Show all knowledge" [ref=e30]
+            - button "Alex Vale · person" [ref=e31]
+              - StaticText "Alex Vale · person"
+            - button "Harbor Agency · agency" [ref=e32]
+              - StaticText "Harbor Agency · agency"
+            - region "Entity dossier" [ref=e33]
+              - heading "Alex Vale" [level=4, ref=e59]
+              - paragraph
+                - StaticText "ent_8e4af6a974aa4045b44f5fc610e43b6e · person"
+              - paragraph
+                - StaticText "Cases: Synthetic award case, Synthetic payment case"
+              - paragraph
+                - StaticText "2 source records · 2 reviewed independent origins · Source independence known"
+              - paragraph
+                - StaticText "Repeated mentions and case memberships do not add independent sources."
+              - checkbox "Entity membership in Synthetic award case" [checked=false, ref=e60]
+              - checkbox "Entity membership in Synthetic payment case" [checked=false, ref=e61]
+              - checkbox "Entity membership in Synthetic namesake case" [checked=false, ref=e62]
+          - region "Knowledge review" [ref=e20]
+            - heading "Proposals and current knowledge" [level=3, ref=e34]
+            - paragraph
+              - StaticText "Values are shown beside their source quotations. A model score is not a probability of truth. Unknown vocabulary remains proposed until replaced with a supported proposal."
+            - LabelText
+              - StaticText "Decision rationale"
+              - textbox "Decision rationale" [ref=e63]: Reject duplicate proposal; existing reviewed mentions already represent these sources.
+                - StaticText "Reject duplicate proposal; existing reviewed mentions already represent these sources."
+            - button "Accept selected proposals (0)" [disabled, ref=e35]
+              - StaticText "Accept selected proposals (0)"
+            - button "Reject selected proposals" [disabled, ref=e36]
+            - article "Proposal as_8e4af6a974aa4045b44f5fc610e43b6e" [ref=e37]
+              - strong
+                - StaticText "entity · name: Alex Vale"
+              - StaticText "accepted"
+              - paragraph
+                - StaticText "· manual"
+              - blockquote
+                - paragraph
+                  - StaticText "Synthetic case A. Alex Vale, identifier AV-101, received an award of 1200 from Harbor Agency in 2025-03."
+                - link "Open source passage · block 1, characters 0–104" [ref=e96]
+                  - StaticText "Open source passage · block 1, characters 0–104"
+              - paragraph
+                - StaticText "Cases: Synthetic award case"
+              - button "Sources and history as_8e4af6a974aa4045b44f5fc610e43b6e" [ref=e64]
+                - StaticText "Sources and history as_8e4af6a974aa4045b44f5fc610e43b6e"
+              - button "Edit as new proposal" [ref=e65]
+              - button "Withdraw" [ref=e66]
+              - button "Preserve dispute" [ref=e67]
+            - article "Proposal as_74f4b682e1564228a705e32b942515c4" [ref=e38]
+              - strong
+                - StaticText "fact · identifier: AV-101"
+              - StaticText "accepted"
+              - paragraph
+                - StaticText "Alex Vale · manual"
+              - blockquote
+                - paragraph
+                  - StaticText "Synthetic case A. Alex Vale, identifier AV-101, received an award of 1200 from Harbor Agency in 2025-03."
+                - link "Open source passage · block 1, characters 0–104" [ref=e97]
+                  - StaticText "Open source passage · block 1, characters 0–104"
+              - paragraph
+                - StaticText "Cases: Synthetic award case"
+              - button "Sources and history as_74f4b682e1564228a705e32b942515c4" [ref=e68]
+                - StaticText "Sources and history as_74f4b682e1564228a705e32b942515c4"
+              - button "Edit as new proposal" [ref=e69]
+              - button "Withdraw" [ref=e70]
+              - button "Preserve dispute" [ref=e71]
+            - article "Proposal as_a6f350cf9f1e457bb9d93c1ca46721f3" [ref=e39]
+              - strong
+                - StaticText "fact · amount: 1200"
+              - StaticText "superseded"
+              - paragraph
+                - StaticText "Alex Vale · manual"
+              - blockquote
+                - paragraph
+                  - StaticText "Synthetic case A. Alex Vale, identifier AV-101, received an award of 1200 from Harbor Agency in 2025-03."
+                - link "Open source passage · block 1, characters 0–104" [ref=e98]
+                  - StaticText "Open source passage · block 1, characters 0–104"
+              - paragraph
+                - StaticText "Cases: Synthetic award case"
+              - button "Sources and history as_a6f350cf9f1e457bb9d93c1ca46721f3" [ref=e72]
+                - StaticText "Sources and history as_a6f350cf9f1e457bb9d93c1ca46721f3"
+              - button "Edit as new proposal" [ref=e73]
+              - button "Preserve dispute" [ref=e74]
+            - article "Proposal as_c364256aa798439094e094e3f0f1c512" [ref=e40]
+              - strong
+                - StaticText "relationship · awarded: Alex Vale"
+              - StaticText "accepted"
+              - paragraph
+                - StaticText "Harbor Agency · manual"
+              - blockquote
+                - paragraph
+                  - StaticText "Synthetic case A. Alex Vale, identifier AV-101, received an award of 1200 from Harbor Agency in 2025-03."
+                - link "Open source passage · block 1, characters 0–104" [ref=e99]
+                  - StaticText "Open source passage · block 1, characters 0–104"
+              - paragraph
+                - StaticText "Cases: Synthetic award case"
+              - button "Sources and history as_c364256aa798439094e094e3f0f1c512" [ref=e75]
+                - StaticText "Sources and history as_c364256aa798439094e094e3f0f1c512"
+              - button "Edit as new proposal" [ref=e76]
+              - button "Withdraw" [ref=e77]
+              - button "Preserve dispute" [ref=e78]
+            - article "Proposal as_802c2dc55f2b4e55b37cb8c862c81541" [ref=e41]
+              - strong
+                - StaticText "occurrence · award: award"
+              - StaticText "accepted"
+              - paragraph
+                - StaticText "· manual"
+              - blockquote
+                - paragraph
+                  - StaticText "Synthetic case A. Alex Vale, identifier AV-101, received an award of 1200 from Harbor Agency in 2025-03."
+                - link "Open source passage · block 1, characters 0–104" [ref=e100]
+                  - StaticText "Open source passage · block 1, characters 0–104"
+              - paragraph
+                - StaticText "Participants: recipient: Alex Vale; awarder: Harbor Agency"
+              - paragraph
+                - StaticText "amount: 1200"
+              - paragraph
+                - StaticText "Occurred: 2025-03"
+              - paragraph
+                - StaticText "Cases: Synthetic award case"
+              - button "Sources and history as_802c2dc55f2b4e55b37cb8c862c81541" [ref=e79]
+                - StaticText "Sources and history as_802c2dc55f2b4e55b37cb8c862c81541"
+              - button "Edit as new proposal" [ref=e80]
+              - button "Withdraw" [ref=e81]
+              - button "Preserve dispute" [ref=e82]
+            - article "Proposal as_cae24296667f440c9ce6a92e5d393642" [ref=e42]
+              - strong
+                - StaticText "fact · identifier: AV-101"
+              - StaticText "accepted"
+              - paragraph
+                - StaticText "Alex Vale · manual"
+              - blockquote
+                - paragraph
+                  - StaticText "Synthetic case A. Alex Vale, identifier AV-101, received an award of 1200 from Harbor Agency in 2025-03."
+                - link "Open source passage · block 1, characters 0–104" [ref=e101]
+                  - StaticText "Open source passage · block 1, characters 0–104"
+              - blockquote
+                - paragraph
+                  - StaticText "Synthetic case B. Alex Vale, identifier AV-101, received a payment of 1300 from Harbor Agency in 2025-05."
+                - link "Open source passage · block 1, characters 0–105" [ref=e102]
+                  - StaticText "Open source passage · block 1, characters 0–105"
+              - paragraph
+                - StaticText "Cases: Synthetic award case, Synthetic payment case"
+              - button "Sources and history as_cae24296667f440c9ce6a92e5d393642" [ref=e83]
+                - StaticText "Sources and history as_cae24296667f440c9ce6a92e5d393642"
+              - button "Edit as new proposal" [ref=e84]
+              - button "Withdraw" [ref=e85]
+              - button "Preserve dispute" [ref=e86]
+          - region "Selected knowledge sources and history" [ref=e21]
+            - heading "amount: 1200" [level=3, ref=e43]
+              - StaticText "amount: 1200"
+            - paragraph
+              - StaticText "as_a6f350cf9f1e457bb9d93c1ca46721f3 · Schema investigation.v1 · Proposal evt_49f5c0e2553244c0a1bfe587fc02a72c"
+            - blockquote
+              - paragraph
+                - StaticText "Synthetic case A. Alex Vale, identifier AV-101, received an award of 1200 from Harbor Agency in 2025-03."
+              - link "Open source passage · block 1, characters 0–104" [ref=e87]
+                - StaticText "Open source passage · block 1, characters 0–104"
+            - paragraph
+              - StaticText "Origin: manual"
+            - list
+              - listitem [level=1]
+                - StaticText "2026-09-05T19:30:59.690Z · operator_10d64f22-f99d-4c08-94dd-162becb66d3d · accept: Reviewed the identifier and exact amount in this fictional register."
+              - listitem [level=1]
+                - StaticText "2026-09-05T19:34:26.859Z · operator_10d64f22-f99d-4c08-94dd-162becb66d3d · dispute: Repair: council actor AV-909 is not recipient AV-101."
+              - listitem [level=1]
+                - StaticText "2026-09-05T19:34:37.215Z · operator_10d64f22-f99d-4c08-94dd-162becb66d3d · supersede: Payment register gives 1300. Supersede this curated amount while retaining the earlier award and dispute. · Replacement as_4a5e50694f9d4248a0d56d3520813d7c"
+            - checkbox "Knowledge membership in Synthetic award case" [checked=false, ref=e44]
+            - checkbox "Knowledge membership in Synthetic payment case" [checked=false, ref=e45]
+            - checkbox "Knowledge membership in Synthetic namesake case" [checked=false, ref=e46]
+          - region "Relationships and occurrences" [ref=e22]
+            - heading "Relationships" [level=3, ref=e47]
+            - LabelText
+              - StaticText "Relationship filter"
+              - combobox "Relationship filter" [expanded=false, ref=e88]: All relationship types
+                - MenuListPopup
+                  - option "All relationship types" [selected, ref=e126]
+                  - option "paid" [ref=e127]
+                  - option "awarded" [ref=e128]
+                  - option "employed_by" [ref=e129]
+                  - option "owns" [ref=e130]
+                  - option "associated_with" [ref=e131]
+            - table
+              - rowgroup
+                - row
+                  - columnheader "Subject" [ref=e132]
+                  - columnheader "Relationship" [ref=e133]
+                  - columnheader "Object" [ref=e134]
+                  - columnheader "Review" [ref=e135]
+              - row
+                - cell "Harbor Agency" [ref=e103]
+                - cell "awarded" [ref=e104]
+                - cell "Alex Vale" [ref=e105]
+                - cell "Inspect as_c364256aa798439094e094e3f0f1c512" [ref=e106]
+                  - button "Inspect as_c364256aa798439094e094e3f0f1c512" [ref=e136]
+                    - StaticText "Inspect as_c364256aa798439094e094e3f0f1c512"
+            - heading "One-step neighborhood of Alex Vale" [level=4, ref=e48]
+              - StaticText "One-step neighborhood of Alex Vale"
+            - paragraph
+              - StaticText "At most 20 current relationships; use the relationship filter to narrow this view."
+            - list
+              - listitem [level=1]
+                - StaticText "Harbor Agency → awarded → Alex Vale"
+            - heading "Real-world occurrences" [level=3, ref=e49]
+            - paragraph
+              - StaticText "Occurrence dates below are separate from publication, discovery and ingestion dates. Multiple assertions may describe the same occurrence."
+            - article
+              - paragraph
+                - StaticText "occurrence_4fb9c857b2a844f9932fb7da02d15839 · 1 supporting assertions"
+              - button "award: award · Occurred 2025-03 · Published unknown" [ref=e89]
+                - StaticText "award: award · Occurred 2025-03 · Published unknown"
+          - region "Source independence review" [ref=e23]
+            - heading "Source lineage and independence" [level=3, ref=e50]
+            - paragraph
+              - StaticText "Copies and reports quoting the same origin are not independent corroboration. Leave independence unknown unless you have reviewed the origin."
+            - form
+              - LabelText
+                - StaticText "Source to review"
+                - combobox "Source to review" [expanded=false, ref=e107]: report.txt
+                  - MenuListPopup
+                    - option "Choose a source" [ref=e147]
+                    - option "payment.txt" [ref=e148]
+                    - option "namesake.txt" [ref=e149]
+                    - option "award.txt, award-copy.txt" [ref=e150]
+                    - option "report.txt" [selected, ref=e151]
+              - paragraph
+                - StaticText "Current: derived · Origin ev_ing_f499dbe90e8cedc4405d21dbecd6cf319384599bcbe94f37c813e398a15c47c1 · This report quotes the award register; no independent corroboration."
+              - LabelText
+                - StaticText "Independence decision"
+                - combobox "Independence decision" [expanded=false, ref=e108]: Derived from another source
+                  - MenuListPopup
+                    - option "Unknown" [ref=e152]
+                    - option "Reviewed independent origin" [ref=e153]
+                    - option "Derived from another source" [selected, ref=e154]
+              - LabelText
+                - StaticText "Shared origin"
+                - combobox "Shared origin" [expanded=false, ref=e109]: award.txt, award-copy.txt
+                  - MenuListPopup
+                    - option "This source is its own origin" [ref=e155]
+                    - option "payment.txt" [ref=e156]
+                    - option "namesake.txt" [ref=e157]
+                    - option "award.txt, award-copy.txt" [selected, ref=e158]
+                    - option "report.txt" [ref=e159]
+              - LabelText
+                - StaticText "Source independence rationale"
+                - textbox "Source independence rationale" [required, ref=e110]: This report quotes the award register; no independent corroboration.
+                  - StaticText "This report quotes the award register; no independent corroboration."
+              - button "Record source lineage" [ref=e90]
+      - group
+        - DisclosureTriangle "Legacy provenance" [expanded=false]
+          - StaticText "Legacy provenance"

@@ -1,0 +1,18 @@
+# Phase 3 bounded implementation design
+
+Authority: the concrete 2026-09-05 user request and Phase 3 of `2026-09-04-usable-investigation-product-plan.md`. No roadmap or product direction changes. Baseline clean `neo` at `60559c00`; task checkout `codex/phase3-shared-ontology` in the primary repository. No helper checkout retains `neo`.
+
+## Contract and slices
+
+1. Version-aware event decoding and bounded atomic ledger batches. Preserve every v1 payload/event and derivative. Add v2 knowledge event types with strict per-type version dispatch. Batch receipts bind a stable decision identity to canonical content and commit with all events in one transaction; stale global revisions fail.
+2. Extend the existing graph projection to normalize legacy scalar assertions with honest document citations and richer typed, passage-grounded proposals. Persist the exact small vocabulary snapshot. Cases and hypotheses are separate working sets over workspace-wide entities. Source mentions bind explicitly to entities; binding corrections change dependent projections, retaining decisions. Occurrences have explicit identities and partial occurrence times separate from publication/ledger times. Source lineage is independent of memberships and unknown until reviewed.
+3. One domain command service validates manual and provider proposals and human decisions. Revalidate exact extraction/source hashes, locators, quotation/value grounding, current evidence access, schema, endpoints, and global revision after asynchronous I/O. Selected group acceptance and correction/binding decisions use appendBatch. Withdrawn/superseded support is removed from current graph and claim support; disputes remain history.
+4. Extend Phase 2 document processing with schema-aware knowledge extraction as an explicit operation using its existing selection, approval, transport, limits, cancellation and outcome handling. Snapshot prompt/schema in the approved manifest. Output identity/provenance is preserved; output cannot review itself. Summary operation and historical outputs remain readable.
+5. Authenticated browser controls: cases, evidence selection, manual/provider proposal review with visible source passages, groups, editing, rejection, withdrawal, correction, disputes, identity binding/repair and lineage review. Workspace/case entity search, dossiers, relationship tables and bounded neighborhoods use the same graph.
+6. Production browser journeys in a fresh disposable workspace, restart/recovery, targeted compatibility/concurrency/security regressions, CE simplification and native review, final `npm run verify`, runbook/evidence and focused local commits. No push/PR/merge.
+
+## Verification contract
+
+Capture failing or characterization evidence before behavior changes where practical. Exercise both ledger stores for all-or-none commit, identical retry, conflicting identity, stale revision, concurrent decision and injected interruption. Exercise malformed citations/types/identity references and authority changes at real domain/HTTP boundaries. Confirm old event readback is unchanged and current consumers see corrections. UI tests supplement built-browser checks; neither synthetic fixtures nor unit tests establish real-provider acceptance.
+
+Real-record and live evaluation inputs are unavailable. A bundled request confused the user; clarified that fictional records permit independent work and no personal folders or paid calls will be accessed. Remaining user acceptance requires a specifically authorized folder/format scope and provider endpoint/model/private configuration path/exact transfer selection/budget. Partial PDF text extraction remains partial, never OCR or full visual coverage.

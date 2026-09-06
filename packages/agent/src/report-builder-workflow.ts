@@ -1,7 +1,8 @@
+import { acceptedKnowledgeSource } from "../../ontology/src/accepted-knowledge-source.js";
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import type { KnowledgeEvent, KnowledgeEventOf } from "../../ontology/src/contracts.js";
-import { buildGraphProjection, type GraphProjection } from "../../ontology/src/graph-projection.js";
+import { buildGraphProjection, type KnowledgeGraphProjection } from "../../ontology/src/graph-projection.js";
 import {
   buildGovernanceExportPreview,
   governanceExportApprovalIds,
@@ -322,7 +323,10 @@ export function assembleLocalReportPacket(input: AssembleLocalReportPacketInput)
       acceptedAssertionRefs: Object.freeze(sourceRefs.filter((ref) => sources.get(ref)?.kind === "accepted-assertion")),
       reviewedClaimRefs: Object.freeze(sourceRefs.filter((ref) => sources.get(ref)?.kind === "reviewed-claim")),
       evidenceCitations: Object.freeze(uniqueBy(
-        exactSources.map((source) => ({ evidenceId: source.evidenceId, contentHash: source.contentHash })),
+        sourceRefs.flatMap(ref => {
+          const rich = acceptedKnowledgeSource(graphProjection, input.governanceEvents, ref);
+          return rich ? rich.evidence.map(citation => ({ evidenceId: citation.evidenceId, contentHash: citation.sourceContentHash as ContentHash })) : [{ evidenceId: sources.get(ref)!.evidenceId, contentHash: sources.get(ref)!.contentHash }];
+        }),
         (item) => `${item.evidenceId}:${item.contentHash}`
       ).map((item) => Object.freeze(item))),
       sourceEventIds: Object.freeze(unique(exactSources.flatMap((source) => source.sourceEventIds)).sort())
@@ -515,7 +519,7 @@ function registerSource(
 
 function groundAcceptedAssertionSource(input: {
   readonly events: readonly KnowledgeEvent[];
-  readonly graphProjection: GraphProjection;
+  readonly graphProjection: KnowledgeGraphProjection;
   readonly requestedEvidenceSet: ReadonlySet<string>;
   readonly source: ReportAcceptedAssertionInput;
 }): {
@@ -542,6 +546,13 @@ function groundAcceptedAssertionSource(input: {
   );
   if (!input.requestedEvidenceSet.has(evidenceId)) {
     throw new Error("Report citations must remain within the exact governed evidence selection.");
+  }
+  const rich = acceptedKnowledgeSource(input.graphProjection, input.events, assertionId);
+  if (rich) {
+    if (rich.evidenceId !== evidenceId || rich.evidenceContentHash !== contentHash || rich.proposedByEventId !== proposedByEventId || rich.acceptedByEventId !== acceptedByEventId ||
+      rich.evidence.some(ref => !input.requestedEvidenceSet.has(ref.evidenceId) || !exactIngestedEvidence(input.events, ref.evidenceId, ref.sourceContentHash as ContentHash)) ||
+      !sameStrings(validateEventIds(input.source.sourceEventIds), rich.sourceEventIds)) return failure();
+    return Object.freeze({ assertionId, evidenceId, contentHash, sourceEventIds: Object.freeze(rich.sourceEventIds) });
   }
   const ingested = exactIngestedEvidence(input.events, evidenceId, contentHash);
   const proposed = exactEventByIdAndType(input.events, proposedByEventId, "assertion.proposed");

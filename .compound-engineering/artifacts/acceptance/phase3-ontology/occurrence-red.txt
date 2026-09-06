@@ -1,0 +1,25 @@
+
+ RUN  v4.1.9 /home/drake/Projects/Cestus
+
+ ❯ packages/ontology/test/knowledge-service.test.ts (8 tests | 1 failed) 66ms
+     × updates dependent facts, relationships, occurrences and hypothesis support while preserving review history 13ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  packages/ontology/test/knowledge-service.test.ts > knowledge current projections and authorization > updates dependent facts, relationships, occurrences and hypothesis support while preserving review history
+AssertionError: expected [ 'as_other', 'as_paid' ] to include 'as_occurrence'
+ ❯ packages/ontology/test/knowledge-service.test.ts:252:88
+    250|     expect(dto.hypotheses[0]?.currentSupporting).toEqual(["as_amount"]…
+    251|     expect(dto.occurrences).toHaveLength(1);
+    252|     expect(dto.entities.find(entity => entity.entityId === "ent_other"…
+       |                                                                                        ^
+    253|     await command(service, {
+    254|       action: "bind",
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 7 passed (8)
+   Start at  15:25:37
+   Duration  597ms (transform 191ms, setup 100ms, import 316ms, tests 66ms, environment 0ms)

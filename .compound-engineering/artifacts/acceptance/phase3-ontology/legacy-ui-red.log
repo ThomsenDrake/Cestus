@@ -1,0 +1,63 @@
+
+ RUN  v4.1.9 /home/drake/Projects/Cestus
+
+ ❯ packages/ui/test/ontology-workspace.test.tsx (6 tests | 1 failed) 558ms
+     × decodes the replay DTO and displays actual legacy values without inventing passage anchors 28ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  packages/ui/test/ontology-workspace.test.tsx > ontology workspace > decodes the replay DTO and displays actual legacy values without inventing passage anchors
+ZodError: [
+  {
+    "code": "unrecognized_keys",
+    "keys": [
+      "object",
+      "citationScope"
+    ],
+    "path": [
+      "assertions",
+      0
+    ],
+    "message": "Unrecognized keys: \"object\", \"citationScope\""
+  },
+  {
+    "code": "unrecognized_keys",
+    "keys": [
+      "object",
+      "citationScope"
+    ],
+    "path": [
+      "assertions",
+      1
+    ],
+    "message": "Unrecognized keys: \"object\", \"citationScope\""
+  },
+  {
+    "code": "unrecognized_keys",
+    "keys": [
+      "object",
+      "citationScope"
+    ],
+    "path": [
+      "assertions",
+      2
+    ],
+    "message": "Unrecognized keys: \"object\", \"citationScope\""
+  }
+]
+ ❯ ontologyWorkspaceDtoFromJson packages/ui/src/ontology/ontology-adapter.ts:71:45
+     69|
+     70| export function ontologyWorkspaceDtoFromJson(value: unknown): Ontology…
+     71|   return deepFreeze(ontologyWorkspaceSchema.parse(value) as OntologyWo…
+       |                                             ^
+     72| }
+     73|
+ ❯ packages/ui/test/ontology-workspace.test.tsx:16:20
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 5 passed (6)
+   Start at  16:09:25
+   Duration  2.71s (transform 849ms, setup 105ms, import 1.34s, tests 558ms, environment 582ms)

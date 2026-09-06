@@ -1,0 +1,204 @@
+{
+  "status": "complete",
+  "verdict": "Ready with fixes",
+  "scope": {
+    "base": "3789787a",
+    "branch": "codex/phase3-shared-ontology",
+    "head_sha": "3789787a11f75eb91780a8380594c1c97de7c36b",
+    "pr_url": null,
+    "files_changed": 16
+  },
+  "intent": "Implement only the three explicit Phase 3 followup gaps: bounded human-reviewed additive vocabulary with exact immutable snapshots and stale approvals; evidence-backed written-date normalization preserving exact quotation, precision and temporal meaning; smallest actual mobile overflow repair. Preserve existing accepted history, authenticated authority and exact transfer approvals. Unknown provider terms cannot auto-extend schema or accept themselves. New source files are explicitly included by caller despite being untracked. No Phase 4, real records, live provider, or external review.",
+  "intent_confidence": "explicit",
+  "reviewers": [
+    "correctness",
+    "project-standards",
+    "testing",
+    "maintainability",
+    "security",
+    "api-contract",
+    "reliability",
+    "adversarial",
+    "julik-frontend-races",
+    "agent-native"
+  ],
+  "findings": [
+    {
+      "#": 1,
+      "autofix_class": "gated_auto",
+      "confidence": 75,
+      "file": "packages/ontology/src/knowledge-dates.ts",
+      "first_evidence": "packages/ontology/src/knowledge-dates.ts:71 \u2014 if (!normalization) return containsDateExpression(quote, value);",
+      "independent_reviewers": [
+        "correctness"
+      ],
+      "line": 71,
+      "owner": "downstream-resolver",
+      "pre_existing": false,
+      "requires_verification": true,
+      "reviewers": [
+        "correctness"
+      ],
+      "severity": "P2",
+      "suggested_fix": "Separate current citation identity/authority validation from new-proposal value-grounding validation. Keep the new strict grounding for proposal creation and acceptance, but permit history-preserving reject, withdraw, dispute, and supersede of an existing proposal after authorizing its exact citations; independently ground and validate any replacement accepted in the correction. Add a regression that replays an old accepted partial ISO date and successfully withdraws/disputes/corrects it without changing the original event.",
+      "title": "Preserve correction commands for historical partial dates",
+      "why_it_matters": "An existing accepted date value 2026, supported by a quotation containing 2026-09-05, remains visible but can no longer be withdrawn, disputed, or superseded. The old contract accepted this valid partial ISO value through literal substring grounding; the new boundary check rejects the following hyphen, and every review action calls validateEvidence before examining its action. This prevents users from correcting precisely the historical material whose interpretation they wish to challenge.",
+      "evidence": [
+        "packages/ontology/src/knowledge-dates.ts:71 \u2014 if (!normalization) return containsDateExpression(quote, value);",
+        "packages/ontology/src/knowledge-dates.ts:62 \u2014 if (!/[\\p{L}\\p{N}_/\\-]/u.test(before) && !/[\\p{L}\\p{N}_/\\-]/u.test(after)) return true;",
+        "packages/ontology/src/knowledge-service.ts:442 \u2014 await this.validateEvidence(p, actor); occurs before branching on any review action.",
+        "Base 3789787a packages/ontology/src/knowledge-contracts.ts isKnowledgeValueGrounded returned quote.includes(literal) for date values; the new branch delegates dates to isGroundedDate. Thus a stored value 2026 from 'Occurred 2026-09-05.' previously passes and now fails while both dates remain calendar-valid."
+      ]
+    },
+    {
+      "#": 2,
+      "autofix_class": "gated_auto",
+      "confidence": 75,
+      "file": "packages/ui/src/ontology/SharedOntologyWorkspace.tsx",
+      "first_evidence": "packages/ui/src/ontology/SharedOntologyWorkspace.tsx:198 \u2014 value: type === \"number\" ? { type: \"number\", value: Number(raw) } : { type: type === \"date\" ? \"date\" : \"string\", value: raw }",
+      "independent_reviewers": [
+        "correctness"
+      ],
+      "line": 198,
+      "owner": "downstream-resolver",
+      "pre_existing": false,
+      "requires_verification": true,
+      "reviewers": [
+        "correctness"
+      ],
+      "severity": "P2",
+      "suggested_fix": "Use the same explicit true/false parsing for occurrence attribute values as for the top-level boolean value, preserving a boolean type when changing the attribute predicate or editing its value. Add a UI regression with a reviewed unrestricted boolean predicate, exercising both a manually created occurrence attribute and editing a provider-created boolean attribute.",
+      "title": "Serialize newly supported boolean occurrence attributes as booleans",
+      "why_it_matters": "After a user approves a boolean fact predicate with unrestricted subjects, selecting it as an occurrence attribute and entering true creates a string-valued attribute. The proposal can be saved, but acceptance always fails the schema's attribute value-type check; editing a provider-created boolean attribute also changes it into a string. The new additive vocabulary makes this path reachable because the initial vocabulary contained no boolean predicates.",
+      "evidence": [
+        "packages/ui/src/ontology/SharedOntologyWorkspace.tsx:198 \u2014 value: type === \"number\" ? { type: \"number\", value: Number(raw) } : { type: type === \"date\" ? \"date\" : \"string\", value: raw }",
+        "packages/ui/src/ontology/SharedOntologyWorkspace.tsx:185 sends non-date attribute.value unchanged in the proposal.",
+        "packages/ui/src/ontology/KnowledgeVocabularyForm.tsx offers boolean for new fact predicate definitions; extendKnowledgeVocabulary permits an unrestricted boolean fact predicate.",
+        "packages/ontology/src/knowledge-service.ts validates each accepted attribute's schema valueType against attribute.value.type, rejecting string for the newly reviewed boolean predicate."
+      ]
+    }
+  ],
+  "actionable_findings": [
+    {
+      "#": 1,
+      "autofix_class": "gated_auto",
+      "confidence": 75,
+      "file": "packages/ontology/src/knowledge-dates.ts",
+      "first_evidence": "packages/ontology/src/knowledge-dates.ts:71 \u2014 if (!normalization) return containsDateExpression(quote, value);",
+      "independent_reviewers": [
+        "correctness"
+      ],
+      "line": 71,
+      "owner": "downstream-resolver",
+      "pre_existing": false,
+      "requires_verification": true,
+      "reviewers": [
+        "correctness"
+      ],
+      "severity": "P2",
+      "suggested_fix": "Separate current citation identity/authority validation from new-proposal value-grounding validation. Keep the new strict grounding for proposal creation and acceptance, but permit history-preserving reject, withdraw, dispute, and supersede of an existing proposal after authorizing its exact citations; independently ground and validate any replacement accepted in the correction. Add a regression that replays an old accepted partial ISO date and successfully withdraws/disputes/corrects it without changing the original event.",
+      "title": "Preserve correction commands for historical partial dates",
+      "why_it_matters": "An existing accepted date value 2026, supported by a quotation containing 2026-09-05, remains visible but can no longer be withdrawn, disputed, or superseded. The old contract accepted this valid partial ISO value through literal substring grounding; the new boundary check rejects the following hyphen, and every review action calls validateEvidence before examining its action. This prevents users from correcting precisely the historical material whose interpretation they wish to challenge.",
+      "evidence": [
+        "packages/ontology/src/knowledge-dates.ts:71 \u2014 if (!normalization) return containsDateExpression(quote, value);",
+        "packages/ontology/src/knowledge-dates.ts:62 \u2014 if (!/[\\p{L}\\p{N}_/\\-]/u.test(before) && !/[\\p{L}\\p{N}_/\\-]/u.test(after)) return true;",
+        "packages/ontology/src/knowledge-service.ts:442 \u2014 await this.validateEvidence(p, actor); occurs before branching on any review action.",
+        "Base 3789787a packages/ontology/src/knowledge-contracts.ts isKnowledgeValueGrounded returned quote.includes(literal) for date values; the new branch delegates dates to isGroundedDate. Thus a stored value 2026 from 'Occurred 2026-09-05.' previously passes and now fails while both dates remain calendar-valid."
+      ]
+    },
+    {
+      "#": 2,
+      "autofix_class": "gated_auto",
+      "confidence": 75,
+      "file": "packages/ui/src/ontology/SharedOntologyWorkspace.tsx",
+      "first_evidence": "packages/ui/src/ontology/SharedOntologyWorkspace.tsx:198 \u2014 value: type === \"number\" ? { type: \"number\", value: Number(raw) } : { type: type === \"date\" ? \"date\" : \"string\", value: raw }",
+      "independent_reviewers": [
+        "correctness"
+      ],
+      "line": 198,
+      "owner": "downstream-resolver",
+      "pre_existing": false,
+      "requires_verification": true,
+      "reviewers": [
+        "correctness"
+      ],
+      "severity": "P2",
+      "suggested_fix": "Use the same explicit true/false parsing for occurrence attribute values as for the top-level boolean value, preserving a boolean type when changing the attribute predicate or editing its value. Add a UI regression with a reviewed unrestricted boolean predicate, exercising both a manually created occurrence attribute and editing a provider-created boolean attribute.",
+      "title": "Serialize newly supported boolean occurrence attributes as booleans",
+      "why_it_matters": "After a user approves a boolean fact predicate with unrestricted subjects, selecting it as an occurrence attribute and entering true creates a string-valued attribute. The proposal can be saved, but acceptance always fails the schema's attribute value-type check; editing a provider-created boolean attribute also changes it into a string. The new additive vocabulary makes this path reachable because the initial vocabulary contained no boolean predicates.",
+      "evidence": [
+        "packages/ui/src/ontology/SharedOntologyWorkspace.tsx:198 \u2014 value: type === \"number\" ? { type: \"number\", value: Number(raw) } : { type: type === \"date\" ? \"date\" : \"string\", value: raw }",
+        "packages/ui/src/ontology/SharedOntologyWorkspace.tsx:185 sends non-date attribute.value unchanged in the proposal.",
+        "packages/ui/src/ontology/KnowledgeVocabularyForm.tsx offers boolean for new fact predicate definitions; extendKnowledgeVocabulary permits an unrestricted boolean fact predicate.",
+        "packages/ontology/src/knowledge-service.ts validates each accepted attribute's schema valueType against attribute.value.type, rejecting string for the newly reviewed boolean predicate."
+      ]
+    }
+  ],
+  "triage_groups": [],
+  "pre_existing_findings": [],
+  "requirements_completeness": {
+    "scope": "Only the three explicit followup gaps; later roadmap phases intentionally excluded.",
+    "additive_vocabulary": "Substantive implementation, exact active snapshots and stale gates present; newly addable boolean occurrence attributes require finding #2.",
+    "date_normalization": "Bounded shared normalization and provenance present; historical correction compatibility requires finding #1.",
+    "mobile_overflow": "Targeted metadata paragraph wrapping; built narrow-screen confirmation remains root-owned.",
+    "real_record_live_provider": "Explicitly pending and outside this local implementation review."
+  },
+  "learnings": [],
+  "agent_native_gaps": [],
+  "deployment_notes": [],
+  "residual_risks": [
+    "Review is static; no independent runtime/browser execution performed.",
+    "Real-record/live-provider usefulness remains unverified by design."
+  ],
+  "testing_gaps": [
+    "Regress lifecycle decisions on historical partial ISO dates.",
+    "Regress boolean occurrence-attribute creation and editing.",
+    "Root must complete final full verify and production-browser fixture/restart/narrow-screen checks after fixes."
+  ],
+  "coverage": {
+    "scope_helper": {
+      "exec_lines": 393,
+      "lite_eligible": false,
+      "tracked_changed_files": 11
+    },
+    "explicit_new_files_included": true,
+    "standards": "Root AGENTS.md fallback criteria and SECURITY.md safety invariants; no narrower applicable files.",
+    "independent_personas": [
+      "correctness"
+    ],
+    "parent_context_personas": [
+      "project-standards",
+      "testing",
+      "maintainability",
+      "security",
+      "api-contract",
+      "reliability",
+      "adversarial",
+      "julik-frontend-races",
+      "agent-native"
+    ],
+    "host_capacity": "Second dispatch and bounded retry both reported agent thread limit; remaining lenses ran in parent context and contributed no independence promotion.",
+    "cross_model": "Disabled by checkout config and explicit user prohibition; native adversarial fallback.",
+    "validator_batch": {
+      "verdicts": [
+        {
+          "#": 1,
+          "validated": true,
+          "reason": "The review loop calls strict validateEvidence for every action, so a legacy accepted partial date whose precise source contains it as part of a fuller ISO date can no longer be withdrawn, disputed, or superseded even though those actions only need current citation authority."
+        },
+        {
+          "#": 2,
+          "validated": true,
+          "reason": "Both the predicate-change and value-change handlers serialize every non-number/non-date occurrence attribute as a string, so an added boolean fact predicate produces a string value and is rejected by the domain type check."
+        }
+      ]
+    },
+    "validator_shortcut_count": 0,
+    "suppressed_by_confidence": {},
+    "malformed_findings": 0,
+    "mutations": "Review artifacts only; no project/index/build/test changes.",
+    "excluded_conditionals": "No migration artifacts, no performance-sensitive algorithm change, no prior PR comments, no relevant learnings-corpus title match, no Swift."
+  },
+  "artifact_path": "/tmp/compound-engineering-1000/ce-code-review/20260905-followup-review",
+  "run_id": "20260905-followup-review"
+}

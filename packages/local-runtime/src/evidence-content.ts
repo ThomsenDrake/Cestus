@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { DatabaseSync } from "node:sqlite";
 import { join } from "node:path";
 import { extractionArtifactSchema, extractionMediaType, type ExtractionArtifact } from "../../ontology/src/extraction-contracts.js";
+import { knowledgeCitationSchema, type KnowledgeCitation } from "../../ontology/src/knowledge-contracts.js";
 import type { MountedWorkspace } from "../../ingestion/src/mount-contract.js";
 import { buildEvidenceWorkspaceDto, type EvidenceItemDto } from "../../ingestion/src/read-api.js";
 import type { ActorRef, KnowledgeEvent } from "../../ontology/src/contracts.js";
@@ -61,7 +62,17 @@ async function readContentFromSnapshot(workspace: MountedWorkspace, events: read
     if (containsCredentialShapedEvidenceText(extraction.text)) throw new EvidenceContentError(403, "Content requires credential-risk review before reading or search.");
     extractionHash = selected.payload.outputHash as Hash;
   }
-  return { item, extraction, extractionHash, extractions: completed.map(event => {
+  const provenanceEventIds = [
+    events.find(event => event.type === "evidence.ingested" && event.payload.evidenceId === evidenceId)?.id,
+    selected?.id
+  ].filter((id): id is string => id !== undefined);
+  const citations: KnowledgeCitation[] = extraction && extractionHash ? extraction.passages.map((passage, passageIndex) => ({
+    workspaceId: workspace.workspaceId, evidenceId, sourceContentHash: item.contentHash!,
+    extractionId: extraction.extractionId, extractionContentHash: extractionHash,
+    locator: passage.locator, quote: passage.text, passageIndex, provenanceEventIds,
+    ...coverageMetadata(extraction)
+  })) : [];
+  return { item, extraction, extractionHash, citations, provenanceEventIds, extractions: completed.map(event => {
     if (event.type !== "ingestion.parse.completed") throw new Error("Invalid extraction event");
     return { extractionId: event.payload.parseJobId, contentHash: event.payload.outputHash, parser: event.payload.parser, completedAt: event.payload.completedAt };
   }), failures: events.filter(event => event.type === "ingestion.parse.failed" && event.payload.evidenceId === evidenceId).map(event => {
@@ -140,9 +151,23 @@ export async function resolveExternalDocumentSelection(workspace: MountedWorkspa
   const indexes = selection.passageIndexes;
   if (!indexes.length || indexes.length > 100 || new Set(indexes).size !== indexes.length || indexes.some(index => !Number.isInteger(index) || index < 0 || !content.extraction!.passages[index])) throw new EvidenceContentError(400, "Select 1–100 exact existing passages.");
   const policyEvents = events.filter(event => ("evidenceId" in event.payload && event.payload.evidenceId === selection.evidenceId) || event.type === "governance.policy.installed");
-  return { ...coverageMetadata(content.extraction), evidenceId: selection.evidenceId, extractionId: selection.extractionId, sourceHash: content.item.contentHash as Hash, extractionHash: content.extractionHash, policyRevision: hash(JSON.stringify({ policy: activeGovernancePolicyRef(events), events: policyEvents.map(event => event.id) })), classification: "public_safe" as const, classificationEventId: publicSafe.eventId, reviewEventId: publicSafe.eventId, passages: indexes.map(index => ({ index, text: content.extraction!.passages[index]!.text, locator: content.extraction!.passages[index]!.locator })) };
+  return { provenanceEventIds: content.provenanceEventIds, ...coverageMetadata(content.extraction), evidenceId: selection.evidenceId, extractionId: selection.extractionId, sourceHash: content.item.contentHash as Hash, extractionHash: content.extractionHash, policyRevision: hash(JSON.stringify({ policy: activeGovernancePolicyRef(events), events: policyEvents.map(event => event.id) })), classification: "public_safe" as const, classificationEventId: publicSafe.eventId, reviewEventId: publicSafe.eventId, passages: indexes.map(index => ({ index, text: content.extraction!.passages[index]!.text, locator: content.extraction!.passages[index]!.locator })) };
 }
 
 function coverageMetadata(extraction: ExtractionArtifact) {
   return extraction.format === "pdf" ? { pdfCoverage: extraction.pdfCoverage ?? { status: "unknown" as const } } : {};
+}
+
+/** Ground a knowledge reference in immutable local bytes and current access. */
+export async function resolveKnowledgeCitation(workspace: MountedWorkspace, actor: ActorRef, input: KnowledgeCitation): Promise<void> {
+  const ref = knowledgeCitationSchema.parse(input);
+  if (ref.workspaceId !== workspace.workspaceId) throw new EvidenceContentError(403, "Citation is outside this workspace.");
+  const content = await readEvidenceContent(workspace, actor, ref.evidenceId, ref.extractionId);
+  const canonical = content.citations[ref.passageIndex];
+  if (!canonical || canonical.sourceContentHash !== ref.sourceContentHash || canonical.extractionContentHash !== ref.extractionContentHash ||
+    JSON.stringify(canonical.locator) !== JSON.stringify(ref.locator) ||
+    JSON.stringify(canonical.pdfCoverage) !== JSON.stringify(ref.pdfCoverage) ||
+    canonical.provenanceEventIds.length !== ref.provenanceEventIds.length || canonical.provenanceEventIds.some(id => !ref.provenanceEventIds.includes(id)) ||
+    !canonical.quote.includes(ref.quote)) throw new EvidenceContentError(409, "Citation does not match the stored source passage.");
+  authorizeEvidence(await workspace.ledger.readAll(), ref.evidenceId, actor);
 }

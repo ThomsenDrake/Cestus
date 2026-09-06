@@ -1,0 +1,118 @@
+{
+  "classification": "synthetic loopback protocol fixture, not live-provider acceptance",
+  "requestCount": 2,
+  "endpoint": "http://127.0.0.1:28804/v1/chat/completions",
+  "approvedBudgetUsdPerInvocation": 0.05,
+  "transfers": [
+    {
+      "model": "synthetic-phase3-fixture",
+      "evidenceId": "ev_ing_f499dbe90e8cedc4405d21dbecd6cf319384599bcbe94f37c813e398a15c47c1",
+      "passageIndexes": [
+        0
+      ],
+      "proposals": [
+        {
+          "kind": "entity",
+          "predicate": "name",
+          "mentionId": "recipient",
+          "entityType": "person",
+          "value": {
+            "type": "string",
+            "value": "Alex Vale"
+          },
+          "citations": [
+            {
+              "passageIndex": 0,
+              "quote": "Synthetic case A. Alex Vale, identifier AV-101, received an award of 1200 from Harbor Agency in 2025-03."
+            }
+          ]
+        },
+        {
+          "kind": "fact",
+          "predicate": "amount",
+          "subjectMentionId": "recipient",
+          "value": {
+            "type": "number",
+            "value": 1200
+          },
+          "citations": [
+            {
+              "passageIndex": 0,
+              "quote": "Synthetic case A. Alex Vale, identifier AV-101, received an award of 1200 from Harbor Agency in 2025-03."
+            }
+          ]
+        },
+        {
+          "kind": "fact",
+          "predicate": "date",
+          "subjectMentionId": "recipient",
+          "value": {
+            "type": "date",
+            "value": "2025-03"
+          },
+          "citations": [
+            {
+              "passageIndex": 0,
+              "quote": "Synthetic case A. Alex Vale, identifier AV-101, received an award of 1200 from Harbor Agency in 2025-03."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "model": "synthetic-phase3-fixture",
+      "evidenceId": "ev_ing_a2ae15a60163ba3ba366f075a2cb456da89d1669fea8688941adf8f27cdd6c4c",
+      "passageIndexes": [
+        0
+      ],
+      "proposals": [
+        {
+          "kind": "entity",
+          "predicate": "name",
+          "mentionId": "recipient",
+          "entityType": "person",
+          "value": {
+            "type": "string",
+            "value": "Robin Vale"
+          },
+          "citations": [
+            {
+              "passageIndex": 0,
+              "quote": "Synthetic case A. Robin Vale, identifier RV-202, received an award of 2400 from Harbor Agency in 2026-07."
+            }
+          ]
+        },
+        {
+          "kind": "fact",
+          "predicate": "amount",
+          "subjectMentionId": "recipient",
+          "value": {
+            "type": "number",
+            "value": 2400
+          },
+          "citations": [
+            {
+              "passageIndex": 0,
+              "quote": "Synthetic case A. Robin Vale, identifier RV-202, received an award of 2400 from Harbor Agency in 2026-07."
+            }
+          ]
+        },
+        {
+          "kind": "fact",
+          "predicate": "date",
+          "subjectMentionId": "recipient",
+          "value": {
+            "type": "date",
+            "value": "2026-07"
+          },
+          "citations": [
+            {
+              "passageIndex": 0,
+              "quote": "Synthetic case A. Robin Vale, identifier RV-202, received an award of 2400 from Harbor Agency in 2026-07."
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

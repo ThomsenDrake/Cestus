@@ -1,0 +1,51 @@
+Current investigation
+All cases · workspace view
+Synthetic award case
+Synthetic payment case
+Synthetic namesake case
+Synthetic entity-only case
+Synthetic award case
+
+Question: Who received the award?
+
+Scope: Fictional award records
+
+Create an investigation
+Evidence memberships
+Case hypotheses
+
+Hypotheses are questions or explanations under investigation, separate from accepted assertions.
+
+The award and payment registers refer to the same recipient. · Supports: as_74f4b682e1564228a705e32b942515c4 · Contradicts: none
+
+Hypothesis statement
+Hypothesis supporting knowledge
+name: Alex Vale · superseded
+name: Harbor Agency · accepted
+identifier: AV-101 · accepted
+amount: 1200 · superseded
+awarded: Alex · accepted
+award: award · accepted
+identifier: AV-101 · accepted
+name: Alex Vale · rejected
+name: Alex Vale · accepted
+amount: 1200 · accepted
+date: 2025-03 · accepted
+name: Alex · accepted
+Hypothesis contradicting knowledge
+name: Alex Vale · superseded
+name: Harbor Agency · accepted
+identifier: AV-101 · accepted
+amount: 1200 · superseded
+awarded: Alex · accepted
+award: award · accepted
+identifier: AV-101 · accepted
+name: Alex Vale · rejected
+name: Alex Vale · accepted
+amount: 1200 · accepted
+date: 2025-03 · accepted
+name: Alex · accepted
+
+Hold Ctrl or Command to select several entries. Linking a proposal does not accept it as a fact.
+
+Record case hypothesis

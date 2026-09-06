@@ -5,6 +5,8 @@ import { DatabaseSync } from "node:sqlite";
 import { validateKnowledgeEvent, type KnowledgeEvent } from "./contracts.js";
 import {
   ConcurrencyConflictError,
+  prepareAppendBatch,
+  type AppendBatchOptions,
   type AppendableKnowledgeEvent,
   type AppendOptions,
   type EventLedger
@@ -61,7 +63,71 @@ export class SQLiteEventLedger implements PrecommitGuardedEventLedger {
         committed_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
         UNIQUE(stream_id, stream_sequence)
       );
+      CREATE TABLE IF NOT EXISTS ontology_decisions (
+        decision_id TEXT PRIMARY KEY,
+        content_fingerprint TEXT NOT NULL,
+        event_ids_json TEXT NOT NULL
+      );
     `);
+  }
+
+  async appendBatch(events: AppendableKnowledgeEvent[], options: AppendBatchOptions): Promise<KnowledgeEvent[]> {
+    const prepared = prepareAppendBatch(events, options);
+    let transactionOpen = false;
+    try {
+      this.db.exec("BEGIN IMMEDIATE");
+      transactionOpen = true;
+      const receipt = this.db.prepare(
+        "SELECT content_fingerprint, event_ids_json FROM ontology_decisions WHERE decision_id = ?"
+      ).get(options.decisionId) as { content_fingerprint: string; event_ids_json: string } | undefined;
+      if (receipt) {
+        if (receipt.content_fingerprint !== prepared.fingerprint) {
+          throw new ConcurrencyConflictError("Concurrency conflict: decision identity already has different content.");
+        }
+        const ids: unknown = JSON.parse(receipt.event_ids_json);
+        if (!Array.isArray(ids) || ids.length !== prepared.events.length || ids.some((id) => typeof id !== "string")) {
+          throw new Error("Invalid stored decision receipt.");
+        }
+        const result = ids.map((id: string) => {
+          const row = this.db.prepare(`SELECT id, type, version, stream_id, stream_sequence, context_json, payload_json
+            FROM ontology_events WHERE id = ?`).get(id) as StoredEventRow | undefined;
+          if (!row) throw new Error("Stored decision is missing an event.");
+          return this.eventFromRow(row);
+        });
+        this.db.exec("COMMIT");
+        transactionOpen = false;
+        return result;
+      }
+      if (options.expectedGlobalEventCount !== this.globalEventCount()) {
+        throw new ConcurrencyConflictError("Concurrency conflict: batch global revision is stale.");
+      }
+      for (const [stream, expected] of Object.entries(options.expectedNextSequences ?? {})) {
+        if (this.nextSequence(stream) !== expected) {
+          throw new ConcurrencyConflictError("Concurrency conflict: batch stream revision is stale.");
+        }
+      }
+      const committed = prepared.events.map((event) => {
+        const result = validateKnowledgeEvent({ ...event, id: eventId(), sequence: this.nextSequence(event.streamId) });
+        if (!result.success) throw new Error(`Invalid knowledge event: ${result.error.message}`);
+        const stored = cloneSnapshot(result.data);
+        this.db.prepare(`INSERT INTO ontology_events
+          (id, type, version, stream_id, stream_sequence, context_json, payload_json)
+          VALUES (?, ?, ?, ?, ?, ?, ?)`).run(stored.id, stored.type, stored.version, stored.streamId,
+          stored.sequence, JSON.stringify(stored.context), JSON.stringify(stored.payload));
+        return stored;
+      });
+      this.db.prepare(`INSERT INTO ontology_decisions (decision_id, content_fingerprint, event_ids_json)
+        VALUES (?, ?, ?)`).run(options.decisionId, prepared.fingerprint, JSON.stringify(committed.map((event) => event.id)));
+      this.db.exec("COMMIT");
+      transactionOpen = false;
+      return cloneSnapshot(committed);
+    } catch (error) {
+      if (transactionOpen) this.rollbackTransaction();
+      if (this.isContentionError(error) || this.isConstraintError(error)) {
+        throw new ConcurrencyConflictError("Concurrency conflict: SQLite batch contention.");
+      }
+      throw error;
+    }
   }
 
   async append(event: AppendableKnowledgeEvent, options: AppendOptions = {}): Promise<KnowledgeEvent> {

@@ -1,0 +1,303 @@
+
+ RUN  v4.1.9 /home/drake/Projects/Cestus
+
+ ❯ packages/ontology/test/knowledge-service.test.ts (9 tests | 1 failed) 86ms
+   × requires a quoted unit for manual numeric values and occurrence attributes 9ms
+ ❯ packages/local-runtime/test/knowledge-http.test.ts (1 test | 1 failed) 630ms
+   × exposes canonical passage citations through the production evidence route 628ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  packages/local-runtime/test/knowledge-http.test.ts > exposes canonical passage citations through the production evidence route
+AssertionError: expected '{"schemaVersion":"ontology-workspace.…' not to contain 'Alex Vale'
+
+Expected: "Alex Vale"
+Received: "{"schemaVersion":"ontology-workspace.v1","status":"ready","sourceHighWaterMark":27,"entities":[{"entityId":"ent_corrected","canonicalLabel":"Alex Vale","entityType":"person","reviewState":"accepted","supportingAssertionIds":["as_actor"],"evidenceIds":["ev_ing_0b5c6ef3bd9a2a955fa1f5690a4c81fc2aaf705ebcd01af4dffc057f77004536"],"eventIds":["evt_5d492f83c4d04c13bcc970689617a851","evt_d38a02a33b0e498b9c887f4ebb4e481c","evt_f1816c6c42034259bbc03046bf344021","evt_f846d361502942dfb69444d01c73c6a0"],"packVersions":[{"name":"knowledge","version":"investigation.v1"}]}],"relationships":[],"assertions":[{"assertionId":"as_actor","reviewState":"accepted","predicate":"name","confidence":0,"object":"Alex Vale","citationScope":"passage","evidenceId":"ev_ing_0b5c6ef3bd9a2a955fa1f5690a4c81fc2aaf705ebcd01af4dffc057f77004536","eventIds":["evt_5d492f83c4d04c13bcc970689617a851","evt_d38a02a33b0e498b9c887f4ebb4e481c","evt_f1816c6c42034259bbc03046bf344021","evt_f846d361502942dfb69444d01c73c6a0"],"packVersions":[{"name":"knowledge","version":"investigation.v1"}]}],"diagnostics":[]}"
+
+ ❯ packages/local-runtime/test/knowledge-http.test.ts:77:53
+     75|   expect((await request("/api/ontology/knowledge")).proposals).toHaveL…
+     76|   const legacyAfterRevocation = await request("/api/ontology/workspace…
+     77|   expect(JSON.stringify(legacyAfterRevocation)).not.toContain("Alex Va…
+       |                                                     ^
+     78|   expect(legacyAfterRevocation.entities).toHaveLength(0);
+     79| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  packages/ontology/test/knowledge-service.test.ts > requires a quoted unit for manual numeric values and occurrence attributes
+AssertionError: promise resolved "[ { …(7) }, { …(7) } ]" instead of rejecting
+
+- Expected:
+Error {
+  "message": "rejected promise",
+}
+
++ Received:
+[
+  {
+    "context": {
+      "actor": {
+        "id": "human_local",
+        "kind": "human",
+        "label": "Local reviewer",
+      },
+      "coreVersion": "2",
+      "correlationId": "dc44883f893f4e9942cea2400afe9d19b7ab7fbec869acd7128c0baa179c60ca",
+      "occurredAt": "2026-09-05T19:41:10.535Z",
+      "packVersions": {
+        "knowledge": "investigation.v1",
+      },
+    },
+    "id": "evt_53d704f94ad6492b8a00426071192c2d",
+    "payload": {
+      "entityTypes": [
+        "person",
+        "organization",
+        "agency",
+        "contract",
+        "address",
+      ],
+      "predicates": [
+        {
+          "fromTypes": [],
+          "kind": "entity",
+          "name": "name",
+          "toTypes": [],
+          "valueType": "string",
+        },
+        {
+          "fromTypes": [],
+          "kind": "fact",
+          "name": "identifier",
+          "toTypes": [],
+          "valueType": "string",
+        },
+        {
+          "fromTypes": [],
+          "kind": "fact",
+          "name": "address",
+          "toTypes": [],
+          "valueType": "string",
+        },
+        {
+          "fromTypes": [],
+          "kind": "fact",
+          "name": "description",
+          "toTypes": [],
+          "valueType": "string",
+        },
+        {
+          "fromTypes": [],
+          "kind": "fact",
+          "name": "amount",
+          "toTypes": [],
+          "valueType": "number",
+        },
+        {
+          "fromTypes": [],
+          "kind": "fact",
+          "name": "date",
+          "toTypes": [],
+          "valueType": "date",
+        },
+        {
+          "fromTypes": [
+            "person",
+            "organization",
+            "agency",
+          ],
+          "kind": "relationship",
+          "name": "paid",
+          "toTypes": [
+            "person",
+            "organization",
+            "agency",
+            "contract",
+            "address",
+          ],
+          "valueType": "entity",
+        },
+        {
+          "fromTypes": [
+            "person",
+            "organization",
+            "agency",
+          ],
+          "kind": "relationship",
+          "name": "awarded",
+          "toTypes": [
+            "person",
+            "organization",
+            "agency",
+            "contract",
+            "address",
+          ],
+          "valueType": "entity",
+        },
+        {
+          "fromTypes": [
+            "person",
+            "organization",
+            "agency",
+          ],
+          "kind": "relationship",
+          "name": "employed_by",
+          "toTypes": [
+            "person",
+            "organization",
+            "agency",
+            "contract",
+            "address",
+          ],
+          "valueType": "entity",
+        },
+        {
+          "fromTypes": [
+            "person",
+            "organization",
+            "agency",
+          ],
+          "kind": "relationship",
+          "name": "owns",
+          "toTypes": [
+            "person",
+            "organization",
+            "agency",
+            "contract",
+            "address",
+          ],
+          "valueType": "entity",
+        },
+        {
+          "fromTypes": [
+            "person",
+            "organization",
+            "agency",
+          ],
+          "kind": "relationship",
+          "name": "associated_with",
+          "toTypes": [
+            "person",
+            "organization",
+            "agency",
+            "contract",
+            "address",
+          ],
+          "valueType": "entity",
+        },
+        {
+          "fromTypes": [],
+          "kind": "occurrence",
+          "name": "payment",
+          "toTypes": [],
+          "valueType": "string",
+        },
+        {
+          "fromTypes": [],
+          "kind": "occurrence",
+          "name": "award",
+          "toTypes": [],
+          "valueType": "string",
+        },
+        {
+          "fromTypes": [],
+          "kind": "occurrence",
+          "name": "appointment",
+          "toTypes": [],
+          "valueType": "string",
+        },
+        {
+          "fromTypes": [],
+          "kind": "occurrence",
+          "name": "meeting",
+          "toTypes": [],
+          "valueType": "string",
+        },
+        {
+          "fromTypes": [],
+          "kind": "occurrence",
+          "name": "ownership_change",
+          "toTypes": [],
+          "valueType": "string",
+        },
+      ],
+      "schemaId": "investigation.v1",
+    },
+    "sequence": 1,
+    "streamId": "knowledge-decision:d_1kgxy1wt6bi",
+    "type": "knowledge.schema.recorded",
+    "version": 2,
+  },
+  {
+    "context": {
+      "actor": {
+        "id": "human_local",
+        "kind": "human",
+        "label": "Local reviewer",
+      },
+      "coreVersion": "2",
+      "correlationId": "dc44883f893f4e9942cea2400afe9d19b7ab7fbec869acd7128c0baa179c60ca",
+      "occurredAt": "2026-09-05T19:41:10.535Z",
+      "packVersions": {
+        "knowledge": "investigation.v1",
+      },
+    },
+    "id": "evt_eccb5db64de0450c93eef4ccdb208e75",
+    "payload": {
+      "assertionId": "as_wrong_unit",
+      "evidence": [
+        {
+          "evidenceId": "ev_source",
+          "extractionContentHash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "extractionId": "ext_one",
+          "locator": {
+            "block": 1,
+            "end": 30,
+            "kind": "text",
+            "start": 0,
+          },
+          "passageIndex": 0,
+          "provenanceEventIds": [
+            "evt_evidence",
+          ],
+          "quote": "Acme paid 120 USD in 2024.",
+          "sourceContentHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "workspaceId": "ws_test",
+        },
+      ],
+      "kind": "fact",
+      "predicate": "amount",
+      "provenance": {
+        "kind": "manual",
+      },
+      "schemaId": "investigation.v1",
+      "subjectMentionId": "m_actor",
+      "value": {
+        "type": "number",
+        "unit": "EUR",
+        "value": 120,
+      },
+      "workspaceId": "ws_test",
+    },
+    "sequence": 2,
+    "streamId": "knowledge-decision:d_1kgxy1wt6bi",
+    "type": "knowledge.proposed",
+    "version": 2,
+  },
+]
+
+ ❯ packages/ontology/test/knowledge-service.test.ts:477:171
+    475|   const { service } = setup();
+    476|   const quoted = { ...citation, quote: "Acme paid 120 USD in 2024." };
+    477|   await expect(command(service, { action: "propose", proposals: [{ ...…
+       |                                                                                                                                                                           ^
+    478|   await command(service, { action: "propose", proposals: [{ ...fact("a…
+    479| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  2 failed (2)
+      Tests  2 failed | 8 passed (10)
+   Start at  15:41:09
+   Duration  2.95s (transform 1.72s, setup 205ms, import 2.41s, tests 716ms, environment 0ms)

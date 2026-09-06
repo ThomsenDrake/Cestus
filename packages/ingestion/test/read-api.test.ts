@@ -320,6 +320,40 @@ describe("ingestion read API", () => {
     });
   });
 
+  it.each([
+    "Public posting; no secret-bearing material observed.",
+    "ghp_syntheticRationale123"
+  ])("keeps evidence usable while withholding flagged governance rationale: %s", (rationale) => {
+    const classification: KnowledgeEvent = {
+      ...classifiedEvent,
+      payload: {
+        ...classifiedEvent.payload,
+        tags: [{ tag: "public_safe", confidence: 0.99, rationale }]
+      }
+    };
+    expect(validateKnowledgeEvent(classification).success).toBe(true);
+    const events = [...goldenIngestionLedgerEvents, evidenceIngestedEvent, classification];
+    const originalEvents = JSON.stringify(events);
+    const dto = buildEvidenceWorkspaceDto(events);
+
+    expect(dto.items).toHaveLength(1);
+    expect(dto.items[0]).toMatchObject({
+      evidenceId: evidenceIngestedEvent.payload.evidenceId,
+      contentHash: evidenceIngestedEvent.payload.contentHash,
+      provenanceComplete: true,
+      selectableForAssertionCandidate: true,
+      blockingReasons: [],
+      governanceTags: [{
+        tag: "public_safe", confidence: 0.99, source: "ai", status: "active",
+        eventId: classification.id, rationale: "Rationale withheld by the metadata safety check."
+      }]
+    });
+    expect(JSON.stringify(dto)).not.toContain(rationale);
+    expect(dto.diagnostics).toContainEqual(expect.objectContaining({ code: "secret-safety" }));
+    expect(JSON.stringify(events)).toBe(originalEvents);
+    expect(buildEvidenceWorkspaceDto(JSON.parse(originalEvents))).toEqual(dto);
+  });
+
   it("never exposes credential-shaped evidence or assertion fields in the browser DTO", () => {
     const secret = "access_token=super-sensitive-value-123";
     const unsafeEvents = goldenIngestionLedgerEvents.map((event) => {

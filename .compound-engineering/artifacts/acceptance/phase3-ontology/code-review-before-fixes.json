@@ -1,0 +1,401 @@
+{
+  "status": "complete",
+  "verdict": "Not ready",
+  "scope": {
+    "base": "60559c00",
+    "branch": "codex/phase3-shared-ontology",
+    "head_sha": "620f885886d89693823d09a2ecd7d2727ed47500",
+    "pr_url": null,
+    "files_changed": 30,
+    "mode": "local-aligned; committed, staged and working tree"
+  },
+  "intent": "Implement Phase 3 shared investigation ontology with source-grounded manual/provider proposals, human review and correction, cross-case identity repair, source independence and atomic append-only v1/v2 replay. Preserve existing security and evidence controls.",
+  "intent_confidence": "explicit",
+  "reviewers": [
+    "correctness",
+    "security",
+    "adversarial"
+  ],
+  "findings": [
+    {
+      "#": 1,
+      "autofix_class": "gated_auto",
+      "confidence": 100,
+      "file": "packages/ontology/src/ontology-workspace-read.ts",
+      "first_evidence": "packages/ontology/src/ontology-workspace-read.ts:326 -- for (const proposal of graph.knowledge.proposals.filter(",
+      "independent_reviewers": [],
+      "line": 326,
+      "owner": "downstream-resolver",
+      "pre_existing": false,
+      "requires_verification": true,
+      "reviewers": [
+        "security"
+      ],
+      "severity": "P1",
+      "suggested_fix": "Extract the authorized event-snapshot filtering used by KnowledgeService.read(actor), including its final revision check, and require it for /api/ontology/workspace before invoking the pure compatibility DTO builder. Preserve the honest legacy whole-document citation adapter, but authorize its evidence too. Add HTTP regressions that accept v2 knowledge, redact/quarantine its source, and verify both ontology endpoints omit its values and dependent entity/relationship labels.",
+      "title": "[CWE-200] Legacy ontology route exposes revoked source values",
+      "why_it_matters": "After evidence becomes inaccessible through redaction, quarantine or credential-risk governance, its Phase 3 names and assertion values remain readable through the existing /api/ontology/workspace endpoint. The new compatibility adapter includes v2 proposals from an unfiltered ledger, while /api/ontology/knowledge correctly performs current citation authorization; the collapsed Legacy provenance UI also calls the bypassing endpoint. Applying the same current-authority filtering before either HTTP projection prevents the second route from disclosing content that the primary route hides, without rewriting history.",
+      "evidence": [
+        "packages/ontology/src/ontology-workspace-read.ts:326 -- for (const proposal of graph.knowledge.proposals.filter(",
+        "packages/ontology/src/ontology-workspace-read.ts:341 -- : proposal.value.value,",
+        "packages/local-runtime/src/ontology-http-routes.ts:19 -- return json(200, buildOntologyWorkspaceReadDto(await input.ledger.readAll()));",
+        "packages/local-runtime/src/evidence-content.ts:27 -- if (!item?.contentHash || !item.selectableForAssertionCandidate || item.governanceTags.some(tag => tag.tag === \"credential_risk\" && tag.status === \"active\") || redacted.has(evidenceId)) {",
+        "Read-only in-memory reproduction: accepted entity Acme and amount 120; changed the citation authority callback to reject access; KnowledgeService.read(actor).proposals.length became 0, while buildOntologyWorkspaceReadDto(await ledger.readAll()).assertions still returned objects [\"Acme\",120]. The production legacy HTTP handler invokes that exact unfiltered builder."
+      ]
+    },
+    {
+      "#": 2,
+      "autofix_class": "manual",
+      "confidence": 100,
+      "file": "packages/ontology/src/knowledge-service.ts",
+      "first_evidence": "packages/ontology/src/knowledge-service.ts:740 -- return (quote.match(/-?\\d+(?:,\\d{3})*(?:\\.\\d+)?/g) ?? []).some(",
+      "independent_reviewers": [],
+      "line": 740,
+      "owner": "downstream-resolver",
+      "pre_existing": false,
+      "requires_verification": true,
+      "reviewers": [
+        "security",
+        "adversarial"
+      ],
+      "severity": "P2",
+      "suggested_fix": "Require an explicitly supplied numeric unit to occur in the supporting quotation along with the matching numeric value, matching groundedValue in document-processing.ts. Prefer a shared pure grounding helper so provider and domain checks cannot diverge. Add manual-proposal and edit/accept regressions for correct, missing and mismatched units, including occurrence attributes.",
+      "title": "[CWE-20] Validate numeric units in manual knowledge decisions",
+      "why_it_matters": "The normal manual amount form can accept 120 EUR against a source saying only 'Acme paid 120 USD.' because domain grounding compares the numeric component and ignores the unit. Provider extraction checks the unit, so editing a provider proposal through manual controls weakens the promised shared validation boundary and permits an unsupported typed value into accepted knowledge. Validate the complete numeric value at the domain command boundary for both facts and occurrence attributes.",
+      "evidence": [
+        "packages/ontology/src/knowledge-service.ts:740 -- return (quote.match(/-?\\d+(?:,\\d{3})*(?:\\.\\d+)?/g) ?? []).some(",
+        "packages/ontology/src/knowledge-service.ts:741 -- (n) => Number(n.replaceAll(\",\", \"\")) === value.value,",
+        "packages/ui/src/ontology/SharedOntologyWorkspace.tsx:175 -- {selectedPredicate?.valueType === \"number\" && <label className=\"flex flex-col gap-1\">Unit (optional)<input className={field} name=\"unit\" defaultValue={edit?.value.type === \"number\" ? edit.value.unit : \"\"} placeholder=\"USD\" /></label>}",
+        "Read-only in-memory reproduction used KnowledgeService.execute with a validated entity and citation quote 'Acme paid 120 USD.'; proposing {type:'number',value:120,unit:'EUR'} and then accepting it both succeeded, leaving reviewState:'accepted'.",
+        "packages/ontology/src/knowledge-service.ts:741:       (n) => Number(n.replaceAll(\",\", \"\")) === value.value,",
+        "packages/local-runtime/src/document-processing.ts:438 checks numeric value together with (!value.unit || quotes.includes(value.unit)); the domain helper never reads value.unit.",
+        "Read-only executable reproduction imported KnowledgeService and InMemoryEventLedger, supplied an exact citation for 'Acme paid 120 in 2024.', proposed entity Acme plus amount {type:'number',value:120,unit:'BTC'}, and accepted the group. Result: the amount remained {value:120,unit:'BTC'} with reviewState:'accepted'.",
+        "The citation callback in the reproduction rejects changes to the supplied citation; the unsupported unit lives only in the proposed value and survives both propose and accept."
+      ]
+    },
+    {
+      "#": 3,
+      "autofix_class": "gated_auto",
+      "confidence": 100,
+      "file": "packages/ui/src/ontology/shared-ontology-adapter.ts",
+      "first_evidence": "packages/ui/src/ontology/shared-ontology-adapter.ts:18 --   const proposal = proposals.find(candidate => candidate.mentionId === value.mentionId);",
+      "independent_reviewers": [],
+      "line": 18,
+      "owner": "downstream-resolver",
+      "pre_existing": false,
+      "requires_verification": true,
+      "reviewers": [
+        "correctness"
+      ],
+      "severity": "P2",
+      "suggested_fix": "Resolve entity values through the current mention binding and its entity ID, passing bindings into the helper or exposing a current mention-to-entity map. Preserve original proposal labels only in explicitly historical views. Add a test that supersedes an entity label and checks current relationship and participant rendering.",
+      "title": "Resolve corrected entity labels through current bindings",
+      "why_it_matters": "After correcting an entity name through edit-as-new and supersession, current relationship and occurrence participant labels still show the old name. The helper selects the earliest proposal with that mention ID, but its superseded assertion no longer belongs to the current entity, so it falls back to the old proposal value. An in-memory normal command sequence reproduced canonicalLabel='Acme Incorporated' with displayedEndpoint='Acme'.",
+      "evidence": [
+        "packages/ui/src/ontology/shared-ontology-adapter.ts:18 --   const proposal = proposals.find(candidate => candidate.mentionId === value.mentionId);",
+        "packages/ui/src/ontology/shared-ontology-adapter.ts:20-21 resolves the entity using that proposal's assertionId and falls back to that proposal's string.",
+        "Read-only in-memory KnowledgeService command characterization: accepting as_old='Acme', proposing as_new='Acme Incorporated' with derivedFrom as_old and the same mention, then atomically accepting as_new and superseding as_old yields currentCanonicalLabel='Acme Incorporated', displayedEndpoint='Acme'."
+      ]
+    },
+    {
+      "#": 5,
+      "autofix_class": "gated_auto",
+      "confidence": 75,
+      "file": "packages/ui/src/ontology/SharedOntologyWorkspace.tsx",
+      "first_evidence": "packages/ui/src/ontology/SharedOntologyWorkspace.tsx:46 --   const caseProposals = workspace.proposals.filter(proposal => !currentCase || member(\"knowledge\", proposal.assertionId) || proposal.evidence.some(ref => member(\"evidence\", ref.evidenceId)) || (proposal.subjectEntityId && member(\"entity\", proposal.subjectEntityId)));",
+      "independent_reviewers": [],
+      "line": 46,
+      "owner": "downstream-resolver",
+      "pre_existing": false,
+      "requires_verification": true,
+      "reviewers": [
+        "correctness"
+      ],
+      "severity": "P2",
+      "suggested_fix": "Include a proposal when its assertionId belongs to any explicitly member entity's current assertionIds, alongside the existing knowledge and evidence membership checks. Use one shared membership predicate for row visibility and displayed case labels. Test a case with only entity membership and verify its name, incoming relationship, and occurrence rows remain visible.",
+      "title": "Include all bound knowledge for explicit entity memberships",
+      "why_it_matters": "Adding an existing entity to an otherwise empty investigation exposes its dossier button but hides its own entity mention, incoming relationships, and occurrence participation. The case filter follows explicit entity memberships only through subjectEntityId. The later dossier filter cannot recover rows already removed by this case filter, so normal cross-case entity reuse produces incomplete case views.",
+      "evidence": [
+        "packages/ui/src/ontology/SharedOntologyWorkspace.tsx:46 --   const caseProposals = workspace.proposals.filter(proposal => !currentCase || member(\"knowledge\", proposal.assertionId) || proposal.evidence.some(ref => member(\"evidence\", ref.evidenceId)) || (proposal.subjectEntityId && member(\"entity\", proposal.subjectEntityId)));",
+        "packages/ui/src/ontology/SharedOntologyWorkspace.tsx:48 applies dossier filtering only to caseProposals, after entity mentions and non-subject participation have been removed.",
+        "packages/ontology/src/knowledge-projection.ts:233-239 already includes subject, object, and occurrence participant assertions in each current entity's assertionIds."
+      ]
+    }
+  ],
+  "actionable_findings": [
+    {
+      "#": 1,
+      "autofix_class": "gated_auto",
+      "confidence": 100,
+      "file": "packages/ontology/src/ontology-workspace-read.ts",
+      "first_evidence": "packages/ontology/src/ontology-workspace-read.ts:326 -- for (const proposal of graph.knowledge.proposals.filter(",
+      "independent_reviewers": [],
+      "line": 326,
+      "owner": "downstream-resolver",
+      "pre_existing": false,
+      "requires_verification": true,
+      "reviewers": [
+        "security"
+      ],
+      "severity": "P1",
+      "suggested_fix": "Extract the authorized event-snapshot filtering used by KnowledgeService.read(actor), including its final revision check, and require it for /api/ontology/workspace before invoking the pure compatibility DTO builder. Preserve the honest legacy whole-document citation adapter, but authorize its evidence too. Add HTTP regressions that accept v2 knowledge, redact/quarantine its source, and verify both ontology endpoints omit its values and dependent entity/relationship labels.",
+      "title": "[CWE-200] Legacy ontology route exposes revoked source values",
+      "why_it_matters": "After evidence becomes inaccessible through redaction, quarantine or credential-risk governance, its Phase 3 names and assertion values remain readable through the existing /api/ontology/workspace endpoint. The new compatibility adapter includes v2 proposals from an unfiltered ledger, while /api/ontology/knowledge correctly performs current citation authorization; the collapsed Legacy provenance UI also calls the bypassing endpoint. Applying the same current-authority filtering before either HTTP projection prevents the second route from disclosing content that the primary route hides, without rewriting history.",
+      "evidence": [
+        "packages/ontology/src/ontology-workspace-read.ts:326 -- for (const proposal of graph.knowledge.proposals.filter(",
+        "packages/ontology/src/ontology-workspace-read.ts:341 -- : proposal.value.value,",
+        "packages/local-runtime/src/ontology-http-routes.ts:19 -- return json(200, buildOntologyWorkspaceReadDto(await input.ledger.readAll()));",
+        "packages/local-runtime/src/evidence-content.ts:27 -- if (!item?.contentHash || !item.selectableForAssertionCandidate || item.governanceTags.some(tag => tag.tag === \"credential_risk\" && tag.status === \"active\") || redacted.has(evidenceId)) {",
+        "Read-only in-memory reproduction: accepted entity Acme and amount 120; changed the citation authority callback to reject access; KnowledgeService.read(actor).proposals.length became 0, while buildOntologyWorkspaceReadDto(await ledger.readAll()).assertions still returned objects [\"Acme\",120]. The production legacy HTTP handler invokes that exact unfiltered builder."
+      ]
+    },
+    {
+      "#": 2,
+      "autofix_class": "manual",
+      "confidence": 100,
+      "file": "packages/ontology/src/knowledge-service.ts",
+      "first_evidence": "packages/ontology/src/knowledge-service.ts:740 -- return (quote.match(/-?\\d+(?:,\\d{3})*(?:\\.\\d+)?/g) ?? []).some(",
+      "independent_reviewers": [],
+      "line": 740,
+      "owner": "downstream-resolver",
+      "pre_existing": false,
+      "requires_verification": true,
+      "reviewers": [
+        "security",
+        "adversarial"
+      ],
+      "severity": "P2",
+      "suggested_fix": "Require an explicitly supplied numeric unit to occur in the supporting quotation along with the matching numeric value, matching groundedValue in document-processing.ts. Prefer a shared pure grounding helper so provider and domain checks cannot diverge. Add manual-proposal and edit/accept regressions for correct, missing and mismatched units, including occurrence attributes.",
+      "title": "[CWE-20] Validate numeric units in manual knowledge decisions",
+      "why_it_matters": "The normal manual amount form can accept 120 EUR against a source saying only 'Acme paid 120 USD.' because domain grounding compares the numeric component and ignores the unit. Provider extraction checks the unit, so editing a provider proposal through manual controls weakens the promised shared validation boundary and permits an unsupported typed value into accepted knowledge. Validate the complete numeric value at the domain command boundary for both facts and occurrence attributes.",
+      "evidence": [
+        "packages/ontology/src/knowledge-service.ts:740 -- return (quote.match(/-?\\d+(?:,\\d{3})*(?:\\.\\d+)?/g) ?? []).some(",
+        "packages/ontology/src/knowledge-service.ts:741 -- (n) => Number(n.replaceAll(\",\", \"\")) === value.value,",
+        "packages/ui/src/ontology/SharedOntologyWorkspace.tsx:175 -- {selectedPredicate?.valueType === \"number\" && <label className=\"flex flex-col gap-1\">Unit (optional)<input className={field} name=\"unit\" defaultValue={edit?.value.type === \"number\" ? edit.value.unit : \"\"} placeholder=\"USD\" /></label>}",
+        "Read-only in-memory reproduction used KnowledgeService.execute with a validated entity and citation quote 'Acme paid 120 USD.'; proposing {type:'number',value:120,unit:'EUR'} and then accepting it both succeeded, leaving reviewState:'accepted'.",
+        "packages/ontology/src/knowledge-service.ts:741:       (n) => Number(n.replaceAll(\",\", \"\")) === value.value,",
+        "packages/local-runtime/src/document-processing.ts:438 checks numeric value together with (!value.unit || quotes.includes(value.unit)); the domain helper never reads value.unit.",
+        "Read-only executable reproduction imported KnowledgeService and InMemoryEventLedger, supplied an exact citation for 'Acme paid 120 in 2024.', proposed entity Acme plus amount {type:'number',value:120,unit:'BTC'}, and accepted the group. Result: the amount remained {value:120,unit:'BTC'} with reviewState:'accepted'.",
+        "The citation callback in the reproduction rejects changes to the supplied citation; the unsupported unit lives only in the proposed value and survives both propose and accept."
+      ]
+    },
+    {
+      "#": 3,
+      "autofix_class": "gated_auto",
+      "confidence": 100,
+      "file": "packages/ui/src/ontology/shared-ontology-adapter.ts",
+      "first_evidence": "packages/ui/src/ontology/shared-ontology-adapter.ts:18 --   const proposal = proposals.find(candidate => candidate.mentionId === value.mentionId);",
+      "independent_reviewers": [],
+      "line": 18,
+      "owner": "downstream-resolver",
+      "pre_existing": false,
+      "requires_verification": true,
+      "reviewers": [
+        "correctness"
+      ],
+      "severity": "P2",
+      "suggested_fix": "Resolve entity values through the current mention binding and its entity ID, passing bindings into the helper or exposing a current mention-to-entity map. Preserve original proposal labels only in explicitly historical views. Add a test that supersedes an entity label and checks current relationship and participant rendering.",
+      "title": "Resolve corrected entity labels through current bindings",
+      "why_it_matters": "After correcting an entity name through edit-as-new and supersession, current relationship and occurrence participant labels still show the old name. The helper selects the earliest proposal with that mention ID, but its superseded assertion no longer belongs to the current entity, so it falls back to the old proposal value. An in-memory normal command sequence reproduced canonicalLabel='Acme Incorporated' with displayedEndpoint='Acme'.",
+      "evidence": [
+        "packages/ui/src/ontology/shared-ontology-adapter.ts:18 --   const proposal = proposals.find(candidate => candidate.mentionId === value.mentionId);",
+        "packages/ui/src/ontology/shared-ontology-adapter.ts:20-21 resolves the entity using that proposal's assertionId and falls back to that proposal's string.",
+        "Read-only in-memory KnowledgeService command characterization: accepting as_old='Acme', proposing as_new='Acme Incorporated' with derivedFrom as_old and the same mention, then atomically accepting as_new and superseding as_old yields currentCanonicalLabel='Acme Incorporated', displayedEndpoint='Acme'."
+      ]
+    },
+    {
+      "#": 5,
+      "autofix_class": "gated_auto",
+      "confidence": 75,
+      "file": "packages/ui/src/ontology/SharedOntologyWorkspace.tsx",
+      "first_evidence": "packages/ui/src/ontology/SharedOntologyWorkspace.tsx:46 --   const caseProposals = workspace.proposals.filter(proposal => !currentCase || member(\"knowledge\", proposal.assertionId) || proposal.evidence.some(ref => member(\"evidence\", ref.evidenceId)) || (proposal.subjectEntityId && member(\"entity\", proposal.subjectEntityId)));",
+      "independent_reviewers": [],
+      "line": 46,
+      "owner": "downstream-resolver",
+      "pre_existing": false,
+      "requires_verification": true,
+      "reviewers": [
+        "correctness"
+      ],
+      "severity": "P2",
+      "suggested_fix": "Include a proposal when its assertionId belongs to any explicitly member entity's current assertionIds, alongside the existing knowledge and evidence membership checks. Use one shared membership predicate for row visibility and displayed case labels. Test a case with only entity membership and verify its name, incoming relationship, and occurrence rows remain visible.",
+      "title": "Include all bound knowledge for explicit entity memberships",
+      "why_it_matters": "Adding an existing entity to an otherwise empty investigation exposes its dossier button but hides its own entity mention, incoming relationships, and occurrence participation. The case filter follows explicit entity memberships only through subjectEntityId. The later dossier filter cannot recover rows already removed by this case filter, so normal cross-case entity reuse produces incomplete case views.",
+      "evidence": [
+        "packages/ui/src/ontology/SharedOntologyWorkspace.tsx:46 --   const caseProposals = workspace.proposals.filter(proposal => !currentCase || member(\"knowledge\", proposal.assertionId) || proposal.evidence.some(ref => member(\"evidence\", ref.evidenceId)) || (proposal.subjectEntityId && member(\"entity\", proposal.subjectEntityId)));",
+        "packages/ui/src/ontology/SharedOntologyWorkspace.tsx:48 applies dossier filtering only to caseProposals, after entity mentions and non-subject participation have been removed.",
+        "packages/ontology/src/knowledge-projection.ts:233-239 already includes subject, object, and occurrence participant assertions in each current entity's assertionIds."
+      ]
+    }
+  ],
+  "triage_groups": [
+    {
+      "title": "Grounding and authority",
+      "findings": [
+        1,
+        2
+      ],
+      "context": "Alternate read and manual-write paths bypass checks enforced elsewhere.",
+      "preferred_resolution": "Fix current evidence authorization on the compatibility route first, then share numeric unit grounding.",
+      "why": "Every entry point must preserve the same evidence boundary."
+    },
+    {
+      "title": "Current identity views",
+      "findings": [
+        3,
+        5
+      ],
+      "context": "Current entity bindings are not used consistently when resolving labels and case memberships.",
+      "preferred_resolution": "Resolve labels through current bindings and include member entities current assertion IDs in case filters.",
+      "why": "Corrections and explicit cross-case membership must remain visible."
+    }
+  ],
+  "pre_existing_findings": [],
+  "requirements_completeness": {
+    "plan_source": "explicit",
+    "plan": ".compound-engineering/artifacts/plans/2026-09-05-phase3-implementation.md",
+    "format": "legacy bounded slices, no R/U identifiers",
+    "slices": [
+      {
+        "slice": 1,
+        "status": "met",
+        "evidence": "Version-aware decoding and both atomic ledger implementations; retry/interruption tests present."
+      },
+      {
+        "slice": 2,
+        "status": "partially addressed",
+        "evidence": "Shared cases/projection/schema/identity/lineage implemented; current identity rendering and membership findings remain."
+      },
+      {
+        "slice": 3,
+        "status": "partially addressed",
+        "evidence": "Human commands, freshness and atomic group/correction validation implemented; numeric unit grounding and compatibility read authority findings remain."
+      },
+      {
+        "slice": 4,
+        "status": "partially addressed",
+        "evidence": "Real transport/schema-aware extraction path implemented; caller separately identified 40-proposal extraction versus 24-proposal import limit mismatch."
+      },
+      {
+        "slice": 5,
+        "status": "partially addressed",
+        "evidence": "Normal controls implemented, with current-label and entity-case filtering fixes required."
+      },
+      {
+        "slice": 6,
+        "status": "in progress outside this review",
+        "evidence": "Caller owns final built-browser acceptance, verify, runbook/evidence and commits. Real/live validation remains explicitly pending authorized inputs."
+      }
+    ]
+  },
+  "learnings": [],
+  "agent_native_gaps": [],
+  "deployment_notes": [],
+  "residual_risks": [
+    "Occurrence DTO convenience participant/time fields select the last accepted claim, but all per-proposal qualifiers and evidence remain in the DTO and UI; validator rejected loss-of-conflict finding #4. Consumers should continue reading proposal claims for competing qualifiers.",
+    "Legacy v1 shared dossier source lists require integration coverage; the compatibility view retains whole-document citation scope.",
+    "Real-record and live-provider acceptance have not been established. Synthetic/local-provider evidence must remain labeled.",
+    "Repeated provider runs yield separate occurrence proposal identities. Current UI marks cross-source identity unresolved and offers explicit identity reuse; no independent event total is claimed."
+  ],
+  "testing_gaps": [
+    "Entity label supersession rendering is not covered by the shared UI tests.",
+    "Explicit entity-only case memberships need browser/component coverage for incoming relationships and occurrence participants.",
+    "Multiple accepted source claims using one occurrence ID need conflict and partial-qualifier projection coverage.",
+    "Current denied-knowledge tests exercise KnowledgeService.read(actor), but do not check the legacy ontology HTTP endpoint after evidence revocation.",
+    "Numeric unit grounding lacks parity coverage between the manual domain commands and provider extraction path."
+  ],
+  "coverage": {
+    "cross_model": "Not run: disabled by checkout config and explicit user prohibition. Native adversarial lens ran.",
+    "scope_signals": {
+      "exec_lines": 3217,
+      "uncounted_files": 1,
+      "lite_eligible": false
+    },
+    "selected_roster": [
+      "correctness",
+      "project-standards",
+      "testing",
+      "maintainability",
+      "agent-native",
+      "security",
+      "performance",
+      "api-contract",
+      "reliability",
+      "adversarial",
+      "julik-frontend-races"
+    ],
+    "independent_personas": [
+      "correctness",
+      "security",
+      "adversarial"
+    ],
+    "orchestrator_only_lenses": [
+      "project-standards",
+      "testing",
+      "maintainability",
+      "agent-native",
+      "performance",
+      "api-contract",
+      "reliability",
+      "julik-frontend-races"
+    ],
+    "degraded_coverage": "Host repeatedly rejected queued persona launches with agent thread limit reached after completed reviewers retained slots. Caller directed bounded orchestrator fallback. Eight lens passes are attributed context-only coverage, not independent reviewers or corroboration. A fresh independent validator became available after adversarial completed.",
+    "standards": "AGENTS.md and CLAUDE.md fallback govern all changed paths; no CODING_STANDARDS.md found.",
+    "skipped_lenses": {
+      "learnings": "Only corpus path concerns ambient intrinsic callback mutation; no plausible title/path match for these module changes.",
+      "data-migration": "No migration/schema dump/backfill artifact; additive SQLite table is embedded in existing ledger initialization.",
+      "previous-comments": "No PR scope.",
+      "swift-ios": "No matching surface."
+    },
+    "validator_shortcut_count": 0,
+    "validator_batch": {
+      "verdicts": [
+        {
+          "#": 1,
+          "validated": true,
+          "reason": "The legacy handler passes the unfiltered ledger to a DTO builder that emits v2 proposal values, whereas the authenticated knowledge route revalidates citation and evidence access before projecting them."
+        },
+        {
+          "#": 2,
+          "validated": true,
+          "reason": "Manual proposals use validateEvidence and hasValue, whose numeric branch compares only the parsed number even when the accepted value carries a unit, so a quoted USD amount can support an accepted EUR value."
+        },
+        {
+          "#": 3,
+          "validated": true,
+          "reason": "displayValue selects the first proposal for a mention while current entities retain the replacement assertion ID, causing a superseded entity proposal to fall back to its stale string label."
+        },
+        {
+          "#": 4,
+          "validated": false,
+          "reason": "Although the aggregate occurrence map overwrites its convenience fields, the same DTO retains every accepted proposal with its own participants and times, and the UI renders those per-proposal values rather than the aggregate qualifiers."
+        },
+        {
+          "#": 5,
+          "validated": true,
+          "reason": "A direct entity membership makes the entity selectable but caseProposals admits only knowledge/evidence memberships or subjectEntityId, so the entity's own assertion plus incoming relationships and participant occurrences are removed before dossier filtering."
+        }
+      ]
+    },
+    "validator_drop_count": 1,
+    "validator_dropped_findings": [
+      {
+        "#": 4,
+        "title": "Preserve competing occurrence qualifiers in the aggregate projection",
+        "reason": "Although the aggregate occurrence map overwrites its convenience fields, the same DTO retains every accepted proposal with its own participants and times, and the UI renders those per-proposal values rather than the aggregate qualifiers."
+      }
+    ],
+    "validation_degraded_findings": [],
+    "semantic_duplicates_merged": 1,
+    "suppressed_by_confidence": {},
+    "malformed_findings": 0,
+    "malformed_returns": 0,
+    "mode_aware_demotion_count": 0,
+    "untracked_exclusions": [],
+    "tree_drift": "Caller applied known occurrence participant fix and minor simplifications before review dispatch; later added uncertainty wording/legacy refresh and fixed missing secret-safe label argument. Review findings checked against live current source.",
+    "caller_tracked_additional_defect": "knowledge-http-routes.ts limits provider/manual proposal arrays to 24, while extraction and domain allow 40. Caller will align limits and add boundary coverage; this additional defect was not in the independent validator batch.",
+    "test_execution": "Read-oriented/in-memory characterizations performed by correctness/security reviewers; no global typecheck/verify or browser acceptance claimed by review."
+  },
+  "artifact_path": "/tmp/compound-engineering-1000/ce-code-review/20260905-153104-phase3",
+  "run_id": "20260905-153104-phase3"
+}
