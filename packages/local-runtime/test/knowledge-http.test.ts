@@ -90,7 +90,22 @@ it("exposes canonical passage citations through the production evidence route", 
   expect(normalized.proposals.find((p: { assertionId: string }) => p.assertionId === written.assertionId).value).toEqual(written.value);
   expect(normalized.proposals.find((p: { assertionId: string }) => p.assertionId === "as_actor").schemaSnapshot.schemaId).toBe("investigation.v1");
   expect(normalized.schemaHistory[0].actorId).toBe("operator_knowledge");
-  await request("/api/evidence/initial-classification", { evidenceRef: evidence.items[0].evidenceId, tag: "credential_risk", rationale: "Synthetic revocation regression" }, 201);
+  // The new connected workspace uses production governance and append-only records.
+  expect((await request("/api/investigation")).eligibleCases).toEqual([]);
+  await request("/api/evidence/initial-classification", { evidenceRef: evidence.items[0].evidenceId, tag: "public_safe", rationale: "Fictional public-safe acceptance control" }, 201);
+  const comparison = await request("/api/investigation");
+  expect(comparison.context.scope.comparedCaseIds).toEqual(["case_award", "case_overlap"]);
+  expect(comparison.context.candidates.some((c: { kind: string }) => c.kind === "shared_identity")).toBe(true);
+  const note = {recordId:"note_test",kind:"note",status:"saved",title:"Cited synthetic note",body:"Alex Vale registration needs follow-up review.",caseIds:["case_award"],supporting:[],contradicting:[],citations:[]};
+  await request("/api/investigation/records", {decisionId:"note_save",expectedRevision:comparison.revision,record:note});
+  const work = await request("/api/investigation");
+  expect(work.records[0]).toMatchObject({title:note.title,body:note.body,citations:content.citations,scopeFingerprint:expect.any(String)});
+  expect(work.context.fingerprint).toBe(comparison.context.fingerprint);
+  await request("/api/evidence/governance-reviews", { evidenceRef: evidence.items[0].evidenceId, tag: "credential_risk", action: "add", rationale: "Synthetic revocation regression" }, 201);
+  const hiddenComparison = await request("/api/investigation");
+  expect(hiddenComparison.records).toEqual([]);
+  expect(hiddenComparison.eligibleCases).toEqual([]);
+  expect(JSON.stringify(hiddenComparison)).not.toContain("Alex Vale");
   expect((await request("/api/ontology/knowledge")).proposals).toHaveLength(0);
   const legacyAfterRevocation = await request("/api/ontology/workspace");
   expect(JSON.stringify(legacyAfterRevocation)).not.toContain("Alex Vale");

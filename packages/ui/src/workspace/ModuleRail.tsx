@@ -52,7 +52,11 @@ export function ModuleLink({
           return;
         }
 
-        onModuleSelect?.(module.id);
+        if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return;
+        if (onModuleSelect) {
+          event.preventDefault();
+          onModuleSelect(module.id);
+        }
       }}
       className={[
         "group flex min-h-10 items-center justify-between gap-3 border px-3 py-2 font-mono text-base sm:min-h-9 sm:text-sm",

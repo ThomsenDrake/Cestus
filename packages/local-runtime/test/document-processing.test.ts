@@ -1,3 +1,4 @@
+import type { CaseComparisonContext } from "../../ontology/src/case-comparison.js";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -99,9 +100,9 @@ describe("bounded external document processing (synthetic loopback protocol test
     const f = await fixture();
     const preview = await f.approve();
     const resolve = f.dependencies.resolveSelection;
-    let resolutions = 0;
+    let changed = false;
     f.dependencies.resolveSelection = async () => {
-      if (++resolutions === 3) f.change();
+      if (!changed && (await f.ledger.readAll()).some(e => e.type === "document.processing.state.changed" && e.payload.state === "running")) { changed = true; f.change(); }
       return resolve();
     };
     expect(await f.service.run(preview.invocationId, actor)).toMatchObject({ state: "failed", reason: "selection-or-authority-changed" });
@@ -378,9 +379,9 @@ it("rejects a schema revision that changes at the final transport gate", async (
   const preview = await f.service.preview({ operation: "knowledge-extraction.v1", selection, budgetUsd: 0.05 }, actor);
   await f.service.approve({ manifestHash: preview.manifestHash }, actor);
   const resolve = f.dependencies.resolveSelection;
-  let resolutions = 0;
+  let changed = false;
   f.dependencies.resolveSelection = async () => {
-    if (++resolutions === 3) await recordExtendedVocabulary(f);
+    if (!changed && (await f.ledger.readAll()).some(e => e.type === "document.processing.state.changed" && e.payload.state === "running")) { changed = true; await recordExtendedVocabulary(f); }
     return resolve();
   };
   expect(await f.service.run(preview.invocationId, actor)).toMatchObject({ state: "failed", reason: "selection-or-authority-changed" });
@@ -527,4 +528,66 @@ it("records interrupted subscription completion as uncertain and requires a new 
   expect(retry.warning).toContain("subscription quota"); expect(calls).toBe(1);
   await expect(restarted.run(retry.invocationId, actor)).rejects.toThrow(/queued/);
   expect(f.requestCount()).toBe(0);
+});
+
+// Comparison uses the same durable approval/job path, never an alternate provider.
+describe("cross-case approval boundary", () => {
+  it("refuses a comparison without the exact subscription transport", async () => {
+    const f = await fixture();
+    await expect(f.service.previewComparison({ caseIds: ["case_a", "case_b"], question: "Find patterns across cases" }, actor)).rejects.toThrow(/subscription|comparison/i);
+    expect(f.requestCount()).toBe(0);
+  });
+});
+
+async function comparisonFixture() {
+  const f = await fixture();
+  const resolved = await f.dependencies.resolveSelection();
+  let revoked = false, revision = "initial", transmitted = 0;
+  let result: unknown = {answer:"Insufficient evidence to infer coordination.",citations:[{passageIndex:0,quote:"violet bridge"}],unresolvedQuestions:["Are origins independent?"],findings:[]};
+  const citation = {workspaceId:"workspace_synthetic",evidenceId:selection.evidenceId,extractionId:selection.extractionId,sourceContentHash:resolved.sourceHash,extractionContentHash:resolved.extractionHash,provenanceEventIds:["evt_source","evt_extraction"],locator:{kind:"text" as const,block:1,start:0,end:100},quote:"The violet bridge was closed in March.",passageIndex:0};
+  const context = () => ({version:"case-comparison.v1",fingerprint:revision,
+    scope:{selection:"all",comparedCaseIds:["case_a","case_b"],unexaminedEligibleCaseIds:[],uniquePassageCount:2,limits:{cases:12,assertions:100,uniquePassages:24,passageTextBytes:32768,candidates:100},coverageLimits:["Synthetic boundary fixture"]},
+    cases:["case_a","case_b"].map(caseId=>({caseId,title:caseId,assertionIds:[],entityIds:[],relationshipAssertionIds:[],occurrenceAssertionIds:[]})),assertions:[],entities:[],candidates:[],
+    passages:[{index:0,citation,lineage:null,duplicateGroup:"one"},{index:1,citation:{...citation,evidenceId:"ev_second"},lineage:null,duplicateGroup:"two"}]
+  }) as CaseComparisonContext;
+  const dependencies = {...f.dependencies,env:{CESTUS_DOCUMENT_PROVIDER_TRANSPORT:"codex-chatgpt"},
+    resolveComparison:async()=>context(),
+    resolveSelection:async(s:typeof selection)=>{if(revoked&&s.evidenceId==="ev_second")throw new Error("Denied second source");return {...resolved,evidenceId:s.evidenceId,passages:s.passageIndexes.map(index=>({...resolved.passages[0]!,index}))};},
+    subscriptionProvider:{prepare:async()=>subscriptionSnapshot(),invoke:async(input:{beforeTransfer:()=>void|Promise<void>})=>{await input.beforeTransfer();transmitted++;return{model:"gpt-6-astra",outputText:JSON.stringify(result),usage:{inputUnits:100,outputUnits:40}}}}
+  };
+  return {...f,service:createDocumentProcessingService(dependencies),dependencies,change:()=>{revision="corrected";},revokeSecond:()=>{revoked=true;},transmitted:()=>transmitted,setResult:(r:unknown)=>{result=r;}};
+}
+it("binds comparisons to all source authority, correction revisions and exact approvals through replay",async()=>{
+  const f=await comparisonFixture();
+  const p=await f.service.previewComparison({question:"Find patterns across cases"},actor);
+  expect(p.manifest.operation).toBe("case-comparison.v1");
+  expect(p.manifest.comparison!.resolvedSelections).toHaveLength(2);
+  expect(p.manifest.inputText).toContain("case_b");
+  await expect(f.service.run(p.invocationId,actor)).rejects.toThrow(/queued/);
+  await f.service.approve({manifestHash:p.manifestHash},actor);
+  f.change();await expect(f.service.run(p.invocationId,actor)).rejects.toThrow(/changed/);expect(f.transmitted()).toBe(0);
+  const rerun=await f.service.previewComparison({question:"Find patterns across cases"},actor);
+  await f.service.approve({manifestHash:rerun.manifestHash},actor);
+  expect((await f.service.run(rerun.invocationId,actor)).state).toBe("completed");
+  expect(await f.service.output(rerun.invocationId,actor)).toMatchObject({stale:false,model:"gpt-6-astra"});
+  const reopened=createDocumentProcessingService(f.dependencies);
+  expect(await reopened.output(rerun.invocationId,actor)).toMatchObject({stale:false});
+  f.revokeSecond();expect(await reopened.list(actor)).toEqual([]);
+  await expect(reopened.previewDetails(rerun.invocationId,actor)).rejects.toThrow(/Denied/);
+  await expect(reopened.output(rerun.invocationId,actor)).rejects.toThrow(/Denied/);
+  expect(f.transmitted()).toBe(1);expect(f.requestCount()).toBe(0);
+});
+it("rejects comparison citations outside approved passages without publishing a result",async()=>{
+  const f=await comparisonFixture();f.setResult({answer:"Unsupported claim",citations:[{passageIndex:8,quote:"excluded secret"}],unresolvedQuestions:[],findings:[]});
+  const p=await f.service.previewComparison({question:"Find patterns across cases"},actor);await f.service.approve({manifestHash:p.manifestHash},actor);
+  expect((await f.service.run(p.invocationId,actor)).state).toBe("failed");await expect(f.service.output(p.invocationId,actor)).rejects.toThrow();
+});
+
+it("reports a timeout before submission without claiming that evidence authority changed", async () => {
+ const f=await fixture({timeout:10});
+ const service=createDocumentProcessingService({...f.dependencies,env:{CESTUS_DOCUMENT_PROVIDER_TRANSPORT:"codex-chatgpt"},subscriptionProvider:{prepare:async()=>subscriptionSnapshot(),invoke:async()=>new Promise(()=>{})}});
+ const preview=await service.preview({selection,subscriptionInvocations:1},actor);
+ await service.approve({manifestHash:preview.manifestHash},actor);
+ expect(await service.run(preview.invocationId,actor)).toMatchObject({state:"failed",reason:"timeout-before-submission"});
+ expect(f.requestCount()).toBe(0);
 });

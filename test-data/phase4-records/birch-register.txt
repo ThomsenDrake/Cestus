@@ -1,0 +1,9 @@
+FICTIONAL SYNTHETIC ACCEPTANCE CONTROL. No real people, agencies, payments, or allegations.
+
+Birch Transit Agency (registry ID AGENCY-BIRCH) maintains its own fictional payment register. Its published postal address is 100 Registry Plaza, a shared public mailing facility; this address does not identify a joint operation.
+
+Birch Transit Agency paid Casey Reed (person identifier PERSON-BIRCH-29) for routine timetable proofreading. Payment register B-92 records a payment of 2400 USD in November 2025. The payer was Birch Transit Agency and the payee was Casey Reed. The precise day is not recorded.
+
+Casey Reed, identifier PERSON-BIRCH-29, performed proofreading for Birch Transit Agency before this payment. This is an ordinary payment for delivered administrative services, with no evidence of coordination with any other agency.
+
+Source lineage: this fictional register is authored independently by Birch Transit Agency, separately from the Amber register. Different years, services, names, identifiers, and amounts are material differences.
