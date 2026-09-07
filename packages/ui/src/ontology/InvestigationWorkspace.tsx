@@ -100,7 +100,7 @@ function SourceLinks({ citations }: { citations: KnowledgeCitation[] }) {
 }
 function Scope({ context }: { context: CaseComparisonContext }) {
   return (
-    <details className={box} open>
+    <details className={box}>
       <summary>What was compared and how strong are the sources?</summary>
       <p>
         Compared: {caseNames(context, context.scope.comparedCaseIds)}.{" "}
@@ -197,6 +197,13 @@ export function InvestigationWorkspace() {
   const [question, setQuestion] = useState(defaultQuestion);
   const [preview, setPreview] = useState<Preview & { key: string }>();
   const [result, setResult] = useState<Result>();
+  const [setupOpen, setSetupOpen] = useState(false);
+  const resultPanel = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (!result) return;
+    resultPanel.current?.focus({ preventScroll: true });
+    resultPanel.current?.scrollIntoView?.({ block: "start" });
+  }, [result]);
   const [editor, setEditor] = useState<InvestigationRecord>();
   const [query, setQuery] = useState("");
   const [busy, setBusy] = useState(false);
@@ -370,6 +377,20 @@ export function InvestigationWorkspace() {
       ...(scopeFingerprint ? { scopeFingerprint } : {}),
     };
   }
+  async function readComparison(invocationId: string) {
+    await act(async () => {
+      const data = await knowledgeRequest<Omit<Result, "invocationId">>(
+        `/api/document-processing/jobs/${encodeURIComponent(invocationId)}/output`,
+      );
+      setSetupOpen(false);
+      setResult({ ...data, invocationId });
+    });
+  }
+  const completedJobs =
+    workspace?.jobs.filter((j) => j.state === "completed") ?? [];
+  const latestCompleted = completedJobs.sort((a, b) =>
+    b.createdAt.localeCompare(a.createdAt),
+  )[0];
   const resultSavable =
     result &&
     !result.stale &&
@@ -410,209 +431,425 @@ export function InvestigationWorkspace() {
         <p role="status">Loading investigation…</p>
       ) : (
         <>
-          <section className={box} aria-label="Comparison scope">
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={!explicit}
-                disabled={busy}
-                onChange={(event) => {
-                  setPreview(undefined);
-                  setResult(undefined);
-                  setExplicit(!event.target.checked);
-                  if (!event.target.checked)
-                    setCaseIds(
-                      workspace.eligibleCases.slice(0, 12).map((c) => c.caseId),
-                    );
-                }}
-              />
-              All available cases (up to 12)
-            </label>
-            {explicit && (
-              <fieldset className="space-y-2" disabled={busy}>
-                <legend>Select cases to compare (maximum 12)</legend>
-                {workspace.eligibleCases.map((c) => (
-                  <label className="flex items-center gap-2" key={c.caseId}>
-                    <input
-                      type="checkbox"
-                      checked={caseIds.includes(c.caseId)}
-                      onChange={(event) => {
-                        setPreview(undefined);
-                        setCaseIds((ids) =>
-                          event.target.checked
-                            ? [...ids, c.caseId]
-                            : ids.filter((id) => id !== c.caseId),
-                        );
-                      }}
-                    />
-                    {c.title}
-                  </label>
-                ))}
-              </fieldset>
-            )}
-            {workspace.limitation && (
-              <p role="status">{workspace.limitation}</p>
-            )}
-            <label className="block">
-              Cross-case question
-              <textarea
-                className={field}
-                value={question}
-                maxLength={2000}
-                disabled={busy}
-                onChange={(event) => {
-                  setQuestion(event.target.value);
-                  setResult(undefined);
-                }}
-              />
-            </label>
-            <div className="flex flex-wrap gap-2">
-              <button
-                className={button}
-                disabled={
-                  busy ||
-                  !workspace.context ||
-                  (explicit && (!caseIds.length || caseIds.length > 12))
-                }
-                onClick={() =>
-                  void act(async () => {
-                    setQuestion(defaultQuestion);
-                    setResult(undefined);
-                    const p = await knowledgeRequest<Preview>(
-                      "/api/investigation/preview",
-                      {
-                        ...(explicit ? { caseIds } : {}),
-                        question: defaultQuestion,
-                      },
-                    );
-                    setPreview({
-                      ...p,
-                      key: selectionKey(
-                        explicit ? caseIds : [],
-                        defaultQuestion,
-                      ),
-                    });
-                    await load();
-                  })
-                }
-              >
-                Find patterns across cases
-              </button>
-              <button
-                className={button}
-                disabled={
-                  busy ||
-                  !workspace.context ||
-                  !question.trim() ||
-                  (explicit && (!caseIds.length || caseIds.length > 12))
-                }
-                onClick={() =>
-                  void act(async () => {
-                    setResult(undefined);
-                    const p = await knowledgeRequest<Preview>(
-                      "/api/investigation/preview",
-                      { ...(explicit ? { caseIds } : {}), question },
-                    );
-                    setPreview({ ...p, key });
-                    await load();
-                  })
-                }
-              >
-                Preview cited question
-              </button>
-            </div>
-            <p>
-              Review what will be sent, approve it, then start the comparison.
-              The evidence may be too limited to identify a pattern.
-            </p>
-          </section>
-          {workspace.context && <Scope context={workspace.context} />}
-          {currentPreview && (
-            <section aria-label="Exact comparison transfer" className={box}>
-              <h3 className="font-semibold">
-                Review exact outgoing comparison
-              </h3>
-              <p>
-                Destination: official Codex ChatGPT subscription · model{" "}
-                {currentPreview.manifest.destination.model}. One use of your
-                subscription; failed comparisons are not retried automatically.
-              </p>
-              <pre className="max-h-56 overflow-auto whitespace-pre-wrap text-xs">
-                {JSON.stringify(currentPreview.manifest.destination, null, 2)}
-              </pre>
-              <p>
-                Input {currentPreview.manifest.inputBytes} bytes; maximum
-                response {currentPreview.manifest.maxResponseBytes} bytes;
-                timeout {currentPreview.manifest.timeoutMs} ms.
-              </p>
-              <h4>Exact system instructions</h4>
-              <pre className="max-h-60 overflow-auto whitespace-pre-wrap text-xs">
-                {currentPreview.manifest.systemPrompt}
-              </pre>
-              <h4>
-                Exact question, reviewed facts, and source passages to be sent
-              </h4>
-              <pre className="max-h-96 overflow-auto whitespace-pre-wrap text-xs">
-                {currentPreview.manifest.inputText}
-              </pre>
-              <p className="text-xs">
-                Approval fingerprint: {currentPreview.manifestHash}
-              </p>
-              {!safeProvider && (
-                <p role="alert">
-                  This comparison requires official Codex, ChatGPT
-                  authentication, and exactly gpt-6-astra.
+          <section
+            ref={resultPanel}
+            tabIndex={-1}
+            className={`${box} border-l-4 border-[var(--console-line-strong)] bg-[var(--console-panel-raised)] p-5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4`}
+            aria-label={result ? "Cross-case analysis" : "Comparison results"}
+          >
+            <h3 className="text-2xl font-semibold">Comparison results</h3>
+            {result ? (
+              <>
+                <p className="text-sm">
+                  {caseNames(
+                    result.comparison,
+                    result.comparison.scope.comparedCaseIds,
+                  )}
                 </p>
-              )}
-              {activeJob?.state === "awaiting_approval" && (
-                <button
-                  className={button}
-                  disabled={busy || !safeProvider}
-                  onClick={() =>
-                    void act(async () => {
-                      await knowledgeRequest(
-                        "/api/document-processing/approve",
-                        { manifestHash: currentPreview.manifestHash },
-                      );
-                      await load();
-                    })
-                  }
-                >
-                  Approve this comparison
-                </button>
-              )}
-              {activeJob?.state === "queued" && (
-                <button
-                  className={button}
-                  disabled={busy || !safeProvider}
-                  onClick={() =>
-                    void act(async () => {
-                      setWorkspace(
-                        (w) =>
-                          w && {
-                            ...w,
-                            jobs: w.jobs.map((j) =>
-                              j.invocationId === currentPreview.invocationId
-                                ? { ...j, state: "running" }
-                                : j,
+                {result.stale && (
+                  <p role="alert">
+                    Evidence changed—review before relying on this comparison. A
+                    fact or source used here has changed since this was written.
+                    To update the analysis, select these cases and use “Find
+                    patterns across cases” to review and approve a new
+                    comparison.
+                  </p>
+                )}
+                <h4 className="text-lg font-semibold">Summary</h4>
+                <p className="whitespace-pre-wrap text-base leading-relaxed">
+                  {result.output.answer}
+                </p>
+                <details>
+                  <summary className="cursor-pointer underline">
+                    Read sources for this summary
+                  </summary>
+                  <SourceLinks
+                    citations={result.output.citations.map((c) => ({
+                      ...result.comparison.passages[c.passageIndex]!.citation,
+                      quote: c.quote,
+                    }))}
+                  />
+                </details>
+                {!result.output.findings.length && (
+                  <p>
+                    No supported pattern finding was returned. Absence of a
+                    finding is not evidence that cases are unrelated.
+                  </p>
+                )}
+                {!resultSavable && (
+                  <p>
+                    This analysis cannot be saved as current. If its evidence
+                    has changed, run a new comparison first. Results that exceed
+                    100 linked facts or 256 source references require a smaller
+                    case selection; no supporting material is silently dropped.
+                  </p>
+                )}
+                {result.output.findings.map((f, index) => (
+                  <article className={box} key={index}>
+                    <p className="text-sm font-semibold uppercase tracking-wide">
+                      Possible pattern {index + 1} of{" "}
+                      {result.output.findings.length}
+                    </p>
+                    <h4 className="text-xl font-semibold">{f.title}</h4>
+                    <p>
+                      {patternLabels[f.kind]} ·{" "}
+                      {caseNames(result.comparison, f.caseIds)}
+                    </p>
+                    <p>{f.explanation}</p>
+                    <details>
+                      <summary className="cursor-pointer underline">
+                        Read sources for this pattern
+                      </summary>
+                      <SourceLinks
+                        citations={f.citations.map((c) => ({
+                          ...result.comparison.passages[c.passageIndex]!
+                            .citation,
+                          quote: c.quote,
+                        }))}
+                      />
+                    </details>
+                    {(
+                      [
+                        ["Relevant differences", f.differences],
+                        [
+                          "Evidence that challenges the pattern",
+                          f.counterexamples,
+                        ],
+                        [
+                          "What else could account for this?",
+                          f.ordinaryExplanations,
+                        ],
+                        ["What the evidence cannot tell us", f.limitations],
+                      ] as const
+                    ).map(([label, values]) => (
+                      <div key={label}>
+                        <h5 className="font-semibold">{label}</h5>
+                        <ul>
+                          {values.map((v, i) => (
+                            <li key={i}>{v}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                    <details>
+                      <summary>
+                        Examined relationships, roles, and dates
+                      </summary>
+                      {result.comparison.assertions
+                        .filter((a) => f.assertionIds.includes(a.assertionId))
+                        .map((a) => (
+                          <Assertion
+                            key={a.assertionId}
+                            assertion={a}
+                            context={result.comparison}
+                          />
+                        ))}
+                    </details>
+                    <button
+                      className={button}
+                      disabled={busy || !resultSavable}
+                      onClick={() =>
+                        void act(() =>
+                          save({
+                            ...newRecord(
+                              "pattern",
+                              f.title,
+                              `${f.explanation}\n\nPattern: ${patternLabels[f.kind]}\nInvolved cases: ${caseNames(result.comparison, f.caseIds)}\n\nDifferences:\n${f.differences.join("\n")}\n\nCounterexamples:\n${f.counterexamples.join("\n")}\n\nOrdinary explanations:\n${f.ordinaryExplanations.join("\n")}\n\nLimitations:\n${f.limitations.join("\n")}\n\nRecurrence does not establish coordination or causation.`,
+                              result,
                             ),
-                          },
+                            status: "saved",
+                          }),
+                        )
+                      }
+                    >
+                      Save pattern hypothesis
+                    </button>
+                  </article>
+                ))}
+                <button
+                  className={button}
+                  disabled={busy || !resultSavable}
+                  onClick={() =>
+                    setEditor(
+                      newRecord(
+                        "brief",
+                        "Cited cross-case brief",
+                        `${result.question}\n\n${result.output.answer}`,
+                        result,
+                      ),
+                    )
+                  }
+                >
+                  Edit cited local brief
+                </button>
+                <h4 className="font-semibold">Unresolved questions</h4>
+                {result.output.unresolvedQuestions.map((q, i) => (
+                  <div key={i}>
+                    <p>{q}</p>
+                    <button
+                      className={button}
+                      disabled={busy || !resultSavable}
+                      onClick={() =>
+                        setEditor(
+                          newRecord("question", q.slice(0, 1000), q, result),
+                        )
+                      }
+                    >
+                      Keep unresolved question {i + 1}
+                    </button>
+                  </div>
+                ))}
+                <details>
+                  <summary className="cursor-pointer">Question asked</summary>
+                  <p>{result.question}</p>
+                </details>
+                <Scope context={result.comparison} />
+              </>
+            ) : (
+              <>
+                <p>
+                  {latestCompleted
+                    ? "A completed comparison is ready. Open it to read the answer, possible patterns, and the evidence behind them."
+                    : "No completed comparison for these cases yet. Start a comparison to look for connections and recurring patterns."}
+                </p>
+                {latestCompleted && (
+                  <>
+                    <p className="text-sm">
+                      Latest completed comparison · {latestCompleted.createdAt}
+                    </p>
+                    <button
+                      className={`${button} border-[var(--console-line-strong)] bg-[var(--console-panel)] font-semibold`}
+                      disabled={busy}
+                      onClick={() =>
+                        void readComparison(latestCompleted.invocationId)
+                      }
+                    >
+                      Read comparison
+                    </button>
+                  </>
+                )}
+              </>
+            )}
+          </section>
+          <details
+            className={box}
+            open={setupOpen}
+            onToggle={(event) => setSetupOpen(event.currentTarget.open)}
+          >
+            <summary className="cursor-pointer font-semibold">
+              Start a new comparison
+            </summary>
+            <p>
+              Select cases and a question, then review and approve what will be
+              sent for analysis.
+            </p>
+            <section className={box} aria-label="Comparison scope">
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={!explicit}
+                  disabled={busy}
+                  onChange={(event) => {
+                    setPreview(undefined);
+                    setResult(undefined);
+                    setExplicit(!event.target.checked);
+                    if (!event.target.checked)
+                      setCaseIds(
+                        workspace.eligibleCases
+                          .slice(0, 12)
+                          .map((c) => c.caseId),
                       );
-                      await knowledgeRequest(
-                        `/api/document-processing/jobs/${encodeURIComponent(currentPreview.invocationId)}/run`,
-                        {},
+                  }}
+                />
+                All available cases (up to 12)
+              </label>
+              {explicit && (
+                <fieldset className="space-y-2" disabled={busy}>
+                  <legend>Select cases to compare (maximum 12)</legend>
+                  {workspace.eligibleCases.map((c) => (
+                    <label className="flex items-center gap-2" key={c.caseId}>
+                      <input
+                        type="checkbox"
+                        checked={caseIds.includes(c.caseId)}
+                        onChange={(event) => {
+                          setPreview(undefined);
+                          setCaseIds((ids) =>
+                            event.target.checked
+                              ? [...ids, c.caseId]
+                              : ids.filter((id) => id !== c.caseId),
+                          );
+                        }}
+                      />
+                      {c.title}
+                    </label>
+                  ))}
+                </fieldset>
+              )}
+              {workspace.limitation && (
+                <p role="status">{workspace.limitation}</p>
+              )}
+              <label className="block">
+                Cross-case question
+                <textarea
+                  className={field}
+                  value={question}
+                  maxLength={2000}
+                  disabled={busy}
+                  onChange={(event) => {
+                    setQuestion(event.target.value);
+                    setResult(undefined);
+                  }}
+                />
+              </label>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  className={button}
+                  disabled={
+                    busy ||
+                    !workspace.context ||
+                    (explicit && (!caseIds.length || caseIds.length > 12))
+                  }
+                  onClick={() =>
+                    void act(async () => {
+                      setQuestion(defaultQuestion);
+                      setResult(undefined);
+                      const p = await knowledgeRequest<Preview>(
+                        "/api/investigation/preview",
+                        {
+                          ...(explicit ? { caseIds } : {}),
+                          question: defaultQuestion,
+                        },
                       );
+                      setPreview({
+                        ...p,
+                        key: selectionKey(
+                          explicit ? caseIds : [],
+                          defaultQuestion,
+                        ),
+                      });
                       await load();
                     })
                   }
                 >
-                  Run approved comparison
+                  Find patterns across cases
                 </button>
-              )}
+                <button
+                  className={button}
+                  disabled={
+                    busy ||
+                    !workspace.context ||
+                    !question.trim() ||
+                    (explicit && (!caseIds.length || caseIds.length > 12))
+                  }
+                  onClick={() =>
+                    void act(async () => {
+                      setResult(undefined);
+                      const p = await knowledgeRequest<Preview>(
+                        "/api/investigation/preview",
+                        { ...(explicit ? { caseIds } : {}), question },
+                      );
+                      setPreview({ ...p, key });
+                      await load();
+                    })
+                  }
+                >
+                  Preview cited question
+                </button>
+              </div>
+              <p>
+                Review what will be sent, approve it, then start the comparison.
+                The evidence may be too limited to identify a pattern.
+              </p>
             </section>
-          )}
+            {workspace.context && <Scope context={workspace.context} />}
+            {currentPreview && (
+              <section aria-label="Exact comparison transfer" className={box}>
+                <h3 className="font-semibold">
+                  Review exact outgoing comparison
+                </h3>
+                <p>
+                  Destination: official Codex ChatGPT subscription · model{" "}
+                  {currentPreview.manifest.destination.model}. One use of your
+                  subscription; failed comparisons are not retried
+                  automatically.
+                </p>
+                <pre className="max-h-56 overflow-auto whitespace-pre-wrap text-xs">
+                  {JSON.stringify(currentPreview.manifest.destination, null, 2)}
+                </pre>
+                <p>
+                  Input {currentPreview.manifest.inputBytes} bytes; maximum
+                  response {currentPreview.manifest.maxResponseBytes} bytes;
+                  timeout {currentPreview.manifest.timeoutMs} ms.
+                </p>
+                <h4>Exact system instructions</h4>
+                <pre className="max-h-60 overflow-auto whitespace-pre-wrap text-xs">
+                  {currentPreview.manifest.systemPrompt}
+                </pre>
+                <h4>
+                  Exact question, reviewed facts, and source passages to be sent
+                </h4>
+                <pre className="max-h-96 overflow-auto whitespace-pre-wrap text-xs">
+                  {currentPreview.manifest.inputText}
+                </pre>
+                <p className="text-xs">
+                  Approval fingerprint: {currentPreview.manifestHash}
+                </p>
+                {!safeProvider && (
+                  <p role="alert">
+                    This comparison requires official Codex, ChatGPT
+                    authentication, and exactly gpt-6-astra.
+                  </p>
+                )}
+                {activeJob?.state === "awaiting_approval" && (
+                  <button
+                    className={button}
+                    disabled={busy || !safeProvider}
+                    onClick={() =>
+                      void act(async () => {
+                        await knowledgeRequest(
+                          "/api/document-processing/approve",
+                          { manifestHash: currentPreview.manifestHash },
+                        );
+                        await load();
+                      })
+                    }
+                  >
+                    Approve this comparison
+                  </button>
+                )}
+                {activeJob?.state === "queued" && (
+                  <button
+                    className={button}
+                    disabled={busy || !safeProvider}
+                    onClick={() =>
+                      void act(async () => {
+                        setWorkspace(
+                          (w) =>
+                            w && {
+                              ...w,
+                              jobs: w.jobs.map((j) =>
+                                j.invocationId === currentPreview.invocationId
+                                  ? { ...j, state: "running" }
+                                  : j,
+                              ),
+                            },
+                        );
+                        await knowledgeRequest(
+                          `/api/document-processing/jobs/${encodeURIComponent(currentPreview.invocationId)}/run`,
+                          {},
+                        );
+                        await load();
+                      })
+                    }
+                  >
+                    Run approved comparison
+                  </button>
+                )}
+              </section>
+            )}
+          </details>
           <section className={box} aria-label="Comparison runs">
-            <h3 className="font-semibold">Saved comparison runs</h3>
+            <h3 className="font-semibold">Comparison history</h3>
             {!workspace.jobs.length && <p>No comparison runs in this scope.</p>}
             {workspace.jobs.map((j) => (
               <div
@@ -633,18 +870,9 @@ export function InvestigationWorkspace() {
                   <button
                     className={button}
                     disabled={busy}
-                    onClick={() =>
-                      void act(async () => {
-                        const data = await knowledgeRequest<
-                          Omit<Result, "invocationId">
-                        >(
-                          `/api/document-processing/jobs/${encodeURIComponent(j.invocationId)}/output`,
-                        );
-                        setResult({ ...data, invocationId: j.invocationId });
-                      })
-                    }
+                    onClick={() => void readComparison(j.invocationId)}
                   >
-                    Read comparison
+                    Open comparison
                   </button>
                 ) : (
                   ["queued", "awaiting_approval"].includes(j.state) && (
@@ -656,6 +884,7 @@ export function InvestigationWorkspace() {
                           const p = await knowledgeRequest<Preview>(
                             `/api/document-processing/jobs/${encodeURIComponent(j.invocationId)}/preview`,
                           );
+                          setSetupOpen(true);
                           const comparison = p.manifest.comparison;
                           if (!comparison)
                             throw new Error("Comparison preview unavailable.");
@@ -695,147 +924,13 @@ export function InvestigationWorkspace() {
               </div>
             ))}
           </section>
-          {result && (
-            <section className={box} aria-label="Cross-case analysis">
-              <h3 className="font-semibold">
-                What the cases may have in common
-              </h3>
-              {result.stale && (
-                <p role="alert">
-                  Evidence changed—review before relying on this comparison. A
-                  fact or source used here has changed since this was written.
-                  To update the analysis, select these cases and use “Find
-                  patterns across cases” to review and approve a new comparison.
-                </p>
-              )}
-              <p>Question: {result.question}</p>
-              <p className="whitespace-pre-wrap">{result.output.answer}</p>
-              <SourceLinks
-                citations={result.output.citations.map((c) => ({
-                  ...result.comparison.passages[c.passageIndex]!.citation,
-                  quote: c.quote,
-                }))}
-              />
-              <Scope context={result.comparison} />
-              {!result.output.findings.length && (
-                <p>
-                  No supported pattern finding was returned. Absence of a
-                  finding is not evidence that cases are unrelated.
-                </p>
-              )}
-              {!resultSavable && (
-                <p>
-                  This analysis cannot be saved as current. If its evidence has
-                  changed, run a new comparison first. Results that exceed 100
-                  linked facts or 256 source references require a smaller case
-                  selection; no supporting material is silently dropped.
-                </p>
-              )}
-              {result.output.findings.map((f, index) => (
-                <article className={box} key={index}>
-                  <h4 className="font-semibold">{f.title}</h4>
-                  <p>
-                    {patternLabels[f.kind]} ·{" "}
-                    {caseNames(result.comparison, f.caseIds)}
-                  </p>
-                  <p>{f.explanation}</p>
-                  <SourceLinks
-                    citations={f.citations.map((c) => ({
-                      ...result.comparison.passages[c.passageIndex]!.citation,
-                      quote: c.quote,
-                    }))}
-                  />
-                  {(
-                    [
-                      ["Relevant differences", f.differences],
-                      [
-                        "Evidence that challenges the pattern",
-                        f.counterexamples,
-                      ],
-                      [
-                        "What else could account for this?",
-                        f.ordinaryExplanations,
-                      ],
-                      ["What the evidence cannot tell us", f.limitations],
-                    ] as const
-                  ).map(([label, values]) => (
-                    <div key={label}>
-                      <h5 className="font-semibold">{label}</h5>
-                      <ul>
-                        {values.map((v, i) => (
-                          <li key={i}>{v}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  ))}
-                  <details>
-                    <summary>Examined relationships, roles, and dates</summary>
-                    {result.comparison.assertions
-                      .filter((a) => f.assertionIds.includes(a.assertionId))
-                      .map((a) => (
-                        <Assertion
-                          key={a.assertionId}
-                          assertion={a}
-                          context={result.comparison}
-                        />
-                      ))}
-                  </details>
-                  <button
-                    className={button}
-                    disabled={busy || !resultSavable}
-                    onClick={() =>
-                      void act(() =>
-                        save({
-                          ...newRecord(
-                            "pattern",
-                            f.title,
-                            `${f.explanation}\n\nPattern: ${patternLabels[f.kind]}\nInvolved cases: ${caseNames(result.comparison, f.caseIds)}\n\nDifferences:\n${f.differences.join("\n")}\n\nCounterexamples:\n${f.counterexamples.join("\n")}\n\nOrdinary explanations:\n${f.ordinaryExplanations.join("\n")}\n\nLimitations:\n${f.limitations.join("\n")}\n\nRecurrence does not establish coordination or causation.`,
-                            result,
-                          ),
-                          status: "saved",
-                        }),
-                      )
-                    }
-                  >
-                    Save pattern hypothesis
-                  </button>
-                </article>
-              ))}
-              <button
-                className={button}
-                disabled={busy || !resultSavable}
-                onClick={() =>
-                  setEditor(
-                    newRecord(
-                      "brief",
-                      "Cited cross-case brief",
-                      `${result.question}\n\n${result.output.answer}`,
-                      result,
-                    ),
-                  )
-                }
-              >
-                Edit cited local brief
-              </button>
-              <h4 className="font-semibold">Unresolved questions</h4>
-              {result.output.unresolvedQuestions.map((q, i) => (
-                <div key={i}>
-                  <p>{q}</p>
-                  <button
-                    className={button}
-                    disabled={busy || !resultSavable}
-                    onClick={() =>
-                      setEditor(
-                        newRecord("question", q.slice(0, 1000), q, result),
-                      )
-                    }
-                  >
-                    Keep unresolved question {i + 1}
-                  </button>
-                </div>
-              ))}
-            </section>
-          )}
+          <div className="border-t border-[var(--console-line)] pt-6">
+            <h3 className="text-xl font-semibold">Investigation notebook</h3>
+            <p className="mt-2 text-sm">
+              Your timeline, notes, saved hypotheses, and request history. The
+              comparison answer is above.
+            </p>
+          </div>
           {workspace.context && (
             <>
               <section className={box} aria-label="Sourced timeline">
@@ -1019,6 +1114,7 @@ export function InvestigationWorkspace() {
                         className={button}
                         disabled={busy}
                         onClick={() => {
+                          setSetupOpen(true);
                           setExplicit(true);
                           setCaseIds(record.caseIds);
                           setQuestion(defaultQuestion);
