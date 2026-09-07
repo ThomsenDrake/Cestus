@@ -185,9 +185,41 @@ function backend(
 }
 afterEach(() => vi.unstubAllGlobals());
 describe("Investigation workspace", () => {
+  it("opens a saved answer above setup and moves keyboard focus to the result", async () => {
+    const api = backend("completed");
+    render(<InvestigationWorkspace />);
+    const entry = await screen.findByRole("region", {
+      name: "Comparison results",
+    });
+    expect(
+      screen.getByRole("button", {
+        name: "Find patterns across cases",
+        hidden: true,
+      }),
+    ).not.toBeVisible();
+    fireEvent.click(
+      within(entry).getByRole("button", { name: "Read comparison" }),
+    );
+    const result = await screen.findByRole("region", {
+      name: "Cross-case analysis",
+    });
+    expect(result).toHaveTextContent("A tentative appointment pattern.");
+    expect(result).toHaveFocus();
+    const setup = screen
+      .getByText("Start a new comparison")
+      .closest("details")!;
+    expect(
+      result.compareDocumentPosition(setup) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(api.mock.calls.some(([, init]) => init?.method === "POST")).toBe(
+      false,
+    );
+  });
+
   it("uses an unnamed discovery question and requires exact preview, approval, and explicit run", async () => {
     const api = backend();
     render(<InvestigationWorkspace />);
+    fireEvent.click(await screen.findByText("Start a new comparison"));
     fireEvent.click(
       await screen.findByRole("button", { name: "Find patterns across cases" }),
     );
@@ -218,6 +250,7 @@ describe("Investigation workspace", () => {
     });
     expect(result).toHaveTextContent("Routine procurement.");
     expect(result).toHaveTextContent("Different firms.");
+    fireEvent.click(within(result).getByText("Read sources for this summary"));
     expect(
       within(result).getAllByRole("link", { name: /Source passage/ })[0],
     ).toHaveAttribute("href", "#evidence/ev_one/extract_1/0");
@@ -247,6 +280,7 @@ describe("Investigation workspace", () => {
     expect(
       await screen.findByRole("region", { name: "Sourced timeline" }),
     ).toHaveTextContent("2024 (uncertain)");
+    fireEvent.click(screen.getByText("Start a new comparison"));
     fireEvent.click(
       screen.getByRole("button", { name: "Find patterns across cases" }),
     );
