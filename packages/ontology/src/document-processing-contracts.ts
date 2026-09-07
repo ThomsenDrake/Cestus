@@ -30,7 +30,7 @@ export const documentProcessingStateChangedSchema = z.object({
   invocationId,
   state: documentProcessingStateSchema.exclude(["awaiting_approval", "queued"]),
   reason: z.enum([
-    "submission-started", "validated-output", "selection-or-authority-changed", "provider-rejected",
+    "submission-started", "validated-output", "selection-or-authority-changed", "timeout-before-submission", "provider-rejected",
     "invalid-output", "limit-exceeded", "submission-uncertain", "interrupted", "human-canceled"
   ]),
   outputHash: hash.optional(),
@@ -54,7 +54,7 @@ export const knowledgeExtractionOutputSchema = z.object({
   proposals: z.array(providerKnowledgeProposalSchema).max(40)
 }).strict();
 export type KnowledgeExtractionOutput = z.infer<typeof knowledgeExtractionOutputSchema>;
-export type DocumentProcessingOperation = "document-summary.v1" | "knowledge-extraction.v1";
+export type DocumentProcessingOperation = "document-summary.v1" | "knowledge-extraction.v1" | "case-comparison.v1";
 
 export interface ResolvedDocumentSelection {
   provenanceEventIds?: string[];
@@ -96,6 +96,7 @@ interface DocumentProcessingManifestBase {
   workspaceId?: string;
   promptVersion?: "knowledge-extraction-prompt.v1" | "knowledge-extraction-prompt.v2";
   schemaSnapshot?: z.infer<typeof vocabularySchema>;
+  comparison?: import("./cross-case-output.js").ApprovedComparison;
   inputText: string;
   systemPrompt: string;
   inputBytes: number;

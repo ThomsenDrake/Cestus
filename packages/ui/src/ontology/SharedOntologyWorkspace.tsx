@@ -22,12 +22,20 @@ export function SharedOntologyWorkspace() {
   const [pending, setPending] = useState<Command>();
   const [selected, setSelected] = useState<string[]>([]);
   const [rationale, setRationale] = useState("");
-  const [inspectId, setInspectId] = useState("");
+  const [inspectId, setInspectId] = useState(() => /^#ontology\/assertion\/([A-Za-z0-9_-]+)$/.exec(window.location.hash)?.[1] ?? "");
   const [edit, setEdit] = useState<ReviewProposal>();
   const [query, setQuery] = useState("");
-  const [entityId, setEntityId] = useState("");
+  const [entityId, setEntityId] = useState(() => /^#ontology\/entity\/([A-Za-z0-9_-]+)$/.exec(window.location.hash)?.[1] ?? "");
   const [relationshipFilter, setRelationshipFilter] = useState("");
   const alive = useRef(true);
+  useEffect(() => {
+    const followKnowledge = () => {
+      const match = /^#ontology\/(entity|assertion)\/([A-Za-z0-9_-]+)$/.exec(window.location.hash);
+      if (match) { setEntityId(match[1] === "entity" ? match[2]! : ""); setInspectId(match[1] === "assertion" ? match[2]! : ""); }
+    };
+    window.addEventListener("hashchange", followKnowledge);
+    return () => window.removeEventListener("hashchange", followKnowledge);
+  }, []);
   async function refresh() {
     const [knowledge, evidence] = await Promise.all([knowledgeRequest<SharedKnowledge>("/api/ontology/knowledge"), knowledgeRequest<{ items: SourceItem[] }>("/api/evidence/workspace")]);
     if (alive.current) { setWorkspace(knowledge); setSources(evidence.items); setSelected([]); }

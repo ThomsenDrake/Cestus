@@ -1,0 +1,9 @@
+FICTIONAL SYNTHETIC ACCEPTANCE CONTROL. No real people, agencies, payments, or allegations.
+
+Amber Borough Agency (registry ID AGENCY-AMBER) maintains its own fictional payment register. Its published postal address is 100 Registry Plaza, a shared public mailing facility; this address does not identify a joint operation.
+
+Amber Borough Agency paid Morgan Vale (person identifier PERSON-AMBER-17) for routine archive indexing. Payment register A-71 records a payment of 1200 USD in September 2024. The payer was Amber Borough Agency and the payee was Morgan Vale. The precise day is not recorded.
+
+Morgan Vale, identifier PERSON-AMBER-17, performed indexing for Amber Borough Agency before this payment. This is an ordinary payment for delivered administrative services, with no evidence of coordination with any other agency.
+
+Source lineage: this fictional register is authored independently by Amber Borough Agency. Repeated byte-identical copies of this register are the same source and must not add corroboration.

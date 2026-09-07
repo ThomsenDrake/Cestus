@@ -1,3 +1,5 @@
+import { crossCaseSystemPrompt, validateCrossCaseOutput, type ApprovedComparison } from "../../ontology/src/cross-case-output.js";
+import type { CaseComparisonContext } from "../../ontology/src/case-comparison.js";
 import { createHash, randomUUID } from "node:crypto";
 import { z } from "zod";
 import { CodexDocumentProvider } from "./codex-document-provider.js";
@@ -24,13 +26,15 @@ export interface DocumentProcessingOptions {
   derivativeStore: DerivativeStore;
   /** Production boundary must authorize originals AND extraction using current governance. */
   resolveSelection(selection: DocumentSelection, actor: ActorRef): Promise<ResolvedDocumentSelection>;
+  resolveComparison?: (caseIds: string[] | undefined, actor: ActorRef) => Promise<CaseComparisonContext>;
   env?: NodeJS.ProcessEnv;
   timeoutMs?: number;
   subscriptionProvider?: Pick<CodexDocumentProvider, "prepare" | "invoke">;
 }
 const previewInputSchema = z.object({
   selection: documentSelectionSchema,
-  operation: z.enum(["document-summary.v1", "knowledge-extraction.v1"]).optional(),
+  operation: z.enum(["document-summary.v1", "knowledge-extraction.v1", "case-comparison.v1"]).optional(),
+  comparison: z.object({ caseIds: z.array(z.string().min(1).max(200)).min(1).max(12).optional(), question: z.string().min(1).max(2000) }).strict().optional(),
   budgetUsd: z.number().finite().positive().max(100).optional(),
   subscriptionInvocations: z.literal(1).optional(),
   maxOutputTokens: z.number().int().min(64).max(2048).optional(),
@@ -64,6 +68,35 @@ export class DocumentProcessingService {
     }
   }
 
+  async comparisonContext(caseIds: string[] | undefined, actor: ActorRef): Promise<CaseComparisonContext> {
+    this.assertHuman(actor);
+    if (!this.options.resolveComparison) throw new Error("Comparison retrieval unavailable.");
+    return this.options.resolveComparison(caseIds, actor);
+  }
+  async previewComparison(input: { caseIds?: string[] | undefined; question: string }, actor: ActorRef) {
+    if (this.env.CESTUS_DOCUMENT_PROVIDER_TRANSPORT !== "codex-chatgpt") throw new Error("Comparisons require the exact Astra subscription transport; no API fallback.");
+    const parsed = previewInputSchema.shape.comparison.unwrap().parse(input);
+    const context = await this.comparisonContext(parsed.caseIds, actor);
+    const first = context.passages[0]?.citation;
+    if (!first) throw new Error("Insufficient eligible cited knowledge for a comparison.");
+    return this.preview({ selection: { evidenceId: first.evidenceId, extractionId: first.extractionId!, passageIndexes: [first.passageIndex] },
+      operation: "case-comparison.v1", comparison: parsed, subscriptionInvocations: 1 }, actor);
+  }
+  private async prepareComparison(input: { caseIds?: string[] | undefined; question: string }, actor: ActorRef): Promise<ApprovedComparison> {
+    const context = await this.comparisonContext(input.caseIds, actor);
+    const groups = new Map<string, DocumentSelection>();
+    for (const { citation } of context.passages) {
+      const key = `${citation.evidenceId}/${citation.extractionId}`;
+      const group = groups.get(key) ?? { evidenceId: citation.evidenceId, extractionId: citation.extractionId!, passageIndexes: [] };
+      if (!group.passageIndexes.includes(citation.passageIndex)) group.passageIndexes.push(citation.passageIndex);
+      groups.set(key, group);
+    }
+    const selections = [...groups.values()].map(s => ({ ...s, passageIndexes: s.passageIndexes.sort((a,b) => a-b) }));
+    const resolvedSelections = [];
+    for (const selection of selections) resolvedSelections.push(await this.resolve(documentSelectionSchema.parse(selection), actor));
+    if (context.passages.length > 256 || Buffer.byteLength(JSON.stringify(context)) > 100000) throw new Error("Comparison exceeds the bounded context. Select fewer cases.");
+    return { context, ...(input.caseIds ? { requestedCaseIds: input.caseIds } : {}), question: input.question, selections, resolvedSelections };
+  }
   async preview(input: z.input<typeof previewInputSchema>, actor: ActorRef) {
     this.assertHuman(actor);
     const parsed = previewInputSchema.parse(input);
@@ -76,15 +109,19 @@ export class DocumentProcessingService {
     const destination = await this.configuration();
     const invocationId = `inv_${randomUUID().replaceAll("-", "")}`;
     const operation = parsed.operation ?? "document-summary.v1";
+    if ((operation === "case-comparison.v1") !== (parsed.comparison !== undefined)) throw new Error("Comparison scope is required only for comparison operations.");
+    if (parsed.comparison && this.env.CESTUS_DOCUMENT_PROVIDER_TRANSPORT !== "codex-chatgpt") throw new Error("Comparison requires subscription; no API fallback.");
+    const comparison = parsed.comparison ? await this.prepareComparison(parsed.comparison, actor) : undefined;
+    if (comparison && !comparison.selections.some(s => s.evidenceId === selection.evidenceId && s.extractionId === selection.extractionId && selection.passageIndexes.every(i => s.passageIndexes.includes(i)))) throw new Error("Comparison anchor is outside scope.");
     const schemaSnapshot = operation === "knowledge-extraction.v1" ? await this.activeSchema() : undefined;
     if (schemaSnapshot && (!this.options.workspaceId || !resolved.provenanceEventIds?.length)) throw new Error("Knowledge extraction requires workspace and source provenance.");
-    const systemPrompt = schemaSnapshot ? extractionSystemPrompt(schemaSnapshot) : summarySystemPrompt;
-    const inputText = JSON.stringify({ evidenceId: resolved.evidenceId, extractionId: resolved.extractionId,
+    const systemPrompt = comparison ? crossCaseSystemPrompt : schemaSnapshot ? extractionSystemPrompt(schemaSnapshot) : summarySystemPrompt;
+    const inputText = comparison ? JSON.stringify({ question: comparison.question, context: comparison.context }) : JSON.stringify({ evidenceId: resolved.evidenceId, extractionId: resolved.extractionId,
       sourceHash: resolved.sourceHash, extractionHash: resolved.extractionHash,
       ...(resolved.pdfCoverage ? { pdfCoverage: resolved.pdfCoverage } : {}), passages: resolved.passages });
     const inputBytes = Buffer.byteLength(inputText) + Buffer.byteLength(systemPrompt);
     const common = {
-      invocationId, actorId: actor.id, selection, resolved, operation,
+      invocationId, actorId: actor.id, selection, resolved, operation, ...(comparison ? { comparison } : {}),
       ...(schemaSnapshot ? { workspaceId: this.options.workspaceId!, schemaSnapshot, promptVersion: "knowledge-extraction-prompt.v2" as const } : {}),
       inputText, systemPrompt, inputBytes, maxResponseBytes: 65536,
       timeoutMs: this.options.timeoutMs ?? ("transport" in destination ? 120000 : 30000),
@@ -140,7 +177,8 @@ export class DocumentProcessingService {
     this.controllers.set(invocationId, controller);
     let submitted = false;
     let received = false;
-    const timer = setTimeout(() => controller.abort(), manifest.timeoutMs);
+    let timedOut = false;
+    const timer = setTimeout(() => { timedOut = true; controller.abort(); }, manifest.timeoutMs);
     try {
       const beforeTransfer = async () => {
         await this.revalidate(manifest, actor);
@@ -175,8 +213,8 @@ export class DocumentProcessingService {
       const providerOutputHash = hash(result.outputText);
       const output = manifest.operation === "knowledge-extraction.v1"
         ? { proposals: resolveKnowledgeOutput(rawOutput, manifest, providerOutputHash) }
-        : documentSummaryOutputSchema.parse(rawOutput);
-      if ("citations" in output) for (const citation of output.citations) selectedPassage(manifest, citation);
+        : manifest.comparison ? validateCrossCaseOutput(rawOutput, manifest.comparison.context) : documentSummaryOutputSchema.parse(rawOutput);
+      if (!manifest.comparison && "citations" in output) for (const citation of output.citations) selectedPassage(manifest, citation);
       if (Buffer.byteLength(result.outputText) > manifest.maxResponseBytes || ![result.usage.inputUnits, result.usage.outputUnits].every(n => Number.isSafeInteger(n) && n >= 0)) throw new Error("Output exceeds the approved limits or lacks valid usage.");
       if (manifest.provider === "openai-compatible-chat.v1" && (result.usage.inputUnits > manifest.inputTokenUpperBound || result.usage.outputUnits > manifest.maxOutputTokens ||
         (result.usage.inputUnits * manifest.destination.inputUsdPerMillion + result.usage.outputUnits * manifest.destination.outputUsdPerMillion) / 1_000_000 > manifest.budgetUsd)) {
@@ -184,9 +222,9 @@ export class DocumentProcessingService {
       }
       // Revalidate before publishing a derivative as well: revocation during a request must stay fail-closed.
       await this.revalidate(manifest, actor);
-      if (manifest.operation === "knowledge-extraction.v1") await this.options.derivativeStore.put(Buffer.from(result.outputText));
+      if (manifest.operation === "knowledge-extraction.v1" || manifest.comparison) await this.options.derivativeStore.put(Buffer.from(result.outputText));
       const outputBlob = await this.options.derivativeStore.put(Buffer.from(JSON.stringify({
-        schemaVersion: manifest.operation, invocationId, manifestHash: job.manifestHash,
+        schemaVersion: manifest.operation, invocationId, manifestHash: job.manifestHash, ...(manifest.comparison ? { comparison: manifest.comparison.context, question: manifest.comparison.question } : {}),
         ...(manifest.schemaSnapshot ? { schemaSnapshot: manifest.schemaSnapshot, promptVersion: manifest.promptVersion, providerOutputHash } : {}),
         evidenceId: manifest.resolved.evidenceId, extractionId: manifest.resolved.extractionId,
         sourceHash: manifest.resolved.sourceHash, extractionHash: manifest.resolved.extractionHash,
@@ -198,7 +236,7 @@ export class DocumentProcessingService {
       const outcome = error instanceof ProviderInvocationError ? error.outcome : undefined;
       const unknown = submitted && !received && outcome !== "rejected" && outcome !== "invalid-response";
       await this.finish(invocationId, unknown ? "uncertain" : "failed",
-        unknown ? "submission-uncertain" : !submitted ? "selection-or-authority-changed"
+        unknown ? "submission-uncertain" : !submitted ? timedOut ? "timeout-before-submission" : "selection-or-authority-changed"
           : outcome === "rejected" ? "provider-rejected" : "invalid-output", actor);
     } finally {
       clearTimeout(timer);
@@ -231,13 +269,13 @@ export class DocumentProcessingService {
     const candidates = this.jobs(events.filter((event) => event.context.actor.id === actor.id));
     const allowed: DocumentProcessingJob[] = [];
     for (const job of candidates) {
-      try { await this.resolve(job.selection, actor); allowed.push(job); } catch { /* Current governance hides the entire invocation. */ }
+      try { await this.authorizeJob(job, actor); allowed.push(job); } catch { /* Current governance hides the entire invocation. */ }
     }
     return allowed;
   }
   async get(invocationId: string, actor: ActorRef): Promise<DocumentProcessingJob> {
     const job = await this.rawJob(invocationId, actor);
-    await this.resolve(job.selection, actor);
+    await this.authorizeJob(job, actor);
     return job;
   }
   async output(invocationId: string, actor: ActorRef): Promise<unknown> {
@@ -245,13 +283,22 @@ export class DocumentProcessingService {
     if (job.state !== "completed" || job.outputHash === undefined) throw new Error("Validated output is unavailable.");
     const bytes = await this.options.derivativeStore.get(job.outputHash as `sha256:${string}`);
     if (hash(bytes) !== job.outputHash) throw new Error("Processing output integrity check failed.");
-    await this.resolve(job.selection, actor);
-    return JSON.parse(bytes.toString("utf8")) as unknown;
+    await this.authorizeJob(job, actor);
+    const output = JSON.parse(bytes.toString("utf8"));
+    const manifest = await this.manifest(job);
+    await this.authorizeJob(job, actor);
+    if (manifest.comparison) {
+      let stale = true;
+      try { stale = (await this.comparisonContext(manifest.comparison.requestedCaseIds, actor)).fingerprint !== manifest.comparison.context.fingerprint; } catch { /* Deleted scope or bounded retrieval changes remain stale. */ }
+      await this.authorizeJob(job, actor);
+      return { ...output, stale };
+    }
+    return output as unknown;
   }
   async previewDetails(invocationId: string, actor: ActorRef) {
     const job = await this.get(invocationId, actor);
     const manifest = await this.manifest(job);
-    await this.resolve(job.selection, actor);
+    await this.authorizeJob(job, actor);
     return { ...job, manifest };
   }
   /** Abort active transfers; callers must wait for their request handlers before closing the ledger. */
@@ -259,6 +306,14 @@ export class DocumentProcessingService {
     for (const controller of this.controllers.values()) controller.abort();
   }
 
+  private async authorizeJob(job: DocumentProcessingJob, actor: ActorRef) {
+    await this.resolve(job.selection, actor);
+    const revision = (await this.options.ledger.readAll()).length;
+    const manifest = await this.manifest(job);
+    await this.resolve(job.selection, actor);
+    if (manifest.comparison) for (const selection of manifest.comparison.selections) await this.resolve(selection, actor);
+    if ((await this.options.ledger.readAll()).length !== revision) throw new Error("Source authority changed during comparison read.");
+  }
   private async resolve(selection: DocumentSelection, actor: ActorRef): Promise<ResolvedDocumentSelection> {
     const value = await this.options.resolveSelection(selection, actor);
     if (value.evidenceId !== selection.evidenceId || value.extractionId !== selection.extractionId || value.classification !== "public_safe" ||
@@ -281,6 +336,10 @@ export class DocumentProcessingService {
     if (manifest.actorId !== actor.id || JSON.stringify(await this.configuration()) !== JSON.stringify(manifest.destination) ||
       JSON.stringify(await this.resolve(manifest.selection, actor)) !== JSON.stringify(manifest.resolved)) {
       throw new Error("Content, classification, policy, authority or destination changed. Create and approve a new preview.");
+    }
+    if (manifest.comparison) {
+      const current = await this.prepareComparison({ caseIds: manifest.comparison.requestedCaseIds, question: manifest.comparison.question }, actor);
+      if (JSON.stringify(current) !== JSON.stringify(manifest.comparison)) throw new Error("Compared knowledge, evidence or governance changed. Prepare a deliberate scoped rerun.");
     }
     if (manifest.operation === "knowledge-extraction.v1" && JSON.stringify(manifest.schemaSnapshot) !== JSON.stringify(await this.activeSchema())) {
       throw new Error("Reviewed vocabulary schema changed. Create and approve a new preview.");

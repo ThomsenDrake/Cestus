@@ -1,0 +1,5 @@
+FICTIONAL SYNTHETIC NEGATIVE CONTROL. No real people, agencies, payments, or allegations.
+
+Cedar Museum Agency (registry ID AGENCY-CEDAR) records a free volunteer exhibition visit by Morgan Vale (person identifier PERSON-CEDAR-88) in February 2023. This person is distinct from Morgan Vale with identifier PERSON-AMBER-17: the matching name is coincidental. No payment was made and no services were procured in this visit.
+
+Cedar Museum Agency uses postal address 100 Registry Plaza, a shared public mailing facility used by unrelated agencies. A shared address is not evidence that the agencies coordinated. This independent fictional museum visitor register concerns only a free visit.

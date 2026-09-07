@@ -1,3 +1,4 @@
+import { handleInvestigationHttpRoute, resolveCaseComparison } from "./investigation-http-routes.js";
 import type { KnowledgeEvent } from "../../ontology/src/contracts.js";
 import { type ActorRef, type CreateDraftRequestInput } from "../../prr/src/draft-events.js";
 import type { DeadlineCalculator, PrrRuntimeNow } from "../../prr/src/runtime.js";
@@ -102,6 +103,7 @@ export function createLocalRuntimeHttpHandler(
     if (!mount.ok) return undefined;
     const service = createDocumentProcessingService({
       ledger: mount.workspace.ledger, derivativeStore: mount.workspace.derivativeStore, workspaceId: mount.workspace.workspaceId,
+      resolveComparison: (caseIds, actor) => resolveCaseComparison(mount.workspace, actor, caseIds),
       resolveSelection: (selection, actor) => resolveExternalDocumentSelection(mount.workspace, actor, selection)
     });
     await service.recoverInterrupted();
@@ -264,6 +266,11 @@ export function createLocalRuntimeHttpHandler(
       if (response !== undefined) {
         return response;
       }
+    }
+
+    if (path === "/api/investigation" || path.startsWith("/api/investigation/")) {
+      const mount = await humanMountResolver?.resolve({});
+      return handleInvestigationHttpRoute({request, actor: input.actor, workspace: mount?.ok ? mount.workspace : undefined, processing: await documentProcessing});
     }
 
     if (path.startsWith("/api/document-processing/")) {
