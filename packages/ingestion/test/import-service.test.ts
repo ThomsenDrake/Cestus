@@ -70,6 +70,30 @@ describe("IngestionImportService", () => {
     })).resolves.toMatchObject({ totals: { evidenceCreated: 1, occurrencesLinked: 1 } });
   });
 
+  it("rejects an approval retry whose caller-supplied approvedAt differs", async () => {
+    const ledger = new InMemoryEventLedger();
+    const service = new IngestionImportService({
+      ledger,
+      blobStore: new FileBlobStore(dir),
+      actor
+    });
+    const approval = {
+      sourceCollectionId: "src_drive_001",
+      scanBatchId: "scan_001",
+      importBatchId: "imp_001",
+      approvedBy: actor.id,
+      approvedAt: "2026-07-27T12:00:00.000Z"
+    };
+    await service.approveImport(approval);
+
+    await expect(service.approveImport({
+      ...approval,
+      approvedAt: "2026-07-27T12:00:01.000Z"
+    })).rejects.toThrow("exact retry material");
+
+    expect(await ledger.readAll()).toHaveLength(1);
+  });
+
   it("requires raw import approval before evidence creation", async () => {
     const ledger = new InMemoryEventLedger();
     const service = new IngestionImportService({
