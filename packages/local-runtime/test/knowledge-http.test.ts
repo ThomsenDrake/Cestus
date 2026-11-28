@@ -7,6 +7,7 @@ import { SQLiteEventLedger } from "../../ontology/src/sqlite-event-ledger.js";
 import { createPortableWorkspace } from "../../workspace/src/index.js";
 import { resolveLocalRuntimeConfig } from "../src/config.js";
 import { startLocalRuntimeServer, type LocalRuntimeServerHandle } from "../src/server.js";
+import { pureOntologyReaderForTest } from "./support/authenticated-handler.js";
 
 let runtime: LocalRuntimeServerHandle | undefined;
 let directory: string;
@@ -19,7 +20,10 @@ it("exposes canonical passage citations through the production evidence route", 
   const sourceRoot = join(directory, "selected"); mkdirSync(sourceRoot);
   writeFileSync(join(sourceRoot, "record.txt"), "Alex Vale received 1200 in 2025-03. Registered September 5, 2026.\n");
   const base = resolveLocalRuntimeConfig({ cwd: directory, env: { CESTUS_LOCAL_STORAGE: "portable-workspace", CESTUS_WORKSPACE_ROOT: rootDir, CESTUS_LOCAL_AUTH_TOKEN: "synthetic-session-value" } });
-  runtime = await startLocalRuntimeServer({ config: { ...base, operator: { id: "operator_knowledge", kind: "human", label: "Synthetic investigator" }, http: { ...base.http, port: 0 } } });
+  runtime = await startLocalRuntimeServer({
+    config: { ...base, operator: { id: "operator_knowledge", kind: "human", label: "Synthetic investigator" }, http: { ...base.http, port: 0 } },
+    ontologyReaderForTest: pureOntologyReaderForTest
+  });
   const address = runtime.server.address(); if (!address || typeof address === "string") throw new Error("No address");
   const origin = `http://127.0.0.1:${address.port}`;
   async function request(path: string, body?: unknown, status = 200) {

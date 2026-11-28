@@ -13,6 +13,8 @@
     "ingestion:help": "node packages/ingestion/bin/cestus-ingest.mjs ingest --help",
     "workspace:help": "node packages/workspace-ops/bin/cestus-workspace.mjs --help",
     "workspace:ops": "NODE_NO_WARNINGS=1 tsx packages/workspace-ops/src/node-cli.ts",
+    "helix:smoke": "NODE_NO_WARNINGS=1 tsx scripts/helix/smoke.ts",
+    "helix:load-doc": "NODE_NO_WARNINGS=1 tsx scripts/helix/load-document.ts",
     "verify": "npm run typecheck && npm test && npm run test:assurance && echo 'tests passed' && npm run ui:build",
     "local:runtime": "tsx packages/local-runtime/src/cli.ts serve",
     "local:runtime:configure": "tsx packages/local-runtime/src/cli.ts configure",

@@ -2,9 +2,12 @@ import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
 import { mkdir, rename, rm, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute, relative } from "node:path";
+import { HttpHelixGraphTransport } from "../../helix-contrib/src/index.js";
+import { FileBlobStore } from "../../ontology/src/blob-store.js";
 import { validateKnowledgeEvent, type KnowledgeEvent } from "../../ontology/src/contracts.js";
 import {
   checkBackupManifest,
+  createHelixProjectionBuilder,
   createWorkspaceOpsEnvelope,
   exportWorkspaceManifest,
   inspectWorkspaceDiagnostics,
@@ -29,6 +32,8 @@ interface WorkspaceOpsNodeOptions {
   readonly manifestPath?: string;
   readonly projectionName?: string;
   readonly rebuildId?: string;
+  readonly helixUrl?: string;
+  readonly helixDatabase?: string;
 }
 
 interface StoredEventRow {
@@ -88,14 +93,25 @@ export async function runNodeWorkspaceOperation(
       });
     case "projection rebuild": {
       const projectionName = options.projectionName ?? "workspace";
-      return rebuildProjection({
-        layout: layout.layout,
+      const resolvedBuilder = resolveProjectionBuilder({
         projectionName,
-        fileSystem: new NodeProjectionArtifactFileSystem(layout.layout),
-        eventReader,
-        builder: defaultProjectionBuilder(projectionName),
-        rebuildId: options.rebuildId ?? generatedRebuildId()
+        layout: layout.layout,
+        workspaceId: layout.workspace.workspaceId,
+        ...(options.helixUrl === undefined ? {} : { helixUrl: options.helixUrl }),
+        ...(options.helixDatabase === undefined ? {} : { helixDatabase: options.helixDatabase })
       });
+      try {
+        return await rebuildProjection({
+          layout: layout.layout,
+          projectionName,
+          fileSystem: new NodeProjectionArtifactFileSystem(layout.layout),
+          eventReader,
+          builder: resolvedBuilder.builder,
+          rebuildId: options.rebuildId ?? generatedRebuildId()
+        });
+      } finally {
+        await resolvedBuilder.close?.();
+      }
     }
     case "diagnostics inspect": {
       const durableEvents = await safeReadDurableEventsForCommand(context.command, layout.layout, layout.workspace);
@@ -144,6 +160,8 @@ function parseWorkspaceOpsFlags(argv: readonly string[]): WorkspaceOpsNodeOption
   let manifestPath: string | undefined;
   let projectionName: string | undefined;
   let rebuildId: string | undefined;
+  let helixUrl: string | undefined;
+  let helixDatabase: string | undefined;
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
     if (arg === "--root") {
@@ -169,6 +187,16 @@ function parseWorkspaceOpsFlags(argv: readonly string[]): WorkspaceOpsNodeOption
     if (arg === "--rebuild-id") {
       rebuildId = requiredValue(argv, index, arg);
       index += 1;
+      continue;
+    }
+    if (arg === "--helix-url") {
+      helixUrl = requiredValue(argv, index, arg);
+      index += 1;
+      continue;
+    }
+    if (arg === "--helix-database") {
+      helixDatabase = requiredValue(argv, index, arg);
+      index += 1;
     }
   }
   if (root === undefined) {
@@ -179,7 +207,9 @@ function parseWorkspaceOpsFlags(argv: readonly string[]): WorkspaceOpsNodeOption
     ...(workspaceId === undefined ? {} : { workspaceId }),
     ...(manifestPath === undefined ? {} : { manifestPath }),
     ...(projectionName === undefined ? {} : { projectionName }),
-    ...(rebuildId === undefined ? {} : { rebuildId })
+    ...(rebuildId === undefined ? {} : { rebuildId }),
+    ...(helixUrl === undefined ? {} : { helixUrl }),
+    ...(helixDatabase === undefined ? {} : { helixDatabase })
   };
 }
 
@@ -344,7 +374,20 @@ class NodeProjectionArtifactFileSystem {
   async promoteDirectory(from: string, to: string): Promise<void> {
     this.assertProjectionPath(from);
     this.assertProjectionPath(to);
-    await rename(from, to);
+    if (!existsSync(to)) {
+      await rename(from, to);
+      return;
+    }
+    const backup = `${to}.prev-${randomUUID()}`;
+    this.assertProjectionPath(backup);
+    await rename(to, backup);
+    try {
+      await rename(from, to);
+    } catch (error) {
+      await rename(backup, to).catch(() => undefined);
+      throw error;
+    }
+    await rm(backup, { recursive: true, force: true });
   }
 
   async availableBytes(path: string): Promise<number | undefined> {
@@ -358,6 +401,43 @@ class NodeProjectionArtifactFileSystem {
       throw new Error("Projection artifact path escaped projection root.");
     }
   }
+}
+
+function resolveProjectionBuilder(input: {
+  readonly projectionName: string;
+  readonly layout: ResolvedWorkspaceLayout;
+  readonly workspaceId: string;
+  readonly helixUrl?: string;
+  readonly helixDatabase?: string;
+}): { readonly builder: ProjectionBuilder; readonly close?: () => Promise<void> } {
+  if (input.projectionName === "helix" || input.projectionName === "ontology-helix") {
+    const helixUrl = input.helixUrl ?? process.env.CESTUS_HELIX_URL?.trim();
+    if (!helixUrl) {
+      return {
+        builder: {
+          projectionName: input.projectionName,
+          async build() {
+            throw new Error(
+              "Helix projection rebuild requires --helix-url or CESTUS_HELIX_URL."
+            );
+          }
+        }
+      };
+    }
+    const databaseName = input.helixDatabase ?? process.env.CESTUS_HELIX_DATABASE?.trim() ?? input.workspaceId;
+    const transport = new HttpHelixGraphTransport({ url: helixUrl, env: process.env });
+    return {
+      builder: createHelixProjectionBuilder({
+        projectionName: input.projectionName,
+        databaseName,
+        transport,
+        blobStore: new FileBlobStore(input.layout.blobRoot),
+        derivativeStore: new FileBlobStore(input.layout.derivativeRoot)
+      }),
+      close: () => transport.close()
+    };
+  }
+  return { builder: defaultProjectionBuilder(input.projectionName) };
 }
 
 function defaultProjectionBuilder(projectionName: string): ProjectionBuilder {
