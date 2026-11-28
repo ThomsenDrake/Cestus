@@ -329,6 +329,86 @@ describe("ingestion CLI command handlers", () => {
     });
   });
 
+  it("delegates update-source to runtime.updateSource with optional rationale", async () => {
+    const updateSource = vi.fn(async () => ({
+      ok: true,
+      review: { ...cliReviewDto(), label: "Osceola County Sheriff's Office" },
+      eventIds: ["evt_source_label_updated"]
+    }));
+    const mountResolver = {
+      resolve: vi.fn(async () => ({
+        ok: true as const,
+        workspace: fakeMountedWorkspaceForCli()
+      }))
+    };
+
+    const output = await handleIngestionCommand({
+      command: "update-source",
+      argv: [
+        "--workspace", "/Volumes/Cestus",
+        "--source-id", "src_osceola_county",
+        "--label", "Osceola County Sheriff's Office",
+        "--rationale", "Use full official name"
+      ],
+      mountResolver,
+      runtimeFactory: () => fakeRuntimeForCli({ updateSource })
+    });
+
+    expect(updateSource).toHaveBeenCalledWith({
+      sourceCollectionId: "src_osceola_county",
+      label: "Osceola County Sheriff's Office",
+      rationale: "Use full official name"
+    });
+    expect(JSON.parse(output)).toMatchObject({
+      ok: true,
+      review: { label: "Osceola County Sheriff's Office" },
+      eventIds: ["evt_source_label_updated"]
+    });
+  });
+
+  it("returns INGESTION_SOURCE_NOT_REGISTERED when updateSource targets a missing source", async () => {
+    const ledger = new InMemoryEventLedger();
+    const mountedWorkspace = {
+      ...fakeMountedWorkspaceForCli(),
+      ledger
+    } as unknown as MountedWorkspace;
+    const runtime = createIngestionRuntime({
+      mountedWorkspace,
+      actor: { id: "actor_cli", kind: "human", label: "CLI Operator" }
+    });
+
+    const missing = await runtime.updateSource({
+      sourceCollectionId: "src_missing",
+      label: "New Label"
+    });
+    expect(missing.ok).toBe(false);
+    if (!missing.ok) {
+      expect(missing.error.code).toBe("INGESTION_SOURCE_NOT_REGISTERED");
+    }
+
+    await runtime.registerSource({
+      sourceCollectionId: "src_osceola_county",
+      label: "Osceola County",
+      rootUri: "file:///mnt/osceola",
+      sourceRoot: "/mnt/osceola"
+    });
+    const updated = await runtime.updateSource({
+      sourceCollectionId: "src_osceola_county",
+      label: "Osceola County Sheriff's Office",
+      rationale: "Correct agency name"
+    });
+    expect(updated.ok).toBe(true);
+    if (updated.ok) {
+      expect(updated.review.label).toBe("Osceola County Sheriff's Office");
+      expect(updated.eventIds).toHaveLength(1);
+    }
+    const stream = await ledger.readStream("ingestion_source_src_osceola_county");
+    expect(stream.map((event) => event.type)).toEqual([
+      "ingestion.source.registered",
+      "ingestion.source.label.updated"
+    ]);
+  });
+
   it("surfaces a clear imp_ prefix error instead of INGESTION_RUNTIME_INTERNAL on approve-import", async () => {
     const ledger = new InMemoryEventLedger();
     const mountedWorkspace = {

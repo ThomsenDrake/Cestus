@@ -1463,7 +1463,14 @@ describe("ingestion event contracts", () => {
         adapter: { name: "local-filesystem", version: "0.1.0" },
         rootUri: "file:///mnt/investigation-drive/source",
         workspaceUri: "file:///mnt/investigation-drive/cestus-workspace"
-      }),
+      }, "ingestion_source_src_drive_001"),
+      ingestionEvent("evt_ing_source_label_updated", "ingestion.source.label.updated", {
+        sourceCollectionId: "src_drive_001",
+        label: "Osceola County Sheriff's Office",
+        previousLabel: "External investigation archive",
+        rationale: "Use official agency name",
+        actor: context.actor
+      }, "ingestion_source_src_drive_001"),
       ingestionEvent("evt_ing_scan_started", "ingestion.scan.started", {
         scanBatchId: "scan_001",
         sourceCollectionId: "src_drive_001",
@@ -1674,6 +1681,48 @@ describe("ingestion event contracts", () => {
     if (!result.success) {
       expect(result.error.issues.map((issue) => issue.path.join("."))).toContain("streamId");
     }
+  });
+
+  it("enforces stream, actor, secret-safety, and changed-label invariants on ingestion.source.label.updated", () => {
+    const baseEvent = ingestionEvent(
+      "evt_ing_source_label_valid",
+      "ingestion.source.label.updated",
+      {
+        sourceCollectionId: "src_osceola_county",
+        label: "Osceola County Sheriff's Office",
+        previousLabel: "Osceola County",
+        actor: context.actor
+      },
+      "ingestion_source_src_osceola_county"
+    );
+    expect(validateKnowledgeEvent(baseEvent).success).toBe(true);
+
+    const wrongStream = validateKnowledgeEvent({
+      ...baseEvent,
+      streamId: "ingestion_source_src_other"
+    });
+    expect(wrongStream.success).toBe(false);
+
+    const unchangedLabel = validateKnowledgeEvent({
+      ...baseEvent,
+      payload: { ...baseEvent.payload, label: "Osceola County" }
+    });
+    expect(unchangedLabel.success).toBe(false);
+
+    const mismatchedActor = validateKnowledgeEvent({
+      ...baseEvent,
+      payload: {
+        ...baseEvent.payload,
+        actor: { id: "actor_other", kind: "human", label: "Someone Else" }
+      }
+    });
+    expect(mismatchedActor.success).toBe(false);
+
+    const secretRationale = validateKnowledgeEvent({
+      ...baseEvent,
+      payload: { ...baseEvent.payload, rationale: "api_key=sk_live_secret123" }
+    });
+    expect(secretRationale.success).toBe(false);
   });
 });
 

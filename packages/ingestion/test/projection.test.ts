@@ -19,6 +19,59 @@ describe("buildIngestionProjection", () => {
     expect(projection.evidenceByHash.get(fixedHash)).toBe("ev_ing_001");
   });
 
+  it("uses the latest append-only ingestion.source.label.updated label in projection and review DTO", () => {
+    const registered = goldenIngestionLedgerEvents[0]!;
+    const updated1 = {
+      id: "evt_ing_source_label_updated_1",
+      type: "ingestion.source.label.updated",
+      version: 1,
+      streamId: "ingestion_source_src_drive_001",
+      sequence: 2,
+      context: {
+        actor: { id: "actor_investigator", kind: "human" as const, label: "Investigator" },
+        occurredAt: "2026-07-05T12:10:00.000Z",
+        causationId: registered.id,
+        correlationId: "corr_src_drive_001",
+        coreVersion: "0.1.0",
+        packVersions: { core: "0.1.0", ingestion: "0.1.0" }
+      },
+      payload: {
+        sourceCollectionId: "src_drive_001",
+        label: "Intermediate Label",
+        previousLabel: "External investigation archive",
+        rationale: "Initial correction",
+        actor: { id: "actor_investigator", kind: "human" as const, label: "Investigator" }
+      }
+    };
+    const updated2 = {
+      ...updated1,
+      id: "evt_ing_source_label_updated_2",
+      sequence: 3,
+      context: {
+        ...updated1.context,
+        occurredAt: "2026-07-05T12:11:00.000Z",
+        causationId: updated1.id
+      },
+      payload: {
+        sourceCollectionId: "src_drive_001",
+        label: "Osceola County Sheriff's Office",
+        previousLabel: "Intermediate Label",
+        rationale: "Official agency name",
+        actor: { id: "actor_investigator", kind: "human" as const, label: "Investigator" }
+      }
+    };
+
+    const projection = buildIngestionProjection([
+      ...goldenIngestionLedgerEvents,
+      updated1,
+      updated2
+    ]);
+
+    expect(projection.sources.get("src_drive_001")?.label).toBe("Osceola County Sheriff's Office");
+    expect(projection.sources.get("src_drive_001")?.registeredEventId).toBe(registered.id);
+    expect(buildIngestionReviewDto(projection, "src_drive_001").label).toBe("Osceola County Sheriff's Office");
+  });
+
   it("quarantines unrecognized runtime events as projection diagnostics", () => {
     const projection = buildIngestionProjection([
       ...goldenIngestionLedgerEvents,

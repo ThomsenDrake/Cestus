@@ -165,6 +165,10 @@ export function buildIngestionProjection(events: readonly unknown[]): IngestionP
         sourceCollectionIdByStreamId.set(event.streamId, event.payload.sourceCollectionId);
         projectSourceRegistered(projection, event);
         break;
+      case "ingestion.source.label.updated":
+        sourceCollectionIdByStreamId.set(event.streamId, event.payload.sourceCollectionId);
+        projectSourceLabelUpdated(projection, event);
+        break;
       case "ingestion.scan.started":
         scanIdByStreamId.set(event.streamId, event.payload.scanBatchId);
         sourceCollectionIdByStreamId.set(event.streamId, event.payload.sourceCollectionId);
@@ -250,6 +254,17 @@ function projectSourceRegistered(
     importBatchIds: existing?.importBatchIds ?? [],
     diagnosticIds: existing?.diagnosticIds ?? []
   });
+}
+
+function projectSourceLabelUpdated(
+  projection: IngestionProjection,
+  event: KnowledgeEventOf<"ingestion.source.label.updated">
+): void {
+  const existing = projection.sources.get(event.payload.sourceCollectionId);
+  if (existing === undefined) {
+    return;
+  }
+  existing.label = event.payload.label;
 }
 
 function projectScanStarted(projection: IngestionProjection, event: KnowledgeEventOf<"ingestion.scan.started">): void {

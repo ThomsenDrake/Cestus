@@ -7,7 +7,8 @@ import type {
   IngestionDiagnosticsInput,
   ListIngestionJobsInput,
   RegisterSourceInput,
-  RetryIngestionJobInput
+  RetryIngestionJobInput,
+  UpdateSourceInput
 } from "./runtime.js";
 import type { LegacyImportRuntime } from "./legacy-runtime.js";
 import type {
@@ -22,6 +23,7 @@ import { firstLegacyArtifactAsk } from "./legacy-types.js";
 export const ingestionOperationalCommands = [
   "create-workspace",
   "register-source",
+  "update-source",
   "dry-run",
   "approve-import",
   "import",
@@ -88,6 +90,7 @@ export type LegacyImportCliRuntimeFactory = (input: LegacyImportCliRuntimeFactor
 
 export interface IngestionCliRuntime {
   registerSource(input: RegisterSourceInput): Promise<unknown> | unknown;
+  updateSource?(input: UpdateSourceInput): Promise<unknown> | unknown;
   dryRunScan(input: DryRunScanInput): Promise<unknown> | unknown;
   approveRawImport(input: ApproveRawImportInput): Promise<unknown> | unknown;
   importApproved(input: ImportApprovedInput): Promise<unknown> | unknown;
@@ -185,6 +188,7 @@ export function formatIngestionCliUsage(executableName = "cestus-ingest"): strin
     "Commands:",
     "  summary-json        Print a stable JSON ingestion review DTO.",
     "  register-source     Register a read-only source collection.",
+    "  update-source       Append a label correction for a registered source collection.",
     "  dry-run             Run a hash-computing dry-run inventory.",
     "  approve-import      Approve a dry-run batch for raw import (batch id must start with imp_).",
     "  import              Import approved unique evidence blobs.",
@@ -213,6 +217,7 @@ export function formatIngestionCliUsage(executableName = "cestus-ingest"): strin
     "Examples:",
     "  cestus ingest dry-run --workspace <root> --source-id src_drive_001 --scan scan_001",
     "  cestus ingest register-source --workspace <root> --source /Volumes/OldArchive --source-id src_old_archive --label \"Old archive\"",
+    "  cestus ingest update-source --workspace <root> --source-id src_old_archive --label \"Corrected archive label\" --rationale \"Use official agency name\"",
     "  cestus ingest legacy inspect --workspace <root> --source <old-root> --source-id src_old_cestus --scan scan_old_cestus_001 --label \"Old Cestus\""
   ].join("\n");
 }
@@ -323,6 +328,11 @@ async function callRuntime(
   switch (command) {
     case "register-source":
       return runtime.registerSource(registerSourceInput(argv));
+    case "update-source":
+      if (runtime.updateSource === undefined) {
+        throw new Error("Ingestion runtime does not expose updateSource.");
+      }
+      return runtime.updateSource(updateSourceInput(argv));
     case "dry-run":
       return runtime.dryRunScan(dryRunInput(argv));
     case "approve-import":
@@ -437,6 +447,16 @@ function registerSourceInput(argv: ParsedArgv): RegisterSourceInput {
     label: requiredOption(argv, "label"),
     rootUri: pathToFileURL(sourceRoot).href,
     sourceRoot
+  };
+}
+
+function updateSourceInput(argv: ParsedArgv): UpdateSourceInput {
+  const rationale = optionValue(argv, "rationale");
+
+  return {
+    sourceCollectionId: requiredOption(argv, "source-id"),
+    label: requiredOption(argv, "label"),
+    ...(rationale === undefined ? {} : { rationale })
   };
 }
 
@@ -576,6 +596,7 @@ function isIngestionOperationalCommand(command: string): command is IngestionOpe
 
 const ingestionRuntimeCommands = [
   "register-source",
+  "update-source",
   "dry-run",
   "approve-import",
   "import",
