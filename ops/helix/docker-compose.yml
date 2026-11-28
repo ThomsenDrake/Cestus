@@ -1,0 +1,38 @@
+# Pinned HelixDB server for the T5600 (Milestone 1).
+#
+# Image pin: ghcr.io/helixdb/helixdb:v0.0.19
+#   Multi-arch manifest list digest:
+#     sha256:ad133cac47d17b8cc8ce9c75f6b68e270fde11a8e65b11139fdcc9502e5b7bf4
+#   linux/amd64 manifest digest:
+#     sha256:16b709ad0d34a3a66a626fbc3eae94678ad1e71109af1fb548e42bfdc430b389
+#
+# Safety invariants enforced here:
+#   1. Loopback-only HTTP bind (127.0.0.1:6969 -> container 8080). Helix has no
+#      built-in auth; Cestus local-runtime sits in front on the tailnet.
+#   2. Persistent on-disk storage via HELIX_DATA_DIR=/var/lib/helix (never the
+#      default in-memory mode).
+#   3. Telemetry disabled via DO_NOT_TRACK=1 and HELIX_TELEMETRY_LEVEL=off.
+
+services:
+  helix:
+    image: ghcr.io/helixdb/helixdb:v0.0.19@sha256:ad133cac47d17b8cc8ce9c75f6b68e270fde11a8e65b11139fdcc9502e5b7bf4
+    container_name: cestus-helixdb
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${HELIX_HOST_PORT:-6969}:8080"
+    environment:
+      HELIX_HTTP_ADDR: "0.0.0.0:8080"
+      HELIX_GRPC_ADDR: "127.0.0.1:8081"
+      HELIX_DATA_DIR: "/var/lib/helix"
+      HELIX_HOME: "/var/lib/helix/.helix"
+      DB_PATH: "db/"
+      DO_NOT_TRACK: "1"
+      HELIX_TELEMETRY_LEVEL: "off"
+      RUST_LOG: "server=info,db=info,slatedb=info"
+    volumes:
+      - helix_data:/var/lib/helix
+    stop_grace_period: 30s
+
+volumes:
+  helix_data:
+    name: cestus_helixdb_data
