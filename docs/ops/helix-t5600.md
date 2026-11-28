@@ -55,10 +55,14 @@ docker compose -f ops/helix/docker-compose.yml pull
 docker compose -f ops/helix/docker-compose.yml up -d
 ```
 
-Verify the pinned image digest actually running:
+Verify the pinned image digest actually running (note: `.RepoDigests` lives on the image object, not on a container, so compare the container's `.Image` ID against the pinned image's `.Id`):
 
 ```bash
-docker inspect --format='{{.Config.Image}} -> {{index .RepoDigests 0}}' cestus-helixdb
+PINNED_IMAGE="ghcr.io/helixdb/helixdb:v0.0.19@sha256:ad133cac47d17b8cc8ce9c75f6b68e270fde11a8e65b11139fdcc9502e5b7bf4"
+CONTAINER_IMAGE_ID=$(docker inspect --format='{{.Image}}' cestus-helixdb)
+PINNED_IMAGE_ID=$(docker image inspect --format='{{.Id}}' "$PINNED_IMAGE")
+test "$CONTAINER_IMAGE_ID" = "$PINNED_IMAGE_ID" && echo "OK: container runs pinned image $CONTAINER_IMAGE_ID"
+docker image inspect --format='{{.Id}} -> {{index .RepoDigests 0}}' "$PINNED_IMAGE"
 ```
 
 ### 2. Confirm Telemetry Is Off (Before Any Real Document Moves)
@@ -178,14 +182,50 @@ What this single command executes:
 1. Verifies `DO_NOT_TRACK=1` + `HELIX_TELEMETRY_LEVEL=off`, Helix `/readyz`, and
    `/v2/diagnostics` on-disk durability.
 2. Runs the existing Cestus ingestion CLI path in order:
-   `register-source` -> `dry-run` -> `approve-import` (enforcing `imp_` prefix)
-   -> `import` -> `parse` (`runParseJobs`).
+   `register-source` (skipped automatically when the source is already
+   registered with the same label and root directory) -> `dry-run` ->
+   `approve-import` (enforcing `imp_` prefix) -> `import` -> `parse`
+   (`runParseJobs`).
 3. Writes the `Document` node (plus `Passage` nodes if text was extracted, or
    marks `unextracted: true` with zero fabricated passages if the file is an
    unextracted scan) into the live Helix graph through `packages/helix-contrib`.
 4. Cross-checks that the Helix `Document` node's `evidenceId` and `contentHash`
    match the SQLite `evidence.ingested` ledger event and the canonical blob
    bytes on disk.
+
+### 2b. Correcting a Registered Source Label (Append-Only)
+
+Never edit or delete rows in `ledger/ontology.sqlite`. To correct a registered
+source collection's label, append an `ingestion.source.label.updated` event to
+its existing `ingestion_source_<source-id>` stream with `update-source`:
+
+```bash
+DO_NOT_TRACK=1 HELIX_TELEMETRY_LEVEL=off \
+CESTUS_HELIX_URL=http://127.0.0.1:6969 \
+node packages/ingestion/bin/cestus-ingest.mjs ingest update-source \
+  --workspace /srv/cestus/i4-workspace \
+  --source-id src_osceola_county \
+  --label "Osceola County Sheriff's Office" \
+  --rationale "Use official agency name for Osceola production"
+```
+
+**Design choice (`Agency.name` vs. `Document.sourceLabel`):**
+- The Helix `Agency` node's `name` property is **authoritative** for the
+  producing agency label. `ingestion.source.label.updated` advances the `Agency`
+  node incrementally via provenance-chained supersession (`supersedesAuthorityIds`)
+  and reproduces identically on `projection rebuild`.
+- Each `Document` node's `sourceLabel` property keeps the **immutable ingest-time
+  snapshot** from `evidence.ingested` (`payload.source.label`).
+- Queries and read DTOs (including `GET /api/ontology/workspace`) resolve the
+  current producing agency label via the `Agency` node (`agencyName`), never by
+  treating `Document.sourceLabel` as authoritative.
+
+> **Upgrading a pre-existing Helix DB created before deterministic agency provenance:**
+> If the live Helix database still contains `Agency` or `Production` nodes written
+> before deterministic source/batch provenance landed, run one
+> `projection rebuild --root /srv/cestus/i4-workspace --projection helix` to align
+> the derived graph with the ledger. All subsequent imports into existing sources
+> and source label updates then sync incrementally with no lag.
 
 ### 3. Verify `GET /api/ontology/workspace` Reads Helix and Fails Closed When Helix Stops
 
