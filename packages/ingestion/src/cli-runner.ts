@@ -26,13 +26,47 @@ export async function runIngestionCli(argv: readonly string[] = process.argv.sli
     createPortableIngestionMountResolver
   } = await import("./index.js");
 
+  const helixUrl = process.env.CESTUS_HELIX_URL?.trim();
+  const helixDatabaseOverride = process.env.CESTUS_HELIX_DATABASE?.trim();
+
   const output = await handleIngestionCommand({
     command: normalized.command,
     argv: normalized.argv,
     mountResolver: createPortableIngestionMountResolver(),
     runtimeFactory: ({ mountedWorkspace }) => createIngestionRuntime({
       mountedWorkspace,
-      actor: { id: "actor_ingestion_cli", kind: "human", label: "Ingestion CLI" }
+      actor: { id: "actor_ingestion_cli", kind: "human", label: "Ingestion CLI" },
+      ...(helixUrl
+        ? {
+            afterLedgerCommit: async (workspace) => {
+              const [{ HttpHelixGraphTransport }, { syncLedgerToHelix }] = await Promise.all([
+                import("../../helix-contrib/src/index.js"),
+                import("../../ontology/src/helix-adapter.js")
+              ]);
+              const databaseName = helixDatabaseOverride || workspace.workspaceId;
+              const transport = new HttpHelixGraphTransport({ url: helixUrl, env: process.env });
+              try {
+                const events = await workspace.ledger.readAll();
+                const synced = await syncLedgerToHelix({
+                  transport,
+                  databaseName,
+                  events,
+                  blobStore: workspace.blobStore,
+                  derivativeStore: workspace.derivativeStore
+                });
+                return {
+                  ok: true,
+                  stale: false,
+                  databaseName: synced.databaseName,
+                  endpoint: synced.endpoint,
+                  ledgerEventCount: synced.ledgerEventCount
+                };
+              } finally {
+                await transport.close();
+              }
+            }
+          }
+        : {})
     }),
     legacyRuntimeFactory: ({ mountedWorkspace }) => createLegacyImportRuntime({
       mountedWorkspace,

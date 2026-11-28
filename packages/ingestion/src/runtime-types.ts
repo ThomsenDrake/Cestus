@@ -11,6 +11,7 @@ export const ingestionErrorCodes = [
   "INGESTION_PROVIDER_APPROVAL_REQUIRED",
   "INGESTION_PROVIDER_SEND_NOT_PERMITTED",
   "INGESTION_JOB_NOT_RETRYABLE",
+  "INGESTION_INVALID_IMPORT_BATCH_ID",
   "INGESTION_HTTP_STORAGE_PATH_FORBIDDEN",
   "INGESTION_COMMAND_UNSUPPORTED",
   "INGESTION_RUNTIME_INTERNAL"
@@ -75,6 +76,15 @@ export interface IngestionScanResultDto extends IngestionActionResult {
   readonly inventoryHash: string;
 }
 
+export interface IngestionHelixSyncStatus {
+  readonly ok: boolean;
+  readonly stale: boolean;
+  readonly databaseName?: string;
+  readonly endpoint?: string;
+  readonly ledgerEventCount?: number;
+  readonly message?: string;
+}
+
 export interface IngestionImportResultDto extends IngestionActionResult {
   readonly importBatchId: string;
   readonly totals: {
@@ -83,10 +93,12 @@ export interface IngestionImportResultDto extends IngestionActionResult {
     readonly duplicatesReused: number;
     readonly skipped: number;
   };
+  readonly helixSync?: IngestionHelixSyncStatus;
 }
 
 export interface IngestionJobListDto {
   readonly jobs: readonly IngestionJobDto[];
+  readonly helixSync?: IngestionHelixSyncStatus;
 }
 
 export interface IngestionJobResultDto {

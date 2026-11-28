@@ -55,6 +55,33 @@ const diagnosticSchema = z.object({
   repairActions: z.array(diagnosticTextSchema).min(1)
 }).strict();
 
+const contentHashSchema = z.string().regex(/^sha256:[a-f0-9]{64}$/);
+
+const passageSchema = z.object({
+  evidenceId: z.string().regex(/^ev_[a-zA-Z0-9_-]+$/),
+  contentHash: contentHashSchema,
+  locator: z.string().min(1),
+  text: z.string(),
+  spanHash: contentHashSchema,
+  passageIndex: z.number().int().nonnegative(),
+  extractionId: z.string().min(1),
+  authorityEventId: z.string().regex(/^evt_[a-zA-Z0-9_-]+$/)
+}).strict();
+
+const documentSchema = z.object({
+  evidenceId: z.string().regex(/^ev_[a-zA-Z0-9_-]+$/),
+  contentHash: contentHashSchema,
+  mediaType: z.string().min(1),
+  extractionStatus: z.enum(["extracted", "partial", "unextracted", "parse-failed"]),
+  unextracted: z.boolean(),
+  passageCount: z.number().int().nonnegative(),
+  passages: z.array(passageSchema),
+  authorityEventId: z.string().regex(/^evt_[a-zA-Z0-9_-]+$/),
+  sourceCollectionId: z.string().min(1).optional(),
+  importBatchId: z.string().min(1).optional(),
+  parseFailureMessage: z.string().min(1).optional()
+}).strict();
+
 const ontologyWorkspaceSchema = z.object({
   schemaVersion: z.literal("ontology-workspace.v1"),
   status: z.enum(["ready", "degraded"]),
@@ -62,6 +89,7 @@ const ontologyWorkspaceSchema = z.object({
   entities: z.array(entitySchema),
   relationships: z.array(relationshipSchema),
   assertions: z.array(assertionSchema),
+  documents: z.array(documentSchema).optional(),
   diagnostics: z.array(diagnosticSchema)
 }).strict();
 

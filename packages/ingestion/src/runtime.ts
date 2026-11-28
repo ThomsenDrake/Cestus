@@ -28,6 +28,7 @@ import {
 import { buildIngestionReviewDto } from "./read-api.js";
 import {
   type IngestionDiagnosticsDto,
+  type IngestionHelixSyncStatus,
   type IngestionJobDto,
   type IngestionJobListDto,
   type IngestionJobResultDto,
@@ -46,6 +47,7 @@ export interface CreateIngestionRuntimeInput {
   readonly mountedWorkspace?: MountedWorkspace | undefined;
   readonly actor: ActorRef;
   readonly providerRegistry?: Readonly<Record<string, unknown>>;
+  readonly afterLedgerCommit?: (workspace: MountedWorkspace) => Promise<IngestionHelixSyncStatus>;
 }
 
 export interface RegisterSourceInput {
@@ -200,6 +202,11 @@ export function createIngestionRuntime(input: CreateIngestionRuntimeInput) {
         return approvalActorError;
       }
 
+      const importBatchError = validateImportBatchId(command.importBatchId);
+      if (importBatchError !== undefined) {
+        return importBatchError;
+      }
+
       const projection = await projectionFor(workspace.workspace);
       if (!projection.sources.has(command.sourceCollectionId)) {
         return sourceNotRegisteredError(command.sourceCollectionId);
@@ -233,6 +240,10 @@ export function createIngestionRuntime(input: CreateIngestionRuntimeInput) {
       }
       if (!workspace.workspace.capabilities.canWriteBlobs) {
         return workspaceNotWritableError();
+      }
+      const importBatchError = validateImportBatchId(command.importBatchId);
+      if (importBatchError !== undefined) {
+        return importBatchError;
       }
       let selectedFiles: readonly LocalFilesystemSelectedFile[] | undefined;
       try {
@@ -342,13 +353,15 @@ export function createIngestionRuntime(input: CreateIngestionRuntimeInput) {
         const importedEvents = await workspace.workspace.ledger.readAll();
         await createLocalParseJobsForImport(workspace.workspace, command, importedEvents);
         const afterEvents = await workspace.workspace.ledger.readAll();
+        const helixSync = await runAfterLedgerCommit(input.afterLedgerCommit, workspace.workspace);
 
         return {
           ok: true,
           importBatchId: command.importBatchId,
           totals: result.totals,
           review: await reviewFor(workspace.workspace, command.sourceCollectionId),
-          eventIds: eventIdsAddedAfter(beforeEvents, afterEvents)
+          eventIds: eventIdsAddedAfter(beforeEvents, afterEvents),
+          ...(helixSync === undefined ? {} : { helixSync })
         };
       } catch {
         return runtimeInternalError("import");
@@ -398,7 +411,13 @@ export function createIngestionRuntime(input: CreateIngestionRuntimeInput) {
             } else if (job.state === "queued") await executeLocalParse(workspace, job);
           }
           const after = await workspace.ledger.readAll();
-          return { ok: true as const, jobs: jobsForProjection(buildIngestionProjection(after), command.sourceCollectionId), eventIds: eventIdsAddedAfter(before, after) };
+          const helixSync = await runAfterLedgerCommit(input.afterLedgerCommit, workspace);
+          return {
+            ok: true as const,
+            jobs: jobsForProjection(buildIngestionProjection(after), command.sourceCollectionId),
+            eventIds: eventIdsAddedAfter(before, after),
+            ...(helixSync === undefined ? {} : { helixSync })
+          };
         } catch { return runtimeInternalError("jobs"); }
       });
     },
@@ -1085,5 +1104,41 @@ function repairActionsFor(action: RuntimeAction): string[] {
       return ["verify the provider approval input", "retry provider approval", "inspect runtime diagnostics"];
     case "diagnostics":
       return ["refresh ingestion workspace", "retry diagnostics", "inspect runtime diagnostics"];
+  }
+}
+
+const IMPORT_BATCH_ID_PATTERN = /^imp_[a-zA-Z0-9_-]+$/;
+
+function validateImportBatchId(importBatchId: string): IngestionRuntimeResult<never> | undefined {
+  if (IMPORT_BATCH_ID_PATTERN.test(importBatchId)) {
+    return undefined;
+  }
+  return stableIngestionError({
+    code: "INGESTION_INVALID_IMPORT_BATCH_ID",
+    message: `Import batch id "${importBatchId}" must start with "imp_" and contain only letters, digits, underscores, or hyphens.`,
+    allowedRepairActions: [
+      "supply an import batch id starting with imp_ (for example imp_001)",
+      "retry the import command"
+    ]
+  });
+}
+
+async function runAfterLedgerCommit(
+  hook: CreateIngestionRuntimeInput["afterLedgerCommit"],
+  workspace: MountedWorkspace
+): Promise<IngestionHelixSyncStatus | undefined> {
+  if (hook === undefined) {
+    return undefined;
+  }
+  try {
+    return await hook(workspace);
+  } catch (error) {
+    return Object.freeze({
+      ok: false,
+      stale: true,
+      message: error instanceof Error
+        ? `Ledger events committed; Helix sync failed (${error.message}). Run projection rebuild.`
+        : "Ledger events committed; Helix sync failed. Run projection rebuild."
+    });
   }
 }

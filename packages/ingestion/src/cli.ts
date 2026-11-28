@@ -25,6 +25,7 @@ export const ingestionOperationalCommands = [
   "dry-run",
   "approve-import",
   "import",
+  "parse",
   "jobs",
   "list-jobs",
   "retry",
@@ -90,6 +91,7 @@ export interface IngestionCliRuntime {
   dryRunScan(input: DryRunScanInput): Promise<unknown> | unknown;
   approveRawImport(input: ApproveRawImportInput): Promise<unknown> | unknown;
   importApproved(input: ImportApprovedInput): Promise<unknown> | unknown;
+  runParseJobs?(input: ListIngestionJobsInput): Promise<unknown> | unknown;
   listJobs(input: ListIngestionJobsInput): Promise<unknown> | unknown;
   retryJob(input: RetryIngestionJobInput): Promise<unknown> | unknown;
   approveProviderParsing(input: ApproveProviderParsingInput): Promise<unknown> | unknown;
@@ -184,8 +186,9 @@ export function formatIngestionCliUsage(executableName = "cestus-ingest"): strin
     "  summary-json        Print a stable JSON ingestion review DTO.",
     "  register-source     Register a read-only source collection.",
     "  dry-run             Run a hash-computing dry-run inventory.",
-    "  approve-import      Approve a dry-run batch for raw import.",
+    "  approve-import      Approve a dry-run batch for raw import (batch id must start with imp_).",
     "  import              Import approved unique evidence blobs.",
+    "  parse               Run queued local extraction/parse jobs.",
     "  jobs                List ingestion jobs.",
     "  retry               Retry a failed ingestion job.",
     "  approve-provider    Approve an outbound provider parse batch.",
@@ -326,6 +329,11 @@ async function callRuntime(
       return runtime.approveRawImport(approveImportInput(argv));
     case "import":
       return runtime.importApproved(importInput(argv));
+    case "parse":
+      if (runtime.runParseJobs === undefined) {
+        throw new Error("Ingestion runtime does not expose runParseJobs.");
+      }
+      return runtime.runParseJobs(optionalSourceInput(argv));
     case "jobs":
     case "list-jobs":
       return runtime.listJobs(optionalSourceInput(argv));
@@ -571,6 +579,7 @@ const ingestionRuntimeCommands = [
   "dry-run",
   "approve-import",
   "import",
+  "parse",
   "jobs",
   "list-jobs",
   "retry",
