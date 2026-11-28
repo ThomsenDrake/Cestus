@@ -47,6 +47,31 @@ export interface OntologyDiagnosticDto {
   readonly repairActions: readonly string[];
 }
 
+export interface OntologyPassageDto {
+  readonly evidenceId: string;
+  readonly contentHash: `sha256:${string}`;
+  readonly locator: string;
+  readonly text: string;
+  readonly spanHash: `sha256:${string}`;
+  readonly passageIndex: number;
+  readonly extractionId: string;
+  readonly authorityEventId: string;
+}
+
+export interface OntologyDocumentDto {
+  readonly evidenceId: string;
+  readonly contentHash: `sha256:${string}`;
+  readonly mediaType: string;
+  readonly extractionStatus: "extracted" | "partial" | "unextracted" | "parse-failed";
+  readonly unextracted: boolean;
+  readonly passageCount: number;
+  readonly passages: readonly OntologyPassageDto[];
+  readonly authorityEventId: string;
+  readonly sourceCollectionId?: string;
+  readonly importBatchId?: string;
+  readonly parseFailureMessage?: string;
+}
+
 export interface OntologyWorkspaceDto {
   readonly schemaVersion: "ontology-workspace.v1";
   readonly status: "ready" | "degraded";
@@ -54,5 +79,6 @@ export interface OntologyWorkspaceDto {
   readonly entities: readonly OntologyEntityDto[];
   readonly relationships: readonly OntologyRelationshipDto[];
   readonly assertions: readonly OntologyAssertionDto[];
+  readonly documents?: readonly OntologyDocumentDto[];
   readonly diagnostics: readonly OntologyDiagnosticDto[];
 }

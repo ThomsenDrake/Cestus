@@ -1,6 +1,11 @@
 import { createHash } from "node:crypto";
 import { basename, isAbsolute, posix, win32 } from "node:path";
+import type { HelixGraphTransport } from "../../helix-contrib/src/index.js";
 import { validateKnowledgeEvent, type KnowledgeEvent } from "../../ontology/src/contracts.js";
+import {
+  rebuildHelixFromLedger,
+  type ReadOnlyBlobStore
+} from "../../ontology/src/helix-adapter.js";
 import {
   createWorkspaceOpsEnvelope,
   isSecretSafeWorkspaceText,
@@ -25,6 +30,48 @@ export interface ProjectionArtifactFileSystem {
 export interface ProjectionBuilder {
   readonly projectionName: string;
   build(events: readonly KnowledgeEvent[]): Promise<Record<string, string>>;
+}
+
+export interface HelixProjectionBuilderInput {
+  readonly projectionName: string;
+  readonly databaseName: string;
+  readonly transport: HelixGraphTransport;
+  readonly blobStore?: ReadOnlyBlobStore;
+  readonly derivativeStore?: ReadOnlyBlobStore;
+}
+
+export function createHelixProjectionBuilder(
+  input: HelixProjectionBuilderInput
+): ProjectionBuilder {
+  return {
+    projectionName: input.projectionName,
+    async build(events) {
+      const rebuilt = await rebuildHelixFromLedger({
+        transport: input.transport,
+        databaseName: input.databaseName,
+        events,
+        ...(input.blobStore === undefined ? {} : { blobStore: input.blobStore }),
+        ...(input.derivativeStore === undefined ? {} : { derivativeStore: input.derivativeStore })
+      });
+      return {
+        "projection.json": JSON.stringify(
+          {
+            schemaVersion: "workspace-ops.helix-projection.v1",
+            projectionName: input.projectionName,
+            databaseName: rebuilt.databaseName,
+            endpoint: rebuilt.endpoint,
+            ledgerEventCount: rebuilt.ledgerEventCount,
+            lastEventId: rebuilt.lastEventId,
+            fingerprint: rebuilt.fingerprint,
+            documents: rebuilt.documents,
+            hiddenEvidenceIds: rebuilt.hiddenEvidenceIds
+          },
+          null,
+          2
+        )
+      };
+    }
+  };
 }
 
 export interface ProjectionRebuildReadinessInput {

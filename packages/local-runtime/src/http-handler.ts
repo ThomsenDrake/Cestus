@@ -1,3 +1,14 @@
+import {
+  HttpHelixGraphTransport,
+  type HelixGraphTransport
+} from "../../helix-contrib/src/index.js";
+import {
+  readOntologyWorkspaceFromHelix,
+  syncLedgerToHelix
+} from "../../ontology/src/helix-adapter.js";
+import type { OntologyWorkspaceReadDto } from "../../ontology/src/ontology-workspace-read.js";
+import type { EventLedger } from "../../ontology/src/event-ledger.js";
+import { createIngestionRuntime } from "../../ingestion/src/runtime.js";
 import { handleInvestigationHttpRoute, resolveCaseComparison } from "./investigation-http-routes.js";
 import type { KnowledgeEvent } from "../../ontology/src/contracts.js";
 import { type ActorRef, type CreateDraftRequestInput } from "../../prr/src/draft-events.js";
@@ -61,6 +72,12 @@ export interface LocalRuntimeHttpHandler {
   close(): Promise<void>;
 }
 
+export type OntologyReaderForTest = (input: {
+  readonly ledger: EventLedger;
+  readonly workspace?: MountedWorkspace;
+  readonly actor: ActorRef;
+}) => Promise<OntologyWorkspaceReadDto>;
+
 export interface CreateLocalRuntimeHttpHandlerInput {
   readonly config: ResolvedLocalRuntimeConfig;
   readonly actor: ActorRef;
@@ -72,6 +89,8 @@ export interface CreateLocalRuntimeHttpHandlerInput {
   readonly ingestionRuntimeFactory?: LocalIngestionRuntimeFactory;
   readonly operatorStatusProviders?: OperatorStatusProviderSet;
   readonly agentRuntimeFactory?: LocalAgentRuntimeFactory;
+  readonly ontologyReaderForTest?: OntologyReaderForTest;
+  readonly helixTransportForTest?: HelixGraphTransport;
   readonly residentIdentityBootstrapForTest?: ResidentIdentityBootstrapExecutor;
   readonly mountedTaskAdmissionPrecommitForTest?: (() => void) | undefined;
   readonly residentBackgroundExecutionForTest?: ResidentBackgroundExecutionPort | undefined;
@@ -179,14 +198,49 @@ export function createLocalRuntimeHttpHandler(
             })
       })
   });
+  const ownedHelixTransport =
+    input.helixTransportForTest === undefined && input.config.helix !== undefined
+      ? new HttpHelixGraphTransport({ url: input.config.helix.url })
+      : undefined;
+  const helixTransport = input.helixTransportForTest ?? ownedHelixTransport;
+  const resolveHelixDatabaseName = (workspace?: MountedWorkspace): string =>
+    input.config.helix?.databaseName ?? workspace?.workspaceId ?? handle.mountedWorkspace?.workspaceId ?? "cestus";
+  const effectiveIngestionRuntimeFactory: LocalIngestionRuntimeFactory | undefined =
+    input.ingestionRuntimeFactory ??
+    (helixTransport === undefined
+      ? undefined
+      : ({ mountedWorkspace, actor }) =>
+          createIngestionRuntime({
+            mountedWorkspace,
+            actor,
+            afterLedgerCommit: async (workspace) => {
+              const databaseName = resolveHelixDatabaseName(workspace);
+              const events = await workspace.ledger.readAll();
+              const synced = await syncLedgerToHelix({
+                transport: helixTransport,
+                databaseName,
+                events,
+                blobStore: workspace.blobStore,
+                derivativeStore: workspace.derivativeStore
+              });
+              return {
+                ok: true,
+                stale: false,
+                databaseName: synced.databaseName,
+                endpoint: synced.endpoint,
+                ledgerEventCount: synced.ledgerEventCount
+              };
+            }
+          }));
+
   const defaultOperatorStatusProviders = createDefaultOperatorStatusProviders({
     config: input.config,
     actor: input.actor,
     handle,
     now: localRuntimeNow(input.now),
-    ...(input.ingestionRuntimeFactory === undefined
+    ...(effectiveIngestionRuntimeFactory === undefined
       ? {}
-      : { ingestionRuntimeFactory: input.ingestionRuntimeFactory }),
+      : { ingestionRuntimeFactory: effectiveIngestionRuntimeFactory }),
     ...(input.agentRuntimeFactory === undefined
       ? {}
       : { agentRuntimeFactory: input.agentRuntimeFactory })
@@ -259,9 +313,9 @@ export function createLocalRuntimeHttpHandler(
         request,
         actor: input.actor,
         ...(ingestionMountResolver === undefined ? {} : { ingestionMountResolver }),
-        ...(input.ingestionRuntimeFactory === undefined
+        ...(effectiveIngestionRuntimeFactory === undefined
           ? {}
-          : { ingestionRuntimeFactory: input.ingestionRuntimeFactory })
+          : { ingestionRuntimeFactory: effectiveIngestionRuntimeFactory })
       });
       if (response !== undefined) {
         return response;
@@ -296,8 +350,24 @@ export function createLocalRuntimeHttpHandler(
       const knowledgeResponse = await handleKnowledgeHttpRoute({ request, actor: input.actor,
         workspace: knowledgeMount?.ok ? knowledgeMount.workspace : undefined, processing: await documentProcessing });
       if (knowledgeResponse) return knowledgeResponse;
-      const response = await handleOntologyHttpRoute({ request, ledger: handle.ledger,
-        ...(knowledgeMount?.ok ? { readAuthorized: () => createWorkspaceKnowledgeService(knowledgeMount.workspace).readLegacy(input.actor) } : {}) });
+      const readAuthorized = input.ontologyReaderForTest !== undefined
+        ? () => input.ontologyReaderForTest!({
+            ledger: handle.ledger,
+            ...(knowledgeMount?.ok ? { workspace: knowledgeMount.workspace } : {}),
+            actor: input.actor
+          })
+        : helixTransport !== undefined
+          ? () => readOntologyWorkspaceFromHelix({
+              transport: helixTransport,
+              databaseName: resolveHelixDatabaseName(knowledgeMount?.ok ? knowledgeMount.workspace : undefined),
+              ledger: handle.ledger
+            })
+          : undefined;
+      const response = await handleOntologyHttpRoute({
+        request,
+        ledger: handle.ledger,
+        ...(readAuthorized === undefined ? {} : { readAuthorized })
+      });
       if (response !== undefined) {
         return response;
       }
@@ -350,6 +420,7 @@ export function createLocalRuntimeHttpHandler(
     closePromise ??= (async () => {
       (await documentProcessing)?.close();
       await residentSupervision.stop();
+      await ownedHelixTransport?.close();
     })().finally(() => handle.close());
     return closePromise;
   };

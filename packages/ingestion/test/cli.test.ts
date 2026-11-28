@@ -1,7 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
+import { InMemoryEventLedger } from "../../ontology/src/event-ledger.js";
 import { handleIngestionCommand, type IngestionCliRuntime } from "../src/cli.js";
 import type { MountedWorkspace } from "../src/mount-contract.js";
 import type { IngestionReviewDto } from "../src/read-api.js";
+import { createIngestionRuntime } from "../src/runtime.js";
 
 describe("ingestion CLI command handlers", () => {
   it("prints stable JSON for dry-run summaries", async () => {
@@ -297,6 +299,59 @@ describe("ingestion CLI command handlers", () => {
       maxBytesPerFile: 1024
     });
     expect(runtime.diagnostics).toHaveBeenCalledWith({ sourceCollectionId: "src_drive_001" });
+  });
+
+  it("delegates the parse command to runtime.runParseJobs", async () => {
+    const runParseJobs = vi.fn(async () => ({
+      ok: true,
+      jobs: [],
+      eventIds: ["evt_parse_completed"]
+    }));
+    const mountResolver = {
+      resolve: vi.fn(async () => ({
+        ok: true as const,
+        workspace: fakeMountedWorkspaceForCli()
+      }))
+    };
+
+    const output = await handleIngestionCommand({
+      command: "parse",
+      argv: ["--workspace", "/Volumes/Cestus", "--source-id", "src_drive_001"],
+      mountResolver,
+      runtimeFactory: () => fakeRuntimeForCli({ runParseJobs })
+    });
+
+    expect(runParseJobs).toHaveBeenCalledWith({ sourceCollectionId: "src_drive_001" });
+    expect(JSON.parse(output)).toEqual({
+      ok: true,
+      jobs: [],
+      eventIds: ["evt_parse_completed"]
+    });
+  });
+
+  it("surfaces a clear imp_ prefix error instead of INGESTION_RUNTIME_INTERNAL on approve-import", async () => {
+    const ledger = new InMemoryEventLedger();
+    const mountedWorkspace = {
+      ...fakeMountedWorkspaceForCli(),
+      ledger
+    } as unknown as MountedWorkspace;
+    const runtime = createIngestionRuntime({
+      mountedWorkspace,
+      actor: { id: "actor_cli", kind: "human", label: "CLI Operator" }
+    });
+
+    const result = await runtime.approveRawImport({
+      sourceCollectionId: "src_001",
+      scanBatchId: "scan_001",
+      importBatchId: "bad_batch_001",
+      approvedBy: "actor_cli"
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.code).toBe("INGESTION_INVALID_IMPORT_BATCH_ID");
+      expect(result.error.message).toContain("imp_");
+    }
   });
 });
 

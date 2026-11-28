@@ -26,6 +26,10 @@ export interface LocalRuntimeConfigFile {
   readonly logs?: {
     readonly dir?: string;
   };
+  readonly helix?: {
+    readonly url?: string;
+    readonly databaseName?: string;
+  };
 }
 
 export interface WriteLocalRuntimeOnboardingConfigInput {
@@ -125,7 +129,8 @@ export function redactLocalRuntimeConfigFile(
           })
         }),
     ...(config.staticUi === undefined ? {} : { staticUi: Object.freeze({ ...config.staticUi }) }),
-    ...(config.logs === undefined ? {} : { logs: Object.freeze({ ...config.logs }) })
+    ...(config.logs === undefined ? {} : { logs: Object.freeze({ ...config.logs }) }),
+    ...(config.helix === undefined ? {} : { helix: Object.freeze({ ...config.helix }) })
   });
 }
 
@@ -254,7 +259,7 @@ function mergeHttpConfig(
 
 function parseLocalRuntimeConfigFile(value: unknown, path: string): LocalRuntimeConfigFile {
   const root = expectObject(value, "local runtime config");
-  assertAllowedKeys(root, ["storage", "http", "staticUi", "logs", "operator"], "local runtime config");
+  assertAllowedKeys(root, ["storage", "http", "staticUi", "logs", "operator", "helix"], "local runtime config");
 
   const operator = parseOptionalSection(root, "operator", path, (record, path) => {
     assertAllowedKeys(record, ["id", "label"], "operator");
@@ -269,13 +274,15 @@ function parseLocalRuntimeConfigFile(value: unknown, path: string): LocalRuntime
   const http = parseOptionalSection(root, "http", path, parseHttpConfig);
   const staticUi = parseOptionalSection(root, "staticUi", path, parseStaticUiConfig);
   const logs = parseOptionalSection(root, "logs", path, parseLogsConfig);
+  const helix = parseOptionalSection(root, "helix", path, parseHelixConfig);
 
   return Object.freeze({
     ...(operator === undefined ? {} : { operator }),
     ...(storage === undefined ? {} : { storage }),
     ...(http === undefined ? {} : { http }),
     ...(staticUi === undefined ? {} : { staticUi }),
-    ...(logs === undefined ? {} : { logs })
+    ...(logs === undefined ? {} : { logs }),
+    ...(helix === undefined ? {} : { helix })
   });
 }
 
@@ -333,6 +340,17 @@ function parseLogsConfig(
   assertAllowedKeys(record, ["dir"], "logs");
   return Object.freeze({
     ...parseOptionalString(record, "dir", path)
+  });
+}
+
+function parseHelixConfig(
+  record: Record<string, unknown>,
+  path: string
+): NonNullable<LocalRuntimeConfigFile["helix"]> {
+  assertAllowedKeys(record, ["url", "databaseName"], "helix");
+  return Object.freeze({
+    ...parseOptionalString(record, "url", path),
+    ...parseOptionalString(record, "databaseName", path)
   });
 }
 

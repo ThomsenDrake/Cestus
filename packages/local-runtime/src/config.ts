@@ -45,6 +45,10 @@ export interface ResolvedLocalRuntimeConfig {
   readonly logs: {
     readonly dir: string;
   };
+  readonly helix?: {
+    readonly url: string;
+    readonly databaseName?: string;
+  };
 }
 
 export function resolveLocalRuntimeConfig(
@@ -92,7 +96,10 @@ export function resolveLocalRuntimeConfig(
         cwd,
         normalizeOptional(env.CESTUS_LOCAL_LOG_DIR) ?? configFile?.logs?.dir ?? ".cestus/local/logs"
       )
-    }
+    },
+    ...(resolveHelixConfig(env, configFile) === undefined
+      ? {}
+      : { helix: resolveHelixConfig(env, configFile)! })
   } satisfies ResolvedLocalRuntimeConfig;
 
   return Object.freeze(config);
@@ -223,6 +230,30 @@ function resolveDevSeedEnabled(
     return envValue === "true";
   }
   return configFile?.http?.devSeedEnabled === true;
+}
+
+function resolveHelixConfig(
+  env: Record<string, string | undefined>,
+  configFile: LocalRuntimeConfigFile | undefined
+): ResolvedLocalRuntimeConfig["helix"] {
+  const url = normalizeOptional(env.CESTUS_HELIX_URL) ?? configFile?.helix?.url;
+  if (url === undefined) {
+    return undefined;
+  }
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    throw new Error(`Invalid Helix URL: ${url}`);
+  }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    throw new Error(`Invalid Helix URL protocol: ${parsed.protocol}`);
+  }
+  const databaseName = normalizeOptional(env.CESTUS_HELIX_DATABASE) ?? configFile?.helix?.databaseName;
+  return Object.freeze({
+    url: parsed.toString().replace(/\/+$/, ""),
+    ...(databaseName === undefined ? {} : { databaseName })
+  });
 }
 
 function resolvePath(cwd: string, path: string): string {

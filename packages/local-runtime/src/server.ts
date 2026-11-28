@@ -9,7 +9,8 @@ import {
 import type { ActorRef } from "../../prr/src/draft-events.js";
 import { resolveLocalRuntimeConfig, type ResolvedLocalRuntimeConfig } from "./config.js";
 import { observeServerWorkspace, unavailableWorkspaceDiagnostic } from "./server-workspace.js";
-import { createLocalRuntimeHttpHandler, type LocalRuntimeHttpHandler } from "./http-handler.js";
+import { createLocalRuntimeHttpHandler, type LocalRuntimeHttpHandler, type OntologyReaderForTest } from "./http-handler.js";
+import type { HelixGraphTransport } from "../../helix-contrib/src/index.js";
 import { readStaticUiFile } from "./static-files.js";
 import { assertTailnetAddress, ipAddressesEquivalent, isTailnetAddress } from "./tailnet-address.js";
 
@@ -19,6 +20,8 @@ export interface StartLocalRuntimeServerInput {
   readonly env?: Record<string, string | undefined>;
   readonly cwd?: string;
   readonly networkInterfaces?: () => NodeJS.Dict<NetworkInterfaceInfo[]>;
+  readonly ontologyReaderForTest?: OntologyReaderForTest;
+  readonly helixTransportForTest?: HelixGraphTransport;
 }
 
 export interface LocalRuntimeServerHandle {
@@ -65,7 +68,12 @@ export async function startLocalRuntimeServer(
       throw new Error("Local runtime log directory is unavailable. Check its configured path and write permissions, then restart Cestus.");
     }
     try {
-      handler = createLocalRuntimeHttpHandler({ config, actor });
+      handler = createLocalRuntimeHttpHandler({
+        config,
+        actor,
+        ...(input.ontologyReaderForTest === undefined ? {} : { ontologyReaderForTest: input.ontologyReaderForTest }),
+        ...(input.helixTransportForTest === undefined ? {} : { helixTransportForTest: input.helixTransportForTest })
+      });
     } catch (error) {
       appendSafeRuntimeLog(config, error);
       throw new Error("Local runtime initialization failed. Inspect the local runtime logs and workspace database, then restart Cestus.");
