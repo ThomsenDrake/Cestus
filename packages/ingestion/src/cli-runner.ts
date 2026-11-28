@@ -1,3 +1,5 @@
+import { HttpHelixGraphTransport } from "../../helix-contrib/src/index.js";
+import { syncLedgerToHelix } from "../../ontology/src/helix-adapter.js";
 import {
   formatIngestionCliUsage,
   handleIngestionCommand,
@@ -39,10 +41,6 @@ export async function runIngestionCli(argv: readonly string[] = process.argv.sli
       ...(helixUrl
         ? {
             afterLedgerCommit: async (workspace) => {
-              const [{ HttpHelixGraphTransport }, { syncLedgerToHelix }] = await Promise.all([
-                import("../../helix-contrib/src/index.js"),
-                import("../../ontology/src/helix-adapter.js")
-              ]);
               const databaseName = helixDatabaseOverride || workspace.workspaceId;
               const transport = new HttpHelixGraphTransport({ url: helixUrl, env: process.env });
               try {
