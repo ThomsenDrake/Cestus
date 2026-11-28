@@ -183,6 +183,102 @@ describe("helix-contrib append-only writer", () => {
     ).rejects.toThrow(HelixAllowlistError);
   });
 
+  it("allows provenance-chained node supersession while refusing conflicting or forged overwrites", async () => {
+    const transport = new InMemoryHelixGraphTransport();
+    const writer = new AppendOnlyHelixWriter({
+      transport,
+      databaseName: "db_supersede",
+      allowlist: ALLOWLIST
+    });
+
+    await writer.appendNode({
+      label: "Record",
+      stableKey: "rec:1",
+      provenance: BASE_PROVENANCE,
+      properties: { title: "Initial Title", note: "old-only" }
+    });
+    await writer.appendTextSpan({
+      stableKey: "span:1",
+      locator: "line:1",
+      text: "Anchored span",
+      provenance: BASE_PROVENANCE
+    });
+    await writer.appendEdge({
+      edgeLabel: "HAS_SPAN",
+      stableKey: "edge:rec:1:span:1",
+      from: { label: "Record", stableKey: "rec:1" },
+      to: { label: "TextSpan", stableKey: "span:1" },
+      provenance: BASE_PROVENANCE
+    });
+
+    // Refuses overwrite with unrelated authority or mismatched sourceId or self-supersede.
+    await expect(
+      writer.appendNode({
+        label: "Record",
+        stableKey: "rec:1",
+        provenance: { sourceId: "source_001", contentHash: OTHER_HASH, authorityId: "auth_002" },
+        supersedesAuthorityIds: ["auth_unrelated"],
+        properties: { title: "Forged Title" }
+      })
+    ).rejects.toThrow(HelixAppendOnlyError);
+
+    await expect(
+      writer.appendNode({
+        label: "Record",
+        stableKey: "rec:1",
+        provenance: { sourceId: "source_other", contentHash: OTHER_HASH, authorityId: "auth_002" },
+        supersedesAuthorityIds: ["auth_001"],
+        properties: { title: "Hijacked Source" }
+      })
+    ).rejects.toThrow(HelixAppendOnlyError);
+
+    await expect(
+      writer.appendNode({
+        label: "Record",
+        stableKey: "rec:1",
+        provenance: { sourceId: "source_001", contentHash: OTHER_HASH, authorityId: "auth_001" },
+        supersedesAuthorityIds: ["auth_001"],
+        properties: { title: "Tampered Same Authority" }
+      })
+    ).rejects.toThrow(HelixAppendOnlyError);
+
+    // Valid causal supersession advances the node, clears stale properties, and keeps edges intact.
+    const revised = await writer.appendNode({
+      label: "Record",
+      stableKey: "rec:1",
+      provenance: { sourceId: "source_001", contentHash: OTHER_HASH, authorityId: "auth_002" },
+      supersedesAuthorityIds: ["auth_001"],
+      properties: { title: "Corrected Title" }
+    });
+    expect(revised.inserted).toBe(false);
+    expect(revised.superseded).toBe(true);
+    expect(revised.record.properties.title).toBe("Corrected Title");
+    expect(revised.record.properties.authorityId).toBe("auth_002");
+    expect(revised.record.properties.note).toBeUndefined();
+    expect(await writer.findNodesByLabel("Record")).toHaveLength(1);
+    expect(await writer.findEdgesByLabel("HAS_SPAN")).toHaveLength(1);
+
+    // Replaying the same revision is idempotent; replaying the older authority is refused.
+    const idempotent = await writer.appendNode({
+      label: "Record",
+      stableKey: "rec:1",
+      provenance: { sourceId: "source_001", contentHash: OTHER_HASH, authorityId: "auth_002" },
+      supersedesAuthorityIds: ["auth_001"],
+      properties: { title: "Corrected Title" }
+    });
+    expect(idempotent.inserted).toBe(false);
+    expect(idempotent.superseded).toBe(false);
+
+    await expect(
+      writer.appendNode({
+        label: "Record",
+        stableKey: "rec:1",
+        provenance: BASE_PROVENANCE,
+        properties: { title: "Initial Title" }
+      })
+    ).rejects.toThrow(HelixAppendOnlyError);
+  });
+
   it("rebuilds only the exact target database and reproduces an engine-id-independent fingerprint", async () => {
     const transport = new InMemoryHelixGraphTransport();
     const writer = new AppendOnlyHelixWriter({
@@ -323,6 +419,27 @@ describe.runIf(Boolean(liveUrl))("helix-contrib live Helix server integration", 
       provenance: BASE_PROVENANCE
     });
     expect(dupEdge.inserted).toBe(false);
+
+    // Provenance-chained supersession updates live node properties while conflicting overwrites fail.
+    await expect(
+      writer.appendNode({
+        label: "Record",
+        stableKey: "rec:live:1",
+        provenance: { sourceId: "source_001", contentHash: OTHER_HASH, authorityId: "auth_live_conflict" },
+        properties: { title: "Conflict" }
+      })
+    ).rejects.toThrow(HelixAppendOnlyError);
+
+    const revised = await writer.appendNode({
+      label: "Record",
+      stableKey: "rec:live:1",
+      provenance: { sourceId: "source_001", contentHash: OTHER_HASH, authorityId: "auth_live_2" },
+      supersedesAuthorityIds: ["auth_001"],
+      properties: { title: "Live record revised" }
+    });
+    expect(revised.superseded).toBe(true);
+    expect(revised.record.properties.title).toBe("Live record revised");
+    expect(revised.record.properties.authorityId).toBe("auth_live_2");
 
     const fp2 = await writer.rebuild(dbName, log);
     expect(fp2).toEqual(fp1);

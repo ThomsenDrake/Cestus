@@ -6,6 +6,7 @@ import {
   readBatch,
   writeBatch,
   type ReadBatch,
+  type Traversal,
   type WriteBatch
 } from "@helix-db/helix-db";
 import type { ScalarPropertyValue } from "./text-span.js";
@@ -81,6 +82,13 @@ export interface HelixGraphTransport {
     label: string,
     stableKey: string,
     properties: Readonly<Record<string, ScalarPropertyValue>>
+  ): Promise<StoredHelixNode>;
+  supersedeNode(
+    databaseName: string,
+    label: string,
+    stableKey: string,
+    properties: Readonly<Record<string, ScalarPropertyValue>>,
+    removePropertyKeys?: readonly string[]
   ): Promise<StoredHelixNode>;
   findEdge(databaseName: string, edgeLabel: string, stableKey: string): Promise<StoredHelixEdge | undefined>;
   findEdgesByLabel(databaseName: string, edgeLabel: string): Promise<readonly StoredHelixEdge[]>;
@@ -335,6 +343,48 @@ export class HttpHelixGraphTransport implements HelixGraphTransport {
     return stored;
   }
 
+  async supersedeNode(
+    databaseName: string,
+    label: string,
+    stableKey: string,
+    properties: Readonly<Record<string, ScalarPropertyValue>>,
+    removePropertyKeys: readonly string[] = []
+  ): Promise<StoredHelixNode> {
+    const payload: Record<string, ScalarPropertyValue> = {
+      ...properties,
+      _db: databaseName,
+      stableKey
+    };
+    const entries = Object.entries(payload);
+    const [firstKey, firstValue] = entries[0]!;
+    let traversal: Traversal<"nodes", "write"> = g()
+      .nWithLabel(label)
+      .has("_db", databaseName)
+      .has("stableKey", stableKey)
+      .setProperty(firstKey, firstValue);
+    for (const [key, value] of entries.slice(1)) {
+      traversal = traversal.setProperty(key, value);
+    }
+    for (const key of removePropertyKeys) {
+      if (key === "_db" || key === "stableKey" || Object.hasOwn(payload, key)) {
+        continue;
+      }
+      traversal = traversal.removeProperty(key);
+    }
+    const batch = writeBatch()
+      .varAs("updated", traversal)
+      .returning(["updated"]);
+    const writeResult = await this.client.executeWrite<{ updated?: unknown[] }>(batch);
+    if (!Array.isArray(writeResult.updated) || writeResult.updated.length === 0) {
+      throw new HelixClientError(`Node (${label}:${stableKey}) not found when superseding properties.`);
+    }
+    const stored = await this.findNode(databaseName, label, stableKey);
+    if (stored === undefined) {
+      throw new HelixClientError(`Superseded node (${label}:${stableKey}) could not be read back from Helix.`);
+    }
+    return stored;
+  }
+
   async findEdge(databaseName: string, edgeLabel: string, stableKey: string): Promise<StoredHelixEdge | undefined> {
     const batch = readBatch()
       .varAs(
@@ -503,6 +553,44 @@ export class InMemoryHelixGraphTransport implements HelixGraphTransport {
     });
     this.nodes.push(node);
     return node;
+  }
+
+  async supersedeNode(
+    databaseName: string,
+    label: string,
+    stableKey: string,
+    properties: Readonly<Record<string, ScalarPropertyValue>>,
+    removePropertyKeys: readonly string[] = []
+  ): Promise<StoredHelixNode> {
+    this.assertWritePreconditions();
+    this.assertHealthy();
+    const index = this.nodes.findIndex(
+      (node) => node.databaseName === databaseName && node.label === label && node.stableKey === stableKey
+    );
+    if (index < 0) {
+      throw new HelixClientError(`Node (${label}:${stableKey}) not found when superseding properties.`);
+    }
+    const existing = this.nodes[index]!;
+    const nextProps: Record<string, ScalarPropertyValue> = { ...existing.properties };
+    for (const key of removePropertyKeys) {
+      if (key !== "_db" && key !== "stableKey") {
+        delete nextProps[key];
+      }
+    }
+    for (const [key, value] of Object.entries(properties)) {
+      nextProps[key] = value;
+    }
+    nextProps._db = databaseName;
+    nextProps.stableKey = stableKey;
+    const updated: StoredHelixNode = Object.freeze({
+      ...(existing.engineId === undefined ? {} : { engineId: existing.engineId }),
+      label,
+      databaseName,
+      stableKey,
+      properties: Object.freeze(nextProps)
+    });
+    this.nodes[index] = updated;
+    return updated;
   }
 
   async findEdge(databaseName: string, edgeLabel: string, stableKey: string): Promise<StoredHelixEdge | undefined> {

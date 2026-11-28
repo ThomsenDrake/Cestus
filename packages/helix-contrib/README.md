@@ -11,7 +11,9 @@ This package contains no application-specific domain types. It provides:
   `locator`, and `authorityId`) validated on every recorded write.
 - **Append-only writer** that refuses `drop`, `setProperty`, and `removeProperty`
   on recorded elements, allowing destruction only through an explicit target-scoped
-  `rebuild(databaseName, entries)` replay.
+  `rebuild(databaseName, entries)` replay and allowing provenance-chained node
+  revisions only when `supersedesAuthorityIds` proves causal lineage from the
+  recorded `authorityId` under the same `sourceId`.
 - **Idempotent node and edge insertion** keyed by a caller-supplied stable key,
   working around non-deduplicating `addE` and re-reading edges by stable key.
 - **Endpoint allowlist** validating `(fromLabel, edgeLabel, toLabel)` before write.
