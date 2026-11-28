@@ -8,7 +8,10 @@ import {
   HttpHelixGraphTransport,
   InMemoryHelixGraphTransport
 } from "../../helix-contrib/src/index.js";
+import { createPortableIngestionMountResolver } from "../../ingestion/src/portable-mount.js";
+import { createIngestionRuntime } from "../../ingestion/src/runtime.js";
 import { FileBlobStore } from "../../ontology/src/blob-store.js";
+import { syncLedgerToHelix } from "../../ontology/src/helix-adapter.js";
 import { SQLiteEventLedger } from "../../ontology/src/sqlite-event-ledger.js";
 import { createPortableWorkspace } from "../../workspace/src/index.js";
 import { runNodeWorkspaceOperation } from "../../workspace-ops/src/node-runner.js";
@@ -240,6 +243,118 @@ describe("Helix-backed ontology HTTP routes (Milestone 2)", () => {
       ledgerAfter.close();
     }
   });
+
+  it("syncs a second import into an existing source and an append-only source label update with zero lag", async () => {
+    const { dir, rootDir, sourceRoot } = createTestWorkspace("cestus-helix-second-import-");
+    const transport = new InMemoryHelixGraphTransport();
+    const base = resolveLocalRuntimeConfig({
+      cwd: dir,
+      env: {
+        CESTUS_LOCAL_STORAGE: "portable-workspace",
+        CESTUS_WORKSPACE_ROOT: rootDir,
+        CESTUS_LOCAL_AUTH_TOKEN: "synthetic-token"
+      }
+    });
+    activeServer = await startLocalRuntimeServer({
+      config: {
+        ...base,
+        operator: { id: "operator_m2", kind: "human", label: "M2 Investigator" },
+        http: { ...base.http, port: 0 }
+      },
+      helixTransportForTest: transport
+    });
+    const address = activeServer.server.address();
+    if (!address || typeof address === "string") throw new Error("No server address");
+    const origin = `http://127.0.0.1:${address.port}`;
+
+    async function api(path: string, body?: unknown, expectedStatus = 200) {
+      const response = await fetch(origin + path, {
+        method: body === undefined ? "GET" : "POST",
+        headers: {
+          authorization: "Bearer synthetic-token",
+          "content-type": "application/json"
+        },
+        ...(body === undefined ? {} : { body: JSON.stringify(body) })
+      });
+      const json = await response.json();
+      expect(response.status, JSON.stringify(json)).toBe(expectedStatus);
+      return json;
+    }
+
+    await api("/api/ingestion/sources", {
+      sourceCollectionId: "src_osceola_county",
+      label: "Osceola County",
+      rootUri: pathToFileURL(sourceRoot).href,
+      sourceRoot
+    });
+    await api("/api/ingestion/scans/dry-run", { sourceCollectionId: "src_osceola_county", scanBatchId: "scan_001" });
+    await api("/api/ingestion/imports/approve", { sourceCollectionId: "src_osceola_county", scanBatchId: "scan_001", importBatchId: "imp_001" });
+    const imp1 = await api("/api/ingestion/imports/run", { sourceCollectionId: "src_osceola_county", scanBatchId: "scan_001", importBatchId: "imp_001" });
+    expect(imp1.helixSync).toMatchObject({ ok: true, stale: false });
+    const parse1 = await api("/api/ingestion/parse/run", { sourceCollectionId: "src_osceola_county" });
+    expect(parse1.helixSync).toMatchObject({ ok: true, stale: false });
+
+    // Add a second document into the SAME source and import incrementally.
+    writeFileSync(join(sourceRoot, "production-002.txt"), "Second Osceola production file with distinct bytes.\n", "utf8");
+    await api("/api/ingestion/scans/dry-run", { sourceCollectionId: "src_osceola_county", scanBatchId: "scan_002" });
+    await api("/api/ingestion/imports/approve", { sourceCollectionId: "src_osceola_county", scanBatchId: "scan_002", importBatchId: "imp_002" });
+    const imp2 = await api("/api/ingestion/imports/run", { sourceCollectionId: "src_osceola_county", scanBatchId: "scan_002", importBatchId: "imp_002" });
+    expect(imp2.helixSync).toMatchObject({ ok: true, stale: false });
+    const parse2 = await api("/api/ingestion/parse/run", { sourceCollectionId: "src_osceola_county" });
+    expect(parse2.helixSync).toMatchObject({ ok: true, stale: false });
+
+    const dtoAfterSecond = await api("/api/ontology/workspace");
+    expect(dtoAfterSecond.status).toBe("ready");
+    expect(dtoAfterSecond.documents).toHaveLength(2);
+    expect(dtoAfterSecond.documents.every((doc: { agencyName?: string }) => doc.agencyName === "Osceola County")).toBe(true);
+
+    // Apply append-only label update through ingestion runtime + Helix afterLedgerCommit.
+    const mounted = await createPortableIngestionMountResolver().resolve({ workspaceRoot: rootDir });
+    if (!mounted.ok) throw new Error("expected portable workspace to mount");
+    try {
+      const runtime = createIngestionRuntime({
+        mountedWorkspace: mounted.workspace,
+        actor: { id: "operator_m2", kind: "human", label: "M2 Investigator" },
+        afterLedgerCommit: async (workspace) => {
+          const synced = await syncLedgerToHelix({
+            transport,
+            databaseName: "ws_helix_m2",
+            events: await workspace.ledger.readAll(),
+            blobStore: workspace.blobStore,
+            derivativeStore: workspace.derivativeStore
+          });
+          return {
+            ok: true,
+            stale: false,
+            databaseName: synced.databaseName,
+            endpoint: synced.endpoint,
+            ledgerEventCount: synced.ledgerEventCount
+          };
+        }
+      });
+      const updated = await runtime.updateSource({
+        sourceCollectionId: "src_osceola_county",
+        label: "Osceola County Sheriff's Office",
+        rationale: "Official agency name"
+      });
+      expect(updated.ok).toBe(true);
+      if (updated.ok) {
+        expect(updated.review.label).toBe("Osceola County Sheriff's Office");
+        expect(updated.helixSync).toMatchObject({ ok: true, stale: false });
+      }
+    } finally {
+      (mounted.workspace as { close?: () => void }).close?.();
+    }
+
+    const dtoAfterUpdate = await api("/api/ontology/workspace");
+    expect(dtoAfterUpdate.status).toBe("ready");
+    expect(dtoAfterUpdate.documents).toHaveLength(2);
+    expect(
+      dtoAfterUpdate.documents.every(
+        (doc: { agencyName?: string }) => doc.agencyName === "Osceola County Sheriff's Office"
+      )
+    ).toBe(true);
+  });
 });
 
 const liveHelixUrl = process.env.HELIX_LIVE_TEST_URL;
@@ -312,6 +427,69 @@ describe.runIf(Boolean(liveHelixUrl))("Milestone 2 live HelixDB end-to-end", () 
     expect(workspaceBefore.documents).toHaveLength(1);
     const evidenceId = workspaceBefore.documents[0].evidenceId as string;
     expect(workspaceBefore.documents[0].contentHash).toBe(expectedHash);
+    expect(workspaceBefore.documents[0].agencyName).toBe("Live Synthetic Agency");
+
+    // Second import into the same source syncs incrementally to live Helix with zero lag.
+    writeFileSync(join(sourceRoot, "production-002.txt"), "Live second document in same source.\n", "utf8");
+    await api("/api/ingestion/scans/dry-run", { sourceCollectionId: "src_live_001", scanBatchId: "scan_live_002" });
+    await api("/api/ingestion/imports/approve", { sourceCollectionId: "src_live_001", scanBatchId: "scan_live_002", importBatchId: "imp_live_002" });
+    const imp2 = await api("/api/ingestion/imports/run", { sourceCollectionId: "src_live_001", scanBatchId: "scan_live_002", importBatchId: "imp_live_002" });
+    expect(imp2.helixSync).toMatchObject({ ok: true, stale: false });
+    const parse2 = await api("/api/ingestion/parse/run", { sourceCollectionId: "src_live_001" });
+    expect(parse2.helixSync).toMatchObject({ ok: true, stale: false });
+
+    const workspaceAfterSecond = await api("/api/ontology/workspace");
+    expect(workspaceAfterSecond.documents).toHaveLength(2);
+
+    // Apply append-only label correction and sync incrementally against live Helix.
+    const mountedLive = await createPortableIngestionMountResolver().resolve({ workspaceRoot: rootDir });
+    if (!mountedLive.ok) throw new Error("expected portable workspace to mount");
+    const liveTransportForUpdate = new HttpHelixGraphTransport({
+      url: liveHelixUrl!,
+      env: { DO_NOT_TRACK: "1", HELIX_TELEMETRY_LEVEL: "off" }
+    });
+    try {
+      const runtime = createIngestionRuntime({
+        mountedWorkspace: mountedLive.workspace,
+        actor: { id: "operator_live", kind: "human", label: "Live M2 Investigator" },
+        afterLedgerCommit: async (workspace) => {
+          const synced = await syncLedgerToHelix({
+            transport: liveTransportForUpdate,
+            databaseName: dbName,
+            events: await workspace.ledger.readAll(),
+            blobStore: workspace.blobStore,
+            derivativeStore: workspace.derivativeStore
+          });
+          return {
+            ok: true,
+            stale: false,
+            databaseName: synced.databaseName,
+            endpoint: synced.endpoint,
+            ledgerEventCount: synced.ledgerEventCount
+          };
+        }
+      });
+      const updated = await runtime.updateSource({
+        sourceCollectionId: "src_live_001",
+        label: "Live Corrected Sheriff's Office",
+        rationale: "Verify live Helix incremental label correction"
+      });
+      expect(updated.ok).toBe(true);
+      if (updated.ok) {
+        expect(updated.helixSync).toMatchObject({ ok: true, stale: false });
+      }
+    } finally {
+      (mountedLive.workspace as { close?: () => void }).close?.();
+      await liveTransportForUpdate.close();
+    }
+
+    const workspaceAfterLabelUpdate = await api("/api/ontology/workspace");
+    expect(workspaceAfterLabelUpdate.documents).toHaveLength(2);
+    expect(
+      workspaceAfterLabelUpdate.documents.every(
+        (doc: { agencyName?: string }) => doc.agencyName === "Live Corrected Sheriff's Office"
+      )
+    ).toBe(true);
 
     // Snapshot ledger bytes and event count before drop + rebuild.
     const ledgerPath = join(rootDir, "ledger", "ontology.sqlite");
@@ -342,9 +520,17 @@ describe.runIf(Boolean(liveHelixUrl))("Milestone 2 live HelixDB end-to-end", () 
       expect(rebuild.status).toBe("ready");
 
       const workspaceAfter = await api("/api/ontology/workspace");
-      expect(workspaceAfter.documents).toHaveLength(1);
-      expect(workspaceAfter.documents[0].evidenceId).toBe(evidenceId);
-      expect(workspaceAfter.documents[0].contentHash).toBe(expectedHash);
+      expect(workspaceAfter.documents).toHaveLength(2);
+      const originalDoc = workspaceAfter.documents.find(
+        (doc: { evidenceId: string }) => doc.evidenceId === evidenceId
+      );
+      expect(originalDoc).toBeDefined();
+      expect(originalDoc.contentHash).toBe(expectedHash);
+      expect(
+        workspaceAfter.documents.every(
+          (doc: { agencyName?: string }) => doc.agencyName === "Live Corrected Sheriff's Office"
+        )
+      ).toBe(true);
 
       const ledgerBytesAfter = createHash("sha256").update(readFileSync(ledgerPath)).digest("hex");
       expect(ledgerBytesAfter).toBe(ledgerBytesBefore);

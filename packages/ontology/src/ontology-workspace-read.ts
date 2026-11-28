@@ -79,6 +79,7 @@ export interface OntologyDocumentReadDto {
   readonly passages: readonly OntologyPassageReadDto[];
   readonly authorityEventId: string;
   readonly sourceCollectionId?: string;
+  readonly agencyName?: string;
   readonly importBatchId?: string;
   readonly parseFailureMessage?: string;
 }

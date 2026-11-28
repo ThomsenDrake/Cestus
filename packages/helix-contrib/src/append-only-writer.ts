@@ -43,6 +43,7 @@ export interface AppendNodeInput {
   readonly stableKey: string;
   readonly provenance: ProvenanceRecord;
   readonly properties?: Readonly<Record<string, ScalarPropertyValue>>;
+  readonly supersedesAuthorityIds?: readonly string[];
 }
 
 export interface AppendEdgeInput {
@@ -67,6 +68,7 @@ export type ReplayLogEntry =
 
 export interface AppendWriteResult<T> {
   readonly inserted: boolean;
+  readonly superseded?: boolean;
   readonly record: T;
 }
 
@@ -133,15 +135,35 @@ export class AppendOnlyHelixWriter {
       throw new HelixAppendOnlyError("Use appendWatermark() for watermark records.");
     }
     const provenance = validateProvenanceRecord(input.provenance);
+    const supersedes = validateSupersedesAuthorityIds(input.supersedesAuthorityIds, provenance.authorityId);
     const existing = await this.transport.findNode(this.databaseName, input.label, input.stableKey);
     if (existing !== undefined) {
       const existingProvenance = extractProvenance(existing.properties);
-      if (existingProvenance === undefined || !provenanceRecordsEqual(existingProvenance, provenance)) {
-        throw new HelixAppendOnlyError(
-          `Refusing to overwrite recorded node (${input.label}:${input.stableKey}) with conflicting provenance.`
-        );
+      if (existingProvenance !== undefined && provenanceRecordsEqual(existingProvenance, provenance)) {
+        return Object.freeze({ inserted: false, superseded: false, record: existing });
       }
-      return Object.freeze({ inserted: false, record: existing });
+      if (
+        existingProvenance !== undefined &&
+        existingProvenance.sourceId === provenance.sourceId &&
+        existingProvenance.authorityId !== provenance.authorityId &&
+        supersedes.includes(existingProvenance.authorityId)
+      ) {
+        const properties = buildElementProperties(provenance, input.properties);
+        const stalePropertyKeys = Object.keys(existing.properties).filter(
+          (key) => key !== "_db" && key !== "stableKey" && !Object.hasOwn(properties, key)
+        );
+        const updated = await this.transport.supersedeNode(
+          this.databaseName,
+          input.label,
+          input.stableKey,
+          properties,
+          stalePropertyKeys
+        );
+        return Object.freeze({ inserted: false, superseded: true, record: updated });
+      }
+      throw new HelixAppendOnlyError(
+        `Refusing to overwrite recorded node (${input.label}:${input.stableKey}) with conflicting provenance.`
+      );
     }
     const properties = buildElementProperties(provenance, input.properties);
     const inserted = await this.transport.insertNode(
@@ -150,7 +172,7 @@ export class AppendOnlyHelixWriter {
       input.stableKey,
       properties
     );
-    return Object.freeze({ inserted: true, record: inserted });
+    return Object.freeze({ inserted: true, superseded: false, record: inserted });
   }
 
   async appendTextSpan(input: TextSpanNodeInput): Promise<AppendWriteResult<StoredHelixNode>> {
@@ -409,6 +431,26 @@ function assertNonEmpty(field: string, value: string): void {
   if (typeof value !== "string" || value.trim().length === 0) {
     throw new HelixAppendOnlyError(`${field} must be a non-empty string.`);
   }
+}
+
+function validateSupersedesAuthorityIds(
+  ids: readonly string[] | undefined,
+  currentAuthorityId: string
+): readonly string[] {
+  if (ids === undefined || ids.length === 0) {
+    return [];
+  }
+  const normalized: string[] = [];
+  for (const id of ids) {
+    if (typeof id !== "string" || id.trim().length === 0) {
+      throw new HelixAppendOnlyError("supersedesAuthorityIds entries must be non-empty strings.");
+    }
+    if (id === currentAuthorityId) {
+      throw new HelixAppendOnlyError("A node revision cannot supersede its own authorityId.");
+    }
+    normalized.push(id);
+  }
+  return normalized;
 }
 
 function buildElementProperties(

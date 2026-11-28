@@ -1,12 +1,14 @@
 import { createHash } from "node:crypto";
 import { existsSync, statSync } from "node:fs";
 import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import {
   HttpHelixGraphTransport,
   assertTelemetryDisabled
 } from "../../packages/helix-contrib/src/index.js";
 import { handleIngestionCommand } from "../../packages/ingestion/src/cli.js";
 import {
+  buildIngestionProjection,
   createIngestionRuntime,
   createPortableIngestionMountResolver
 } from "../../packages/ingestion/src/index.js";
@@ -189,20 +191,42 @@ async function main(): Promise<void> {
         }
       });
 
-    await runCliStep(
-      "register-source",
-      [
-        "--workspace",
-        options.workspaceRoot,
-        "--source",
-        options.sourceDir,
-        "--source-id",
-        options.sourceId,
-        "--label",
-        options.label
-      ],
-      runtimeFactory
-    );
+    const preCheckLedger = new SQLiteEventLedger(mounted.workspace.paths.ledgerPath);
+    let existingSource: ReturnType<typeof buildIngestionProjection>["sources"] extends Map<string, infer T>
+      ? T | undefined
+      : never;
+    try {
+      const projection = buildIngestionProjection(await preCheckLedger.readAll());
+      existingSource = projection.sources.get(options.sourceId);
+    } finally {
+      preCheckLedger.close();
+    }
+
+    const expectedRootUri = pathToFileURL(options.sourceDir).href;
+    if (existingSource === undefined) {
+      await runCliStep(
+        "register-source",
+        [
+          "--workspace",
+          options.workspaceRoot,
+          "--source",
+          options.sourceDir,
+          "--source-id",
+          options.sourceId,
+          "--label",
+          options.label
+        ],
+        runtimeFactory
+      );
+    } else if (existingSource.label !== options.label) {
+      throw new Error(
+        `Source "${options.sourceId}" is already registered with label "${existingSource.label}" (requested "${options.label}"). Use \`node packages/ingestion/bin/cestus-ingest.mjs ingest update-source --workspace "${options.workspaceRoot}" --source-id ${options.sourceId} --label "${options.label}"\` to append a label correction.`
+      );
+    } else if (existingSource.rootUri !== expectedRootUri) {
+      throw new Error(
+        `Source "${options.sourceId}" is already registered with rootUri "${existingSource.rootUri}" (requested "${expectedRootUri}").`
+      );
+    }
 
     await runCliStep(
       "dry-run",

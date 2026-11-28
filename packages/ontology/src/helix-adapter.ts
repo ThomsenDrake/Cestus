@@ -82,6 +82,7 @@ export interface HelixDocumentSummary {
   readonly passageCount: number;
   readonly authorityEventId: string;
   readonly sourceCollectionId?: string;
+  readonly agencyName?: string;
   readonly importBatchId?: string;
   readonly parseFailureMessage?: string;
 }
@@ -101,6 +102,7 @@ export interface HelixSyncResult {
   readonly ledgerEventCount: number;
   readonly lastEventId: string | null;
   readonly nodesInserted: number;
+  readonly nodesSuperseded: number;
   readonly edgesInserted: number;
   readonly documents: readonly HelixDocumentSummary[];
 }
@@ -167,7 +169,16 @@ export async function planHelixReplayFromLedger(
     }
   }
 
-  const sourcesById = new Map<string, KnowledgeEventOf<"ingestion.source.registered">>();
+  const sourceChainsById = new Map<
+    string,
+    {
+      readonly registered: KnowledgeEventOf<"ingestion.source.registered">;
+      readonly labelUpdates: KnowledgeEventOf<"ingestion.source.label.updated">[];
+    }
+  >();
+  const importApprovalByBatchKey = new Map<string, KnowledgeEventOf<"ingestion.import.approved">>();
+  const firstLinkByBatchKey = new Map<string, KnowledgeEventOf<"ingestion.evidence.linked">>();
+  const firstLinkBySourceId = new Map<string, KnowledgeEventOf<"ingestion.evidence.linked">>();
   const linkByEvidenceId = new Map<string, KnowledgeEventOf<"ingestion.evidence.linked">>();
   const ingestedByEvidenceId = new Map<string, KnowledgeEventOf<"evidence.ingested">>();
   const latestParseCompletedByEvidenceId = new Map<
@@ -182,10 +193,27 @@ export async function planHelixReplayFromLedger(
   for (let ordinal = 0; ordinal < events.length; ordinal += 1) {
     const event = events[ordinal]!;
     if (event.type === "ingestion.source.registered") {
-      sourcesById.set(event.payload.sourceCollectionId, event);
+      sourceChainsById.set(event.payload.sourceCollectionId, {
+        registered: event,
+        labelUpdates: []
+      });
+    } else if (event.type === "ingestion.source.label.updated") {
+      sourceChainsById.get(event.payload.sourceCollectionId)?.labelUpdates.push(event);
+    } else if (event.type === "ingestion.import.approved") {
+      const batchKey = `${event.payload.sourceCollectionId}\u0000${event.payload.importBatchId}`;
+      if (!importApprovalByBatchKey.has(batchKey)) {
+        importApprovalByBatchKey.set(batchKey, event);
+      }
     } else if (event.type === "ingestion.evidence.linked") {
       if (!linkByEvidenceId.has(event.payload.evidenceId)) {
         linkByEvidenceId.set(event.payload.evidenceId, event);
+      }
+      const batchKey = `${event.payload.sourceCollectionId}\u0000${event.payload.importBatchId}`;
+      if (!firstLinkByBatchKey.has(batchKey)) {
+        firstLinkByBatchKey.set(batchKey, event);
+      }
+      if (!firstLinkBySourceId.has(event.payload.sourceCollectionId)) {
+        firstLinkBySourceId.set(event.payload.sourceCollectionId, event);
       }
     } else if (event.type === "evidence.ingested") {
       ingestedByEvidenceId.set(event.payload.evidenceId, event);
@@ -200,6 +228,57 @@ export async function planHelixReplayFromLedger(
   const documents: HelixDocumentSummary[] = [];
   const emittedAgencies = new Set<string>();
   const emittedProductions = new Set<string>();
+  const agencyNameBySourceId = new Map<string, string>();
+
+  // Agency is authoritative for the producing agency label; provenance is deterministic
+  // per sourceCollectionId and advances via provenance-chained supersession on label updates.
+  const orderedSourceIds = [...sourceChainsById.keys()].sort((a, b) => a.localeCompare(b));
+  for (const sourceCollectionId of orderedSourceIds) {
+    const chain = sourceChainsById.get(sourceCollectionId)!;
+    const latestUpdate = chain.labelUpdates.at(-1);
+    const latestEvent = latestUpdate ?? chain.registered;
+    const currentLabel = latestEvent.payload.label;
+    const agencyStableKey = `agency:${sourceCollectionId}`;
+    const supersedesAuthorityIds =
+      latestUpdate === undefined
+        ? undefined
+        : [chain.registered.id, ...chain.labelUpdates.slice(0, -1).map((update) => update.id)];
+
+    emittedAgencies.add(agencyStableKey);
+    agencyNameBySourceId.set(sourceCollectionId, currentLabel);
+    entries.push({
+      kind: "node",
+      label: "Agency",
+      stableKey: agencyStableKey,
+      provenance: {
+        sourceId: sourceCollectionId,
+        contentHash: sha256ContentHash(
+          JSON.stringify({
+            sourceCollectionId,
+            label: currentLabel,
+            authorityId: latestEvent.id
+          })
+        ),
+        authorityId: latestEvent.id
+      },
+      ...(supersedesAuthorityIds === undefined ? {} : { supersedesAuthorityIds }),
+      properties: {
+        role: "producer",
+        sourceCollectionId,
+        name: currentLabel,
+        labelRevision: 1 + chain.labelUpdates.length,
+        registeredEventId: chain.registered.id,
+        ...(latestUpdate === undefined
+          ? {}
+          : {
+              previousName: latestUpdate.payload.previousLabel,
+              ...(latestUpdate.payload.rationale === undefined
+                ? {}
+                : { labelUpdateRationale: latestUpdate.payload.rationale })
+            })
+      }
+    });
+  }
 
   const orderedEvidenceIds = [...ingestedByEvidenceId.keys()].sort((a, b) => a.localeCompare(b));
   for (const evidenceId of orderedEvidenceIds) {
@@ -217,8 +296,6 @@ export async function planHelixReplayFromLedger(
     const link = linkByEvidenceId.get(evidenceId);
     const sourceCollectionId = link?.payload.sourceCollectionId;
     const importBatchId = link?.payload.importBatchId;
-    const registeredSource =
-      sourceCollectionId === undefined ? undefined : sourcesById.get(sourceCollectionId);
 
     const docStableKey = `doc:${evidenceId}`;
     const docProvenance = {
@@ -227,6 +304,8 @@ export async function planHelixReplayFromLedger(
       authorityId: ingested.id
     };
 
+    // Document.sourceLabel preserves the immutable ingest-time snapshot from evidence.ingested;
+    // queries must resolve the authoritative producing agency label via the Agency node.
     const docProps: Record<string, ScalarPropertyValue> = {
       evidenceId,
       mediaType: ingested.payload.mediaType,
@@ -251,20 +330,31 @@ export async function planHelixReplayFromLedger(
     if (sourceCollectionId !== undefined && importBatchId !== undefined && link !== undefined) {
       const agencyStableKey = `agency:${sourceCollectionId}`;
       if (!emittedAgencies.has(agencyStableKey)) {
+        const fallbackLink = firstLinkBySourceId.get(sourceCollectionId) ?? link;
+        const fallbackIngested = ingestedByEvidenceId.get(fallbackLink.payload.evidenceId) ?? ingested;
+        const fallbackLabel = fallbackIngested.payload.source.label;
         emittedAgencies.add(agencyStableKey);
+        agencyNameBySourceId.set(sourceCollectionId, fallbackLabel);
         entries.push({
           kind: "node",
           label: "Agency",
           stableKey: agencyStableKey,
           provenance: {
-            sourceId: evidenceId,
-            contentHash,
-            authorityId: registeredSource?.id ?? link.id
+            sourceId: sourceCollectionId,
+            contentHash: sha256ContentHash(
+              JSON.stringify({
+                sourceCollectionId,
+                label: fallbackLabel,
+                authorityId: fallbackLink.id
+              })
+            ),
+            authorityId: fallbackLink.id
           },
           properties: {
             role: "producer",
             sourceCollectionId,
-            name: registeredSource?.payload.label ?? ingested.payload.source.label
+            name: fallbackLabel,
+            labelRevision: 1
           }
         });
       }
@@ -272,15 +362,26 @@ export async function planHelixReplayFromLedger(
       const productionStableKey = `production:${importBatchId}`;
       if (!emittedProductions.has(productionStableKey)) {
         emittedProductions.add(productionStableKey);
+        const batchKey = `${sourceCollectionId}\u0000${importBatchId}`;
+        const batchAuthorityId =
+          importApprovalByBatchKey.get(batchKey)?.id ??
+          (firstLinkByBatchKey.get(batchKey) ?? link).id;
+        const batchProvenance = {
+          sourceId: importBatchId,
+          contentHash: sha256ContentHash(
+            JSON.stringify({
+              sourceCollectionId,
+              importBatchId,
+              authorityId: batchAuthorityId
+            })
+          ),
+          authorityId: batchAuthorityId
+        };
         entries.push({
           kind: "node",
           label: "Production",
           stableKey: productionStableKey,
-          provenance: {
-            sourceId: evidenceId,
-            contentHash,
-            authorityId: link.id
-          },
+          provenance: batchProvenance,
           properties: {
             importBatchId,
             sourceCollectionId
@@ -292,11 +393,7 @@ export async function planHelixReplayFromLedger(
           stableKey: `produced:${sourceCollectionId}:${importBatchId}`,
           from: { label: "Agency", stableKey: agencyStableKey },
           to: { label: "Production", stableKey: productionStableKey },
-          provenance: {
-            sourceId: evidenceId,
-            contentHash,
-            authorityId: link.id
-          }
+          provenance: batchProvenance
         });
       }
 
@@ -463,6 +560,8 @@ export async function planHelixReplayFromLedger(
       });
     }
 
+    const agencyName =
+      sourceCollectionId === undefined ? undefined : agencyNameBySourceId.get(sourceCollectionId);
     documents.push(
       Object.freeze({
         evidenceId,
@@ -473,6 +572,7 @@ export async function planHelixReplayFromLedger(
         passageCount,
         authorityEventId: ingested.id,
         ...(sourceCollectionId === undefined ? {} : { sourceCollectionId }),
+        ...(agencyName === undefined ? {} : { agencyName }),
         ...(importBatchId === undefined ? {} : { importBatchId }),
         ...(parseFailureMessage === undefined ? {} : { parseFailureMessage })
       })
@@ -621,20 +721,24 @@ export async function syncLedgerToHelix(input: SyncHelixInput): Promise<HelixSyn
       ledgerEventCount: plan.ledgerEventCount,
       lastEventId: plan.lastEventId,
       nodesInserted: rebuilt.nodeCount,
+      nodesSuperseded: 0,
       edgesInserted: rebuilt.edgeCount,
       documents: plan.documents
     });
   }
 
   let nodesInserted = 0;
+  let nodesSuperseded = 0;
   let edgesInserted = 0;
   for (const entry of plan.entries) {
     if (entry.kind === "node") {
       const res = await writer.appendNode(entry);
       if (res.inserted) nodesInserted += 1;
+      if (res.superseded) nodesSuperseded += 1;
     } else if (entry.kind === "text-span") {
       const res = await writer.appendTextSpan(entry);
       if (res.inserted) nodesInserted += 1;
+      if (res.superseded) nodesSuperseded += 1;
     } else {
       const res = await writer.appendEdge(entry);
       if (res.inserted) edgesInserted += 1;
@@ -648,6 +752,7 @@ export async function syncLedgerToHelix(input: SyncHelixInput): Promise<HelixSyn
     ledgerEventCount: plan.ledgerEventCount,
     lastEventId: plan.lastEventId,
     nodesInserted,
+    nodesSuperseded,
     edgesInserted,
     documents: plan.documents
   });
@@ -702,8 +807,9 @@ export async function readOntologyWorkspaceFromHelix(
     }
   }
 
-  const [documentNodes, extractionNodes, passageNodes, entityNodes, assertionNodes, relationshipEdges] =
+  const [agencyNodes, documentNodes, extractionNodes, passageNodes, entityNodes, assertionNodes, relationshipEdges] =
     await Promise.all([
+      writer.findNodesByLabel("Agency"),
       writer.findNodesByLabel("Document"),
       writer.findNodesByLabel("ExtractionRecord"),
       writer.findNodesByLabel("Passage"),
@@ -711,6 +817,15 @@ export async function readOntologyWorkspaceFromHelix(
       writer.findNodesByLabel("Assertion"),
       writer.findEdgesByLabel("RELATES_TO")
     ]);
+
+  const agencyNameBySourceId = new Map<string, string>();
+  for (const agencyNode of agencyNodes) {
+    const sourceCollectionId = stringProp(agencyNode.properties.sourceCollectionId);
+    const name = stringProp(agencyNode.properties.name);
+    if (sourceCollectionId !== undefined && name !== undefined) {
+      agencyNameBySourceId.set(sourceCollectionId, name);
+    }
+  }
 
   const latestExtractionByEvidence = new Map<string, StoredHelixNode>();
   for (const extractionNode of extractionNodes) {
@@ -794,6 +909,8 @@ export async function readOntologyWorkspaceFromHelix(
         ? latestExtraction.properties.unextracted
         : rawPassages.length === 0;
     const sourceCollectionId = stringProp(docNode.properties.sourceCollectionId);
+    const agencyName =
+      sourceCollectionId === undefined ? undefined : agencyNameBySourceId.get(sourceCollectionId);
     const importBatchId = stringProp(docNode.properties.importBatchId);
     const parseFailureMessage =
       latestExtraction === undefined ? undefined : stringProp(latestExtraction.properties.parseFailureMessage);
@@ -808,6 +925,7 @@ export async function readOntologyWorkspaceFromHelix(
       passages: rawPassages,
       authorityEventId,
       ...(sourceCollectionId === undefined ? {} : { sourceCollectionId }),
+      ...(agencyName === undefined ? {} : { agencyName }),
       ...(importBatchId === undefined ? {} : { importBatchId }),
       ...(parseFailureMessage === undefined ? {} : { parseFailureMessage })
     });

@@ -2678,6 +2678,36 @@ const ingestionSourceRegisteredPayloadSchema = z.object({
   workspaceUri: z.string().min(1)
 }).strict();
 
+const ingestionSourceLabelUpdatedPayloadSchema = z.object({
+  sourceCollectionId: sourceCollectionIdSchema,
+  label: secretSafeTextSchema,
+  previousLabel: secretSafeTextSchema,
+  rationale: secretSafeTextSchema.optional(),
+  actor: actorRefSchema
+}).strict().superRefine((payload, ctx) => {
+  if (payload.label.trim().length === 0) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["label"],
+      message: "source label must not be blank"
+    });
+  }
+  if (payload.previousLabel.trim().length === 0) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["previousLabel"],
+      message: "previous source label must not be blank"
+    });
+  }
+  if (payload.label === payload.previousLabel) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["label"],
+      message: "updated source label must differ from previousLabel"
+    });
+  }
+});
+
 const ingestionScanStartedPayloadSchema = z.object({
   scanBatchId: scanBatchIdSchema,
   sourceCollectionId: sourceCollectionIdSchema,
@@ -3458,6 +3488,7 @@ export const payloadSchemas = {
   "agent.lock.activated": agentLockActivatedPayloadSchema,
   "agent.lock.cleared": agentLockClearedPayloadSchema,
   "ingestion.source.registered": ingestionSourceRegisteredPayloadSchema,
+  "ingestion.source.label.updated": ingestionSourceLabelUpdatedPayloadSchema,
   "ingestion.scan.started": ingestionScanStartedPayloadSchema,
   "ingestion.scan.completed": ingestionScanCompletedPayloadSchema,
   "ingestion.occurrence.observed": ingestionOccurrenceObservedPayloadSchema,
@@ -4052,6 +4083,18 @@ export const eventContracts = {
     description: "Records registration of a read-only source collection and the workspace that will receive imported evidence.",
     agentGuidance: "Use once per logical source collection before scans. Never imply that the source tree can be mutated.",
     invariants: ["sourceCollectionId must be stable", "mode must remain read-only", "adapter metadata is required"]
+  },
+  "ingestion.source.label.updated": {
+    type: "ingestion.source.label.updated",
+    version: 1,
+    description: "Records an append-only correction to the human-readable label of an already-registered read-only source collection.",
+    agentGuidance: "Append to the existing ingestion_source_<sourceCollectionId> stream at the next sequence after ingestion.source.registered. Record previousLabel, actor, and optional rationale; never rewrite or delete earlier source events.",
+    invariants: [
+      "sourceCollectionId must match the ingestion_source_<sourceCollectionId> stream",
+      "label must differ from previousLabel and remain secret-safe",
+      "payload actor must match the event context actor",
+      "source label corrections are append-only and never rewrite prior events"
+    ]
   },
   "ingestion.scan.started": {
     type: "ingestion.scan.started",
@@ -4817,6 +4860,30 @@ const rawKnowledgeEventSchema = knowledgeEventBaseSchema
           code: "custom",
           message: error instanceof Error ? error.message : "Invalid governance policy",
           path: ["payload"]
+        });
+      }
+    }
+
+    if (event.type === "ingestion.source.label.updated") {
+      const labelPayload = payload.data as PayloadByEventType["ingestion.source.label.updated"];
+      const expectedStreamId = `ingestion_source_${labelPayload.sourceCollectionId}`;
+
+      if (event.streamId !== expectedStreamId) {
+        ctx.addIssue({
+          code: "custom",
+          message: "source label update streamId must match sourceCollectionId",
+          path: ["streamId"]
+        });
+      }
+      if (
+        labelPayload.actor.id !== event.context.actor.id ||
+        labelPayload.actor.kind !== event.context.actor.kind ||
+        labelPayload.actor.label !== event.context.actor.label
+      ) {
+        ctx.addIssue({
+          code: "custom",
+          message: "source label update actor must match the event context actor",
+          path: ["payload", "actor"]
         });
       }
     }

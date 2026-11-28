@@ -36,7 +36,7 @@ const forbiddenCommandPatterns = [
   /\b(public[-\s]*records?\s+request|request)\s+send\b/i,
   /\blegal\s+escalat(?:e|ion)\b/i,
   /\bprojection\s+rebuild\b(?!-readiness)/i,
-  /\b(?:register-source|approve-import|approve-provider)\b/i,
+  /\b(?:register-source|update-source|approve-import|approve-provider)\b/i,
   /\b(?:cestus(?:-ingest)?|cestus-ingest\.mjs|ingest)\b.*\b(?:dry-run|import|retry)\b/i,
   /\b(?:repair|restore|delete|reset|destroy)\b.*\b(?:ledger|blob|workspace|ontology|canonical)\b/i,
   /\b(?:ledger|blob|workspace|ontology|canonical)\b.*\b(?:repair|restore|delete|reset|destroy)\b/i,

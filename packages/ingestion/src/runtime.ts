@@ -57,6 +57,12 @@ export interface RegisterSourceInput {
   readonly sourceRoot: string;
 }
 
+export interface UpdateSourceInput {
+  readonly sourceCollectionId: string;
+  readonly label: string;
+  readonly rationale?: string;
+}
+
 export interface DryRunScanInput {
   readonly sourceCollectionId: string;
   readonly scanBatchId: string;
@@ -108,6 +114,7 @@ export function createIngestionRuntime(input: CreateIngestionRuntimeInput) {
     async registerSource(command: RegisterSourceInput): Promise<IngestionRuntimeResult<{
       review: IngestionReview;
       eventIds: string[];
+      helixSync?: IngestionHelixSyncStatus;
     }>> {
       const workspace = requireMountedWorkspace(input.mountedWorkspace, "write");
       if (!workspace.ok) {
@@ -126,14 +133,55 @@ export function createIngestionRuntime(input: CreateIngestionRuntimeInput) {
           rootUri: command.rootUri,
           workspaceUri: `cestus-workspace://${workspace.workspace.workspaceId}`
         });
+        const helixSync = await runAfterLedgerCommit(input.afterLedgerCommit, workspace.workspace);
 
         return {
           ok: true,
           review: await reviewFor(workspace.workspace, command.sourceCollectionId),
-          eventIds: [event.id]
+          eventIds: [event.id],
+          ...(helixSync === undefined ? {} : { helixSync })
         };
       } catch {
         return runtimeInternalError("source registration");
+      }
+    },
+
+    async updateSource(command: UpdateSourceInput): Promise<IngestionRuntimeResult<{
+      review: IngestionReview;
+      eventIds: string[];
+      helixSync?: IngestionHelixSyncStatus;
+    }>> {
+      const workspace = requireMountedWorkspace(input.mountedWorkspace, "write");
+      if (!workspace.ok) {
+        return workspace;
+      }
+
+      const existing = await sourceFor(workspace.workspace, command.sourceCollectionId);
+      if (existing === undefined) {
+        return sourceNotRegisteredError(command.sourceCollectionId);
+      }
+
+      const registry = new IngestionSourceRegistry({
+        ledger: workspace.workspace.ledger,
+        actor: input.actor
+      });
+
+      try {
+        const event = await registry.updateSourceLabel({
+          sourceCollectionId: command.sourceCollectionId,
+          label: command.label,
+          ...(command.rationale === undefined ? {} : { rationale: command.rationale })
+        });
+        const helixSync = await runAfterLedgerCommit(input.afterLedgerCommit, workspace.workspace);
+
+        return {
+          ok: true,
+          review: await reviewFor(workspace.workspace, command.sourceCollectionId),
+          eventIds: [event.id],
+          ...(helixSync === undefined ? {} : { helixSync })
+        };
+      } catch {
+        return runtimeInternalError("source label update");
       }
     },
 
@@ -1068,6 +1116,7 @@ function workspaceNotWritableError(): IngestionRuntimeResult<never> {
 type RuntimeAction =
   | "dry-run"
   | "source registration"
+  | "source label update"
   | "raw import approval"
   | "import"
   | "sources"
@@ -1090,6 +1139,8 @@ function repairActionsFor(action: RuntimeAction): string[] {
       return ["verify the registered source", "retry dry-run", "inspect runtime diagnostics"];
     case "source registration":
       return ["verify the source registration input", "retry source registration", "inspect runtime diagnostics"];
+    case "source label update":
+      return ["verify the registered source and new label", "retry source label update", "inspect runtime diagnostics"];
     case "raw import approval":
       return ["verify the completed scan", "retry raw import approval", "inspect runtime diagnostics"];
     case "import":
